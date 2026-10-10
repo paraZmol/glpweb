@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:rules": "node scripts/emulators.mjs exec --only auth,firestore,database -- npm run test:emulated",
     "test:emulated": "vitest run --config vitest.rules.config.ts && vitest run --config vitest.emu.config.ts",
+    "test:mutation": "node scripts/emulators.mjs exec --only firestore,database -- node scripts/mutate-rules.mjs",
     "seed": "node tests/seed/seed.ts",
     "guard": "node scripts/check-public.mjs",
     "prepare": "git config core.hooksPath .githooks",
