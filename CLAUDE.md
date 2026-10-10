@@ -97,6 +97,10 @@ central, repartidor, cliente.
   Ninguna pantalla en blanco al cargar; duraciones y curvas solo por fichas.
 - **Oferta y textos de venta**: antes de diseñar productos, precios, promociones o textos que el
   cliente lee para comprar → **marketing-advisor** (deja su recomendación en `docs/marketing/`).
+- **Legal**: si tocó registro, datos personales o de ubicación, promociones o precios visibles,
+  permisos, o una dependencia que envíe datos a terceros → **legal-compliance**. Prohibido añadir
+  analítica, publicidad o cualquier rastreo sin pasar antes por el plan: `docs/legal/cookies.md`
+  promete que no los hay. Los documentos de `docs/legal/` se actualizan en el mismo cambio.
 - **Antes de unir a `main`**: **regression-guard** debe dar APTO.
 - **Antes de cada `git push` y de cada despliegue**: **publish-guard** debe dar PUBLICABLE. Es
   exclusivo para que no se divulgue nada en el repo público. Además corre solo

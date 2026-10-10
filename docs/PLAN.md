@@ -263,6 +263,7 @@ Estimación: una persona con Claude, ~25 h/semana.
 - [ ] 2.5 Página pública `/d/{slug}`
 - [ ] 2.6 Inicio del cliente: distribuidoras que atienden mi ubicación (cobertura = distancia a la planta ≤ radio), con marcas y precios. En el piloto se filtra en el navegador sobre la lista de distribuidoras activas (acotada); al crecer, índice por geohash
 - [ ] 2.7 Páginas legales en la app a partir de los borradores de `docs/legal/` (términos, privacidad, cookies): enlaces en el pie y en el registro; el registro y el alta de distribuidora exigen aceptar los términos y guardan versión y fecha; aviso informativo de almacenamiento la primera vez. Se muestran marcadas como borrador hasta la revisión legal
+- [ ] 2.8 `legal-compliance` revisa el registro, el alta de distribuidora, el aviso de almacenamiento y las páginas legales; forma de reportar una promoción o un precio engañoso (se construye junto con las promociones, paso 3.5)
 - *Criterio*: tests de reglas prueban que A no toca nada de B; nadie puede darse un rol.
 
 ### Fase 3 — Catálogo, personal, vehículos, stock
@@ -341,6 +342,7 @@ Estimación: una persona con Claude, ~25 h/semana.
 | `perf-a11y-auditor` | Pantalla importante, dependencia o animación nueva | Peso, velocidad, lecturas de Firestore, fluidez, accesibilidad. |
 | `regression-guard` | Antes de unir cada rama a `main` | Batería completa desde cero, tests debilitados, criterios cubiertos. Da APTO / NO APTO. |
 | `marketing-advisor` | Antes de diseñar productos, precios, promociones o textos de venta | Investiga y propone cómo nombrar, presentar y promocionar; vigila que las ofertas sean claras y honestas. |
+| `legal-compliance` | Registro, datos personales o de ubicación, promociones, permisos, dependencias que envían datos a terceros; al cerrar cada fase | Comprueba que la app hace lo que dicen los términos, la privacidad y las cookies; mantiene `docs/legal/`; prepara las preguntas para el abogado. No sustituye a un abogado. |
 | `publish-guard` | Antes de cada `git push` y cada despliegue | **Exclusivo**: que nada sensible llegue al repo público. Da PUBLICABLE / BLOQUEADO. |
 
 Estrategia de pruebas completa en la skill `testing-strategy` (7 niveles, cobertura obligatoria,
@@ -402,6 +404,7 @@ escritorio · agentes aplicables sin hallazgos CRÍTICO/ALTO · `regression-guar
 | 2026-10-10 | Modelo de promociones cerrado: tipos `fixedPrice`, `percentOff`, `amountOff`, `buyXPayY`; tope total de unidades obligatorio en las dos más costosas; vigencia máxima 30 días | El usuario delegó las decisiones en la coordinación con `marketing-advisor`; el tope se adelanta para no lanzar "balón completo al precio del gas" sin límite |
 | 2026-10-10 | Borradores de términos, privacidad y cookies en `docs/legal/`; paso 2.7 para llevarlos a la app. Los términos dicen que precios y promociones son responsabilidad de cada distribuidora y que Hornilla no responde por promociones engañosas | Pedido del usuario. Una cláusula no exime por sí sola: se revisa con un profesional en 10.2 |
 | 2026-10-10 | Sin panel de consentimiento de cookies: solo aviso informativo, porque no hay analítica ni publicidad | Solo se usa almacenamiento necesario; si eso cambia, se pide consentimiento antes |
+| 2026-10-10 | Nuevo agente `legal-compliance` y paso 2.8 | Pedido del usuario: evitar denuncias por términos, privacidad, cookies y promociones |
 | 2026-10-10 | `npm audit` informativo en CI | Único hallazgo: `@grpc/grpc-js` vía `firebase` (solo build de Node, no llega al navegador) |
 
 ## Ideas para después
