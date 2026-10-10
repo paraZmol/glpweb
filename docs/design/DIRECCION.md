@@ -23,13 +23,16 @@ decidir. El movimiento sigue la skill `motion-system`.
 | Pieza | Dónde | Notas |
 |---|---|---|
 | `HornillaLogo` | `src/components/brand/hornilla-logo.tsx` | Hecho. |
-| `BrandTheme` + `deriveBrand(hex)` | `src/components/brand/`, función pura en `src/lib/` con test | `ui-system` §6. Test con los seis colores de la tabla y con blanco, negro y amarillo. |
-| `GasCylinder` (balón) | `src/components/brand/` | Portar `balon(kg)` de `base.js`. `ui-system` §9.4. |
-| Botón de Hornilla (primario, tinta, suave, línea; tres tamaños) y botón crítico | `src/components/common/` | Envuelven `ui/button`. `ui-system` §8 y §13. |
-| Chip de estado, sello, chip de filtro, selector +/−, monograma | `src/components/common/` | `ui-system` §5.3 y §8. |
-| Hoja inferior / diálogo, campo, esqueletos | shadcn + envoltorio | Con `motion-system` (paso 2.4b). |
+| `BrandTheme` + `deriveBrand(hex)` | `src/components/brand/brand-theme.tsx`, funciones puras en `src/domain/brand/` con test | Hecho, falta verificación visual. `ui-system` §6. `checkBrandColor` rechaza menos de 2:1 y propone un tono. |
+| `GasCylinder` (balón), `BurnerRing` (aro), `Highlight` (resalte), `Monogram` | `src/components/brand/` | Hecho, falta verificación visual. `ui-system` §9. |
+| Botón de Hornilla (primario, tinta, suave, línea, discreto; tres tamaños; estado de carga) y botón crítico | `src/components/common/button.tsx`, `critical-button.tsx` | Hecho, falta verificación visual. Envuelven `ui/button`. `ui-system` §8 y §13. |
+| Chip de estado | `src/components/common/state-chip.tsx` | Hecho, falta verificación visual. `ui-system` §5.3. |
+| Sello, chip de filtro, selector +/− | `src/components/common/` | Pendiente: se construyen con la primera pantalla que los use. |
+| Campo, casilla, aviso en línea, vacío y error, esqueletos | `src/components/common/` | Hecho, falta verificación visual. |
+| Hoja inferior / diálogo | shadcn + envoltorio | Pendiente. Con `motion-system`. |
+| `PageTransition`, `Stagger`, barra de navegación en curso, avisos (`sonner`) | `src/components/motion/`, `src/components/common/app-toaster.tsx` | Hecho, falta verificación visual. Fichas en `src/lib/motion.ts`. |
 | Mapa: capa base, ruta y los cuatro marcadores | `src/lib/map/` detrás de `MapProvider` | `ui-system` §12. Marcadores como `divIcon` con SVG en línea y tokens. |
-| Contenedores de ambiente (`data-ambient`) y navegación por rol | `src/pages/*/layout` | Paso 2.4. |
+| Contenedores de ambiente (`data-ambient`) y navegación por rol | `src/components/layout/` (`AppShell`, `PublicShell`, `RequireAccess`) | Hecho, falta verificación visual. Paso 2.4. |
 
 ## Pantallas maquetadas
 
