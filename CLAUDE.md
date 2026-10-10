@@ -86,6 +86,17 @@ central, repartidor, cliente.
 - La dirección visual la fija **design-director** (el usuario elige) y la construye
   **frontend-builder**. Fotos solo de `docs/design/images/` con licencia en `CREDITS.md`
   (las consigue **image-scout**); nunca URLs externas de imágenes en la app.
+- **Pruebas**: cargar `testing-strategy` antes de escribir o revisar tests. Si tocó pedidos o
+  jornada → **flow-tester** (varios actores a la vez). Si tocó ubicación, mapas, PWA, caché o
+  pantallas del repartidor → **field-tester** (sin conexión, GPS, red lenta). Pantalla importante,
+  dependencia o animación nueva → **perf-a11y-auditor**.
+- **Movimiento**: cargar `motion-system` antes de añadir cargas, transiciones o animaciones.
+  Ninguna pantalla en blanco al cargar; duraciones y curvas solo por fichas.
+- **Antes de unir a `main`**: **regression-guard** debe dar APTO.
+- **Antes de cada `git push` y de cada despliegue**: **publish-guard** debe dar PUBLICABLE. Es
+  exclusivo para que no se divulgue nada en el repo público. Además corre solo
+  `scripts/check-public.mjs` en cada commit (gancho en `.githooks/`) y en el CI; nunca saltarlo
+  con `--no-verify`.
 - Al cerrar cada fase: todos los agentes, y corregir CRÍTICO/ALTO antes de seguir.
 - Agentes en paralelo que usen emuladores o Playwright: cada uno con su propio juego de puertos
   (`E2E_LANE=N`), nunca el del coordinador.

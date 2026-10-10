@@ -13,7 +13,9 @@
     "types": "tsc --noEmit",
     "test": "vitest run",
     "test:rules": "firebase emulators:exec --only firestore,database --project demo-glpweb \"vitest run --config vitest.rules.config.ts\"",
-    "check": "npm run format:check && npm run lint && npm run types && npm run test && npm run test:rules",
+    "guard": "node scripts/check-public.mjs",
+    "prepare": "git config core.hooksPath .githooks",
+    "check": "npm run guard && npm run format:check && npm run lint && npm run types && npm run test && npm run test:rules",
     "emulators": "firebase emulators:start --project demo-glpweb",
     "e2e": "playwright test"
   },
