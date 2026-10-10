@@ -1,0 +1,25 @@
+node_modules/
+dist/
+dev-dist/
+.env
+.env.*
+!.env.example
+
+# Firebase
+.firebase/
+*-debug.log
+firebase-export-*/
+serviceAccount*.json
+*service-account*.json
+
+# Tests
+test-results*/
+playwright-report/
+coverage/
+
+# Local tooling
+.vscode/
+.idea/
+*.local
+.DS_Store
+Thumbs.db

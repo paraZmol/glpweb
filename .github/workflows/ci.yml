@@ -1,0 +1,37 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm install --global firebase-tools@15
+      - run: npm run check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      # Informative for now: the only findings are in @grpc/grpc-js, which the firebase package
+      # pulls in for its Node build and which never reaches the browser bundle.
+      - run: npm audit --omit=dev --audit-level=high
+        continue-on-error: true

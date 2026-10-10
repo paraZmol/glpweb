@@ -1,0 +1,10 @@
+node_modules
+dist
+package-lock.json
+test-results*
+playwright-report
+.firebase
+.claude
+docs
+CLAUDE.md
+src/components/ui

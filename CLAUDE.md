@@ -1,0 +1,77 @@
+# glpWEB
+
+SaaS para distribuidoras de gas (GLP) en Perú: muchas distribuidoras en una sola plataforma.
+Pedidos por web/app y por teléfono, jornada y cuadre de caja del repartidor, stock de planta y
+mapa en tiempo real. Una sola app web adaptativa e instalable (PWA). Roles: super admin, dueño,
+central, repartidor, cliente.
+
+## Fuente de verdad
+- El plan vive en [docs/PLAN.md](docs/PLAN.md). Al terminar un paso, marcarlo `[x]` con fecha.
+  **Si una decisión cambia, se cambia primero el plan** (§11 "Registro de cambios") y después el
+  código. Nada se construye si no está en el plan.
+- Conocimiento del negocio heredado (solo lectura, no copiar código Flutter):
+  `../GLP-DEV/.agents/memory/` (SCHEMA, CASOS_DE_USO, DECISIONS, ALGORITMO) y
+  `../GLP-DEV/docs/design/`. Nunca abrir ni citar `../GLP-DEV/CREDENCIALES.txt`.
+- Forma de trabajar heredada de `../peluWeb` (agentes, skills, proceso de diseño).
+
+## Stack fijo (aprobado 2026-10-10; no re-litigar sin pasar por el plan)
+- **React 19 + TypeScript + Vite** (SPA) · **Tailwind 4 + shadcn/ui + Motion** · lucide.
+- **PWA** con `vite-plugin-pwa`. Capacitor solo en la fase 11.
+- **Firebase plan gratis (Spark)**: Auth (correo + Google), Firestore, Realtime Database (solo
+  posiciones en vivo), Hosting, FCM. **Prohibido** depender de Cloud Functions, Storage, SMS o
+  cualquier cosa que pida plan de pago o tarjeta.
+- **Mapas**: Leaflet + OpenStreetMap, rutas OSRM, detrás de `MapProvider`. Nunca Google Maps SDK.
+- **Servidor mínimo**: Cloudflare Worker gratis en `worker/` (desde la fase 7).
+- **Pruebas**: Vitest, Firebase Emulator + `@firebase/rules-unit-testing`, Playwright.
+- Proyecto Firebase real: `glpweb-app` (https://glpweb-app.web.app). Emuladores: `demo-glpweb`.
+- Comandos: `npm run dev` · `npm run emulators` · `npm run check` · `npm run e2e`.
+
+## Entorno local (Windows)
+- Shell principal PowerShell. Node 24, npm 11, Firebase CLI 15 (sesión iniciada con la cuenta
+  del usuario), Flutter no se usa aquí.
+- Desarrollo y tests siempre contra **emuladores**; nunca escribir datos de prueba en el
+  proyecto Firebase real.
+- Desplegar reglas o hosting al proyecto real es una acción hacia afuera: confirmar antes.
+
+## Reglas de arquitectura
+1. **Aislamiento entre distribuidoras**: todo dato de negocio vive bajo `/distributors/{d}/…`.
+   El rol se lee de `members/{uid}` en las reglas. Cada colección tiene un test que demuestra
+   que la distribuidora A no lee ni escribe lo de B.
+2. **Las reglas de seguridad son el backend**: ocultar un botón no es seguridad. Transiciones
+   de estado, precios congelados, quién aprueba qué y solo-lectura por suspensión se hacen
+   cumplir en `firebase/*.rules` y tienen test. Cargar skill `firebase-tenancy` antes de tocar
+   datos o reglas.
+3. **Dominio en un solo lugar**: estados, transiciones, dinero y stock viven en `src/domain/`
+   (puro, sin Firebase ni React). La lista de estados del pedido no se repite en ningún otro
+   archivo. Cargar skill `glp-domain` antes de tocar pedidos, jornada, cobro o stock.
+4. **Solo `src/data/` importa `firebase/*`.** Las pantallas usan repositorios y hooks.
+5. **Dinero**: enteros en céntimos, moneda por distribuidora (`PEN`). Nunca `float`.
+6. **Escrituras a más de un documento**: siempre transacción o batch.
+7. **Cuota gratis**: toda consulta lleva límite y filtro (por día, por estado). Nunca escuchar
+   una colección entera. Las posiciones van a RTDB, no a Firestore. Conectar RTDB solo con un
+   mapa abierto o una jornada activa.
+8. **Nada atado a una empresa**: coordenadas, teléfonos, marcas, pesos, límites y colores son
+   datos de la distribuidora.
+9. **Sin secretos en git**: `.env*`, cuentas de servicio y claves fuera del repo. La config web
+   de Firebase es pública por diseño; la seguridad está en las reglas.
+10. Campos nuevos en documentos existentes: siempre opcionales o con valor por defecto al leer.
+
+## Convenciones
+- Código, nombres de colecciones y comentarios en **inglés**; textos de interfaz en **español
+  neutro** (sin asumir género). Precio `S/ 38.00`, hora `3:30 p. m.`.
+- Cargar skill `clean-code` antes de crear archivos o refactorizar.
+- Pantallas: cargar `ui-system`; en públicas y de alta, además `design-craft`.
+- Ubicación, mapas, push o PWA: cargar `tracking-pwa`.
+- Diseñar y probar siempre a 390 px y 1440 px, claro y oscuro.
+
+## Calidad — antes de dar un paso por terminado
+- `npm run check` en verde (formato, lint, tipos, unit y reglas) y E2E del flujo tocado.
+- Lanzar **qa-tester**. Si tocó reglas, pedidos, jornada o stock → **rules-breaker**. Si tocó
+  auth, roles, invitaciones, dinero o datos por distribuidora → **security-auditor**. Si tocó
+  una pantalla → **visual-designer** y después **ux-reviewer**.
+- La dirección visual la fija **design-director** (el usuario elige) y la construye
+  **frontend-builder**. Fotos solo de `docs/design/images/` con licencia en `CREDITS.md`
+  (las consigue **image-scout**); nunca URLs externas de imágenes en la app.
+- Al cerrar cada fase: todos los agentes, y corregir CRÍTICO/ALTO antes de seguir.
+- Agentes en paralelo que usen emuladores o Playwright: cada uno con su propio juego de puertos
+  (`E2E_LANE=N`), nunca el del coordinador.

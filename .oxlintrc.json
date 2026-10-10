@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "import"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "no-console": "error",
+    "typescript/no-explicit-any": "error",
+    "react/react-in-jsx-scope": "off",
+    "import/no-unassigned-import": "off"
+  },
+  "ignorePatterns": ["dist", "node_modules", "src/components/ui", ".claude"],
+  "overrides": [
+    {
+      "files": [
+        "src/pages/**",
+        "src/components/**",
+        "src/features/**",
+        "src/domain/**",
+        "src/lib/**"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["firebase", "firebase/*"],
+                "message": "Only src/data may import firebase/* (CLAUDE.md, rule 4)."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
