@@ -3,6 +3,7 @@ import { connectAuthEmulator, getAuth } from 'firebase/auth';
 import {
   connectFirestoreEmulator,
   initializeFirestore,
+  memoryLocalCache,
   persistentLocalCache,
   persistentMultipleTabManager,
 } from 'firebase/firestore';
@@ -22,8 +23,13 @@ export const app = initializeApp(
 export const auth = getAuth(app);
 
 // The local cache cuts billed reads when the app is reopened (free-quota rule in CLAUDE.md).
+// Outside a browser (repository tests under Node) there is no IndexedDB: memory cache instead.
+const hasIndexedDb = typeof indexedDB !== 'undefined';
+
 export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  localCache: hasIndexedDb
+    ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    : memoryLocalCache(),
 });
 
 if (useEmulators) {

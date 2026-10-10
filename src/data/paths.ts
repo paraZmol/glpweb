@@ -2,10 +2,14 @@
 export const paths = {
   user: (uid: string) => `users/${uid}`,
   userAddresses: (uid: string) => `users/${uid}/addresses`,
+  userAddress: (uid: string, slot: string) => `users/${uid}/addresses/${slot}`,
   platformAdmin: (uid: string) => `platformAdmins/${uid}`,
   slug: (slug: string) => `slugs/${slug}`,
+  distributors: () => 'distributors',
   distributor: (d: string) => `distributors/${d}`,
+  distributorPrivateSettings: (d: string) => `distributors/${d}/private/settings`,
   members: (d: string) => `distributors/${d}/members`,
+  member: (d: string, uid: string) => `distributors/${d}/members/${uid}`,
   invites: (d: string) => `distributors/${d}/invites`,
   helpers: (d: string) => `distributors/${d}/helpers`,
   vehicles: (d: string) => `distributors/${d}/vehicles`,
@@ -15,6 +19,11 @@ export const paths = {
   orders: (d: string) => `distributors/${d}/orders`,
   orderHistory: (d: string, orderId: string) => `distributors/${d}/orders/${orderId}/history`,
   shifts: (d: string) => `distributors/${d}/shifts`,
+} as const;
+
+/** Collection ids for collection-group queries. */
+export const collectionGroups = {
+  members: 'members',
 } as const;
 
 export const realtimePaths = {
