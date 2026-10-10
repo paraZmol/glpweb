@@ -144,10 +144,11 @@ Una sola base. Todo dato de negocio cuelga de su distribuidora:
 
 ```
 /users/{uid}                              perfil global (nombre, teléfono, foto)
-/users/{uid}/addresses/{id}               direcciones con punto en el mapa
+/users/{uid}/addresses/{a0..a9}           direcciones con punto en el mapa (10 casillas fijas: así las reglas imponen el tope)
 /platformAdmins/{uid}                     super admins (solo por script)
 /slugs/{slug}                             → distributorId (enlace único)
-/distributors/{d}                         perfil, planta, cobertura, marca, estado, prueba
+/distributors/{d}                         perfil PÚBLICO: nombre, slug, contacto, planta, cobertura, marca, estado, prueba
+/distributors/{d}/private/settings        datos del dueño y plan (solo fundador, dueños y super admin)
 /distributors/{d}/members/{uid}           rol (owner|dispatcher|driver), activo
 /distributors/{d}/invites/{token}         invitaciones de personal
 /distributors/{d}/helpers/{id}            ayudantes (sin cuenta)
@@ -254,14 +255,14 @@ Estimación: una persona con Claude, ~25 h/semana.
 - *Criterio*: dirección elegida por ti y escrita como spec.
 
 ### Fase 2 — Cuentas, distribuidoras y aislamiento
-- [ ] 2.1 Registro/login (correo + Google), verificación de correo, perfil
-- [ ] 2.2 Alta de distribuidora (slug único, prueba gratis, dueño)
-- [ ] 2.3 Reglas: roles por `members`, aislamiento A/B, solo lectura si suspendida
+- [~] 2.1 Registro/login (correo + Google), verificación de correo, perfil — (2026-10-10) lado de datos listo: repositorio de auth con errores de dominio, perfil y direcciones con reglas y tests (`src/data/auth-repo.ts`, `users-repo.ts`, `src/features/auth`). **Falta**: pantallas, E2E y agentes de calidad
+- [~] 2.2 Alta de distribuidora (slug único, prueba gratis, dueño) — (2026-10-10) lado de datos listo: transacción atómica distribuidora + slug + dueño + ajustes privados + tope por cuenta, con reglas y tests (`src/data/distributors-repo.ts`, `foundDistributor` en `src/features/tenancy`). **Falta**: pantalla de alta, E2E y agentes de calidad
+- [~] 2.3 Reglas: roles por `members`, aislamiento A/B, solo lectura si suspendida — (2026-10-10) reglas y 443 tests de reglas en verde para `users`, `addresses`, `platformAdmins`, `slugs`, `distributors`, `private/settings` y `members`. **Falta**: pasar `rules-breaker` y `security-auditor`
 - [ ] 2.4 Selector de distribuidora y navegación por rol (celular: barra inferior; escritorio: lateral)
 - [ ] 2.4b Base de movimiento (incluye los tres ajustes que pide la dirección B: presión 0.9 del selector +/−, rebote del paso actual, pulso del marcador activo): fichas en `src/lib/motion.ts`, `PageTransition` en el enrutador, esqueletos, botón con carga, barra de navegación, avisos (`motion`, `sonner`)
-- [ ] 2.4c Base de pruebas: semilla A/B con un usuario por rol, utilidades de varios actores, axe y presupuestos en el CI
-- [ ] 2.5 Página pública `/d/{slug}`
-- [ ] 2.6 Inicio del cliente: distribuidoras que atienden mi ubicación (cobertura = distancia a la planta ≤ radio), con marcas y precios. En el piloto se filtra en el navegador sobre la lista de distribuidoras activas (acotada); al crecer, índice por geohash
+- [~] 2.4c Base de pruebas: semilla A/B con un usuario por rol, utilidades de varios actores, axe y presupuestos en el CI — (2026-10-10) semilla determinista lista (`tests/seed/`, `npm run seed`) y tests de repositorio contra emulador dentro de `npm run check`. **Falta**: utilidades de varios actores para Playwright, axe y presupuestos en el CI
+- [~] 2.5 Página pública `/d/{slug}` — (2026-10-10) datos listos: lectura pública por slug con reglas y tests (`useDistributorBySlug`). **Falta**: la página
+- [~] 2.6 (2026-10-10: datos listos — consulta pública acotada, cobertura y orden por distancia en `src/domain`, `useNearbyDistributors`; **falta** la pantalla) Inicio del cliente: distribuidoras que atienden mi ubicación (cobertura = distancia a la planta ≤ radio), con marcas y precios. En el piloto se filtra en el navegador sobre la lista de distribuidoras activas (acotada); al crecer, índice por geohash
 - [ ] 2.7 Páginas legales en la app a partir de los borradores de `docs/legal/` (términos, privacidad, cookies): enlaces en el pie y en el registro; el registro y el alta de distribuidora exigen aceptar los términos y guardan versión y fecha; aviso informativo de almacenamiento la primera vez. Se muestran marcadas como borrador hasta la revisión legal
 - [ ] 2.8 `legal-compliance` revisa el registro, el alta de distribuidora, el aviso de almacenamiento y las páginas legales; forma de reportar una promoción o un precio engañoso (se construye junto con las promociones, paso 3.5)
 - *Criterio*: tests de reglas prueban que A no toca nada de B; nadie puede darse un rol.
@@ -406,6 +407,10 @@ escritorio · agentes aplicables sin hallazgos CRÍTICO/ALTO · `regression-guar
 | 2026-10-10 | Sin panel de consentimiento de cookies: solo aviso informativo, porque no hay analítica ni publicidad | Solo se usa almacenamiento necesario; si eso cambia, se pide consentimiento antes |
 | 2026-10-10 | Nuevo agente `legal-compliance` y paso 2.8 | Pedido del usuario: evitar denuncias por términos, privacidad, cookies y promociones |
 | 2026-10-10 | `npm audit` informativo en CI | Único hallazgo: `@grpc/grpc-js` vía `firebase` (solo build de Node, no llega al navegador) |
+| 2026-10-10 | Fase 2 (datos): el documento `/distributors/{d}` es **público entero** y lo privado (datos del dueño, plan) va en `/distributors/{d}/private/settings` | Las reglas no filtran campos; el buscador y `/d/{slug}` necesitan leer sin sesión |
+| 2026-10-10 | Fase 2 (datos): direcciones del cliente en 10 casillas fijas (`a0`…`a9`) en vez de ids automáticos | Única forma de que las reglas impongan un tope sin servidor |
+| 2026-10-10 | Fase 2 (datos): tope de 3 distribuidoras por cuenta, llevado en `users/{uid}.ownedDistributorIds` y comprobado por las reglas en el batch de alta; el perfil no se puede borrar | Evitar acaparar enlaces y ensuciar el buscador sin servidor |
+| 2026-10-10 | Fase 2 (datos): `trialEndsAt` lo escribe el cliente y las reglas aceptan una ventana (más de 29 días y hasta 30 días + 1 hora desde la hora del servidor) | El cliente no puede escribir "hora del servidor + 30 días" |
 
 ## Ideas para después
 - Fiado y deudas por cliente; préstamo de envases.
