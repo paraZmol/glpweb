@@ -17,7 +17,10 @@ export function TextLink({ to, newTab = false, className, children }: TextLinkPr
       to={to}
       target={newTab ? '_blank' : undefined}
       rel={newTab ? 'noopener' : undefined}
-      className={cn('font-semibold text-primary-text underline underline-offset-4', className)}
+      className={cn(
+        'rounded-[0.25rem] font-semibold text-primary-text underline underline-offset-4',
+        className,
+      )}
     >
       {children}
       {newTab && <span className="sr-only"> (se abre en otra pestaña)</span>}
