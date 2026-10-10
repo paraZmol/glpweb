@@ -193,6 +193,16 @@ describe('account — junk in the profile and the addresses', () => {
     await assertFails(getCountFromServer(all));
     await assertSucceeds(getDocs(query(all, limit(MAX_ADDRESSES_PER_USER))));
   });
+
+  it('blocks storing an address for an account that never accepted the terms (no profile)', async () => {
+    const db = verified(env, 'no-profile');
+    const first = doc(db, 'users/no-profile/addresses/a0');
+    await assertFails(setDoc(first, addressDoc()));
+    await assertFails(setDoc(first, addressDoc(), { merge: true }));
+
+    await assertSucceeds(setDoc(doc(db, 'users/no-profile'), userDoc()));
+    await assertSucceeds(setDoc(first, addressDoc()));
+  });
 });
 
 describe('staff and owner data — junk an owner writes about others', () => {

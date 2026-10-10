@@ -16,7 +16,8 @@ rules_version = '2';
 //   privacy: the same shape for the privacy policy, with its own list of allowed versions
 //   createdAt, updatedAt: timestamp (= request.time when written; createdAt immutable)
 //
-// /users/{uid}/addresses/{slot}    private to the account; slot is a0..a9 (caps addresses at 10)
+// /users/{uid}/addresses/{slot}    private to the account; slot is a0..a9 (caps addresses at 10);
+//                                  created only once the profile (and its consents) exists
 //   label: string 1..40 · addressLine: string 1..160 · reference: string 0..160
 //   location: { lat: -90..90, lng: -180..180 } · createdAt, updatedAt
 //
@@ -374,10 +375,14 @@ service cloud.firestore {
         allow get: if isSelf(uid);
         allow list: if isSelf(uid) && request.query.limit <= 10;
 
+        // An address is personal data: it is stored only for an account that has a profile,
+        // which cannot exist without the accepted terms and privacy policy.
+        // Reads added by rules: 1 (exists profile) on create, 0 otherwise.
         allow create: if isSelf(uid)
           && isSlot()
           && isValidAddress(request.resource.data)
-          && stampedNow(request.resource.data);
+          && stampedNow(request.resource.data)
+          && exists(/databases/$(database)/documents/users/$(uid));
 
         allow update: if isSelf(uid)
           && isValidAddress(request.resource.data)
