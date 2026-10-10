@@ -91,12 +91,16 @@ El uso por distribuidoras tiene un periodo de prueba gratuito de 30 días y, des
 precio se informa antes de contratarlo. [Condiciones del plan por definir.]
 
 Al terminar el periodo de prueba sin un plan activo, o si Hornilla suspende a la distribuidora,
-esta deja de mostrarse en el buscador y su panel queda en solo lectura: no puede recibir pedidos
-ni cambiar sus datos hasta regularizar su situación.
+su panel queda en solo lectura: no puede recibir pedidos ni cambiar sus datos hasta regularizar
+su situación. También deja de mostrarse en el buscador; cuando la causa es el fin de la prueba,
+eso ocurre en cuanto alguien de su personal abre el panel o Hornilla revisa la ficha, y hasta
+entonces puede seguir apareciendo aunque ya no reciba pedidos.
 
 La ficha de la distribuidora es pública: cualquiera puede ver su nombre, su enlace, el teléfono y
 el WhatsApp del negocio, su dirección y la ubicación de su planta, su zona de reparto, su horario,
-sus marcas y precios, y su estado en Hornilla. El detalle está en la Política de privacidad.
+sus marcas y precios, si atiende pedidos en este momento y la fecha en que se registró. Su
+situación con Hornilla (prueba, plan, pagos o suspensión) no es pública. El detalle está en la
+Política de privacidad.
 
 ## 11. Cambios
 Hornilla puede actualizar estos términos. Los cambios importantes se avisan en la aplicación y
@@ -106,6 +110,9 @@ requieren aceptación para seguir usándola.
 Estos términos se rigen por las leyes de la República del Perú.
 
 ## Historial de cambios
+- 0.1, tercera redacción (2026-10-10): la ficha pública ya no muestra el estado de la
+  distribuidora en Hornilla, solo si atiende pedidos; se precisa cuándo deja de aparecer en el
+  buscador una distribuidora cuya prueba terminó.
 - 0.1, segunda redacción (2026-10-10): primera revisión de cumplimiento. Se aclara que este texto
   se muestra en la aplicación como versión preliminar y que se pedirá aceptar la versión revisada;
   la edad pasa a decir "18 años o más"; se añade el tope de 3 distribuidoras por cuenta; los

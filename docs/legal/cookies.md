@@ -10,9 +10,10 @@ ni de seguimiento, ni herramientas de analítica de terceros.**
 | Qué | Para qué | Cuánto dura |
 |---|---|---|
 | Sesión iniciada | No pedirte la contraseña cada vez | Hasta que cierres sesión |
-| Copia local de tus datos recientes (tu perfil, tus direcciones y las distribuidoras que consultaste) | Abrir rápido, funcionar con mala señal y gastar menos datos | Hasta que borres los datos del sitio en tu navegador. **Hoy cerrar sesión no la borra** |
-| Distribuidora elegida, junto con el identificador interno de tu cuenta (solo si trabajas en una distribuidora) | Abrir tu panel en la última distribuidora que elegiste | Hasta que elijas otra o borres los datos del sitio. Cerrar sesión no la borra |
-| Marca de que ya viste el aviso de almacenamiento | No mostrártelo cada vez | Hasta que borres los datos del sitio |
+| Copia local de tus datos recientes (tu perfil, tus direcciones y las distribuidoras que consultaste) | Abrir rápido, funcionar con mala señal y gastar menos datos | Hasta que cierres sesión: al cerrarla se borra de este dispositivo. Si el navegador no deja borrarla en ese momento, se borra la próxima vez que abras Hornilla, antes de usarla |
+| Distribuidora elegida, junto con el identificador interno de tu cuenta (solo si trabajas en una distribuidora) | Abrir tu panel en la última distribuidora que elegiste | Hasta que elijas otra o cierres sesión |
+| Marca interna de la sesión en este dispositivo (un código al azar, que no te identifica) | Saber qué copia local hay que borrar al cerrar sesión y terminar de borrarla si quedó pendiente | Hasta que se borra la copia local |
+| Marca de que ya viste el aviso de almacenamiento | No mostrártelo cada vez | Hasta que borres los datos del sitio. Cerrar sesión no la borra |
 
 El modo claro u oscuro no se guarda: la aplicación sigue el ajuste de tu dispositivo.
 
@@ -28,11 +29,19 @@ Todavía no existen. Esta página se actualizará antes de activarlos:
   que desactives los avisos o cierres sesión.
 
 ## Qué puedes hacer
-- Cerrar sesión borra la sesión iniciada. La copia local y la distribuidora elegida se quedan en
-  el dispositivo hasta que borres los datos del sitio.
+- Cerrar sesión borra de este dispositivo la sesión iniciada, la copia local de tus datos y la
+  distribuidora elegida, también en las otras pestañas de Hornilla que tengas abiertas. Solo
+  queda la marca de que ya viste el aviso de almacenamiento.
+- Si hiciste cambios sin conexión que todavía no se enviaron, al cerrar sesión la aplicación te
+  avisa antes: si cierras igual, esos cambios se pierden.
+- Si tu sesión termina sin que tú la cierres (por ejemplo, porque la cuenta se deshabilita o se
+  elimina), la copia local se borra cuando la aplicación lo detecta: al abrirla o, con la
+  aplicación abierta, como mucho alrededor de una hora después. Si no vuelves a abrir Hornilla en
+  ese dispositivo, la copia se queda ahí hasta que borres los datos del sitio.
 - Puedes borrar los datos del sitio desde los ajustes de tu navegador; tendrás que volver a ingresar.
-- En un dispositivo compartido o prestado, haz las dos cosas al terminar: cierra sesión y borra
-  los datos del sitio.
+- En un dispositivo compartido o prestado, cierra sesión al terminar. El borrado usa el mecanismo
+  normal del navegador y no sobrescribe el disco: si quieres más seguridad, borra además los
+  datos del sitio.
 - Los permisos de ubicación y de avisos se conceden y se retiran desde tu navegador o celular.
   Hornilla todavía no los pide.
 
@@ -42,6 +51,9 @@ con enlace a esta página, y no un panel de consentimiento. **Si en el futuro se
 publicidad, antes se pedirá tu consentimiento expreso** y esta página se actualizará.
 
 ## Historial de cambios
+- 0.1, tercera redacción (2026-10-10): cerrar sesión ahora borra la copia local y la
+  distribuidora elegida, en todas las pestañas; se explica qué pasa con los cambios sin enviar y
+  cuando la sesión termina sin que la cierres; se añade la marca interna de la sesión.
 - 0.1, segunda redacción (2026-10-10): primera revisión de cumplimiento. La tabla dice lo que la
   aplicación guarda hoy; se corrige que cerrar sesión no borra la copia local ni la distribuidora
   elegida; se aclara que el modo claro u oscuro no se guarda y que los archivos sin conexión y el
