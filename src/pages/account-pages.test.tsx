@@ -10,7 +10,7 @@ import { count, renderStatic, tags, textOf } from '../../tests/support/render-st
 import { AppShell } from '../components/layout/app-shell';
 import { GateShell } from '../components/layout/gate-shell';
 import type { AppArea } from '../domain/auth/access';
-import { AREA_HOME, ROUTES } from '../lib/routes';
+import { AREA_HOME, JUST_FOUNDED_STATE, ROUTES } from '../lib/routes';
 import { AcceptTermsPage } from './account/accept-terms';
 import { VerifyEmailPage } from './account/verify-email';
 import { AccountPage } from './customer/account';
@@ -43,13 +43,43 @@ describe('pending steps of an account (PLAN 2.1, 2.7)', () => {
       profile: { status: 'ready', data: { profile: null, needsTermsAcceptance: true }, reload },
     });
     const html = inGate(<AcceptTermsPage />, ROUTES.acceptTerms, fresh);
-    const [box = ''] = tags(html, 'input');
+    const boxes = tags(html, 'input');
 
     expect(textOf(html)).toContain('Un paso antes de empezar.');
-    expect(box).toContain('type="checkbox"');
-    expect(box).not.toContain(' checked=""');
+    expect(boxes.map((box) => /name="([^"]+)"/.exec(box)?.[1])).toEqual([
+      'acceptTerms',
+      'acceptPrivacy',
+    ]);
+    expect(boxes.every((box) => box.includes('type="checkbox"'))).toBe(true);
+    expect(boxes.some((box) => box.includes(' checked=""'))).toBe(false);
     expect(textOf(html)).toContain('Aceptar y continuar');
     expect(textOf(html)).toContain('Cerrar sesión');
+  });
+
+  // PLAN 2.9
+  it('sums up the terms in four sentences and offers the way out of deleting the account', () => {
+    const text = textOf(inGate(<AcceptTermsPage />, ROUTES.acceptTerms));
+
+    expect(text).toContain(
+      'Pagas directamente a la distribuidora al recibir. Hornilla no cobra tus pedidos ni guarda tu dinero.',
+    );
+    expect(text).toContain(
+      'Si una distribuidora no cumple un precio o una promoción, el reclamo se le hace a ella; Hornilla no responde por esa oferta. Esto no te quita los derechos que la ley te da como consumidor.',
+    );
+    expect(text).toContain('Versión 0.1, preliminar y en revisión.');
+    expect(text).toContain('No acepto: eliminar mi cuenta');
+    expect(text).not.toContain('¿Eliminar tu cuenta?');
+  });
+
+  it('says that only the privacy policy changed when the terms are already accepted', () => {
+    const profile = { ...PROFILE, privacy: null };
+    const pending = accountOf({
+      profile: { status: 'ready', data: { profile, needsTermsAcceptance: true }, reload },
+    });
+
+    expect(textOf(inGate(<AcceptTermsPage />, ROUTES.acceptTerms, pending))).toContain(
+      'Actualizamos la política de privacidad.',
+    );
   });
 
   it('tells an existing account that the terms changed', () => {
@@ -107,6 +137,28 @@ describe('my account (PLAN 2.1)', () => {
     expect(textOf(html)).toContain('Cerrar sesión');
   });
 
+  // PLAN 2.9
+  it('says what signing out erases and where to ask for a deletion or an e-mail change', () => {
+    const html = inArea('customer', <AccountPage />, accountOf(), ROUTES.account);
+    const text = textOf(html);
+
+    expect(text).toContain(
+      'Al cerrar sesión se borran de este dispositivo tu sesión y la copia de tus datos.',
+    );
+    expect(text).toContain(
+      'Para eliminar tu cuenta o cambiar tu correo, escribe a Contacto y reclamos',
+    );
+    expect(tags(html, 'a').filter((tag) => tag.includes('href="/contacto"'))).toHaveLength(2);
+  });
+
+  // PLAN 2.2
+  it('leads to the sign-up of a distributor', () => {
+    const html = inArea('customer', <AccountPage />, accountOf(), ROUTES.account);
+
+    expect(textOf(html)).toContain('¿Tienes una distribuidora de gas?');
+    expect(tags(html, 'a').some((tag) => tag.includes('href="/distribuidora/nueva"'))).toBe(true);
+  });
+
   it('offers the work areas only to an account that has one', () => {
     const customer = textOf(inArea('customer', <AccountPage />, accountOf(), ROUTES.account));
     const owner = inArea('customer', <AccountPage />, OWNER, ROUTES.account);
@@ -119,7 +171,7 @@ describe('my account (PLAN 2.1)', () => {
 
 describe('home of each area: an empty state that says what is going on', () => {
   it.each([
-    ['customer', <CustomerHomePage key="c" />, accountOf(), 'Todavía no hay distribuidoras'],
+    ['customer', <CustomerHomePage key="c" />, accountOf(), 'Dinos dónde y vemos quién llega.'],
     ['driver', <DriverHomePage key="d" />, DRIVER, 'Sin jornada abierta.'],
     ['office', <OfficeHomePage key="o" />, OWNER, 'Todavía no entra ningún pedido.'],
     ['platform', <PlatformHomePage key="p" />, accountOf(), 'Todavía no hay nada que revisar.'],
@@ -136,6 +188,49 @@ describe('home of each area: an empty state that says what is going on', () => {
 
     expect(textOf(html)).toContain('Hola, Persona.');
     expect(html).toContain('aria-label="Balón de 10 kg"');
+  });
+
+  // PLAN 2.6: the customer home is the finder, inside the app frame.
+  it('gives the signed-in customer the same finder as the public home', () => {
+    const html = inArea('customer', <CustomerHomePage />);
+
+    expect(textOf(html)).toContain('Entregar en');
+    expect(textOf(html)).toContain('Usar mi ubicación');
+    expect(tags(html, 'a').some((tag) => tag.includes('href="/distribuidora/nueva"'))).toBe(true);
+  });
+
+  // PLAN 2.2: what the owner sees after founding.
+  it('lists what is left to set up, with the catalogue and the staff marked as coming soon', () => {
+    const html = inArea('office', <OfficeHomePage />, OWNER);
+    const text = textOf(html);
+
+    expect(text).toContain('Completa tu distribuidora');
+    expect(text).toContain('Carga tu catálogo');
+    expect(text).toContain('Suma a tu personal');
+    expect(count(html, /Llega pronto/)).toBe(2);
+    expect(tags(html, 'a').some((tag) => tag.includes('href="/d/gas-demo-norte"'))).toBe(true);
+  });
+
+  it('keeps the set-up list for the owner: the dispatcher does not see it', () => {
+    const dispatcher = accountOf({ current: workingAs([memberOf('dispatcher')]) });
+
+    expect(textOf(inArea('office', <OfficeHomePage />, dispatcher))).not.toContain(
+      'Completa tu distribuidora',
+    );
+  });
+
+  it('welcomes the owner only right after founding', () => {
+    const justFounded = renderStatic(<OfficeHomePage />, {
+      path: AREA_HOME.office,
+      state: JUST_FOUNDED_STATE,
+      shell: <AppShell area="office" />,
+      account: OWNER,
+    });
+
+    expect(textOf(justFounded)).toContain('Gas Demo Norte ya está en Hornilla.');
+    expect(textOf(inArea('office', <OfficeHomePage />, OWNER))).not.toContain(
+      'ya está en Hornilla',
+    );
   });
 
   it('tells the office how many days of trial are left', () => {

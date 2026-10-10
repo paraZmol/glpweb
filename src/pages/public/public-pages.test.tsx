@@ -4,7 +4,8 @@ import { CheckboxField } from '../../components/common/checkbox-field';
 import { count, renderStatic, tags, textOf } from '../../../tests/support/render-static';
 import { PublicShell } from '../../components/layout/public-shell';
 import { TERMS_VERSION } from '../../domain/legal/versions';
-import { ComingSoonPage } from './coming-soon';
+import { ContactPage } from './contact';
+import { HomePage } from './home';
 import { CookiesPage, PrivacyPage, TermsPage } from './index';
 import { NotFoundPage } from './not-found';
 import { RegisterPage } from './register';
@@ -18,7 +19,7 @@ const linksTo = (html: string, href: string) =>
   tags(html, 'a').filter((tag) => tag.includes(`href="${href}"`));
 
 describe('public frame (PLAN 2.4)', () => {
-  const html = inPublicShell(<ComingSoonPage />, '/');
+  const html = inPublicShell(<HomePage />, '/');
 
   it('offers a skip link and one main landmark', () => {
     expect(html).toContain('href="#contenido"');
@@ -33,31 +34,65 @@ describe('public frame (PLAN 2.4)', () => {
     expect(linksTo(footer, '/cookies')).toHaveLength(1);
   });
 
+  // PLAN 2.9
+  it('links "Contacto y reclamos" from the footer', () => {
+    const footer = html.slice(html.indexOf('<footer'));
+
+    expect(linksTo(footer, '/contacto')).toHaveLength(1);
+    expect(textOf(footer)).toContain('Contacto y reclamos');
+  });
+
   it('never calls the product by its internal name', () => {
     expect(textOf(html)).not.toMatch(/glpweb/i);
     expect(html).toContain('aria-label="Hornilla"');
   });
 });
 
-describe('provisional home', () => {
-  const html = inPublicShell(<ComingSoonPage />, '/');
+// PLAN 2.6: the finder is the home, for everybody. Without a point nothing is searched yet.
+describe('home with the finder (PLAN 2.6)', () => {
+  const html = inPublicShell(<HomePage />, '/');
+  const text = textOf(html);
 
-  // tests/e2e/smoke.spec.ts looks for exactly these two things.
-  it('keeps the headline and the sample price the smoke test reads', () => {
+  // tests/e2e/smoke.spec.ts looks for this headline.
+  it('keeps "Pide tu gas" in its only h1', () => {
     const [h1 = ''] = html.match(/<h1\b.*?<\/h1>/s) ?? [];
 
     expect(count(html, /<h1\b/)).toBe(1);
     expect(textOf(h1)).toContain('Pide tu gas');
-    expect(textOf(html)).toContain('S/ 38.00');
   });
 
-  it('leads to sign-in and to registration', () => {
-    expect(linksTo(html, '/ingresar').length).toBeGreaterThan(0);
-    expect(linksTo(html, '/registro').length).toBeGreaterThan(0);
+  it('asks where to deliver, saying what the location is for before asking for it', () => {
+    const reason = text.indexOf('Tu ubicación se usa solo para');
+
+    expect(text).toContain('Entregar en');
+    expect(reason).toBeGreaterThan(-1);
+    expect(reason).toBeLessThan(text.indexOf('Usar mi ubicación'));
+    expect(text).toContain('Escribir las coordenadas');
+  });
+
+  it('shows the state without a location instead of an empty list or a spinner', () => {
+    expect(text).toContain('Dinos dónde y vemos quién llega.');
+    expect(html).not.toContain('aria-busy="true"');
+  });
+
+  it('draws the place of the map as a gap, and says so', () => {
+    expect(text).toContain('Mapa en camino');
+    expect(text).toContain('Aquí va a ir el mapa.');
+  });
+
+  it('promises only what works today and marks the rest as under construction', () => {
+    expect(text).toContain('En construcción');
+    expect(text).toContain('Así va a funcionar.');
+    expect(text).not.toMatch(/S\/ \d/);
+  });
+
+  it('leads owners to the sign-up of their distributor', () => {
+    expect(text).toContain('¿Tienes una distribuidora de gas?');
+    expect(linksTo(html, '/distribuidora/nueva').length).toBeGreaterThan(0);
   });
 });
 
-describe('registration (PLAN 2.1, 2.7)', () => {
+describe('registration (PLAN 2.1, 2.7, 2.9)', () => {
   const html = inPublicShell(<RegisterPage />, '/registro');
   const inputs = tags(html, 'input');
   const named = (name: string) => inputs.find((tag) => tag.includes(`name="${name}"`)) ?? '';
@@ -69,14 +104,32 @@ describe('registration (PLAN 2.1, 2.7)', () => {
       'password',
       'phone',
       'acceptTerms',
+      'acceptPrivacy',
     ]);
     expect(count(html, /<label\b/)).toBe(inputs.length);
     expect(textOf(html)).toContain('Celular (opcional)');
   });
 
-  it('shows the terms box unticked', () => {
-    expect(named('acceptTerms')).toContain('type="checkbox"');
-    expect(named('acceptTerms')).not.toContain(' checked=""');
+  it.each(['acceptTerms', 'acceptPrivacy'])('shows the %s box unticked', (name) => {
+    expect(named(name)).toContain('type="checkbox"');
+    expect(named(name)).not.toContain(' checked=""');
+  });
+
+  it('words the two boxes exactly as the legal review fixed them', () => {
+    const text = textOf(html).replaceAll(' (se abre en otra pestaña)', '');
+
+    expect(text).toContain(
+      'Acepto los Términos y condiciones de Hornilla y declaro que tengo 18 años o más.',
+    );
+    expect(text).toContain(
+      'Leí la Política de privacidad y autorizo a Hornilla a usar mis datos (nombre, correo, celular y, cuando pida, mis direcciones) para crear mi cuenta y gestionar mis pedidos con la distribuidora que elija. Sé que se guardan en servidores de Google fuera del Perú.',
+    );
+    expect(text).toContain(`Versión ${TERMS_VERSION}, preliminar y en revisión.`);
+  });
+
+  it('says what Google hands over under its button, with the official mark as a file', () => {
+    expect(textOf(html)).toContain('Google nos dará tu nombre, tu correo y tu foto de perfil.');
+    expect(tags(html, 'img').some((tag) => tag.includes('src="/google-g.svg"'))).toBe(true);
   });
 
   it('would show a ticked box as ticked (control for the test above)', () => {
@@ -97,7 +150,6 @@ describe('registration (PLAN 2.1, 2.7)', () => {
       expect(link).toContain('target="_blank"');
       expect(link).toContain('rel="noopener"');
     }
-    expect(textOf(form)).toContain('declaro que soy mayor de 18 años');
   });
 
   it('tells password managers what each field is, and the minimum length', () => {
@@ -153,6 +205,8 @@ describe('legal pages (PLAN 2.7)', () => {
     expect(count(html, /<h1\b/)).toBe(1);
     expect(text).toContain(title);
     expect(text).toContain('Borrador en revisión.');
+    expect(text).toMatch(/es la que rige mientras Hornilla está en prueba/);
+    expect(text).toContain('te pediremos aceptarla de nuevo.');
     expect(text).toContain(`Versión ${TERMS_VERSION} · 10 de octubre de 2026`);
   });
 
@@ -183,6 +237,28 @@ describe('legal pages (PLAN 2.7)', () => {
 
     expect(count(html, /<th\b[^>]*scope="col"/)).toBe(3);
     expect(textOf(html)).toContain('Sesión iniciada');
+  });
+});
+
+// PLAN 2.9: the two ways to complain, and never an invented address.
+describe('contact and complaints (PLAN 2.9)', () => {
+  const html = inPublicShell(<ContactPage />, '/contacto');
+  const text = textOf(html);
+
+  it('explains both ways: the distributor for an order, Hornilla for the platform', () => {
+    expect(count(html, /<h1\b/)).toBe(1);
+    expect(text).toContain('Por un pedido, un precio o una promoción');
+    expect(text).toContain('Ante la distribuidora.');
+    expect(text).toContain('Por el funcionamiento de la plataforma');
+    expect(text).toContain('Ante Hornilla.');
+  });
+
+  it('shows the address of the terms, or says plainly that it is not published yet', () => {
+    const mailLinks = tags(html, 'a').filter((tag) => tag.includes('href="mailto:'));
+    const isPending = text.includes('todavía no está publicado');
+
+    expect(mailLinks.length === 1).toBe(!isPending);
+    expect(text).not.toMatch(/\[[^\]]*\]/);
   });
 });
 

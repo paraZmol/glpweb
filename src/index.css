@@ -11,7 +11,12 @@
  */
 @custom-variant dark (&:is(.dark *));
 
-:root {
+/*
+ * `.light` pins the light theme on a subtree whatever the device says, the way `.dark` pins the
+ * dark one: the sign-up of a distributor shows its colour in both at once.
+ */
+:root,
+.light {
   /* Surfaces and text */
   --background: #ffffff;
   --foreground: #14182b;
@@ -223,6 +228,13 @@
   --primary-foreground: var(--brand-on-dark);
   --primary-text: var(--brand-text-dark);
   --primary-soft: var(--brand-soft-dark);
+}
+/* After the dark rule on purpose: a light sample inside a dark page keeps its light tones. */
+.light [data-brand] {
+  --primary: var(--brand-fill-light);
+  --primary-foreground: var(--brand-on-light);
+  --primary-text: var(--brand-text-light);
+  --primary-soft: var(--brand-soft-light);
 }
 
 /* Gas brand of a product (colour of the cylinder drawing). Same derivation, other prefix. */

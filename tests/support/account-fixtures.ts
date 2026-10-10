@@ -1,5 +1,11 @@
 import type { Session } from '../../src/domain/auth/session';
-import type { Distributor, Member, MemberRole, UserProfile } from '../../src/domain/tenancy/types';
+import type {
+  Distributor,
+  Member,
+  MemberRole,
+  PublicDistributor,
+  UserProfile,
+} from '../../src/domain/tenancy/types';
 import type { AccountGateValue } from '../../src/features/account/account-context';
 import type { CurrentDistributor } from '../../src/features/tenancy/use-current-distributor';
 
@@ -51,6 +57,17 @@ export function distributorOf(id: string, patch: Partial<Distributor> = {}): Dis
     updatedAt: NOW,
     ...patch,
   };
+}
+
+/** The distributor as a visitor reads it: the public profile, nothing about its plan. */
+export function publicDistributorOf(patch: Partial<PublicDistributor> = {}): PublicDistributor {
+  const {
+    ownerUid: _ownerUid,
+    status: _status,
+    trialEndsAt: _trialEndsAt,
+    ...shown
+  } = distributorOf('d-norte');
+  return { ...shown, ...patch };
 }
 
 export function memberOf(role: MemberRole, distributorId = 'd-norte'): Member {

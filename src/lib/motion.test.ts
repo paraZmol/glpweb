@@ -17,6 +17,7 @@ import {
   STEP_BOUNCE,
   stepBounceAnimation,
   STEPPER_PRESS_SCALE,
+  stepVariants,
   tapGesture,
 } from './motion';
 
@@ -89,6 +90,22 @@ describe('pageVariants', () => {
       expect(variants.animate.transition.duration).toBeLessThanOrEqual(0.15);
     },
   );
+});
+
+// PLAN 2.2: steps of the sign-up wizard.
+describe('stepVariants', () => {
+  it('brings the next step from the right and the previous one from the left, in base', () => {
+    expect(stepVariants(true, false).initial).toEqual({ opacity: 0, x: 24 });
+    expect(stepVariants(false, false).initial).toEqual({ opacity: 0, x: -24 });
+    expect(stepVariants(true, false).animate.transition.duration).toBe(DURATION.base);
+  });
+
+  it.each([true, false])('becomes a short fade with reduced motion (forward: %s)', (isForward) => {
+    const variants = stepVariants(isForward, true);
+
+    expect(variants.initial).toEqual({ opacity: 0, x: 0 });
+    expect(variants.animate.transition.duration).toBeLessThanOrEqual(0.15);
+  });
 });
 
 describe('direction B adjustments (PLAN 2.4b)', () => {

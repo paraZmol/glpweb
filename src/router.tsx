@@ -5,11 +5,11 @@ import { PublicShell } from './components/layout/public-shell';
 import { RootLayout } from './components/layout/root-layout';
 import { RouteError } from './components/layout/route-error';
 import { ROUTES } from './lib/routes';
-import { ComingSoonPage } from './pages/public/coming-soon';
+import { HomePage } from './pages/public/home';
 
-// One chunk per area (PLAN 2.4): only the landing page travels with the first load, so the
-// initial JavaScript stays under the 200 KB gzip budget. Firebase arrives with the first chunk
-// that needs the session.
+// One chunk per area (PLAN 2.4): only the home travels with the first load, so the initial
+// JavaScript stays under the 200 KB gzip budget. Firebase arrives with the first chunk that
+// needs the session or the database (the search of the home loads it once there is a point).
 const areas = {
   public: () => import('./pages/public'),
   account: () => import('./pages/account'),
@@ -43,13 +43,15 @@ function guarded<Area extends keyof Areas>(
 const publicRoutes: RouteObject = {
   element: <PublicShell />,
   children: [
-    { index: true, element: <ComingSoonPage /> },
+    { index: true, element: <HomePage /> },
     { path: ROUTES.signIn, lazy: from('public', (m) => m.SignInPage) },
     { path: ROUTES.register, lazy: from('public', (m) => m.RegisterPage) },
     { path: ROUTES.resetPassword, lazy: from('public', (m) => m.ResetPasswordPage) },
     { path: ROUTES.terms, lazy: from('public', (m) => m.TermsPage) },
     { path: ROUTES.privacy, lazy: from('public', (m) => m.PrivacyPage) },
     { path: ROUTES.cookies, lazy: from('public', (m) => m.CookiesPage) },
+    { path: ROUTES.contact, lazy: from('public', (m) => m.ContactPage) },
+    { path: ROUTES.distributor, lazy: from('public', (m) => m.DistributorPage) },
     { path: '*', lazy: from('public', (m) => m.NotFoundPage) },
   ],
 };
@@ -79,6 +81,13 @@ const accountRoutes: RouteObject = {
         { path: ROUTES.customerOrders, lazy: from('customer', (m) => m.CustomerOrdersPage) },
         { path: ROUTES.account, lazy: from('customer', (m) => m.AccountPage) },
       ],
+    ),
+    // Any verified account may found a distributor (PLAN 2.2): the wizard has its own frame.
+    guarded(
+      'customer',
+      (m) => m.CustomerGate,
+      (m) => m.FocusShell,
+      [{ path: ROUTES.newDistributor, lazy: from('customer', (m) => m.NewDistributorPage) }],
     ),
     guarded(
       'driver',

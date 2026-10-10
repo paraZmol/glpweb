@@ -72,6 +72,19 @@ export function pageVariants(direction: PageDirection, isReduced: boolean) {
   };
 }
 
+/**
+ * Step of a wizard (motion-system §3): the next one comes in from the right, the previous one
+ * from the left, in `base`. With reduced motion it is a short fade.
+ */
+export function stepVariants(isForward: boolean, isReduced: boolean) {
+  const travel = isForward ? PAGE_SLIDE_PX : -PAGE_SLIDE_PX;
+  return {
+    initial: { opacity: 0, x: isReduced ? 0 : travel },
+    animate: { opacity: 1, x: 0, transition: enterTransition(isReduced ? 'fast' : 'base') },
+    exit: { opacity: 0, transition: exitTransition('fast') },
+  };
+}
+
 /** First appearance of a list element. */
 export function listItemVariants(index: number, isReduced: boolean) {
   return {

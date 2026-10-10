@@ -1,4 +1,4 @@
-import { ButtonLink } from '@/components/common/button';
+import { useLocation } from 'react-router';
 import { InlineAlert } from '@/components/common/inline-alert';
 import { Bone, LoadingRegion } from '@/components/common/skeleton';
 import { EmptyState } from '@/components/common/state-views';
@@ -7,8 +7,9 @@ import { ROLE_LABELS } from '@/components/layout/role-labels';
 import type { Distributor } from '@/domain/tenancy/types';
 import { useAccount } from '@/features/account/account-context';
 import { usePageTitle } from '@/lib/page-title';
-import { ROUTES } from '@/lib/routes';
+import { isJustFounded } from '@/lib/routes';
 import { PlanChip } from './plan-chip';
+import { SetupChecklist } from './setup-checklist';
 
 const PUBLIC_LINK_PREFIX = '/d/';
 
@@ -48,13 +49,16 @@ function OfficeHomeSkeleton() {
 
 /**
  * Home of the office (owner and dispatcher). The live monitor arrives with phase 6; for now it
- * shows where the distributor stands and that no order has come in, in the dense office ambient.
+ * shows where the distributor stands, what its owner has left to set up (PLAN 2.2) and that no
+ * order has come in, in the dense office ambient.
  */
 export function OfficeHomePage() {
   usePageTitle('Monitor');
   const { current } = useAccount();
+  const location = useLocation();
   if (current.status !== 'ready') return <OfficeHomeSkeleton />;
   const { distributor, membership, isWritable } = current;
+  const isOwner = membership.role === 'owner';
 
   return (
     <div className="flex flex-col gap-6">
@@ -64,6 +68,12 @@ export function OfficeHomePage() {
         lead="Pedidos, repartidores y stock de tu distribuidora, en un solo lugar."
         aside={<PlanChip distributor={distributor} />}
       />
+      {isJustFounded(location.state) && (
+        <InlineAlert tone="success">
+          {distributor.name} ya está en Hornilla. Empezaron tus 30 días de prueba gratis: lo que
+          sigue está en "Completa tu distribuidora".
+        </InlineAlert>
+      )}
       {!isWritable && (
         <InlineAlert tone="info">
           Tu distribuidora está en solo lectura: puedes ver todo, pero no registrar cambios hasta
@@ -71,17 +81,15 @@ export function OfficeHomePage() {
         </InlineAlert>
       )}
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <Panel dense>
-          <EmptyState
-            title="Todavía no entra ningún pedido."
-            description="Tu distribuidora ya está registrada. Lo que sigue es cargar tu catálogo y sumar a tu personal: cuando estén, los pedidos de hoy se van a ver aquí."
-            action={
-              <ButtonLink to={ROUTES.account} variant="ink" size="sm">
-                Revisar mi cuenta
-              </ButtonLink>
-            }
-          />
-        </Panel>
+        <div className="flex flex-col gap-4">
+          {isOwner && <SetupChecklist distributor={distributor} />}
+          <Panel dense>
+            <EmptyState
+              title="Todavía no entra ningún pedido."
+              description="Cuando tu catálogo esté cargado y los pedidos existan, los de hoy se van a ver aquí."
+            />
+          </Panel>
+        </div>
         <DistributorFacts distributor={distributor} role={ROLE_LABELS[membership.role]} />
       </div>
     </div>
