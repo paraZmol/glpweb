@@ -1,9 +1,11 @@
+import { User } from 'lucide-react';
 import { Link } from 'react-router';
 import { BrandTheme } from '@/components/brand/brand-theme';
 import { HornillaLogo } from '@/components/brand/hornilla-logo';
 import { PageTransition } from '@/components/motion/page-transition';
 import type { AppArea } from '@/domain/auth/access';
 import { type Account, useAccount } from '@/features/account/account-context';
+import { ICON_STROKE } from '@/lib/icons';
 import { AREA_HOME } from '@/lib/routes';
 import { useIsDesktop } from '@/lib/use-media-query';
 import { cn } from '@/lib/utils';
@@ -54,9 +56,15 @@ function SideBar({ area, items, workplace, name }: ChromeProps & { name: string 
         </div>
       )}
       <SideNav items={items} />
-      <p className="mt-auto truncate px-3 text-[0.8125rem] font-semibold text-muted-foreground">
-        {name}
-      </p>
+      <div className="mt-auto flex min-w-0 items-center gap-2.5 border-t px-2 pt-4">
+        <span
+          aria-hidden="true"
+          className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground"
+        >
+          <User className="size-4" strokeWidth={ICON_STROKE} />
+        </span>
+        <p className="truncate text-[0.8125rem] font-semibold">{name}</p>
+      </div>
     </aside>
   );
 }
