@@ -77,7 +77,9 @@ Estados (`ShiftStatus`): `requested → approved ⇄ paused → closed`, o `requ
   jornada → `closed`. No se puede liquidar con un pedido en `WITH_DRIVER`.
 
 ## 5. Catálogo y stock
-- Producto: marca (texto libre de la distribuidora), `weightKg`, `priceCents`, `active`.
+- Producto: marca (texto libre de la distribuidora), `weightKg`, `refillPriceCents`,
+  `fullPriceCents` opcional, `active`. La distribuidora indica `acceptsOtherBrandEmpties`.
+  Motivo de cancelación conocido: `noEmptyCylinder` ("Sin balón vacío").
   Tope de cordura al editar precio (S/ 999) contra errores de dedo.
 - Stock de planta por producto: `full`, `empty`. Todo ajuste manual lleva motivo y autor.
 - Cambiar la capacidad de un vehículo no reescribe cargas ya aprobadas.
@@ -99,9 +101,22 @@ distribuidora no vende envases de ese producto). Consecuencias:
 **Promociones** (`/distributors/{d}/promotions/{id}`), creadas solo por el dueño:
 - Campos: `title`, `type`, `productIds` (o todos), `saleKinds`, `startsAt`, `endsAt`, `active`,
   `maxUnitsPerOrder`, `conditions` (texto visible) y los parámetros del tipo.
-- Tipos iniciales (los afina `marketing-advisor`):
-  `fixedPrice` (precio especial; "balón completo al precio de la recarga" es este tipo sobre `full`),
-  `percentOff`, `buyXPayY` ("lleva 2 paga 1").
+- Tipos (cerrados con `marketing-advisor`, ver `docs/marketing/oferta-y-promociones.md`):
+  `fixedPrice` (precio especial; con `priceSource: 'refill'` sobre `full` es "balón completo al
+  precio del gas" y sigue al precio de recarga vigente), `percentOff` (máx. 30 %), `amountOff`
+  ("S/ 5 menos"; `amountCents < listPriceCents`), `buyXPayY` ("lleva 2 paga 1", "lleva 3 paga 2").
+- `endsAt` obligatorio; vigencia máxima 30 días. Editar una promoción activa solo permite
+  alargarla, renombrarla o apagarla; apagarla antes de tiempo registra quién y cuándo.
+- `totalUnits` (tope total) con contador `soldUnits` que se incrementa en la **misma transacción**
+  que crea el pedido; al llegar al tope la promoción deja de aplicarse. Opcional en `fixedPrice`
+  normal, `percentOff` y `amountOff`; **obligatorio** en `fixedPrice` con `priceSource: 'refill'`
+  y en `buyXPayY`. Un pedido cancelado no devuelve unidades al tope (regla simple y verificable).
+- `maxUnitsPerOrder` en `buyXPayY` es múltiplo de X; las unidades que no completan grupo van a
+  precio de lista. Las unidades gratis cuentan igual como salida de stock y como vacíos esperados.
+- Mientras un producto tenga una promoción activa o programada no se puede **subir** su precio
+  de lista (evita el "antes" inflado).
+- En pedidos telefónicos las promociones vigentes se aplican solas con el mismo `priceOrder`; la
+  central no puede escribir un descuento a mano.
 - Vigente = `active` y `startsAt <= ahora < endsAt` y distribuidora escribible.
 - **Una promoción por línea, sin acumular.** Si varias aplican, gana la de menor precio final para
   el cliente; el desempate es determinista (por id).
@@ -130,3 +145,5 @@ distribuidora no vende envases de ese producto). Consecuencias:
 12. Nunca dos promociones en la misma línea; el total es exactamente el que da `priceOrder`.
 13. Una línea `full` no suma vacíos esperados; una `refill` suma uno por unidad.
 14. Un rol distinto de dueño no lee caja, liquidaciones ni totales de venta.
+15. `soldUnits` nunca supera `totalUnits`, ni con dos pedidos simultáneos por la última unidad.
+16. No se puede subir el precio de lista de un producto con promoción activa o programada.

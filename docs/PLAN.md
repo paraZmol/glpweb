@@ -265,7 +265,7 @@ Estimación: una persona con Claude, ~25 h/semana.
 - *Criterio*: tests de reglas prueban que A no toca nada de B; nadie puede darse un rol.
 
 ### Fase 3 — Catálogo, personal, vehículos, stock
-- [~] 3.0 (2026-10-10, documento entregado; faltan las decisiones del usuario D1–D15 que trae) `marketing-advisor`: cómo nombrar y presentar recarga y balón completo, qué tipos de promoción ofrecer y sus textos (`docs/marketing/oferta-y-promociones.md`)
+- [x] 3.0 (2026-10-10; decisiones D1–D15 cerradas en el propio documento) `marketing-advisor`: cómo nombrar y presentar recarga y balón completo, qué tipos de promoción ofrecer y sus textos (`docs/marketing/oferta-y-promociones.md`)
 - [ ] 3.1 Productos y precios: precio de recarga y precio de balón completo por producto
 - [ ] 3.2 Invitaciones de personal y roles; ayudantes
 - [ ] 3.3 Vehículos y capacidad
@@ -398,6 +398,7 @@ escritorio · agentes aplicables sin hallazgos CRÍTICO/ALTO · `regression-guar
 | 2026-10-10 | Promociones creadas por cada distribuidora (módulo 4b, pasos 3.0 y 3.5); nuevo agente `marketing-advisor` | Pedido del usuario |
 | 2026-10-10 | Al dar de alta, se rechaza un color de marca que no se distinga del fondo (menos de 2:1) | Decisión del usuario: seguir al diseñador |
 | 2026-10-10 | Mapa: primera opción MapLibre GL + OpenFreeMap, con Leaflet + OpenStreetMap de respaldo; se decide con la prueba 6.0 | El usuario lo dejó a criterio; las maquetas piden un fondo limpio en claro y oscuro |
+| 2026-10-10 | Modelo de promociones cerrado: tipos `fixedPrice`, `percentOff`, `amountOff`, `buyXPayY`; tope total de unidades obligatorio en las dos más costosas; vigencia máxima 30 días | El usuario delegó las decisiones en la coordinación con `marketing-advisor`; el tope se adelanta para no lanzar "balón completo al precio del gas" sin límite |
 | 2026-10-10 | `npm audit` informativo en CI | Único hallazgo: `@grpc/grpc-js` vía `firebase` (solo build de Node, no llega al navegador) |
 
 ## Ideas para después

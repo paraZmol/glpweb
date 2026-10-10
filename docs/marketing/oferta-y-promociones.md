@@ -659,6 +659,28 @@ relación entre valor y trabajo después de `amountOff`.
 | D14 | ¿La central puede aplicar promociones en pedidos telefónicos? | **Sí, las vigentes se aplican solas** igual que en la web (mismo `priceOrder`); la central no puede inventar un descuento a mano. |
 | D15 | Frase sobre unidades cuando no hay tope (5.3) | Usar "Sin tope de unidades mientras dure la promoción" **solo después de confirmarla** con un profesional; si dice que no basta, `totalUnits` pasa a ser obligatorio antes del lanzamiento público. |
 
+### Resolución (2026-10-10)
+
+El dueño del producto delegó estas decisiones en la coordinación con este asesor. Quedan así:
+
+| # | Resuelto |
+|---|---|
+| D1 | "Balón completo" con "gas + envase" siempre al lado; "Con envase" como etiqueta corta. La prueba con cinco personas se hace antes de la fase 4. |
+| D2 | Sin casilla obligatoria. Aviso "Ten a la mano" y enlace "No tengo balón vacío". |
+| D3 | En la puerta sin vacío: cancelar con el motivo "Sin balón vacío" y volver a crear desde la central. |
+| D4 | Dato por distribuidora (`acceptsOtherBrandEmpties`), visible bajo "Ten a la mano". |
+| D5 | P3 entra en la primera versión **con tope total de unidades obligatorio** y máximo 1 por pedido. Se adelanta `totalUnits` en vez de lanzarla sin tope. |
+| D6 | Porcentaje máximo 30 % y vigencia máxima 30 días; por encima del 30 % solo P3 y "lleva X, paga Y", con casilla de confirmación. |
+| D7 | No se dice "balón nuevo". |
+| D8 | El tipo de válvula va en el nombre de la marca; campo propio solo si el piloto lo pide. |
+| D9 | Se añade el tipo `amountOff` ("S/ 5 menos"). |
+| D10 | Se añade `priceSource: 'refill'` para "al precio del gas". |
+| D11 | Accesorios después; frase fija "No incluye regulador ni manguera". |
+| D12 | Filtro "Necesito el envase" en el buscador, apagado por defecto. |
+| D13 | Las promociones se ven en el buscador y en la página de la distribuidora. |
+| D14 | En pedidos telefónicos las vigentes se aplican solas; la central no descuenta a mano. |
+| D15 | `totalUnits` es opcional en precio especial, porcentaje y "S/ menos", y **obligatorio** en P3 y "lleva X, paga Y". Con tope se muestra "Quedan N"; sin tope no se dice nada sobre unidades hasta confirmar la frase con un profesional. |
+
 ---
 
 ## Anexo · Textos sueltos listos para copiar
