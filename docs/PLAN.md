@@ -262,6 +262,7 @@ Estimación: una persona con Claude, ~25 h/semana.
 - [ ] 2.4c Base de pruebas: semilla A/B con un usuario por rol, utilidades de varios actores, axe y presupuestos en el CI
 - [ ] 2.5 Página pública `/d/{slug}`
 - [ ] 2.6 Inicio del cliente: distribuidoras que atienden mi ubicación (cobertura = distancia a la planta ≤ radio), con marcas y precios. En el piloto se filtra en el navegador sobre la lista de distribuidoras activas (acotada); al crecer, índice por geohash
+- [ ] 2.7 Páginas legales en la app a partir de los borradores de `docs/legal/` (términos, privacidad, cookies): enlaces en el pie y en el registro; el registro y el alta de distribuidora exigen aceptar los términos y guardan versión y fecha; aviso informativo de almacenamiento la primera vez. Se muestran marcadas como borrador hasta la revisión legal
 - *Criterio*: tests de reglas prueban que A no toca nada de B; nadie puede darse un rol.
 
 ### Fase 3 — Catálogo, personal, vehículos, stock
@@ -315,7 +316,7 @@ Estimación: una persona con Claude, ~25 h/semana.
 
 ### Fase 10 — Lanzamiento
 - [ ] 10.1 Auditoría completa (todos los agentes), corregir CRÍTICO/ALTO
-- [ ] 10.2 Términos, privacidad (ubicación), datos de demostración
+- [ ] 10.2 Revisión por un profesional de `docs/legal/` (responsabilidad por promociones de las distribuidoras, frase sobre unidades, datos personales y ubicación, Libro de Reclamaciones), razón social y datos de contacto; datos de demostración
 - [ ] 10.3 Dominio propio (opcional, único costo posible)
 
 ### Fase 11 — APK con Capacitor (opcional)
@@ -399,6 +400,8 @@ escritorio · agentes aplicables sin hallazgos CRÍTICO/ALTO · `regression-guar
 | 2026-10-10 | Al dar de alta, se rechaza un color de marca que no se distinga del fondo (menos de 2:1) | Decisión del usuario: seguir al diseñador |
 | 2026-10-10 | Mapa: primera opción MapLibre GL + OpenFreeMap, con Leaflet + OpenStreetMap de respaldo; se decide con la prueba 6.0 | El usuario lo dejó a criterio; las maquetas piden un fondo limpio en claro y oscuro |
 | 2026-10-10 | Modelo de promociones cerrado: tipos `fixedPrice`, `percentOff`, `amountOff`, `buyXPayY`; tope total de unidades obligatorio en las dos más costosas; vigencia máxima 30 días | El usuario delegó las decisiones en la coordinación con `marketing-advisor`; el tope se adelanta para no lanzar "balón completo al precio del gas" sin límite |
+| 2026-10-10 | Borradores de términos, privacidad y cookies en `docs/legal/`; paso 2.7 para llevarlos a la app. Los términos dicen que precios y promociones son responsabilidad de cada distribuidora y que Hornilla no responde por promociones engañosas | Pedido del usuario. Una cláusula no exime por sí sola: se revisa con un profesional en 10.2 |
+| 2026-10-10 | Sin panel de consentimiento de cookies: solo aviso informativo, porque no hay analítica ni publicidad | Solo se usa almacenamiento necesario; si eso cambia, se pide consentimiento antes |
 | 2026-10-10 | `npm audit` informativo en CI | Único hallazgo: `@grpc/grpc-js` vía `firebase` (solo build de Node, no llega al navegador) |
 
 ## Ideas para después
