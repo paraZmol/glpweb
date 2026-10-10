@@ -26,6 +26,25 @@ export function usePageTitle(title: string): void {
   }, [title]);
 }
 
+const DESCRIPTION_SELECTOR = 'meta[name="description"]';
+
+/**
+ * Describes the screen to search engines and link previews while it is on display, and puts
+ * the description of the site (index.html) back when it leaves. Screens without their own
+ * description simply do not call it.
+ */
+export function usePageDescription(description: string): void {
+  useEffect(() => {
+    const meta = document.querySelector<HTMLMetaElement>(DESCRIPTION_SELECTOR);
+    if (!meta || description === '') return undefined;
+    const siteDescription = meta.content;
+    meta.content = description;
+    return () => {
+      meta.content = siteDescription;
+    };
+  }, [description]);
+}
+
 export function useCurrentPageTitle(): string {
   return useSyncExternalStore(
     subscribe,

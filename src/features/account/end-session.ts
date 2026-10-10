@@ -1,5 +1,6 @@
 import { signOutSession } from '../../data/auth-repo';
 import { hasUnsentWrites, wipeLocalSessionData } from '../../data/session-data';
+import { forgetLastLocation } from '../../lib/last-location';
 import { forgetRememberedDistributors } from '../tenancy/selection-storage';
 
 /** How long a sign-out waits for changes made without a connection to reach the server. */
@@ -31,6 +32,8 @@ let isEnding = false;
 /** Everything a session leaves on this device apart from the Firebase Auth session itself. */
 async function clearLocalSessionData(): Promise<void> {
   forgetRememberedDistributors();
+  // The last place searched from is a location: it does not outlive the session (PLAN 2.6).
+  forgetLastLocation();
   await wipeLocalSessionData();
 }
 
