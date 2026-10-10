@@ -68,6 +68,11 @@ export const SEED_USERS = {
   unverified: user('sin-verificar', 'K. Nueva', '71', false),
   /** Verified account without a profile: what a first Google sign-in looks like. */
   noProfile: { ...user('sin-perfil', 'L. Reciente', '81'), hasProfile: false },
+  /**
+   * Verified, with a profile and no membership: the account the E2E of the sign-up of a
+   * distributor founds with (PLAN 2.2). No other test may rely on what it owns.
+   */
+  founder: user('fundadora', 'M. Fundadora', '91'),
 } as const satisfies Record<string, SeedUser>;
 
 export const SEED_CREATED_AT = '2025-12-01T15:00:00Z';

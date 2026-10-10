@@ -19,6 +19,8 @@ export const SEED_HOME_PATH: Record<SeedUserKey, string> = {
   admin: '/plataforma',
   unverified: '/verificar-correo',
   noProfile: '/aceptar-terminos',
+  // Before it founds anything. The sign-up test signs in by itself: afterwards it is an owner.
+  founder: '/inicio',
 };
 
 /**

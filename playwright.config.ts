@@ -16,6 +16,10 @@ const serveWithEmulators = `node scripts/emulators.mjs exec --only auth,firestor
 export default defineConfig({
   testDir: 'tests/e2e',
   outputDir: lane ? `test-results-${lane}` : 'test-results',
+  // Every wait is on what the screen shows; this is only how long to keep looking. The first
+  // tests of a run start one browser per worker at the same moment, each loading the app cold:
+  // on a busy machine the first screen with data can take longer than the default 5 s.
+  expect: { timeout: 15_000 },
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   reporter: 'list',
