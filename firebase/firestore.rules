@@ -1,9 +1,462 @@
 rules_version = '2';
 
-// Deny by default. Collections are opened one by one, operation by operation, each with a
-// test in firebase/tests (see .claude/skills/firebase-tenancy).
+// ===============================================================================================
+// Hornilla (glpWEB) — Firestore security rules. There is no server: these rules ARE the backend.
+// Deny by default; each collection is opened operation by operation and has tests in
+// firebase/tests. Limits mirror src/domain/tenancy/constants.ts (the tests read those constants).
+//
+// Data model (every listed field is required unless marked optional; no other field is accepted)
+//
+// /users/{uid}                     private to the account
+//   displayName: string 1..80 · phone: null | '9' + 8 digits
+//   ownedDistributorIds: list ≤ 3 — grows only inside a founding batch (caps distributors/account)
+//   createdAt, updatedAt: timestamp (= request.time when written; createdAt immutable)
+//
+// /users/{uid}/addresses/{slot}    private to the account; slot is a0..a9 (caps addresses at 10)
+//   label: string 1..40 · addressLine: string 1..160 · reference: string 0..160
+//   location: { lat: -90..90, lng: -180..180 } · createdAt, updatedAt
+//
+// /platformAdmins/{uid}            written only by a local Admin SDK script
+//
+// /slugs/{slug}                    public get, no list; immutable
+//   distributorId: string · createdAt
+//
+// /distributors/{d}                PUBLIC: every field can be read by anyone
+//   name: string 2..60 · slug (immutable) · ownerUid (founder, immutable)
+//   contactPhone, whatsapp: '9' + 8 digits · addressLine: string 0..160
+//   plant: { lat, lng } · coverageRadiusKm: number 1..50 · brandColor: '#rrggbb' lowercase
+//   status: trial | active | pastDue | suspended (only a platform admin changes it)
+//   trialEndsAt: timestamp (immutable from the app)
+//   schedule: { days: list 1..7 of 0..6, opensAt: 'HH:MM', closesAt: 'HH:MM' }
+//   maxCylindersPerOrder: int 1..20 · brands: list ≤ 8 of string 1..30
+//   priceFromCents: null | int 1..99900 · currency: 'PEN' · createdAt (immutable), updatedAt
+//
+// /distributors/{d}/private/settings   founder, owners and platform admins only
+//   ownerUid (immutable) · ownerName: string 1..80 · ownerPhone · ownerEmail (= token e-mail,
+//   immutable) · plan: 'trial' (immutable from the app) · createdAt, updatedAt
+//
+// /distributors/{d}/members/{uid}
+//   uid (= document id) · distributorId (= d) · role: owner | dispatcher | driver
+//   active: bool · displayName: string 1..80 · createdAt (immutable), updatedAt
+//
+// Billed reads added by the rules (get / exists / getAfter) are noted on each `allow`.
+// ===============================================================================================
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------------------- identity ----
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function emailVerified() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+
+    // The role always comes from the member document, never from the client or the token.
+    function member(d) {
+      return get(/databases/$(database)/documents/distributors/$(d)/members/$(request.auth.uid)).data;
+    }
+
+    function hasRole(d, roles) {
+      return signedIn() && member(d).active == true && member(d).role in roles;
+    }
+
+    function isPlatformAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/platformAdmins/$(request.auth.uid));
+    }
+
+    // ------------------------------------------------------------------------- tenant state ----
+    // Same condition as isWritable() in src/domain/tenancy/status.ts.
+    function isWritableData(distributor) {
+      return distributor.status == 'active'
+        || (distributor.status == 'trial' && distributor.trialEndsAt > request.time);
+    }
+
+    function writable(d) {
+      return isWritableData(get(/databases/$(database)/documents/distributors/$(d)).data);
+    }
+
+    // True only inside the batch that creates distributor `d` with the caller as founder:
+    // createdAt is forced to request.time on create and is immutable afterwards.
+    function foundedNow(d) {
+      let distributor = getAfter(/databases/$(database)/documents/distributors/$(d)).data;
+      return distributor.ownerUid == request.auth.uid && distributor.createdAt == request.time;
+    }
+
+    // ------------------------------------------------------------------------------- diffs ----
+    function unchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    function onlyChanges(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    function hasExactly(data, fields) {
+      return data.keys().hasAll(fields) && data.keys().hasOnly(fields);
+    }
+
+    function stampedNow(data) {
+      return data.createdAt == request.time && data.updatedAt == request.time;
+    }
+
+    // ---------------------------------------------------------------------- field validators ----
+    function isText(value, min, max) {
+      return value is string && value.size() >= min && value.size() <= max;
+    }
+
+    function isPhone(value) {
+      return value is string && value.matches('^9[0-9]{8}$');
+    }
+
+    function isGeoPoint(point) {
+      return point is map
+        && hasExactly(point, ['lat', 'lng'])
+        && point.lat is number && point.lat >= -90 && point.lat <= 90
+        && point.lng is number && point.lng >= -180 && point.lng <= 180;
+    }
+
+    function isDocId(value) {
+      return value is string && value.matches('^[A-Za-z0-9_-]{1,64}$');
+    }
+
+    function isSlug(value) {
+      return value is string
+        && value.size() >= 3 && value.size() <= 40
+        && value.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        // Same list as RESERVED_SLUGS in src/domain/tenancy/slug.ts.
+        && !(value in [
+          'admin', 'api', 'app', 'd', 'www', 'plataforma', 'platform', 'ingresar', 'registro',
+          'registrarse', 'salir', 'login', 'logout', 'signup', 'cuenta', 'perfil', 'pedido',
+          'pedidos', 'repartidor', 'central', 'oficina', 'panel', 'buscar', 'inicio', 'ayuda',
+          'soporte', 'contacto', 'precios', 'planes', 'terminos', 'privacidad', 'hornilla',
+          'glpweb', 'assets', 'static', 'null', 'undefined'
+        ]);
+    }
+
+    function isTimeOfDay(value) {
+      return value is string && value.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+    }
+
+    function isSchedule(schedule) {
+      return schedule is map
+        && hasExactly(schedule, ['days', 'opensAt', 'closesAt'])
+        && schedule.days is list
+        && schedule.days.size() >= 1 && schedule.days.size() <= 7
+        && schedule.days.hasOnly([0, 1, 2, 3, 4, 5, 6])
+        && isTimeOfDay(schedule.opensAt)
+        && isTimeOfDay(schedule.closesAt);
+    }
+
+    // Rules cannot loop: the list is capped at 8 and each position is checked by hand.
+    function isBrandAt(brands, index) {
+      return brands.size() <= index || isText(brands[index], 1, 30);
+    }
+
+    function isBrandList(brands) {
+      return brands is list && brands.size() <= 8
+        && isBrandAt(brands, 0) && isBrandAt(brands, 1) && isBrandAt(brands, 2)
+        && isBrandAt(brands, 3) && isBrandAt(brands, 4) && isBrandAt(brands, 5)
+        && isBrandAt(brands, 6) && isBrandAt(brands, 7);
+    }
+
+    // -------------------------------------------------------------------- document validators ----
+    function isValidUserProfile(data) {
+      return hasExactly(data, ['displayName', 'phone', 'ownedDistributorIds', 'createdAt', 'updatedAt'])
+        && isText(data.displayName, 1, 80)
+        && (data.phone == null || isPhone(data.phone))
+        && data.ownedDistributorIds is list && data.ownedDistributorIds.size() <= 3
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAddress(data) {
+      return hasExactly(data, ['label', 'addressLine', 'reference', 'location', 'createdAt', 'updatedAt'])
+        && isText(data.label, 1, 40)
+        && isText(data.addressLine, 1, 160)
+        && isText(data.reference, 0, 160)
+        && isGeoPoint(data.location)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidDistributor(data) {
+      return hasExactly(data, [
+          'name', 'slug', 'ownerUid', 'contactPhone', 'whatsapp', 'addressLine', 'plant',
+          'coverageRadiusKm', 'brandColor', 'status', 'trialEndsAt', 'schedule',
+          'maxCylindersPerOrder', 'brands', 'priceFromCents', 'currency', 'createdAt', 'updatedAt'
+        ])
+        && isText(data.name, 2, 60)
+        && data.slug is string
+        && data.ownerUid is string
+        && isPhone(data.contactPhone)
+        && isPhone(data.whatsapp)
+        && isText(data.addressLine, 0, 160)
+        && isGeoPoint(data.plant)
+        && data.coverageRadiusKm is number
+        && data.coverageRadiusKm >= 1 && data.coverageRadiusKm <= 50
+        && data.brandColor is string && data.brandColor.matches('^#[0-9a-f]{6}$')
+        && data.status in ['trial', 'active', 'pastDue', 'suspended']
+        && data.trialEndsAt is timestamp
+        && isSchedule(data.schedule)
+        && data.maxCylindersPerOrder is int
+        && data.maxCylindersPerOrder >= 1 && data.maxCylindersPerOrder <= 20
+        && isBrandList(data.brands)
+        && (data.priceFromCents == null
+          || (data.priceFromCents is int && data.priceFromCents >= 1 && data.priceFromCents <= 99900))
+        && data.currency == 'PEN'
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPrivateSettings(data) {
+      return hasExactly(data, [
+          'ownerUid', 'ownerName', 'ownerPhone', 'ownerEmail', 'plan', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerUid is string
+        && isText(data.ownerName, 1, 80)
+        && isPhone(data.ownerPhone)
+        && isText(data.ownerEmail, 3, 254)
+        && data.plan in ['trial']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMember(data, d, memberUid) {
+      return hasExactly(data, [
+          'uid', 'distributorId', 'role', 'active', 'displayName', 'createdAt', 'updatedAt'
+        ])
+        && data.uid == memberUid
+        && data.distributorId == d
+        && data.role in ['owner', 'dispatcher', 'driver']
+        && data.active is bool
+        && isText(data.displayName, 1, 80)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // ================================================================================ users ====
+    // The profile holds no role and no platform flag: the field whitelist rejects them.
+    match /users/{uid} {
+      // Reads added by rules: 0.
+      allow get: if isSelf(uid);
+
+      allow create: if isSelf(uid)
+        && isValidUserProfile(request.resource.data)
+        && request.resource.data.ownedDistributorIds.size() == 0
+        && stampedNow(request.resource.data);
+
+      // Reads added by rules: 0 for a profile edit, 1 (getAfter) inside a founding batch.
+      allow update: if isSelf(uid)
+        && isValidUserProfile(request.resource.data)
+        && unchanged(['createdAt'])
+        && request.resource.data.updatedAt == request.time
+        && (unchanged(['ownedDistributorIds']) || recordsFounding());
+
+      // No delete: it would reset ownedDistributorIds and with it the cap per account.
+
+      // The list may only grow by one id, at the end, and that id must be a distributor this
+      // same request creates with the caller as founder.
+      function recordsFounding() {
+        let before = resource.data.ownedDistributorIds;
+        let after = request.resource.data.ownedDistributorIds;
+        return after.size() == before.size() + 1
+          && after.hasAll(before)
+          && isDocId(after[before.size()])
+          && foundedNow(after[before.size()]);
+      }
+
+      match /addresses/{slot} {
+        // Fixed slots instead of automatic ids: the only way rules can cap the count.
+        function isSlot() {
+          return slot.matches('^a[0-9]$');
+        }
+
+        allow get: if isSelf(uid);
+        allow list: if isSelf(uid) && request.query.limit <= 10;
+
+        allow create: if isSelf(uid)
+          && isSlot()
+          && isValidAddress(request.resource.data)
+          && stampedNow(request.resource.data);
+
+        allow update: if isSelf(uid)
+          && isValidAddress(request.resource.data)
+          && unchanged(['createdAt'])
+          && request.resource.data.updatedAt == request.time;
+
+        allow delete: if isSelf(uid);
+      }
+    }
+
+    // ======================================================================= platformAdmins ====
+    // Granted only with scripts/grant-platform-admin.mjs (Admin SDK). No write from the app.
+    match /platformAdmins/{uid} {
+      allow get: if isSelf(uid);
+    }
+
+    // ================================================================================ slugs ====
+    match /slugs/{slug} {
+      // Public: /d/{slug} must resolve for visitors. No list, so slugs cannot be enumerated.
+      allow get: if true;
+
+      // Only inside the founding batch of the distributor it points to. An existing slug makes
+      // this write an update, which nobody is allowed: that is what makes slugs unique.
+      // Reads added by rules: 1 (getAfter).
+      allow create: if emailVerified()
+        && isSlug(slug)
+        && hasExactly(request.resource.data, ['distributorId', 'createdAt'])
+        && isDocId(request.resource.data.distributorId)
+        && request.resource.data.createdAt == request.time
+        && foundedNow(request.resource.data.distributorId)
+        && getAfter(/databases/$(database)/documents/distributors/$(request.resource.data.distributorId)).data.slug == slug;
+    }
+
+    // ========================================================================= distributors ====
+    match /distributors/{d} {
+      // PUBLIC document by design (see the data model above): nothing private lives here.
+      allow get: if true;
+
+      // The search page: bounded, and only statuses that may be shown. The query must carry
+      // `where('status', 'in', ['trial', 'active'])` (or a subset) and `limit(n ≤ 50)`.
+      allow list: if request.query.limit <= 50
+        && resource.data.status in ['trial', 'active'];
+
+      // Founding batch (PLAN 2.2): distributor + slug + owner member + private settings + the
+      // founder's ownedDistributorIds, all or nothing.
+      // trialEndsAt: the client cannot write "server time + 30 days", so the rule accepts a
+      // window instead: more than 29 days and at most 30 days + 1 hour after request.time. The
+      // upper bound is the one that matters (nobody grants itself a longer trial); the lower
+      // bound tolerates a device clock that runs up to a day behind.
+      // Reads added by rules: 4 (getAfter slug, member, settings, founder profile).
+      allow create: if emailVerified()
+        && isDocId(d)
+        && isValidDistributor(request.resource.data)
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.status == 'trial'
+        && request.resource.data.trialEndsAt > request.time + duration.value(29, 'd')
+        && request.resource.data.trialEndsAt <= request.time + duration.value(721, 'h')
+        && stampedNow(request.resource.data)
+        && isSlug(request.resource.data.slug)
+        // The catalogue does not exist yet; these are filled from it later.
+        && request.resource.data.brands.size() == 0
+        && request.resource.data.priceFromCents == null
+        && getAfter(/databases/$(database)/documents/slugs/$(request.resource.data.slug)).data.distributorId == d
+        && getAfter(/databases/$(database)/documents/distributors/$(d)/members/$(request.auth.uid)).data.role == 'owner'
+        && getAfter(/databases/$(database)/documents/distributors/$(d)/private/settings).data.ownerUid == request.auth.uid
+        && d in getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.ownedDistributorIds;
+
+      // Owner: profile whitelist only, and only while the distributor is writable.
+      // Platform admin: status only.
+      // Reads added by rules: 1 (owner: get member · admin: exists platformAdmins).
+      allow update: if isValidDistributor(request.resource.data)
+        && request.resource.data.updatedAt == request.time
+        && (
+          (
+            onlyChanges([
+              'name', 'contactPhone', 'whatsapp', 'addressLine', 'plant', 'coverageRadiusKm',
+              'brandColor', 'schedule', 'maxCylindersPerOrder', 'brands', 'priceFromCents',
+              'updatedAt'
+            ])
+            && isWritableData(resource.data)
+            && hasRole(d, ['owner'])
+          )
+          || (onlyChanges(['status', 'updatedAt']) && isPlatformAdmin())
+        );
+
+      // No delete from the app.
+
+      // ---------------------------------------------------------------- private/settings ----
+      match /private/{docId} {
+        // Reads added by rules: 0 for the founder, 1–2 for a co-owner or a platform admin.
+        allow get: if docId == 'settings' && signedIn()
+          && (resource.data.ownerUid == request.auth.uid || hasRole(d, ['owner']) || isPlatformAdmin());
+
+        // Reads added by rules: 1 (getAfter distributor).
+        allow create: if docId == 'settings'
+          && emailVerified()
+          && isValidPrivateSettings(request.resource.data)
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.ownerEmail == request.auth.token.email
+          && request.resource.data.plan == 'trial'
+          && stampedNow(request.resource.data)
+          && foundedNow(d);
+
+        // Reads added by rules: 1 (get distributor).
+        allow update: if docId == 'settings'
+          && signedIn()
+          && resource.data.ownerUid == request.auth.uid
+          && isValidPrivateSettings(request.resource.data)
+          && onlyChanges(['ownerName', 'ownerPhone', 'updatedAt'])
+          && request.resource.data.updatedAt == request.time
+          && writable(d);
+      }
+
+      // ------------------------------------------------------------------------- members ----
+      match /members/{memberUid} {
+        // Reads added by rules: 0 for the own document, 1 otherwise.
+        allow get: if isSelf(memberUid) || hasRole(d, ['owner', 'dispatcher']);
+
+        // Reads added by rules: 1.
+        allow list: if request.query.limit <= 100 && hasRole(d, ['owner', 'dispatcher']);
+
+        // Two ways in, and no other:
+        //  1. the founder's own member, as owner, inside the founding batch (1 read: getAfter);
+        //  2. an active owner adds someone else while the distributor is writable (2 reads).
+        // Nobody can create a member document for itself outside (1). Invitations (phase 3)
+        // will add a third, equally explicit, way.
+        allow create: if signedIn()
+          && isValidMember(request.resource.data, d, memberUid)
+          && stampedNow(request.resource.data)
+          && (
+            (
+              memberUid == request.auth.uid
+              && request.resource.data.role == 'owner'
+              && request.resource.data.active == true
+              && emailVerified()
+              && foundedNow(d)
+            )
+            || (memberUid != request.auth.uid && hasRole(d, ['owner']) && writable(d))
+          );
+
+        // An owner changes others, never itself, and never the founder: the acting owner and
+        // the founder always stay, so a distributor cannot be left without an owner.
+        // Reads added by rules: 2 (get member, get distributor).
+        allow update: if signedIn()
+          && memberUid != request.auth.uid
+          && isValidMember(request.resource.data, d, memberUid)
+          && onlyChanges(['role', 'active', 'displayName', 'updatedAt'])
+          && request.resource.data.updatedAt == request.time
+          && hasRole(d, ['owner'])
+          && writableAndNotFounder(memberUid);
+
+        // No delete: staff is deactivated (`active: false`), so history keeps its author.
+
+        function writableAndNotFounder(uid) {
+          let distributor = get(/databases/$(database)/documents/distributors/$(d)).data;
+          return isWritableData(distributor) && distributor.ownerUid != uid;
+        }
+      }
+
+      // invites, helpers, vehicles, products, plantStock, customers, orders, shifts: closed
+      // until their phase opens them.
+    }
+
+    // "My memberships" (selector of distributors): a collection-group query that must filter
+    // by the caller's own uid and carry a limit. Billed as one read per membership found.
+    match /{path=**}/members/{memberUid} {
+      allow list: if signedIn()
+        && request.query.limit <= 20
+        && resource.data.uid == request.auth.uid;
+    }
+
+    // Anything not matched above is denied.
     match /{document=**} {
       allow read, write: if false;
     }

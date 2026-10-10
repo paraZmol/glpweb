@@ -39,7 +39,7 @@ describe('deny by default', () => {
 
   it('blocks signed-in users from an undeclared Firestore collection', async () => {
     const db = env.authenticatedContext('user-a').firestore();
-    await assertFails(getDoc(doc(db, 'distributors/d1')));
+    await assertFails(getDoc(doc(db, 'distributors/d1/orders/o1')));
     await assertFails(setDoc(doc(db, 'platformAdmins/user-a'), { since: 1 }));
   });
 
