@@ -57,16 +57,16 @@ central, repartidor, cliente.
 10. Campos nuevos en documentos existentes: siempre opcionales o con valor por defecto al leer.
 
 ## Ramas y vuelta atrás
--  es siempre lo estable y lo publicado. **Nunca se trabaja directo en .**
-- Cada paso del plan va en su rama:  (ej. ).
+- `main` es siempre lo estable y lo publicado. **Nunca se trabaja directo en `main`.**
+- Cada paso del plan va en su rama: `fase-N/descripcion-corta` (ej. `fase-2/alta-distribuidora`).
   Commits pequeños y frecuentes; se sube la rama para que el CI la pruebe.
-- Se une a  con  solo con CI en verde y los agentes de calidad pasados.
+- Se une a `main` con `git merge --no-ff` solo con CI en verde y los agentes de calidad pasados.
   La rama se conserva en GitHub hasta cerrar la fase.
-- Al cerrar cada fase: etiqueta  en . Es el punto de retorno ante una emergencia
-  ( para mirar; para volver de verdad,  del merge —
-  nunca  ni  sobre ).
-- Solo se despliega a Hosting desde . Para mostrar una rama sin tocar producción: canal de
-  vista previa ().
+- Al cerrar cada fase: etiqueta `vN.M-faseN` en `main`. Es el punto de retorno ante una emergencia
+  (`git switch --detach <etiqueta>` para mirar; para volver de verdad, `git revert` del merge —
+  nunca `reset --hard` ni `push --force` sobre `main`).
+- Solo se despliega a Hosting desde `main`. Para mostrar una rama sin tocar producción: canal de
+  vista previa (`firebase hosting:channel:deploy <nombre>`).
 - El repo es **público**: antes de cada commit, comprobar que no entra nada personal ni secreto
   (correos, teléfonos, nombres de empresas reales, claves, datos de clientes).
 
