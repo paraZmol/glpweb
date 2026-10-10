@@ -1,9 +1,13 @@
 // Mutation test of firebase/firestore.rules: breaks one condition at a time and checks that some
 // rules test notices. A mutant that survives is a condition no test defends.
 //
-//   npm run test:mutation                      every mutant (about 25 minutes)
+//   npm run test:mutation                      every mutant (well over an hour: run it before a
+//                                              release of the rules, not in `npm run check`)
 //   MUTANTS=H01,D12 npm run test:mutation      only those
 //   MUTATION_WORKERS=2 npm run test:mutation   fewer copies in parallel (3 by default)
+//   MUTATION_FILES=users,members npm run …     only the test files whose name contains one of them
+//
+// Do not edit the rules tests while it runs: every mutant runs the files as they are on disk.
 //
 // It never touches firebase/firestore.rules: each worker tests a broken copy in the temp folder
 // (RULES_FILE) inside emulator projects of its own (RULES_PROJECT_PREFIX); see
@@ -216,6 +220,12 @@ const MUTANTS = [
     'admin doc readable by any account',
     'match /platformAdmins/{uid} {\n      allow get: if isSelf(uid);',
     'match /platformAdmins/{uid} {\n      allow get: if signedIn();',
+  ],
+  [
+    'U21',
+    'address stored without a profile',
+    '\n          && exists(/databases/$(database)/documents/users/$(uid))',
+    '',
   ],
 
   [
@@ -669,16 +679,29 @@ const MUTANTS = [
  * Mutants no test can tell apart from the real rules, with the reason. They are run anyway and
  * reported apart; one that starts failing a test should leave this list.
  */
-const EQUIVALENT = {};
+const WHOLE_STRING =
+  'matches() of the rules always compares the whole string: the anchor is redundant';
+const EQUIVALENT = {
+  H07: 'a control document stamped with request.time was created by this request, and creating it already requires the caller as ownerUid',
+  H09: WHOLE_STRING,
+  H12: WHOLE_STRING,
+  H21: WHOLE_STRING,
+  H22: WHOLE_STRING,
+  H32: WHOLE_STRING,
+  H33: WHOLE_STRING,
+  H24: 'creating the settings requires plan == "trial" and no update may change it: the list in the validator is a second lock',
+};
 
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
 const occurrences = (text, part) => text.split(part).length - 1;
 
 /** Test files that take the rules from helpers.ts; the others would ignore the broken copy. */
 function testFiles() {
+  const wanted = process.env.MUTATION_FILES ? process.env.MUTATION_FILES.split(',') : null;
   return readdirSync(TESTS_DIR)
     .filter((name) => name.endsWith('.rules.test.ts'))
     .filter((name) => readFileSync(join(TESTS_DIR, name), 'utf8').includes("from './helpers'"))
+    .filter((name) => wanted === null || wanted.some((part) => name.includes(part)))
     .map((name) => `${TESTS_DIR}/${name}`);
 }
 
