@@ -30,3 +30,6 @@ docs/design/propuestas/*/capturas/
 
 # Local notes that must never be published
 .private/
+
+# Agent worktrees
+.claude/worktrees/

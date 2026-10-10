@@ -87,3 +87,20 @@ skill `glp-domain`: la válida pasa, las inválidas fallan. Un cambio de reglas 
 ## 9. Desplegar
 `firebase deploy --only firestore:rules,database,hosting` es una acción hacia afuera: confirmar
 con el usuario. Nunca desplegar reglas con tests en rojo. Índices en `firestore.indexes.json`.
+
+## 10. Decisiones posteriores (2026-10-10)
+- **Ficha pública mínima.** `/distributors/{d}` es público y lleva solo lo que el cliente necesita
+  más `acceptingOrders`. El estado (`status`), el fin de la prueba (`trialEndsAt`) y la cuenta
+  fundadora (`ownerUid`) viven en `/distributors/{d}/private/control`, que solo leen el personal
+  activo y el super admin. `writable(d)` y `foundedNow(d)` leen **el control**, no la ficha (el §3
+  de arriba muestra la forma antigua). `acceptingOrders` nunca se usa para autorizar: es solo para
+  el buscador y puede quedar desfasado cuando vence una prueba.
+- **Miembros solo por invitación.** Un dueño no puede crear miembros directamente; el fundador
+  entra en el lote de alta y los demás por invitación aceptada (fase 3). Cada miembro lleva
+  `distributorName`, fijado por reglas igual al nombre de la distribuidora.
+- **Consentimientos.** `users/{uid}` guarda `terms` y `privacy` (`{ version, acceptedAt }`), con
+  versión permitida y `acceptedAt == request.time`; no se pueden borrar.
+- **Datos locales.** Cerrar sesión borra la caché de Firestore y las claves `hornilla.*` salvo
+  `storageNoticeSeen` (`src/data/local-wipe.ts`, `src/features/account/end-session.ts`).
+- **Emuladores.** Solo a través de `scripts/emulators.mjs` (carril con `E2E_LANE=N`); nunca
+  `firebase emulators:*` ni `java` directos: abren ventanas en el equipo del usuario.
