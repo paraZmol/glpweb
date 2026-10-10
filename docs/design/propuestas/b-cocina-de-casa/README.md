@@ -140,8 +140,10 @@ cuerpo 16 (central 14, repartidor 18) · apoyo 13–15. Interlineado de titulare
 
 ## Firma gráfica
 
-- **Símbolo**: el aro de la hornilla visto desde arriba (cuatro arcos) con la llama azul al centro.
-  Versiones: suelto, sobre mandarina y sobre tinta (`index.html`).
+- **Símbolo** (decisión del 2026-10-10: sustituye al aro de cuatro arcos): la corona de la hornilla vista
+  desde arriba, 14 dientes en azul llama, con la gota de llama al centro, azul abajo y punta ámbar.
+  Versiones: a color, de un solo color sobre la marca y sobre tinta (`index.html`). La spec vigente
+  está en `.claude/skills/ui-system/SKILL.md`.
 - **Aro punteado**: el mismo aro, grande y discontinuo, asoma detrás de las fotos. Máximo uno por
   sección.
 - **Resalte**: una franja de primario bajo la frase clave del titular (como rotulador de cartel

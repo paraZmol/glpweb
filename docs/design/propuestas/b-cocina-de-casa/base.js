@@ -135,12 +135,17 @@
   const ic = (n, cls = '') =>
     `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${I[n] || I.dot}</svg>`;
 
-  /* ---------- logo: aro de hornilla + llama ---------- */
-  const LLAMA = 'M24 13.2c1 3.7 6.6 6.1 6.6 11.5a6.6 6.6 0 0 1-13.2 0c0-2.6 1.3-4.5 2.8-5.7 0 1.9.7 3.1 1.8 3.5-.4-3.5.6-6.8 2-9.3z';
-  const simbolo = (t = 32, aro = 'var(--primary)', llama = 'var(--secondary)') =>
-    `<svg viewBox="0 0 48 48" width="${t}" height="${t}" aria-hidden="true"><circle cx="24" cy="24" r="18" fill="none" stroke="${aro}" stroke-width="5.5" stroke-linecap="round" stroke-dasharray="17.3 10.97" transform="rotate(-27.5 24 24)"/><path d="${LLAMA}" fill="${llama}"/></svg>`;
+  /* ---------- logo: corona de la hornilla vista desde arriba (14 dientes) + gota de llama ---------- */
+  // corona: color del aro. llama: color plano para la version de un solo color; sin el, degradado ambar -> azul.
+  let nLogo = 0;
+  const GOTA = 'M16 7.6c2.9 3.3 4.9 5.6 4.9 8.5a4.9 4.9 0 0 1-9.8 0c0-2.9 2-5.2 4.9-8.5z';
+  const simbolo = (t = 32, corona = 'var(--secondary)', llama = '') => {
+    const id = 'lg' + ++nLogo;
+    const degradado = llama ? '' : `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb224"/><stop offset=".42" stop-color="#ff9a1f"/><stop offset=".62" stop-color="#5cc8ff"/><stop offset="1" stop-color="#2a6bff"/></linearGradient></defs>`;
+    return `<svg viewBox="0 0 32 32" width="${t}" height="${t}" aria-hidden="true">${degradado}<circle cx="16" cy="16" r="12.4" fill="none" stroke="${corona}" stroke-width="3.4" stroke-dasharray="2.1 3.465" transform="rotate(-8 16 16)"/><path d="${GOTA}" fill="${llama || `url(#${id})`}"/></svg>`;
+  };
   const logo = (t = 32) =>
-    `<span class="inline-flex items-center gap-2">${simbolo(t)}<span class="font-display font-extrabold tracking-tight text-ink" style="font-size:${t * 0.72}px;line-height:1">Hornilla</span></span>`;
+    `<span class="inline-flex items-center" style="gap:${t * 0.25}px">${simbolo(t)}<span class="font-display font-extrabold tracking-tight text-ink" style="font-size:${t * 0.72}px;line-height:1">Hornilla</span></span>`;
 
   /* ---------- balon generico: toma el color de --m ---------- */
   let nBalon = 0;
@@ -308,7 +313,7 @@
       el.replaceWith(t.content.firstChild);
     });
     raiz.querySelectorAll('[data-logo]').forEach((el) => (el.innerHTML = logo(+el.dataset.logo || 32)));
-    raiz.querySelectorAll('[data-simbolo]').forEach((el) => (el.innerHTML = simbolo(+el.dataset.simbolo || 32)));
+    raiz.querySelectorAll('[data-simbolo]').forEach((el) => (el.innerHTML = simbolo(+el.dataset.simbolo || 32, el.dataset.corona || undefined)));
     raiz.querySelectorAll('[data-balon]').forEach((el) => (el.innerHTML = balon(+el.dataset.balon, el.dataset.alto)));
     raiz.querySelectorAll('.entra-grupo').forEach((gr) => [...gr.children].forEach((c, i) => { c.classList.add('entra'); c.style.setProperty('--i', i); }));
     if (location.search) raiz.querySelectorAll('a[href$=".html"]').forEach((a) => (a.href = a.getAttribute('href') + location.search));

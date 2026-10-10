@@ -1,1 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#111827"/><text x="32" y="43" font-family="system-ui,sans-serif" font-size="30" font-weight="800" text-anchor="middle" fill="#fff">g</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .crown { stroke: #1565e8; }
+    @media (prefers-color-scheme: dark) { .crown { stroke: #3d85f5; } }
+  </style>
+  <defs>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffb224"/>
+      <stop offset=".42" stop-color="#ff9a1f"/>
+      <stop offset=".62" stop-color="#5cc8ff"/>
+      <stop offset="1" stop-color="#2a6bff"/>
+    </linearGradient>
+  </defs>
+  <circle class="crown" cx="16" cy="16" r="12.4" fill="none" stroke-width="3.4" stroke-dasharray="2.1 3.465" transform="rotate(-8 16 16)"/>
+  <path d="M16 7.6c2.9 3.3 4.9 5.6 4.9 8.5a4.9 4.9 0 0 1-9.8 0c0-2.9 2-5.2 4.9-8.5z" fill="url(#flame)"/>
+</svg>

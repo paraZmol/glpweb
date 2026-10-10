@@ -42,7 +42,7 @@
             <span class="grid h-[72px] w-[72px] place-items-center rounded-[22px] bg-primary" id="icono"></span>
             <span class="grid h-[72px] w-[72px] place-items-center rounded-[22px] bg-[#14182b]" id="icono2"></span>
           </div>
-          <p class="mt-3 text-sm text-muted">El aro de la hornilla visto desde arriba, con la llama azul al centro.</p>
+          <p class="mt-3 text-sm text-muted">La corona de la hornilla vista desde arriba con la gota de llama: azul abajo, punta ámbar. A color, de un solo color sobre la marca y sobre tinta.</p>
         </div>
         <div class="card p-5">
           <h3 class="text-xl font-bold">Balones por marca</h3>
@@ -70,8 +70,8 @@
       <p class="mt-10 text-sm text-muted">Parámetros: <code>?tema=claro|oscuro</code> y <code>?marca=e11d48</code> (hex sin #) en cualquier pantalla. Datos de demostración inventados.</p>
     </main>
     <script>
-      document.getElementById('icono').innerHTML = H.simbolo(52, 'var(--on-primary)', '#ffffff');
-      document.getElementById('icono2').innerHTML = H.simbolo(52, '#ff6a13', '#5aa2ff');
+      document.getElementById('icono').innerHTML = H.simbolo(52, 'var(--on-primary)', 'var(--on-primary)');
+      document.getElementById('icono2').innerHTML = H.simbolo(52, '#3d85f5');
     </script>
   </body>
 </html>
