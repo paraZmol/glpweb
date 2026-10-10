@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pedido en curso · Hornilla Repartidor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Gabarito:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="base.js"></script>
+    <link rel="stylesheet" href="base.css" />
+    <style>
+      [data-ambiente='repartidor'] .btn-line { box-shadow: inset 0 0 0 2px var(--ink); }
+    </style>
+  </head>
+  <body data-ambiente="repartidor" class="h-[100dvh] overflow-hidden">
+    <div class="flex h-full flex-col lg:grid lg:grid-cols-[1fr_540px]">
+      <!-- mapa -->
+      <div class="relative min-h-0 flex-1 lg:order-1">
+        <div id="mapa" class="mapa absolute inset-0"></div>
+        <div class="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-3 lg:p-5">
+          <div class="flex items-center gap-2 rounded-2xl bg-ink py-2 pl-2 pr-4 text-[color:var(--bg)] shadow-s2">
+            <span class="grid h-10 w-10 place-items-center rounded-xl bg-primary text-onprimary"><i data-i="nav" class="text-xl"></i></span>
+            <div class="leading-tight"><p class="num font-display text-[22px] font-extrabold">1,2 km · 4 min</p><p class="text-[13px] font-semibold opacity-80">Sigue por Av. Los Olivos</p></div>
+          </div>
+          <button class="btn btn-icon h-14 w-14 !rounded-2xl bg-surface text-ink shadow-s2" aria-label="Centrar el mapa"><i data-i="locate" class="text-2xl"></i></button>
+        </div>
+        <span class="estado absolute bottom-3 right-3 z-10 bg-surface !text-sm shadow-s1 lg:bottom-5 lg:right-5" data-estado="libre"><i data-i="check"></i> GPS activo · pantalla siempre encendida</span>
+      </div>
+
+      <!-- panel del pedido -->
+      <section class="relative z-20 flex flex-none flex-col bg-surface px-4 pb-4 pt-4 shadow-[0_-10px_30px_rgba(13,17,30,.18)] lg:order-2 lg:justify-between lg:p-8 lg:shadow-s3">
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="num rounded-lg bg-ink px-2.5 py-1 font-display text-[15px] font-bold text-[color:var(--bg)]">Pedido #1047 · En camino</span>
+            <span class="num text-[15px] font-bold text-muted">Entrega 4 de hoy</span>
+          </div>
+
+          <h1 class="mt-3 text-[2rem] font-extrabold leading-[1.05] lg:text-[2.75rem]">Jr. Los Cedros 245</h1>
+          <p class="mt-1 text-[17px] font-semibold leading-snug text-muted lg:text-xl">Portón verde, 2.º piso. Tocar fuerte.</p>
+
+          <div class="mt-3 flex items-center gap-3 lg:mt-6">
+            <span class="grid h-14 w-14 flex-none place-items-center rounded-2xl bg-surface2 font-display text-xl font-extrabold">RM</span>
+            <div class="min-w-0 flex-1 leading-tight">
+              <p class="truncate font-display text-[22px] font-extrabold">Rosa M.</p>
+              <p class="text-[15px] font-semibold text-muted">Cliente · pide seguido</p>
+            </div>
+            <a href="tel:900000034" class="btn btn-line btn-icon h-14 w-14 !rounded-2xl" aria-label="Llamar"><i data-i="phone" class="text-2xl"></i></a>
+            <a href="#" class="btn btn-line btn-icon h-14 w-14 !rounded-2xl" aria-label="Escribir por WhatsApp"><i data-i="chat" class="text-2xl"></i></a>
+          </div>
+
+          <div class="mt-3 grid grid-cols-[1fr_auto] items-center gap-3 rounded-2xl border-2 border-[color:var(--ink)] p-3 lg:mt-6 lg:p-4" data-marca="#1757d6">
+            <div class="flex items-center gap-3">
+              <span class="flex flex-none items-end"><span data-balon="10" data-alto="56"></span></span>
+              <div class="leading-tight">
+                <p class="font-display text-[22px] font-extrabold"><span class="num">2</span> × 10 kg</p>
+                <p class="text-[15px] font-bold text-muted">Cumbregas · 2 vacíos</p>
+              </div>
+            </div>
+            <div class="text-right leading-tight">
+              <p class="text-[13px] font-bold uppercase tracking-wide text-muted">Cobrar</p>
+              <p class="num font-display text-[28px] font-extrabold">S/ 96.00</p>
+              <p class="text-[15px] font-bold text-muted">Efectivo</p>
+            </div>
+          </div>
+
+          <!-- solo escritorio / tablet: lo que sigue -->
+          <div class="mt-6 hidden rounded-2xl bg-surface2 p-4 lg:block">
+            <p class="text-[13px] font-bold uppercase tracking-wide text-muted">Después de este</p>
+            <p class="mt-1 font-display text-xl font-extrabold">Jr. Las Flores 118 · 1 × 10 kg Brasa</p>
+            <p class="font-semibold text-muted">A 900 m de la entrega actual</p>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <button class="btn btn-critico" id="llegue">
+            <span>Ya llegué</span>
+            <span class="bola"><i data-i="check" class="text-[28px]" style="stroke-width:3"></i></span>
+          </button>
+          <div class="mt-2 grid grid-cols-2 gap-2">
+            <button class="btn btn-line !rounded-2xl !px-2 !text-[15px]"><i data-i="route"></i> Abrir en Maps</button>
+            <button class="btn btn-line !rounded-2xl !px-2 !text-[15px]"><i data-i="alert"></i> Tengo un problema</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      H.mapa('#mapa', (w, h) => ({
+        titulo: 'Ruta hasta Jr. Los Cedros 245',
+        zoom: w >= 700 ? 1.45 : 1.02,
+        centro: [1.4, 0.1],
+        offset: [0, w >= 700 ? 20 : 6],
+        contraste: true,
+        ruta: [[4, -1], [4, 0], [1, 0], [1, 1], [0, 1]],
+        progreso: 0.5,
+        movil: { estado: 'ocupado', activo: true, grande: true },
+        marcadores: [{ tipo: 'casa', c: 0, r: 1, nombre: w >= 700 ? 'Rosa M.' : '' }],
+      }));
+    </script>
+  </body>
+</html>

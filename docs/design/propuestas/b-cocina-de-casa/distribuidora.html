@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gas Los Andes · Pide tu balón en Hornilla</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Gabarito:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="base.js"></script>
+    <link rel="stylesheet" href="base.css" />
+  </head>
+  <body data-ambiente="cliente" class="pb-28 lg:pb-0">
+    <!-- escritorio: barra superior -->
+    <nav class="mx-auto hidden max-w-[1280px] items-center justify-between px-8 py-5 lg:flex">
+      <a href="inicio.html" class="flex items-center gap-3 font-semibold text-muted"><i data-i="chev-l"></i><span data-logo="28"></span></a>
+      <div class="flex items-center gap-2 font-semibold">
+        <a class="rounded-full px-4 py-2" href="#">Mis pedidos</a>
+        <a class="btn btn-sm btn-line" href="#">Ingresar</a>
+      </div>
+    </nav>
+
+    <!-- portada -->
+    <header class="mx-auto max-w-[1280px] lg:grid lg:grid-cols-[1fr_520px] lg:items-center lg:gap-12 lg:px-8 lg:pb-10">
+      <div class="relative lg:order-2">
+        <div class="aro -bottom-9 -left-10 hidden h-[190px] w-[190px] lg:block"></div>
+        <div class="foto velo h-[330px] !rounded-t-none lg:h-[400px] lg:!rounded-[44px] lg:shadow-s3 lg:after:hidden">
+          <img src="../../images/pexels-16782087-cocinera-olla-cocina.jpg" alt="Persona cocinando con ollas sobre una cocina a gas" style="object-position: 50% 22%" />
+          <div class="sobre inset-x-0 top-0 flex justify-between p-4 lg:hidden">
+            <a href="inicio.html" class="btn btn-icon bg-surface text-ink shadow-s2" aria-label="Volver"><i data-i="chev-l"></i></a>
+            <span class="rounded-full bg-surface px-3 py-2 shadow-s2" data-logo="20"></span>
+          </div>
+          <div class="sobre inset-x-0 bottom-0 flex items-end gap-3 p-4 pb-14 text-white lg:hidden">
+            <span class="mono h-14 w-14 !rounded-[18px] text-xl ring-2 ring-white/70">GA</span>
+            <div>
+              <h1 class="text-[2rem] font-extrabold">Gas Los Andes</h1>
+              <p class="mt-1 flex items-center gap-2 text-[15px] font-semibold"><span class="h-2.5 w-2.5 rounded-full bg-[#3ddc84]"></span> Abierto · cierra a las 8:00 p. m.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="relative z-10 -mt-8 px-4 lg:order-1 lg:mt-0 lg:px-0">
+        <div class="hidden lg:block">
+          <div class="flex items-center gap-4">
+            <span class="mono h-[72px] w-[72px] !rounded-[24px] text-[1.75rem]">GA</span>
+            <span class="estado !text-sm" data-estado="libre"><span class="punto"></span> Abierto · cierra a las 8:00 p. m.</span>
+          </div>
+          <h1 class="mt-5 text-[4.75rem] font-extrabold">Gas Los Andes</h1>
+          <p class="mt-3 max-w-[32rem] text-xl text-muted">Tu balón de gas en la puerta, con el precio a la vista. Repartimos en Huaraz centro, Independencia y alrededores.</p>
+        </div>
+        <ul class="card-2 grid grid-cols-3 divide-x divide-[color:var(--line)] py-3 text-center lg:mt-7 lg:max-w-[34rem]">
+          <li class="px-2"><p class="num flex items-center justify-center gap-1 font-display text-xl font-extrabold"><svg class="ic fill" style="color: var(--aji)" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>4.8</p><p class="text-[13px] font-semibold text-muted">212 opiniones</p></li>
+          <li class="px-2"><p class="num font-display text-xl font-extrabold">15–25 min</p><p class="text-[13px] font-semibold text-muted">a tu dirección</p></li>
+          <li class="px-2"><p class="font-display text-xl font-extrabold">Al recibir</p><p class="text-[13px] font-semibold text-muted">efectivo o Yape</p></li>
+        </ul>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-[1280px] px-4 pt-7 lg:grid lg:grid-cols-[1fr_364px] lg:gap-8 lg:px-8 lg:pb-20 lg:pt-6">
+      <div>
+        <div class="flex items-end justify-between">
+          <h2 class="text-[1.75rem] font-extrabold lg:text-4xl">Elige tu balón</h2>
+          <p class="hidden text-muted lg:block">Precios con tu balón vacío a cambio</p>
+        </div>
+        <div class="sin-barra -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0">
+          <button class="chip on" aria-pressed="true">Todos</button>
+          <button class="chip" aria-pressed="false">10 kg</button>
+          <button class="chip" aria-pressed="false">15 kg</button>
+          <button class="chip" aria-pressed="false">45 kg</button>
+          <span class="mx-1 w-px flex-none self-stretch bg-line"></span>
+          <button class="chip" aria-pressed="false">Cumbregas</button>
+          <button class="chip" aria-pressed="false">Brasa</button>
+        </div>
+        <p class="mt-3 text-sm text-muted lg:hidden">Precios con tu balón vacío a cambio.</p>
+
+        <ul id="productos" class="entra-grupo mt-4 grid gap-3 lg:grid-cols-3 lg:gap-5"></ul>
+
+        <!-- datos de la distribuidora -->
+        <section class="mt-10 grid gap-4 lg:grid-cols-2">
+          <div class="card overflow-hidden">
+            <div id="mapa" class="mapa h-[180px]"></div>
+            <div class="p-4">
+              <h3 class="flex items-center gap-2 text-xl font-bold"><i data-i="map-pin" class="text-stext"></i> Llegamos a tu dirección</h3>
+              <p class="mt-1 text-muted">Jr. Los Cedros 245 está a 0,8 km de la planta. Cobertura de 3 km.</p>
+            </div>
+          </div>
+          <div class="card flex flex-col gap-4 p-5">
+            <div>
+              <h3 class="flex items-center gap-2 text-xl font-bold"><i data-i="clock" class="text-stext"></i> Horario</h3>
+              <dl class="num mt-2 grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-[15px]">
+                <dt class="font-semibold">Lunes a sábado</dt><dd class="text-right text-muted">7:00 a. m. – 8:00 p. m.</dd>
+                <dt class="font-semibold">Domingo</dt><dd class="text-right text-muted">8:00 a. m. – 2:00 p. m.</dd>
+              </dl>
+            </div>
+            <div class="mt-auto grid grid-cols-2 gap-3">
+              <a href="#" class="btn btn-line"><i data-i="chat"></i> WhatsApp</a>
+              <a href="tel:900000012" class="btn btn-line"><i data-i="phone"></i> <span class="num">900 000 012</span></a>
+            </div>
+          </div>
+        </section>
+        <p class="mt-8 flex items-center justify-center gap-2 text-sm text-muted lg:justify-start">Pedidos y seguimiento con <span data-logo="18"></span></p>
+      </div>
+
+      <!-- escritorio: resumen fijo -->
+      <aside class="hidden lg:block">
+        <div class="card-2 sticky top-6 !rounded-[32px] p-6">
+          <h2 class="text-2xl font-extrabold">Tu pedido</h2>
+          <ul id="resumen" class="mt-4 grid gap-3"></ul>
+          <div class="mt-4 flex items-center gap-3 rounded-2xl bg-surface2 p-3">
+            <i data-i="map-pin" class="text-xl text-stext"></i>
+            <div class="min-w-0 flex-1"><p class="text-[13px] font-semibold text-muted">Entregar en</p><p class="truncate font-semibold">Jr. Los Cedros 245, Huaraz</p></div>
+            <button class="text-sm font-bold text-ptext">Cambiar</button>
+          </div>
+          <dl class="mt-4 grid gap-1 text-[15px]">
+            <div class="flex justify-between text-muted"><dt>Reparto</dt><dd class="font-semibold">Gratis</dd></div>
+            <div class="flex items-baseline justify-between"><dt class="font-display text-lg font-bold">Total a pagar al recibir</dt><dd class="num font-display text-[1.75rem] font-extrabold" data-total>S/ 0.00</dd></div>
+          </dl>
+          <a href="seguimiento.html" class="btn btn-primary btn-lg mt-4 w-full justify-between"><span>Pedir</span><span class="num" data-total>S/ 0.00</span></a>
+          <p class="mt-3 flex items-center justify-center gap-2 text-sm text-muted"><i data-i="clock"></i> Llega en 15–25 min</p>
+        </div>
+      </aside>
+    </main>
+
+    <!-- celular: barra fija "Pedir" -->
+    <div class="fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t from-[color:var(--bg)] from-60% to-transparent px-4 pb-4 pt-6 lg:hidden">
+      <a href="seguimiento.html" class="btn btn-primary btn-lg w-full justify-between !px-3">
+        <span class="num grid h-10 min-w-10 place-items-center rounded-full bg-[color:var(--on-primary)] px-3 text-base text-[color:var(--primary)]" data-cuenta>0</span>
+        <span>Pedir</span>
+        <span class="num pr-2" data-total>S/ 0.00</span>
+      </a>
+    </div>
+
+    <script>
+      const P = [
+        { id: 'c10', kg: 10, marca: 'Cumbregas', color: '#1757d6', precio: 4800, n: 2, sello: 'El más pedido' },
+        { id: 'b10', kg: 10, marca: 'Brasa', color: '#d62839', precio: 4650, n: 0 },
+        { id: 'c15', kg: 15, marca: 'Cumbregas', color: '#1757d6', precio: 7200, n: 0 },
+        { id: 'b15', kg: 15, marca: 'Brasa', color: '#d62839', precio: 7000, n: 0 },
+        { id: 'c45', kg: 45, marca: 'Cumbregas', color: '#1757d6', precio: 20500, n: 0, sello: 'Para negocio' },
+      ];
+      const lista = document.getElementById('productos');
+      lista.innerHTML = P.map((p) => `
+        <li class="card relative flex items-center gap-3 p-3 lg:flex-col lg:items-stretch lg:p-4" data-marca="${p.color}">
+          <div class="grid h-[104px] w-[88px] flex-none place-items-end justify-center rounded-[20px] pb-1 lg:h-[190px] lg:w-full" style="background:var(--m-soft)">
+            <span class="lg:hidden">${H.balon(p.kg, p.kg === 45 ? 98 : p.kg === 15 ? 92 : 80)}</span>
+            <span class="hidden lg:block">${H.balon(p.kg, p.kg === 45 ? 164 : p.kg === 15 ? 158 : 132)}</span>
+          </div>
+          ${p.sello ? `<span class="tag tag-aji absolute right-3 top-3 lg:left-6 lg:right-auto lg:top-6">${p.sello}</span>` : ''}
+          <div class="min-w-0 flex-1">
+            <h3 class="text-xl font-bold">Balón ${p.kg} kg</h3>
+            <p class="flex items-center gap-1.5 text-[15px] font-semibold text-muted"><span class="h-2.5 w-2.5 rounded-full" style="background:var(--m)"></span>${p.marca}</p>
+            <div class="mt-2 flex items-center justify-between gap-2">
+              <p class="num whitespace-nowrap font-display text-2xl font-extrabold lg:text-[1.375rem]">${H.soles(p.precio)}</p>
+              <div class="stepper lg:[&_button]:h-9 lg:[&_button]:w-9" data-id="${p.id}">
+                <button aria-label="Quitar un balón de ${p.kg} kg ${p.marca}" data-d="-1"><i data-i="minus"></i></button>
+                <output aria-live="polite">${p.n}</output>
+                <button class="mas" aria-label="Agregar un balón de ${p.kg} kg ${p.marca}" data-d="1"><i data-i="plus"></i></button>
+              </div>
+            </div>
+          </div>
+        </li>`).join('');
+
+      function pintar() {
+        const total = P.reduce((s, p) => s + p.n * p.precio, 0);
+        const cuenta = P.reduce((s, p) => s + p.n, 0);
+        document.querySelectorAll('[data-total]').forEach((e) => (e.textContent = H.soles(total)));
+        document.querySelectorAll('[data-cuenta]').forEach((e) => (e.textContent = cuenta));
+        P.forEach((p) => {
+          const s = document.querySelector(`.stepper[data-id="${p.id}"]`);
+          s.querySelector('output').textContent = p.n;
+          s.querySelector('[data-d="-1"]').disabled = p.n === 0;
+        });
+        const r = document.getElementById('resumen');
+        r.innerHTML = P.filter((p) => p.n).map((p) => `
+          <li class="flex items-center gap-3" style="--m:${H.derivar(p.color).fill}">
+            <span class="grid h-14 w-12 flex-none place-items-center rounded-xl bg-surface2">${H.balon(p.kg, 46)}</span>
+            <div class="flex-1"><p class="font-semibold leading-tight">Balón ${p.kg} kg · ${p.marca}</p><p class="num text-sm text-muted">${p.n} × ${H.soles(p.precio)}</p></div>
+            <p class="num font-display text-lg font-bold">${H.soles(p.n * p.precio)}</p>
+          </li>`).join('') || '<li class="rounded-2xl bg-surface2 p-4 text-center text-muted">Agrega un balón con el botón +</li>';
+      }
+      lista.addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-d]');
+        if (!b) return;
+        const p = P.find((x) => x.id === b.closest('.stepper').dataset.id);
+        p.n = Math.max(0, Math.min(6, p.n + +b.dataset.d));
+        pintar();
+      });
+      document.addEventListener('DOMContentLoaded', pintar);
+      H.mapa('#mapa', () => ({
+        titulo: 'Cobertura de Gas Los Andes',
+        zoom: 0.5,
+        centro: [0.6, -0.4],
+        circulos: [{ c: 1, r: -1, radio: 300 }],
+        marcadores: [{ tipo: 'planta', c: 1, r: -1, color: 'var(--primary)', sobre: 'var(--on-primary)', sigla: 'GA' }, { tipo: 'casa', c: 0, r: 0 }],
+      }));
+    </script>
+  </body>
+</html>

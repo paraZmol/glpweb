@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="es-PE">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hornilla para distribuidoras de gas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="base.js"></script>
+    <link rel="stylesheet" href="base.css" />
+    <style>
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
+      section {
+        scroll-margin-top: 80px;
+      }
+      .hero {
+        position: relative;
+        overflow: hidden;
+        background: #050a16;
+        border-bottom: 1px solid var(--border);
+      }
+      .hero > img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: 50% 62%;
+        opacity: 0.9;
+      }
+      .hero::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(5, 10, 22, 0.72) 0%, rgba(5, 10, 22, 0.45) 40%, rgba(5, 10, 22, 0.96) 100%);
+      }
+      @media (min-width: 1024px) {
+        .hero > img {
+          left: 34%;
+          width: 66%;
+          object-position: 50% 70%;
+        }
+        .hero::after {
+          background: linear-gradient(90deg, #050a16 30%, rgba(5, 10, 22, 0.55) 62%, rgba(5, 10, 22, 0.25) 100%), linear-gradient(180deg, transparent 70%, #050a16 100%);
+        }
+      }
+      .hero .wrap {
+        position: relative;
+        z-index: 2;
+      }
+      .step-n {
+        display: grid;
+        place-items: center;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 1.3rem;
+        color: var(--flame);
+        border: 3.5px dashed var(--flame);
+        box-shadow: 0 0 22px -4px var(--map-route-glow);
+      }
+      .float-card {
+        position: absolute;
+        z-index: 3;
+        padding: 0.7rem 0.9rem;
+        border-radius: 18px;
+        width: max-content;
+      }
+      .mini-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px 6px 2px;
+        border-radius: 14px;
+        background: var(--card);
+        border: 1px solid var(--border);
+      }
+      .mini-row [data-balon] {
+        width: 34px;
+        flex: none;
+      }
+      .mini-plus {
+        display: grid;
+        place-items: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: var(--brand-soft);
+        color: var(--brand-text);
+        border: 1px solid var(--brand-text);
+      }
+      .ledger div {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.6rem 0;
+        border-bottom: 1px dashed var(--border-strong);
+      }
+    </style>
+  </head>
+  <body class="amb-cliente pb-24 lg:pb-0">
+    <header class="topbar">
+      <div class="wrap flex items-center gap-2 h-16">
+        <a href="index.html" class="wordmark"><span data-logo="34"></span>hornilla</a>
+        <nav class="hidden lg:flex items-center gap-1 ml-10 small" style="font-weight: 600">
+          <a class="btn btn-quiet btn-sm" href="#pagina">Tu página</a>
+          <a class="btn btn-quiet btn-sm" href="#pasos">Cómo funciona</a>
+          <a class="btn btn-quiet btn-sm" href="#mapa">Mapa en vivo</a>
+          <a class="btn btn-quiet btn-sm" href="#precio">Precio</a>
+        </nav>
+        <span class="flex-1"></span>
+        <a href="0-inicio.html" class="hidden lg:inline-flex btn btn-quiet btn-sm">Quiero pedir gas</a>
+        <a href="4-monitor.html" class="btn btn-ghost btn-sm">Ingresar</a>
+      </div>
+    </header>
+
+    <!-- 1. Promesa -->
+    <section class="hero night">
+      <img src="../../images/pexels-6126281-llama-azul-hornilla.jpg" alt="" />
+      <div class="wrap grid lg:grid-cols-[1.25fr_0.75fr] gap-10 items-center pt-12 pb-14 lg:pt-20 lg:pb-24">
+        <div>
+          <p class="eyebrow">Para distribuidoras de gas</p>
+          <h1 class="hx t-hero mt-4">Tus pedidos, tus repartidores y tu caja.<br /><span class="flame-text">En una sola pantalla.</span></h1>
+          <p class="lead mt-5 max-w-xl" style="color: #c3d0ea">Hornilla le da a tu distribuidora una página para recibir pedidos, un mapa en vivo de tus repartidores y el cuadre de caja al cierre del día. La armas hoy mismo, desde tu celular.</p>
+          <div class="flex flex-wrap gap-3 mt-8">
+            <a href="#precio" class="btn btn-action btn-lg">Crear mi distribuidora<i data-i="arrow-right"></i></a>
+            <a href="#pasos" class="btn btn-ghost btn-lg hidden sm:inline-flex">Ver cómo funciona</a>
+          </div>
+          <ul class="flex flex-wrap gap-x-5 gap-y-2 mt-6 small" style="color: #c3d0ea">
+            <li class="flex items-center gap-2"><i data-i="check" class="flame-text"></i>30 días gratis</li>
+            <li class="flex items-center gap-2"><i data-i="check" class="flame-text"></i>Sin tarjeta</li>
+            <li class="flex items-center gap-2"><i data-i="check" class="flame-text"></i>Sin instalar nada</li>
+          </ul>
+        </div>
+        <div class="relative hidden lg:flex justify-center" style="min-height: 500px">
+          <div id="heroPhone"></div>
+          <div class="float-card glass sheet-in" style="left: -70px; top: -14px">
+            <p class="tiny mute flex items-center gap-2"><span class="dot" data-state="pending"></span>Pedido nuevo · hace 1 min</p>
+            <p style="font-weight: 700">Jr. Las Flores 245</p>
+            <p class="small"><span class="mute">1 × Nevado 10 kg ·</span> <span class="price">S/ 48.00</span></p>
+          </div>
+          <div class="float-card glass sheet-in" style="right: -70px; bottom: 96px">
+            <p class="tiny mute">Caja de Luis · hoy</p>
+            <p class="num" style="font-weight: 700; font-size: 1.35rem">S/ 432.00</p>
+            <p class="state mt-1" data-state="free"><i data-i="check"></i>Cuadra con lo entregado</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Asi se ve tu pagina -->
+    <section id="pagina" class="wrap py-16 lg:py-24">
+      <div class="grid lg:grid-cols-[0.8fr_1.2fr] gap-10 items-center">
+        <div>
+          <p class="eyebrow">Así se ve tu página</p>
+          <h2 class="hx t-1 mt-3">Tu color, tu logo, tus precios.</h2>
+          <p class="lead mt-4">Tus clientes abren tu enlace, eligen su balón y piden en tres toques. Y además apareces en el buscador de Hornilla cuando alguien cerca se queda sin gas.</p>
+          <div class="sunken mt-6 px-4 py-3 flex items-center gap-3">
+            <i data-i="link" class="flame-text"></i>
+            <span class="num" style="font-weight: 600">hornilla<span class="mute">/d/</span><span class="flame-text">tu-distribuidora</span></span>
+          </div>
+          <ul class="grid gap-3 mt-6">
+            <li class="flex gap-3"><i data-i="smartphone" class="flame-text mt-1"></i><span>Se abre en cualquier celular, sin descargar nada.</span></li>
+            <li class="flex gap-3"><i data-i="message" class="flame-text mt-1"></i><span>El enlace se comparte por WhatsApp o en tu volante.</span></li>
+            <li class="flex gap-3"><i data-i="headset" class="flame-text mt-1"></i><span>¿Te llaman por teléfono? La central registra el pedido en la misma cola.</span></li>
+          </ul>
+        </div>
+        <div id="phones" class="flex justify-center items-end gap-5 py-6"></div>
+      </div>
+    </section>
+
+    <!-- 3. Tres pasos -->
+    <section id="pasos" style="background: var(--sunken); border-block: 1px solid var(--border)">
+      <div class="wrap py-16 lg:py-20">
+        <p class="eyebrow">Cómo funciona</p>
+        <h2 class="hx t-1 mt-3 max-w-2xl">Lista en tres pasos, hoy mismo.</h2>
+        <ol class="grid lg:grid-cols-3 gap-4 mt-10 stagger">
+          <li class="surface p-6">
+            <span class="step-n">1</span>
+            <h3 class="hx t-2 mt-5">Crea tu página</h3>
+            <p class="mute mt-2">Nombre, WhatsApp, dónde queda tu planta y hasta dónde repartes. Eliges tu color y subes tu logo.</p>
+          </li>
+          <li class="surface p-6">
+            <span class="step-n">2</span>
+            <h3 class="hx t-2 mt-5">Carga tus balones y tu gente</h3>
+            <p class="mute mt-2">Marcas, pesos y precios. Invitas a tus repartidores y a tu central con un enlace; cada quien ve solo lo suyo.</p>
+          </li>
+          <li class="surface p-6">
+            <span class="step-n">3</span>
+            <h3 class="hx t-2 mt-5">Recibe pedidos y míralos llegar</h3>
+            <p class="mute mt-2">El repartidor libre acepta, tú lo ves en el mapa y el cliente también. Al final del día, la caja ya está contada.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- 4. Mapa en vivo -->
+    <section id="mapa" class="wrap py-16 lg:py-24">
+      <div class="grid lg:grid-cols-[1fr_340px] gap-8 items-end">
+        <div>
+          <p class="eyebrow">Mapa en vivo</p>
+          <h2 class="hx t-1 mt-3">Sabes dónde está cada repartidor, ahora.</h2>
+        </div>
+        <p class="mute">Libre, con pedido, en pausa o sin señal: lo ves de un vistazo, con la cola de pedidos al costado.</p>
+      </div>
+      <div class="relative mt-8">
+        <div id="liveMap" class="map h-[440px] lg:h-[520px]" style="border-radius: var(--radius-xl); box-shadow: 0 0 0 1px var(--border-strong), var(--shadow-2)"></div>
+        <div class="glass absolute left-3 top-3 lg:left-5 lg:top-5 p-3 grid gap-2" style="border-radius: 18px">
+          <span class="state" data-state="busy"><i data-i="bike"></i>2 con pedido</span>
+          <span class="state" data-state="free"><i data-i="check"></i>2 libres</span>
+          <span class="state" data-state="paused"><i data-i="pause"></i>1 en pausa</span>
+          <span class="state" data-state="offline"><i data-i="wifi-off"></i>1 sin señal</span>
+        </div>
+        <div class="glass absolute right-3 bottom-3 lg:right-5 lg:bottom-5 p-4 hidden sm:grid grid-cols-3 gap-5" style="border-radius: 18px">
+          <div><p class="k tiny mute">Pedidos hoy</p><p class="num" style="font-size: 1.6rem; font-weight: 700">47</p></div>
+          <div><p class="k tiny mute">En espera</p><p class="num ember-text" style="font-size: 1.6rem; font-weight: 700">3</p></div>
+          <div><p class="k tiny mute">Entrega promedio</p><p class="num" style="font-size: 1.6rem; font-weight: 700">21 min</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Caja -->
+    <section class="wrap pb-16 lg:pb-24">
+      <div class="grid lg:grid-cols-2 gap-6 lg:gap-10 items-stretch">
+        <div class="photo rim tint min-h-[320px] lg:min-h-[460px]">
+          <img src="../../images/pexels-14874827-moto-carga-cusco.jpg" alt="Conductor en una motocarga en un camino de altura" style="object-position: 50% 62%" />
+          <div class="photo-body">
+            <p class="hx t-2">Sale con 12. Vuelve con 3 llenos y 9 vacíos.</p>
+            <p class="small mt-1" style="color: #c3d0ea">Tú apruebas la salida contando; Hornilla lleva la cuenta.</p>
+          </div>
+        </div>
+        <div class="surface-raised p-6 lg:p-8 flex flex-col">
+          <p class="eyebrow">Jornada y caja</p>
+          <h2 class="hx t-1 mt-3">El cuadre sale solo.</h2>
+          <p class="mute mt-3">Cada entrega registra cómo pagó el cliente. Al cierre comparas lo que el repartidor trae con lo que Hornilla contó.</p>
+          <div class="ledger mt-5 num" style="font-weight: 600">
+            <div><span class="mute" style="font-family: var(--font-sans)">Balones entregados</span><span>9</span></div>
+            <div><span class="mute" style="font-family: var(--font-sans)">Efectivo</span><span>S/ 336.00</span></div>
+            <div><span class="mute" style="font-family: var(--font-sans)">Yape y Plin</span><span>S/ 96.00</span></div>
+          </div>
+          <div class="flex items-end justify-between mt-4">
+            <span class="state" data-state="free"><i data-i="check"></i>Caja cuadrada</span>
+            <span class="num" style="font-size: 2.2rem; font-weight: 700; line-height: 1">S/ 432.00</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Para quien -->
+    <section class="wrap pb-16 lg:pb-24">
+      <div class="grid lg:grid-cols-3 gap-4">
+        <figure class="photo tint h-[220px] lg:h-[300px]">
+          <img src="../../images/pexels-12282441-tortillas-balon-al-fondo.jpg" alt="Mujer cocinando en una plancha con un balón de gas al fondo" />
+          <figcaption class="photo-body"><p class="hx t-3">Casas, puestos y restaurantes</p><p class="small" style="color: #c3d0ea">Guardas "lo de siempre" de cada cliente.</p></figcaption>
+        </figure>
+        <figure class="photo tint h-[220px] lg:h-[300px]">
+          <img src="../../images/pexels-37087991-vendedoras-huaraz-plaza.jpg" alt="Plaza con vendedoras bajo sombrillas de colores" />
+          <figcaption class="photo-body"><p class="hx t-3">En tu ciudad, con tu zona</p><p class="small" style="color: #c3d0ea">Defines hasta dónde repartes desde tu planta.</p></figcaption>
+        </figure>
+        <figure class="photo tint h-[220px] lg:h-[300px]">
+          <img src="../../images/unsplash-XZvEuQ266bY-moto-balon-espalda.jpg" alt="Repartidor en moto con un balón de gas" style="object-position: 60% 50%" />
+          <figcaption class="photo-body"><p class="hx t-3">Moto, motocarga o camión</p><p class="small" style="color: #c3d0ea">El repartidor usa su celular, con una mano.</p></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- 7. Precio y CTA -->
+    <section id="precio" class="hero night" style="border-top: 1px solid var(--border)">
+      <img src="../../images/pexels-195029-llama-azul-anillo.jpg" alt="" style="left: 0; width: 100%; opacity: 0.55; object-position: 50% 50%" />
+      <div class="wrap grid lg:grid-cols-2 gap-10 items-center py-16 lg:py-24">
+        <div>
+          <p class="eyebrow">Precio</p>
+          <h2 class="hx t-1 mt-3">Pruébalo un mes con tus pedidos de verdad.</h2>
+          <p class="lead mt-4" style="color: #c3d0ea">Sin tarjeta y sin contrato. Si no te sirve, no pagas nada. Después eliges un plan mensual; te avisamos antes de que termine la prueba.</p>
+        </div>
+        <div class="glass p-6 lg:p-8">
+          <div class="flex items-end gap-3">
+            <span class="price" style="font-size: 4rem; line-height: 0.95">S/ 0</span>
+            <span class="mute pb-2">los primeros 30 días</span>
+          </div>
+          <ul class="grid gap-3 mt-6">
+            <li class="flex gap-3"><i data-i="check" class="flame-text"></i>Página de pedidos con tu color y tu logo</li>
+            <li class="flex gap-3"><i data-i="check" class="flame-text"></i>Pedidos por web y por teléfono en una sola cola</li>
+            <li class="flex gap-3"><i data-i="check" class="flame-text"></i>Mapa en vivo de tus repartidores</li>
+            <li class="flex gap-3"><i data-i="check" class="flame-text"></i>Jornada, cobro y cuadre de caja</li>
+            <li class="flex gap-3"><i data-i="check" class="flame-text"></i>Stock de planta: llenos y vacíos</li>
+          </ul>
+          <a href="#" class="btn btn-action btn-lg btn-block mt-7">Crear mi distribuidora<i data-i="arrow-right"></i></a>
+          <p class="tiny mute text-center mt-3">Toma unos 10 minutos. Solo necesitas un correo.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer class="wrap py-8 flex flex-wrap items-center gap-4 small mute">
+      <span class="wordmark" style="font-size: 1rem; color: var(--foreground)"><span data-logo="26"></span>hornilla</span>
+      <span>Gas a domicilio, a la vista.</span>
+      <span class="flex-1"></span>
+      <a href="#">Términos</a><a href="#">Privacidad</a><a href="#">soporte@example.com</a>
+    </footer>
+
+    <div class="orderbar lg:hidden"><a href="#precio" class="btn btn-action btn-lg btn-block">Crear mi distribuidora<i data-i="arrow-right"></i></a></div>
+
+    <script>
+      Hornilla.onReady(() => {
+        const ic = Hornilla.icon;
+        const phone = (d) => `
+          <div class="phone ${d.cls || ''}" data-brand="${d.c}" style="--pglow:#${d.c}88;${d.style || ''}">
+            <div class="screen ${d.scope} brand-scope">
+              <div class="photo" style="border-radius:0;height:128px">
+                <img src="../../images/pexels-13772359-tetera-llama-cocina.jpg" alt="" style="object-position:60% 80%">
+                <div class="photo-body" style="padding:10px 12px;display:flex;align-items:center;gap:8px">
+                  <span class="monogram" style="width:38px;height:38px;border-radius:11px;font-size:.85rem">${d.m}</span>
+                  <span><strong style="font-family:var(--font-display);font-size:.95rem;display:block;line-height:1.1">${d.n}</strong><span style="font-size:.68rem;color:#c3d0ea">Abierto · llega en 15–25 min</span></span>
+                </div>
+              </div>
+              <div style="padding:10px;display:grid;gap:7px">
+                ${d.items.map((p, k) => `<div class="mini-row"><span data-balon="${p[1]}" data-color="${p[3]}"></span>
+                  <span style="flex:1;min-width:0"><strong style="font-size:.8rem;display:block;line-height:1.2">${p[0]}</strong><span class="price" style="font-size:.95rem">${p[2]}</span></span>
+                  <span class="mini-plus">${k === 0 ? '<strong class="num" style="font-size:.85rem">1</strong>' : ic('plus')}</span></div>`).join('')}
+                <div class="btn btn-action" style="min-height:42px;font-size:.88rem;border-radius:13px;margin-top:3px">Pedir · S/ ${d.total}</div>
+              </div>
+            </div>
+          </div>`;
+        const items = (a, b) => [
+          ['Nevado 10 kg', 10, 'S/ 48.00', a],
+          ['Brasa 10 kg', 10, 'S/ 46.00', b],
+          ['Nevado 45 kg', 45, 'S/ 198.00', a],
+        ];
+        const main = Hornilla.brand.slice(1);
+        document.getElementById('heroPhone').innerHTML = phone({ n: 'Gas Los Andes', m: 'LA', c: main, scope: 'night', items: items('#2D7FF9', '#E5484D'), total: '48.00' });
+        document.getElementById('phones').innerHTML =
+          phone({ n: 'Don Fuego', m: 'DF', c: 'E11D48', scope: 'night', cls: 'hidden sm:block', style: 'transform:scale(.8);transform-origin:bottom;margin:0 -30px', items: items('#E5484D', '#F5A524'), total: '48.00' }) +
+          phone({ n: 'Rapigas Huaraz', m: 'RH', c: 'F59E0B', scope: 'day', items: items('#F5A524', '#2D7FF9'), total: '48.00' }) +
+          phone({ n: 'Gas Cordillera', m: 'GC', c: '10B981', scope: 'night', cls: 'hidden lg:block', style: 'transform:scale(.8);transform-origin:bottom;margin:0 -30px', items: items('#10B981', '#2D7FF9'), total: '48.00' });
+
+        Hornilla.map(document.getElementById('liveMap'), {
+          label: 'Ejemplo del mapa en vivo con repartidores por estado',
+          route: [[8, 6], [9, 6], [9, 5], [10, 5], [10, 4], [10.6, 4]],
+          progress: 0.45,
+          riderLabel: 'Luis',
+          pins: [
+            { at: [8, 6], kind: 'plant', label: 'Planta' },
+            { at: [10.6, 4], kind: 'home' },
+            { at: [12.4, 4], kind: 'order', label: 'Espera 4 min' },
+            { at: [7, 4], kind: 'order', label: 'Espera 1 min' },
+          ],
+          riders: [
+            { at: [11.4, 3], state: 'busy', label: 'Mayra' },
+            { at: [8, 3.4], state: 'free', label: 'Jhon' },
+            { at: [12.5, 5], state: 'free', label: 'César' },
+            { at: [6.6, 6], state: 'paused', label: 'Kevin' },
+            { at: [11.2, 5.6], state: 'offline', label: 'Dany · hace 6 min' },
+          ],
+          view: { mobile: { c: [9.3, 5], z: 0.62 }, desktop: { c: [9.6, 5], z: 1 } },
+        });
+      });
+    </script>
+  </body>
+</html>

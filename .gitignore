@@ -23,3 +23,6 @@ coverage/
 *.local
 .DS_Store
 Thumbs.db
+
+# Design mock-up screenshots: regenerate with each capturas.mjs
+docs/design/propuestas/*/capturas/

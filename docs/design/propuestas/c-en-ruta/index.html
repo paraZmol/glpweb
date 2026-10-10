@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es-PE">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hornilla · Dirección C «En ruta» · Maquetas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+      @theme inline {
+        --color-ink: var(--ink); --color-background: var(--background); --color-surface: var(--surface);
+        --color-surface-2: var(--surface-2); --color-foreground: var(--foreground); --color-foreground-2: var(--foreground-2);
+        --color-muted: var(--muted-foreground); --color-border: var(--border); --color-outline: var(--outline);
+        --color-signal: var(--signal); --color-brand: var(--brand); --color-on-brand: var(--on-brand);
+        --color-brand-text: var(--brand-text); --color-brand-tint: var(--brand-tint);
+        --font-display: var(--f-display); --font-dense: var(--f-dense); --font-sans: var(--f-sans);
+      }
+    </style>
+    <link rel="stylesheet" href="ruta.css" />
+  </head>
+  <body>
+    <header class="block-ink">
+      <div class="mx-auto max-w-[1240px] px-4 py-10 lg:px-8 lg:py-16">
+        <span class="logo text-white" data-logo></span>
+        <p class="plate plate--signal mt-8 flex w-fit">Dirección C</p>
+        <h1 class="display mt-3 text-[72px] text-white lg:text-[140px]">En <span class="text-signal">ruta</span></h1>
+        <p class="mt-4 max-w-[40rem] text-[19px] font-medium text-white/85">Señalética y transporte: el mapa manda, la ruta es amarilla, los números son gigantes y todo lo que se toca es una ficha con sombra dura. Seis pantallas, claro y oscuro, cualquier color de marca.</p>
+      </div>
+      <div class="hazard"></div>
+    </header>
+
+    <main class="mx-auto max-w-[1240px] px-4 py-10 lg:px-8 lg:py-14">
+      <ul class="stagger grid gap-5 md:grid-cols-2 lg:grid-cols-3" id="lista"></ul>
+
+      <h2 class="display mt-14 text-[40px]">Piezas</h2>
+      <div class="mt-5 grid gap-5 lg:grid-cols-3">
+        <div class="ficha p-5">
+          <p class="label text-muted">Botones</p>
+          <div class="mt-3 flex flex-wrap gap-3"><button class="btn">Pedir</button><button class="btn btn--brand" data-brand="#E11D48">Marca</button><button class="btn btn--quiet">Llamar</button></div>
+          <p class="label mt-5 text-muted">Placas y estados</p>
+          <div class="mt-3 flex flex-wrap gap-2"><span class="plate">#1042</span><span class="plate plate--signal">8 min</span><span class="plate plate--ink">Huaraz</span></div>
+          <div class="mt-2 flex flex-wrap gap-2"><span class="st st--free"><i data-i="check"></i>Libre</span><span class="st st--busy"><i data-i="moto"></i>Con pedido</span><span class="st st--paused"><i data-i="pause"></i>En pausa</span><span class="st st--offline"><i data-i="nosignal"></i>Sin señal</span><span class="st st--danger"><i data-i="alert"></i>Alerta</span></div>
+        </div>
+        <div class="ficha flex items-end justify-around gap-3 p-5">
+          <span class="balon w-[84px]" data-balon="10" style="--b: #1e63d6"></span>
+          <span class="balon w-[80px]" data-balon="15" style="--b: #f26a1b"></span>
+          <span class="balon w-[62px]" data-balon="45" style="--b: #12915a"></span>
+          <span class="balon w-[84px]" data-balon="10" style="--b: #e11d48"></span>
+        </div>
+        <div class="ficha flex flex-col items-start justify-between gap-4 p-5">
+          <div class="flex items-center gap-4"><span class="logo !text-[44px] [&_svg]:!h-[56px] [&_svg]:!w-[56px]" data-logo></span></div>
+          <div class="eta"><span class="label">Llega en</span><span class="giant">8<small>MIN</small></span></div>
+          <p class="font-dense text-[15px] text-muted">Barlow Condensed 800 · Barlow Semi Condensed · Barlow</p>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const SCREENS = [
+        ['0-inicio.html', '0', 'Inicio del cliente', 'Buscador: mi ubicación y quién llega a mi puerta.'],
+        ['1-duenos.html', '1', 'Portada para dueños', 'Promesa, tu página, 3 paradas, mapa en vivo, precio.'],
+        ['2-distribuidora.html', '2', 'Página de la distribuidora', 'Catálogo con + y −, barra «Pedir · S/ total».'],
+        ['3-seguimiento.html', '3', 'Seguimiento del pedido', 'Mapa, estado, tiempo estimado, llamar o WhatsApp.'],
+        ['4-monitor.html', '4', 'Monitor de la central', 'Repartidores por estado, cola e indicadores del día.'],
+        ['5-repartidor.html', '5', 'Repartidor: pedido en curso', 'Ruta, cliente, cobro y el botón «Ya llegué».'],
+      ];
+      document.getElementById('lista').innerHTML = SCREENS.map(
+        ([href, n, title, text]) => `<li class="ficha flex flex-col p-5">
+          <div class="flex items-start gap-4"><span class="stepnum">${n}</span><div><h2 class="display text-[30px]">${title}</h2><p class="mt-1 text-[16px] text-foreground-2">${text}</p></div></div>
+          <div class="mt-5 flex flex-wrap gap-2">
+            <a class="btn btn--sm" href="${href}?tema=claro">Claro</a>
+            <a class="btn btn--sm btn--ink" href="${href}?tema=oscuro">Oscuro</a>
+            <a class="btn btn--sm btn--quiet" href="${href}?marca=0F766E">Verde</a>
+            <a class="btn btn--sm btn--quiet" href="${href}?marca=F59E0B">Ámbar</a>
+            <a class="btn btn--sm btn--quiet" href="${href}?marca=1F2937&tema=oscuro">Carbón</a>
+          </div></li>`,
+      ).join('');
+    </script>
+    <script src="ruta.js"></script>
+  </body>
+</html>

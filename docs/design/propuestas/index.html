@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es-PE">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hornilla — comparar propuestas de diseño</title>
+    <style>
+      :root { color-scheme: light dark; --bg: #f4f5f7; --fg: #14171f; --mut: #5b6472; --card: #fff; --line: #dfe3ea; }
+      @media (prefers-color-scheme: dark) { :root { --bg: #0f1218; --fg: #f2f4f8; --mut: #9aa4b4; --card: #181c25; --line: #2a303c; } }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
+      header { padding: 32px 24px 8px; max-width: 1500px; margin: 0 auto; }
+      h1 { margin: 0 0 4px; font-size: 28px; }
+      p { margin: 0; color: var(--mut); }
+      section { max-width: 1500px; margin: 0 auto; padding: 24px; }
+      h2 { margin: 0 0 12px; font-size: 20px; }
+      .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      figure { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+      figcaption { padding: 10px 14px; font-weight: 700; display: flex; justify-content: space-between; gap: 8px; }
+      figcaption a { font-weight: 500; color: inherit; }
+      .crop { overflow: hidden; background: var(--bg); }
+      .movil .crop { aspect-ratio: 390 / 1150; }
+      .escritorio .crop { aspect-ratio: 1440 / 1000; }
+      .shot { display: block; width: 100%; height: auto; }
+      .movil figure { max-width: 420px; justify-self: center; width: 100%; }
+      @media (max-width: 800px) { .row { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Hornilla — tres direcciones de diseño</h1>
+      <p>Las mismas seis pantallas en cada propuesta. Cada una en su modo natural (A oscuro; B y C claro). Abre la maqueta para verla completa, en movimiento y con otros colores de marca.</p>
+    </header>
+    <main id="main"></main>
+    <script>
+      const dirs = [
+        { key: 'A · Llama azul', dir: 'a-llama-azul', file: (s, w) => `${s.n}-${s.a}-${w === 'movil' ? 390 : 1440}-oscuro.png`, page: (s) => `${s.n}-${s.a}.html` },
+        { key: 'B · Cocina de casa', dir: 'b-cocina-de-casa', file: (s, w) => `${s.b}-${w}-claro.png`, page: (s) => `${s.b}.html` },
+        { key: 'C · En ruta', dir: 'c-en-ruta', file: (s, w) => `${s.n}-${s.a}-${w === 'movil' ? 390 : 1440}-claro.png`, page: (s) => `${s.n}-${s.a}.html` },
+      ];
+      const screens = [
+        { n: 0, a: 'inicio', b: 'inicio', title: 'Inicio del cliente (buscador)' },
+        { n: 2, a: 'distribuidora', b: 'distribuidora', title: 'Página de una distribuidora' },
+        { n: 3, a: 'seguimiento', b: 'seguimiento', title: 'Seguimiento del pedido' },
+        { n: 5, a: 'repartidor', b: 'repartidor', title: 'Repartidor: pedido en curso' },
+        { n: 4, a: 'monitor', b: 'monitor', title: 'Monitor de la central' },
+        { n: 1, a: 'duenos', b: 'portada', title: 'Portada para dueños' },
+      ];
+      const main = document.getElementById('main');
+      for (const s of screens) {
+        for (const w of ['movil', 'escritorio']) {
+          const sec = document.createElement('section');
+          sec.id = `${s.a}-${w}`;
+          sec.innerHTML = `<h2>${s.title} — ${w === 'movil' ? 'celular' : 'escritorio'}</h2><div class="row ${w}">` +
+            dirs.map((d) => `<figure><figcaption><span>${d.key}</span><a href="${d.dir}/${d.page(s)}">abrir maqueta</a></figcaption><div class="crop"><img class="shot" loading="lazy" alt="${d.key}: ${s.title}" src="${d.dir}/capturas/${d.file(s, w)}"></div></figure>`).join('') +
+            '</div>';
+          main.appendChild(sec);
+        }
+      }
+    </script>
+  </body>
+</html>

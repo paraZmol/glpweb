@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="es-PE" data-brand="#E11D48" data-brand-main>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gas Los Andes · Pide tu balón · Hornilla</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+      @theme inline {
+        --color-ink: var(--ink); --color-background: var(--background); --color-surface: var(--surface);
+        --color-surface-2: var(--surface-2); --color-foreground: var(--foreground); --color-foreground-2: var(--foreground-2);
+        --color-muted: var(--muted-foreground); --color-border: var(--border); --color-outline: var(--outline);
+        --color-signal: var(--signal); --color-brand: var(--brand); --color-on-brand: var(--on-brand);
+        --color-brand-text: var(--brand-text); --color-brand-tint: var(--brand-tint);
+        --font-display: var(--f-display); --font-dense: var(--f-dense); --font-sans: var(--f-sans);
+      }
+    </style>
+    <link rel="stylesheet" href="ruta.css" />
+  </head>
+  <body class="pb-[92px] lg:pb-0">
+    <!-- barra de plataforma -->
+    <header class="block-ink">
+      <div class="mx-auto flex h-14 max-w-[1320px] items-center gap-3 px-4 lg:h-16 lg:px-8">
+        <a href="0-inicio.html" class="logo text-white" data-logo aria-label="Hornilla, inicio"></a>
+        <span class="plate plate--ghost ml-1 hidden text-white/80 sm:inline-flex">Huaraz</span>
+        <div class="ml-auto flex items-center gap-2">
+          <a href="0-inicio.html" class="hidden items-center gap-2 font-dense text-[15px] font-semibold text-white/85 lg:flex"><i data-i="map-pin" class="h-4 w-4"></i> Jr. Los Pinos 245 · <u>Cambiar</u></a>
+          <a href="#" class="btn btn--sm btn--quiet ml-3">Ingresar</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- portada de la distribuidora -->
+    <section class="block-brand relative">
+      <div class="mx-auto grid max-w-[1320px] lg:grid-cols-[1.05fr_.95fr]">
+        <div class="photo photo--duo photo--brand photo--veil order-1 h-[300px] lg:order-2 lg:h-[440px] lg:[clip-path:polygon(13%_0,100%_0,100%_100%,0_100%)]">
+          <img src="../../images/unsplash-XZvEuQ266bY-moto-balon-espalda.jpg" alt="Repartidor en moto con un balón de gas amarrado atrás" style="object-position: 62% 60%" />
+          <div class="over flex flex-col justify-end p-4 lg:hidden">
+            <div class="flex items-end gap-3">
+              <span class="mono mono--lg">LA</span>
+              <div class="min-w-0 text-white">
+                <p class="label text-white/85">Distribuidora de gas · Huaraz</p>
+                <h1 class="display text-[46px]">Gas Los Andes</h1>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="order-2 px-4 pb-6 pt-4 lg:order-1 lg:flex lg:flex-col lg:justify-center lg:px-8 lg:py-12">
+          <div class="hidden items-center gap-4 lg:flex">
+            <span class="mono mono--lg">LA</span>
+            <p class="label text-[15px] opacity-90">Distribuidora de gas · Huaraz</p>
+          </div>
+          <h1 class="display mt-5 hidden text-[112px] lg:block">Gas<br />Los Andes</h1>
+          <p class="hidden max-w-[30rem] text-[19px] font-medium opacity-95 lg:mt-5 lg:block">Balones de 10, 15 y 45 kg a tu puerta. Pide aquí, paga al recibir y mira en el mapa por dónde viene.</p>
+          <div class="flex flex-wrap items-center gap-2 lg:mt-7">
+            <span class="st st--free"><i data-i="check"></i>Abierto</span>
+            <span class="plate">Hasta 9:00 p. m.</span>
+            <span class="plate"><i data-i="star" class="fill-current"></i>4.8 <span class="opacity-60">(132)</span></span>
+            <span class="plate">Reparto gratis</span>
+          </div>
+        </div>
+      </div>
+      <div class="hazard opacity-0 lg:opacity-0"></div>
+    </section>
+
+    <main class="mx-auto max-w-[1320px] px-4 lg:grid lg:grid-cols-[1fr_400px] lg:gap-10 lg:px-8">
+      <div>
+        <!-- llegada -->
+        <div class="ficha relative z-10 -mt-4 flex items-center gap-3 p-3 lg:mt-8 lg:hidden">
+          <div class="eta !shadow-none shrink-0">
+            <span class="label">Llega en</span>
+            <span class="giant !text-[40px]">15–25<small>MIN</small></span>
+          </div>
+          <div class="min-w-0">
+            <p class="label text-muted">Lo llevamos a</p>
+            <p class="truncate text-[17px] font-semibold">Jr. Los Pinos 245</p>
+            <a href="#" class="font-dense text-[15px] font-semibold underline">Cambiar dirección</a>
+          </div>
+        </div>
+
+        <!-- productos -->
+        <section class="mt-7 lg:mt-10" aria-labelledby="t-prod">
+          <div class="flex items-end justify-between gap-3">
+            <h2 id="t-prod" class="display text-[34px] lg:text-[52px]">Elige tu balón</h2>
+            <p class="hidden font-dense text-[15px] text-muted lg:block">Precio con cambio de balón vacío</p>
+          </div>
+          <div class="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0">
+            <button class="chip" aria-pressed="true">Todos</button>
+            <button class="chip" aria-pressed="false">10 kg</button>
+            <button class="chip" aria-pressed="false">15 kg</button>
+            <button class="chip" aria-pressed="false">45 kg</button>
+          </div>
+          <p class="mt-2 font-dense text-[14px] text-muted lg:hidden">Precio con cambio de balón vacío</p>
+
+          <div class="stagger mt-4 grid gap-3 lg:grid-cols-3 lg:gap-5" id="productos">
+            <article class="prod ficha flex overflow-hidden lg:flex-col" data-price="4800" data-name="Balón 10 kg Wayra" data-qty="2">
+              <div class="flex w-[88px] shrink-0 items-end justify-center bg-surface-2 px-2 pb-3 pt-4 lg:h-[176px] lg:w-auto"><span class="balon w-[66px] lg:w-[96px]" data-balon="10" style="--b: #1e63d6"></span></div>
+              <div class="flex min-w-0 flex-1 flex-col p-3 lg:p-4">
+                <div class="flex min-h-[22px] items-center gap-2"><span class="label text-muted">Wayra</span><span class="plate plate--signal !h-[22px] !text-[12px]">El más pedido</span></div>
+                <h3 class="display mt-1 text-[26px] lg:text-[30px]">Balón 10 kg</h3>
+                <div class="mt-auto flex items-end justify-between gap-2 pt-3 lg:flex-col lg:items-stretch lg:gap-3">
+                  <p class="giant whitespace-nowrap text-[36px] lg:text-[52px]"><span class="text-[0.5em] font-bold">S/</span> 48.00</p>
+                  <div class="stepper"><button class="minus" aria-label="Quitar uno"><i data-i="minus"></i></button><output>2</output><button class="plus" aria-label="Agregar uno"><i data-i="plus"></i></button></div>
+                </div>
+              </div>
+            </article>
+            <article class="prod card flex overflow-hidden lg:flex-col" data-price="4650" data-name="Balón 10 kg Qori" data-qty="0">
+              <div class="flex w-[88px] shrink-0 items-end justify-center bg-surface-2 px-2 pb-3 pt-4 lg:h-[176px] lg:w-auto"><span class="balon w-[66px] lg:w-[96px]" data-balon="10" style="--b: #f26a1b"></span></div>
+              <div class="flex min-w-0 flex-1 flex-col p-3 lg:p-4">
+                <div class="flex min-h-[22px] items-center gap-2"><span class="label text-muted">Qori</span></div>
+                <h3 class="display mt-1 text-[26px] lg:text-[30px]">Balón 10 kg</h3>
+                <div class="mt-auto flex items-end justify-between gap-2 pt-3 lg:flex-col lg:items-stretch lg:gap-3">
+                  <p class="giant whitespace-nowrap text-[36px] lg:text-[52px]"><span class="text-[0.5em] font-bold">S/</span> 46.50</p>
+                  <div class="stepper"><button class="minus" aria-label="Quitar uno"><i data-i="minus"></i></button><output>0</output><button class="plus" aria-label="Agregar uno"><i data-i="plus"></i></button></div>
+                </div>
+              </div>
+            </article>
+            <article class="prod card flex overflow-hidden lg:flex-col" data-price="7200" data-name="Balón 15 kg Wayra" data-qty="0">
+              <div class="flex w-[88px] shrink-0 items-end justify-center bg-surface-2 px-2 pb-3 pt-4 lg:h-[176px] lg:w-auto"><span class="balon w-[64px] lg:w-[86px]" data-balon="15" style="--b: #1e63d6"></span></div>
+              <div class="flex min-w-0 flex-1 flex-col p-3 lg:p-4">
+                <div class="flex min-h-[22px] items-center gap-2"><span class="label text-muted">Wayra</span></div>
+                <h3 class="display mt-1 text-[26px] lg:text-[30px]">Balón 15 kg</h3>
+                <div class="mt-auto flex items-end justify-between gap-2 pt-3 lg:flex-col lg:items-stretch lg:gap-3">
+                  <p class="giant whitespace-nowrap text-[36px] lg:text-[52px]"><span class="text-[0.5em] font-bold">S/</span> 72.00</p>
+                  <div class="stepper"><button class="minus" aria-label="Quitar uno"><i data-i="minus"></i></button><output>0</output><button class="plus" aria-label="Agregar uno"><i data-i="plus"></i></button></div>
+                </div>
+              </div>
+            </article>
+            <article class="prod card flex overflow-hidden lg:flex-col" data-price="7050" data-name="Balón 15 kg Qori" data-qty="0">
+              <div class="flex w-[88px] shrink-0 items-end justify-center bg-surface-2 px-2 pb-3 pt-4 lg:h-[176px] lg:w-auto"><span class="balon w-[64px] lg:w-[86px]" data-balon="15" style="--b: #f26a1b"></span></div>
+              <div class="flex min-w-0 flex-1 flex-col p-3 lg:p-4">
+                <div class="flex min-h-[22px] items-center gap-2"><span class="label text-muted">Qori</span></div>
+                <h3 class="display mt-1 text-[26px] lg:text-[30px]">Balón 15 kg</h3>
+                <div class="mt-auto flex items-end justify-between gap-2 pt-3 lg:flex-col lg:items-stretch lg:gap-3">
+                  <p class="giant whitespace-nowrap text-[36px] lg:text-[52px]"><span class="text-[0.5em] font-bold">S/</span> 70.50</p>
+                  <div class="stepper"><button class="minus" aria-label="Quitar uno"><i data-i="minus"></i></button><output>0</output><button class="plus" aria-label="Agregar uno"><i data-i="plus"></i></button></div>
+                </div>
+              </div>
+            </article>
+            <article class="prod card flex overflow-hidden lg:flex-col" data-price="21500" data-name="Balón 45 kg Nevado" data-qty="0">
+              <div class="flex w-[88px] shrink-0 items-end justify-center bg-surface-2 px-2 pb-3 pt-4 lg:h-[176px] lg:w-auto"><span class="balon w-[46px] lg:w-[56px]" data-balon="45" style="--b: #12915a"></span></div>
+              <div class="flex min-w-0 flex-1 flex-col p-3 lg:p-4">
+                <div class="flex min-h-[22px] items-center gap-2"><span class="label text-muted">Nevado</span><span class="plate !h-[22px] !text-[12px]">Para negocios</span></div>
+                <h3 class="display mt-1 text-[26px] lg:text-[30px]">Balón 45 kg</h3>
+                <div class="mt-auto flex items-end justify-between gap-2 pt-3 lg:flex-col lg:items-stretch lg:gap-3">
+                  <p class="giant whitespace-nowrap text-[36px] lg:text-[52px]"><span class="text-[0.5em] font-bold">S/</span> 215.00</p>
+                  <div class="stepper"><button class="minus" aria-label="Quitar uno"><i data-i="minus"></i></button><output>0</output><button class="plus" aria-label="Agregar uno"><i data-i="plus"></i></button></div>
+                </div>
+              </div>
+            </article>
+            <article class="prod card flex overflow-hidden lg:flex-col" data-price="21800" data-name="Balón 45 kg Wayra" data-qty="0">
+              <div class="flex w-[88px] shrink-0 items-end justify-center bg-surface-2 px-2 pb-3 pt-4 lg:h-[176px] lg:w-auto"><span class="balon w-[46px] lg:w-[56px]" data-balon="45" style="--b: #1e63d6"></span></div>
+              <div class="flex min-w-0 flex-1 flex-col p-3 lg:p-4">
+                <div class="flex min-h-[22px] items-center gap-2"><span class="label text-muted">Wayra</span></div>
+                <h3 class="display mt-1 text-[26px] lg:text-[30px]">Balón 45 kg</h3>
+                <div class="mt-auto flex items-end justify-between gap-2 pt-3 lg:flex-col lg:items-stretch lg:gap-3">
+                  <p class="giant whitespace-nowrap text-[36px] lg:text-[52px]"><span class="text-[0.5em] font-bold">S/</span> 218.00</p>
+                  <div class="stepper"><button class="minus" aria-label="Quitar uno"><i data-i="minus"></i></button><output>0</output><button class="plus" aria-label="Agregar uno"><i data-i="plus"></i></button></div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- datos -->
+        <section class="mt-9 lg:mt-14" aria-labelledby="t-info">
+          <h2 id="t-info" class="display text-[34px] lg:text-[52px]">Hasta dónde llegamos</h2>
+          <div class="ficha mt-4 overflow-hidden">
+            <div class="map h-[230px] lg:h-[340px]" data-map="cobertura"></div>
+            <div class="flex items-start gap-3 border-t-2 border-outline p-4">
+              <span class="st st--free mt-0.5"><i data-i="check"></i>Tu casa está en zona</span>
+              <p class="font-dense text-[15px] text-foreground-2">Repartimos en Huaraz e Independencia, hasta 4 km de la planta.</p>
+            </div>
+          </div>
+          <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_1.35fr]">
+            <div class="card p-4"><p class="label text-muted">Horario</p><p class="mt-1 whitespace-nowrap text-[17px] font-semibold">7:00 a. m. – 9:00 p. m.</p><p class="font-dense text-[15px] text-foreground-2">Lunes a sábado · domingos hasta las 2:00 p. m.</p></div>
+            <div class="card p-4"><p class="label text-muted">Pagas al recibir</p><p class="mt-1 text-[17px] font-semibold">Efectivo, Yape o Plin</p><p class="font-dense text-[15px] text-foreground-2">El repartidor lleva vuelto.</p></div>
+            <div class="card p-4"><p class="label text-muted">¿Prefieres hablar?</p><div class="mt-2 flex gap-2"><a href="#" class="btn btn--sm btn--quiet flex-1 !px-2"><i data-i="phone"></i>Llamar</a><a href="#" class="btn btn--sm btn--quiet flex-1 !px-2"><i data-i="chat"></i>WhatsApp</a></div></div>
+          </div>
+        </section>
+
+        <footer class="mt-10 flex flex-wrap items-center justify-between gap-3 border-t-2 border-border py-6 font-dense text-[14px] text-muted">
+          <span>Gas Los Andes · Av. Central 100, Huaraz · 900 000 012</span>
+          <a href="1-duenos.html" class="font-semibold underline">Página creada con Hornilla</a>
+        </footer>
+      </div>
+
+      <!-- resumen (escritorio) -->
+      <aside class="hidden lg:block">
+        <div class="ficha sticky top-6 mt-10 overflow-hidden">
+          <div class="flex items-center justify-between gap-3 border-b-2 border-outline p-5">
+            <h2 class="display text-[34px]">Tu pedido</h2>
+            <div class="eta !py-1 !shadow-none"><span class="label">Llega en</span><span class="giant !text-[34px]">15–25<small>MIN</small></span></div>
+          </div>
+          <ul class="divide-y divide-border px-5" id="resumen"></ul>
+          <div class="flex items-start gap-3 border-t border-border px-5 py-4">
+            <i data-i="map-pin" class="mt-0.5 h-5 w-5 shrink-0"></i>
+            <div class="min-w-0"><p class="text-[17px] font-semibold">Jr. Los Pinos 245</p><p class="font-dense text-[15px] text-foreground-2">Portón verde, 2.º piso · <a href="#" class="font-semibold underline">Cambiar</a></p></div>
+          </div>
+          <div class="bg-surface-2 p-5">
+            <div class="flex items-end justify-between"><span class="label text-[15px]">Total · pagas al recibir</span><span class="giant text-[56px]" data-total><span class="text-[0.5em] font-bold">S/</span> 96.00</span></div>
+            <a href="3-seguimiento.html" class="btn btn--brand btn--block mt-4 !min-h-[60px] !text-[26px]">Pedir <i data-i="arrow"></i></a>
+            <p class="mt-3 text-center font-dense text-[14px] text-muted">Sin registrarte: solo tu nombre y tu celular.</p>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- barra fija (celular) -->
+    <div class="actionbar lg:hidden">
+      <a href="3-seguimiento.html" class="btn btn--brand btn--block !min-h-[60px] !justify-between !px-4">
+        <span class="flex items-center gap-3"><span class="num flex h-9 min-w-9 items-center justify-center rounded-lg border-2 border-current px-1 text-[22px]" data-count>2</span>Pedir</span>
+        <span class="giant text-[30px]" data-total><span class="text-[0.6em] font-bold">S/</span> 96.00</span>
+      </a>
+    </div>
+
+    <script>
+      window.RUTA_MAPS = {
+        cobertura: {
+          alt: 'Mapa de la zona de reparto de Gas Los Andes',
+          view: { m: [364, 190, 760, 448], d: [144, 164, 1200, 500] },
+          coverage: { at: [7.4, 6.2], r: 200, brand: '#E11D48', main: true },
+          markers: [
+            { type: 'plant', at: [7.4, 6.2], brand: '#E11D48', main: true, label: 'LA', tag: 'PLANTA', tagPos: 'b' },
+            { type: 'home', at: [8.1, 5.5], tag: 'TU CASA', tagSignal: true },
+          ],
+        },
+      };
+    </script>
+    <script src="ruta.js"></script>
+    <script>
+      (function () {
+        const money = (c) => (c / 100).toFixed(2);
+        const cards = [...document.querySelectorAll('.prod')];
+        function render() {
+          let total = 0;
+          let count = 0;
+          let rows = '';
+          for (const c of cards) {
+            const q = Number(c.dataset.qty);
+            c.querySelector('output').textContent = q;
+            c.classList.toggle('ficha', q > 0);
+            c.classList.toggle('card', q === 0);
+            if (!q) continue;
+            total += q * Number(c.dataset.price);
+            count += q;
+            rows += `<li class="flex items-center justify-between gap-3 py-3"><span class="flex items-center gap-3"><span class="num flex h-8 min-w-8 items-center justify-center rounded-md border-2 border-outline font-display text-[20px] font-extrabold">${q}</span><span class="text-[17px] font-semibold">${c.dataset.name}</span></span><span class="num font-display text-[22px] font-bold">S/ ${money(q * c.dataset.price)}</span></li>`;
+          }
+          document.querySelectorAll('[data-total]').forEach((el) => (el.lastChild.textContent = ' ' + money(total)));
+          document.querySelectorAll('[data-count]').forEach((el) => (el.textContent = count));
+          const list = document.getElementById('resumen');
+          if (list) list.innerHTML = rows || '<li class="py-5 font-dense text-muted">Aún no eliges ningún balón.</li>';
+        }
+        cards.forEach((c) => {
+          c.querySelector('.plus').addEventListener('click', () => { c.dataset.qty = Math.min(6, Number(c.dataset.qty) + 1); render(); });
+          c.querySelector('.minus').addEventListener('click', () => { c.dataset.qty = Math.max(0, Number(c.dataset.qty) - 1); render(); });
+        });
+        render();
+      })();
+    </script>
+  </body>
+</html>
