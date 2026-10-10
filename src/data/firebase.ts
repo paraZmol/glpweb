@@ -8,6 +8,7 @@ import {
   persistentMultipleTabManager,
 } from 'firebase/firestore';
 import { EMULATOR_PROJECT_ID, firebaseConfig } from './firebase-config';
+import { browserWipeEnvironment, firestoreDatabaseName, runStartupWipe } from './local-wipe';
 
 const EMULATOR_HOST = '127.0.0.1';
 // Lane 0 by default; scripts/emulators.mjs passes the ports of another lane (E2E_LANE=N).
@@ -16,21 +17,32 @@ const FIRESTORE_EMULATOR_PORT = Number(import.meta.env.VITE_FIRESTORE_EMULATOR_P
 
 // Development always talks to the emulators; only a production build reaches the real project.
 const useEmulators = import.meta.env.DEV || import.meta.env.VITE_USE_EMULATORS === 'true';
+const projectId = useEmulators ? EMULATOR_PROJECT_ID : firebaseConfig.projectId;
 
-export const app = initializeApp(
-  useEmulators ? { ...firebaseConfig, projectId: EMULATOR_PROJECT_ID } : firebaseConfig,
-);
+export const app = initializeApp({ ...firebaseConfig, projectId });
 
 export const auth = getAuth(app);
 
-// The local cache cuts billed reads when the app is reopened (free-quota rule in CLAUDE.md).
 // Outside a browser (repository tests under Node) there is no IndexedDB: memory cache instead.
 const hasIndexedDb = typeof indexedDB !== 'undefined';
 
+/** The IndexedDB database behind the persistent cache; null when the cache lives in memory. */
+export const localCacheDatabaseName = hasIndexedDb ? firestoreDatabaseName(projectId) : null;
+
+// A sign-out that could not erase the local cache left a mark (src/data/local-wipe.ts): the
+// database is deleted here, before Firestore opens it. If it still cannot be deleted, this page
+// load works from memory, so what the previous session left is never read.
+const startupWipe =
+  localCacheDatabaseName === null
+    ? 'none'
+    : await runStartupWipe(browserWipeEnvironment(), localCacheDatabaseName);
+
+// The local cache cuts billed reads when the app is reopened (free-quota rule in CLAUDE.md).
 export const db = initializeFirestore(app, {
-  localCache: hasIndexedDb
-    ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-    : memoryLocalCache(),
+  localCache:
+    hasIndexedDb && startupWipe !== 'blocked'
+      ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+      : memoryLocalCache(),
 });
 
 if (useEmulators) {
