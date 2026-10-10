@@ -65,7 +65,13 @@ Una cuenta puede tener roles distintos en distribuidoras distintas (ej. dueño d
    principal de la plataforma.
 3b. **Página pública de la distribuidora** (`/d/{slug}`): catálogo con precios, horario, botón
    "Pedir". Es el enlace que cada distribuidora comparte con sus propios clientes.
-4. **Catálogo y precios**: marcas, pesos (10/15/45 kg u otros), precio, activo/inactivo.
+4. **Catálogo y precios**: marcas, pesos (10/15/45 kg u otros), activo/inactivo. Cada producto se
+   vende de dos formas: **recarga** (el cliente entrega su balón vacío y paga solo el gas) y
+   **balón completo** (gas más el envase, para quien se muda o se independiza), cada una con su precio.
+4b. **Promociones**: cada distribuidora crea las suyas desde "Añadir promoción" (precio especial,
+   porcentaje, "lleva 2 paga 1", balón completo al precio de la recarga…), con vigencia, condiciones
+   y límite por pedido a la vista. El cliente las ve en el buscador, en la página de la distribuidora
+   y en el resumen del pedido.
 5. **Personal y vehículos**: invitar por enlace, roles, moto/camión con capacidad.
 6. **Pedidos**:
    - del cliente (web/app) con límite de balones configurable,
@@ -259,14 +265,16 @@ Estimación: una persona con Claude, ~25 h/semana.
 - *Criterio*: tests de reglas prueban que A no toca nada de B; nadie puede darse un rol.
 
 ### Fase 3 — Catálogo, personal, vehículos, stock
-- [ ] 3.1 Productos y precios
+- [ ] 3.0 `marketing-advisor`: cómo nombrar y presentar recarga y balón completo, qué tipos de promoción ofrecer y sus textos (`docs/marketing/oferta-y-promociones.md`)
+- [ ] 3.1 Productos y precios: precio de recarga y precio de balón completo por producto
 - [ ] 3.2 Invitaciones de personal y roles; ayudantes
 - [ ] 3.3 Vehículos y capacidad
 - [ ] 3.4 Stock de planta (llenos/vacíos, ajustes con motivo)
+- [ ] 3.5 Promociones: "Añadir promoción" del dueño (tipo, productos, vigencia, límite por pedido, vista previa), cálculo en `src/domain/pricing/` y validación en reglas
 
 ### Fase 4 — Pedidos
 - [ ] 4.1 Direcciones del cliente con pin y búsqueda
-- [ ] 4.2 Pedido del cliente (límite de balones, cobertura, precios congelados)
+- [ ] 4.2 Pedido del cliente (límite de balones, cobertura, recarga o balón completo por línea, promoción aplicada, precios congelados)
 - [ ] 4.3 Máquina de estados en `domain/` + reglas + bitácora
 - [ ] 4.4 Pedido telefónico de la central
 - [ ] 4.5 Aceptación por el repartidor (transacción) y asignación/reasignación manual
@@ -284,7 +292,8 @@ Estimación: una persona con Claude, ~25 h/semana.
 ### Fase 6 — Tiempo real y mapas
 - [ ] 6.1 Publicar ubicación del repartidor (RTDB, cada 5 s / 10 m con pedido; cada 30 s libre; Wake Lock)
 - [ ] 6.2 Seguimiento del cliente: mapa, ruta, tiempo estimado, vista simple sin mapa
-- [ ] 6.3 Monitor de la central: todos los repartidores, cola, indicadores del día
+- [ ] 6.0 Prueba de mapa: MapLibre GL + OpenFreeMap (estilos claro y oscuro, sin clave) frente a Leaflet + OpenStreetMap; se queda el que se parezca a la maqueta y cargue bien en un celular modesto
+- [ ] 6.3 Monitor de la central: todos los repartidores, cola, indicadores del día (las ventas y la caja solo las ve el dueño)
 - [ ] 6.4 Navegación del repartidor (ruta, "Ya llegué", abrir en Google Maps/Waze)
 - [ ] 6.5 "Sin señal": posición vieja se marca, nunca se muestra como actual
 - *Criterio*: un cliente no puede leer la ubicación de un repartidor que no lleva su pedido (test).
@@ -330,6 +339,7 @@ Estimación: una persona con Claude, ~25 h/semana.
 | `field-tester` | Cuando se toca ubicación, mapas, PWA o la pantalla del repartidor | Sin conexión, red lenta, GPS denegado o impreciso, segundo plano; lista de prueba en celular real. |
 | `perf-a11y-auditor` | Pantalla importante, dependencia o animación nueva | Peso, velocidad, lecturas de Firestore, fluidez, accesibilidad. |
 | `regression-guard` | Antes de unir cada rama a `main` | Batería completa desde cero, tests debilitados, criterios cubiertos. Da APTO / NO APTO. |
+| `marketing-advisor` | Antes de diseñar productos, precios, promociones o textos de venta | Investiga y propone cómo nombrar, presentar y promocionar; vigila que las ofertas sean claras y honestas. |
 | `publish-guard` | Antes de cada `git push` y cada despliegue | **Exclusivo**: que nada sensible llegue al repo público. Da PUBLICABLE / BLOQUEADO. |
 
 Estrategia de pruebas completa en la skill `testing-strategy` (7 niveles, cobertura obligatoria,
@@ -383,6 +393,11 @@ escritorio · agentes aplicables sin hallazgos CRÍTICO/ALTO · `regression-guar
 | 2026-10-10 | Fuentes Gabarito y Figtree autoalojadas (`@fontsource-variable/*`); sale Geist | Son las de la dirección elegida |
 | 2026-10-10 | Los nombres de distribuidoras y marcas de las maquetas se quedan como datos de demostración | Decisión del usuario: son el molde hasta tener datos reales |
 | 2026-10-10 | Las maquetas quedan fuera del lint; sus capturas completas no se suben al repo | No son código de la app; pesan 80 MB y se regeneran |
+| 2026-10-10 | La caja y las ventas las ve solo el dueño; la central no | Decisión del usuario: el dueño es quien hace el balance |
+| 2026-10-10 | Dos formas de venta por producto: recarga y balón completo (gas + envase) | Decisión del usuario: hay quien se muda o se independiza y necesita el envase |
+| 2026-10-10 | Promociones creadas por cada distribuidora (módulo 4b, pasos 3.0 y 3.5); nuevo agente `marketing-advisor` | Pedido del usuario |
+| 2026-10-10 | Al dar de alta, se rechaza un color de marca que no se distinga del fondo (menos de 2:1) | Decisión del usuario: seguir al diseñador |
+| 2026-10-10 | Mapa: primera opción MapLibre GL + OpenFreeMap, con Leaflet + OpenStreetMap de respaldo; se decide con la prueba 6.0 | El usuario lo dejó a criterio; las maquetas piden un fondo limpio en claro y oscuro |
 | 2026-10-10 | `npm audit` informativo en CI | Único hallazgo: `@grpc/grpc-js` vía `firebase` (solo build de Node, no llega al navegador) |
 
 ## Ideas para después

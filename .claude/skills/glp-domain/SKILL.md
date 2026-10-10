@@ -82,6 +82,39 @@ Estados (`ShiftStatus`): `requested → approved ⇄ paused → closed`, o `requ
 - Stock de planta por producto: `full`, `empty`. Todo ajuste manual lleva motivo y autor.
 - Cambiar la capacidad de un vehículo no reescribe cargas ya aprobadas.
 
+## 5b. Formas de venta y promociones
+
+**Formas de venta** (`SaleKind`), por línea de pedido:
+- `refill` — recarga: el cliente entrega un balón vacío por cada unidad y paga solo el gas.
+- `full` — balón completo: gas más envase; no se espera vacío a cambio.
+
+Cada producto tiene `refillPriceCents` (obligatorio) y `fullPriceCents` (opcional: si falta, esa
+distribuidora no vende envases de ese producto). Consecuencias:
+- Vacíos esperados de un pedido = unidades `refill`. En el cuadre y la liquidación,
+  `vaciosEsperados` de la jornada = suma de unidades `refill` entregadas; la diferencia con los
+  vacíos recuperados se anota, no se ajusta en silencio.
+- Una unidad `full` saca un lleno del stock sin devolver vacío: el parque de envases baja.
+- La pantalla nunca deja ambiguo cuál se está comprando; el repartidor ve cuántos vacíos recoger.
+
+**Promociones** (`/distributors/{d}/promotions/{id}`), creadas solo por el dueño:
+- Campos: `title`, `type`, `productIds` (o todos), `saleKinds`, `startsAt`, `endsAt`, `active`,
+  `maxUnitsPerOrder`, `conditions` (texto visible) y los parámetros del tipo.
+- Tipos iniciales (los afina `marketing-advisor`):
+  `fixedPrice` (precio especial; "balón completo al precio de la recarga" es este tipo sobre `full`),
+  `percentOff`, `buyXPayY` ("lleva 2 paga 1").
+- Vigente = `active` y `startsAt <= ahora < endsAt` y distribuidora escribible.
+- **Una promoción por línea, sin acumular.** Si varias aplican, gana la de menor precio final para
+  el cliente; el desempate es determinista (por id).
+- El cálculo vive en `src/domain/pricing/` (`priceOrder(items, products, promotions, now)`), puro.
+  Redondeo siempre a favor del cliente y a céntimos enteros; nunca precio negativo ni cero salvo
+  las unidades gratis de `buyXPayY`.
+- Cada línea del pedido congela `listPriceCents`, `unitPriceCents`, `discountCents` y `promotionId`.
+  Las reglas de seguridad recalculan con `get()` del producto y de la promoción y rechazan si no
+  coincide o si la promoción no está vigente en `request.time`.
+- Editar o apagar una promoción no cambia pedidos ya creados.
+- Honestidad: el "antes" que se muestra es el precio de lista vigente del producto, nunca uno inventado.
+- La caja, las ventas y el efecto de las promociones en los ingresos los ve **solo el dueño**.
+
 ## 6. Invariantes con test obligatorio
 1. Dos repartidores aceptando el mismo pedido a la vez → exactamente uno gana.
 2. Ninguna transición fuera de la tabla pasa las reglas (probar cada par origen→destino).
@@ -93,3 +126,7 @@ Estados (`ShiftStatus`): `requested → approved ⇄ paused → closed`, o `requ
 8. Cliente no cancela después de `pending`.
 9. Calificación una sola vez y solo en `delivered`.
 10. Distribuidora suspendida: ninguna escritura de negocio pasa.
+11. Una promoción inactiva, vencida o de otra distribuidora no se aplica ni pasa las reglas.
+12. Nunca dos promociones en la misma línea; el total es exactamente el que da `priceOrder`.
+13. Una línea `full` no suma vacíos esperados; una `refill` suma uno por unidad.
+14. Un rol distinto de dueño no lee caja, liquidaciones ni totales de venta.

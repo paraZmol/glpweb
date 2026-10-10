@@ -429,3 +429,13 @@ Detalle, capturas y pendientes en `docs/design/DIRECCION.md`. Resumen de composi
 12. ¿Fotos del banco, con proporción fija, velo si llevan texto y texto alternativo neutro?
 13. ¿Cargando, vacío, error y sin conexión diseñados? ¿Foco visible con el teclado?
 14. ¿El texto dice "Hornilla" y nunca "glpWEB"?
+
+## Decisiones posteriores
+- **Color de marca ilegible** (2026-10-10): al dar de alta o editar una distribuidora se rechaza un
+  color cuyo relleno dé menos de 2:1 contra el fondo claro o contra el oscuro, con un mensaje que
+  proponga el tono más cercano que sí pasa. La validación vive en `src/domain/tenancy/` y se repite
+  en el formulario.
+- **Caja y ventas** (2026-10-10): los indicadores de dinero del monitor (ventas del día, efectivo)
+  se muestran solo al dueño; para la central ese hueco no existe (no se muestra deshabilitado).
+- **Recarga y balón completo** (2026-10-10): toda tarjeta de producto deja claro cuál de las dos se
+  compra; la presentación exacta la define `marketing-advisor` (paso 3.0 del plan).

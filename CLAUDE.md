@@ -22,7 +22,8 @@ central, repartidor, cliente.
 - **Firebase plan gratis (Spark)**: Auth (correo + Google), Firestore, Realtime Database (solo
   posiciones en vivo), Hosting, FCM. **Prohibido** depender de Cloud Functions, Storage, SMS o
   cualquier cosa que pida plan de pago o tarjeta.
-- **Mapas**: Leaflet + OpenStreetMap, rutas OSRM, detrás de `MapProvider`. Nunca Google Maps SDK.
+- **Mapas**: detrás de `MapProvider`; primera opción MapLibre GL + OpenFreeMap, respaldo Leaflet +
+  OpenStreetMap (se decide en el paso 6.0), rutas OSRM. Nunca Google Maps SDK.
 - **Servidor mínimo**: Cloudflare Worker gratis en `worker/` (desde la fase 7).
 - **Pruebas**: Vitest, Firebase Emulator + `@firebase/rules-unit-testing`, Playwright.
 - Proyecto Firebase real: `glpweb-app` (https://glpweb-app.web.app). Emuladores: `demo-glpweb`.
@@ -94,6 +95,8 @@ central, repartidor, cliente.
   dependencia o animación nueva → **perf-a11y-auditor**.
 - **Movimiento**: cargar `motion-system` antes de añadir cargas, transiciones o animaciones.
   Ninguna pantalla en blanco al cargar; duraciones y curvas solo por fichas.
+- **Oferta y textos de venta**: antes de diseñar productos, precios, promociones o textos que el
+  cliente lee para comprar → **marketing-advisor** (deja su recomendación en `docs/marketing/`).
 - **Antes de unir a `main`**: **regression-guard** debe dar APTO.
 - **Antes de cada `git push` y de cada despliegue**: **publish-guard** debe dar PUBLICABLE. Es
   exclusivo para que no se divulgue nada en el repo público. Además corre solo
