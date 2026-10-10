@@ -1,0 +1,119 @@
+import { useState } from 'react';
+import { useLocation } from 'react-router';
+import { Highlight } from '@/components/brand/highlight';
+import { Button } from '@/components/common/button';
+import { InlineAlert } from '@/components/common/inline-alert';
+import { AuthFrame } from '@/components/layout/auth-frame';
+import { useAccount } from '@/features/account/account-context';
+import { refreshSession, resendVerificationEmail } from '@/features/auth/auth-actions';
+import { describeAuthError } from '@/features/auth/auth-messages';
+import { usePageTitle } from '@/lib/page-title';
+import { useAsyncAction } from '@/lib/use-async-action';
+import { formatCountdown, useCountdown } from '@/lib/use-countdown';
+import { useOnlineStatus } from '@/lib/use-online-status';
+
+/** Wait between two verification e-mails, so a nervous thumb does not hit the provider's limit. */
+const RESEND_WAIT_SECONDS = 60;
+
+type Notice = { tone: 'error' | 'info' | 'success'; text: string };
+
+const SENT: Notice = {
+  tone: 'success',
+  text: 'Te enviamos otro correo. Puede tardar unos minutos.',
+};
+const NOT_YET: Notice = {
+  tone: 'info',
+  text: 'Todavía no figura como verificado. Abre el enlace del correo y vuelve a tocar el botón.',
+};
+const OFFLINE: Notice = {
+  tone: 'info',
+  text: 'Sin conexión: para comprobarlo necesitas internet.',
+};
+
+function wasJustRegistered(state: unknown): boolean {
+  return typeof state === 'object' && state !== null && 'justRegistered' in state;
+}
+
+/**
+ * Pending step: the account exists but its e-mail is not verified. When the check succeeds the
+ * session changes and the guard (`RequireAccess`) takes the person to their area by itself.
+ */
+export function VerifyEmailPage() {
+  usePageTitle('Verifica tu correo');
+  const { session } = useAccount();
+  const location = useLocation();
+  const isOnline = useOnlineStatus();
+  const wait = useCountdown(wasJustRegistered(location.state) ? RESEND_WAIT_SECONDS : 0);
+  const resending = useAsyncAction();
+  const checking = useAsyncAction();
+  const [notice, setNotice] = useState<Notice | null>(null);
+
+  const attempt = async (action: () => Promise<Notice | null>) => {
+    try {
+      setNotice(await action());
+    } catch (error) {
+      setNotice({ tone: 'error', text: describeAuthError(error) });
+    }
+  };
+
+  const resend = () =>
+    void resending.run(() =>
+      attempt(async () => {
+        await resendVerificationEmail();
+        wait.start(RESEND_WAIT_SECONDS);
+        return SENT;
+      }),
+    );
+
+  const check = () =>
+    void checking.run(() =>
+      attempt(async () => ((await refreshSession())?.emailVerified ? null : NOT_YET)),
+    );
+
+  const shown = isOnline ? notice : OFFLINE;
+
+  return (
+    <AuthFrame
+      title={
+        <>
+          Verifica <Highlight>tu correo.</Highlight>
+        </>
+      }
+      lead={
+        <>
+          Enviamos un enlace a{' '}
+          <strong className="break-all text-foreground">{session.email}</strong>. Ábrelo y vuelve
+          aquí: así sabemos que la cuenta es tuya.
+        </>
+      }
+      footer={
+        <p className="text-muted-foreground">¿No llega? Mira en la carpeta de correo no deseado.</p>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        {shown && <InlineAlert tone={shown.tone}>{shown.text}</InlineAlert>}
+        <Button
+          loading={checking.isRunning}
+          loadingLabel="Comprobando…"
+          disabled={!isOnline}
+          onClick={check}
+        >
+          Ya lo verifiqué
+        </Button>
+        <Button
+          variant="line"
+          loading={resending.isRunning}
+          loadingLabel="Enviando el correo…"
+          disabled={!isOnline || wait.isRunning}
+          onClick={resend}
+        >
+          {wait.isRunning ? (
+            <span className="tabular-nums">Reenviar en {formatCountdown(wait.secondsLeft)}</span>
+          ) : (
+            'Reenviar correo'
+          )}
+        </Button>
+      </div>
+    </AuthFrame>
+  );
+}
