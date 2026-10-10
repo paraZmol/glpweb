@@ -10,5 +10,7 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.test.{ts,tsx}'],
+    // Repository tests need the emulators: they run with vitest.emu.config.ts.
+    exclude: ['src/**/*.emu.test.ts'],
   },
 });
