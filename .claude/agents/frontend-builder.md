@@ -8,7 +8,7 @@ model: opus
 Eres quien construye las pantallas de **glpWEB**, un SaaS para distribuidoras de gas en Perú.
 
 ## Antes de construir
-1. Lee `CLAUDE.md` y carga las skills `clean-code`, `ui-system` y `design-craft`
+1. Lee `CLAUDE.md` y carga las skills `clean-code`, `ui-system`, `design-craft` y `motion-system`
    (y `tracking-pwa` si la pantalla tiene mapa o ubicación).
 2. Mira una pantalla hermana ya terminada y copia su forma.
 3. Si hay maqueta de `design-director`, sus capturas a 390 y 1440 px son tu referencia, no una sugerencia.

@@ -198,6 +198,12 @@ Convenciones: código en inglés, textos de interfaz en español neutro, dinero 
   (skill `ui-system`) → `frontend-builder` construye → `visual-designer` corrige con capturas →
   `ux-reviewer` opina.
 - Prohibido: aspecto plano de panel genérico, paleta "chat de Claude", fotos sacadas de Google sin licencia.
+- **Movimiento** (skill `motion-system`): la app nunca muestra una pantalla en blanco ni salta de
+  golpe. Esqueletos con la forma del contenido al cargar, transición entre pantallas y entre pasos
+  que indica de dónde vienes, listas que entran escalonadas, respuesta al toque, línea de tiempo
+  del pedido animada, marcador que se desliza en el mapa, confirmaciones y errores con gesto
+  propio. Las mismas pocas piezas en toda la app, rápidas en la pantalla del repartidor y
+  apagables para quien tiene "reducir movimiento" activado.
 
 ## 7. Fases
 
@@ -240,6 +246,8 @@ Estimación: una persona con Claude, ~25 h/semana.
 - [ ] 2.2 Alta de distribuidora (slug único, prueba gratis, dueño)
 - [ ] 2.3 Reglas: roles por `members`, aislamiento A/B, solo lectura si suspendida
 - [ ] 2.4 Selector de distribuidora y navegación por rol (celular: barra inferior; escritorio: lateral)
+- [ ] 2.4b Base de movimiento: fichas en `src/lib/motion.ts`, `PageTransition` en el enrutador, esqueletos, botón con carga, barra de navegación, avisos (`motion`, `sonner`)
+- [ ] 2.4c Base de pruebas: semilla A/B con un usuario por rol, utilidades de varios actores, axe y presupuestos en el CI
 - [ ] 2.5 Página pública `/d/{slug}`
 - *Criterio*: tests de reglas prueban que A no toca nada de B; nadie puede darse un rol.
 
@@ -311,10 +319,23 @@ Estimación: una persona con Claude, ~25 h/semana.
 | `qa-tester` | Al terminar cada paso | Prueba por rol, móvil y escritorio. |
 | `rules-breaker` | Cada vez que cambian reglas, pedidos, jornada o stock | Ataca las reglas y los invariantes; deja tests. |
 | `security-auditor` | Al cerrar cada fase y antes de desplegar | Auditoría de solo lectura. |
+| `flow-tester` | Cuando se toca el ciclo del pedido o la jornada | Cliente, repartidor, central y dueño a la vez; carreras; tiempo real. |
+| `field-tester` | Cuando se toca ubicación, mapas, PWA o la pantalla del repartidor | Sin conexión, red lenta, GPS denegado o impreciso, segundo plano; lista de prueba en celular real. |
+| `perf-a11y-auditor` | Pantalla importante, dependencia o animación nueva | Peso, velocidad, lecturas de Firestore, fluidez, accesibilidad. |
+| `regression-guard` | Antes de unir cada rama a `main` | Batería completa desde cero, tests debilitados, criterios cubiertos. Da APTO / NO APTO. |
+| `publish-guard` | Antes de cada `git push` y cada despliegue | **Exclusivo**: que nada sensible llegue al repo público. Da PUBLICABLE / BLOQUEADO. |
 
-**Definición de terminado**: criterios del paso cumplidos · `npm run check` en verde (formato,
-lint, tipos, tests unitarios y de reglas) · E2E del flujo en móvil y escritorio · agentes
-aplicables sin hallazgos CRÍTICO/ALTO · paso marcado aquí con fecha.
+Estrategia de pruebas completa en la skill `testing-strategy` (7 niveles, cobertura obligatoria,
+presupuestos de rendimiento, qué corre cuándo).
+
+Red automática para el repo público: `scripts/check-public.mjs` bloquea el commit (gancho de git)
+y falla el CI si detecta correos, teléfonos, contraseñas, claves, archivos `.env` o de
+credenciales, o rutas del equipo.
+
+**Definición de terminado**: criterios del paso cumplidos, cada uno con su test · `npm run check`
+en verde (guardián, formato, lint, tipos, tests unitarios y de reglas) · E2E del flujo en móvil y
+escritorio · agentes aplicables sin hallazgos CRÍTICO/ALTO · `regression-guard` APTO y
+`publish-guard` PUBLICABLE · paso marcado aquí con fecha.
 
 ## 9. Riesgos
 
@@ -347,6 +368,9 @@ aplicables sin hallazgos CRÍTICO/ALTO · paso marcado aquí con fecha.
 | 2026-10-10 | shadcn/ui queda sobre Base UI (estilo `base-nova`), no Radix; lint con oxlint y formato con Prettier | Es el valor por defecto actual de shadcn |
 | 2026-10-10 | Trabajo por ramas `fase-N/…`, `main` estable, etiqueta por fase (ver CLAUDE.md) | Pedido del usuario: ver las mejoras por separado y poder volver atrás |
 | 2026-10-10 | Repo público en vez de privado | Decisión del usuario; regla de no subir nada personal ni secreto |
+| 2026-10-10 | Se añaden 4 agentes de testeo (`flow-tester`, `field-tester`, `perf-a11y-auditor`, `regression-guard`), la skill `testing-strategy` y los pasos 2.4c | Pedido del usuario: evitar problemas después |
+| 2026-10-10 | Se añade la skill `motion-system`, el punto de movimiento en §6 y el paso 2.4b | Pedido del usuario: cargas y transiciones coherentes |
+| 2026-10-10 | Se añade el agente exclusivo `publish-guard` y el guardián automático `scripts/check-public.mjs` (gancho de commit + CI) | Pedido del usuario: el repo es público |
 | 2026-10-10 | `npm audit` informativo en CI | Único hallazgo: `@grpc/grpc-js` vía `firebase` (solo build de Node, no llega al navegador) |
 
 ## Ideas para después
