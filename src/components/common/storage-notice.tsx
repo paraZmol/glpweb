@@ -29,7 +29,7 @@ export function StorageNotice() {
           initial={variants.initial}
           animate={variants.animate}
           exit={variants.exit}
-          className="fixed inset-x-3 bottom-[calc(var(--bottom-nav-height)+0.75rem)] z-40 mx-auto flex max-w-md flex-col gap-3 rounded-xl bg-card p-4 shadow-float sm:flex-row sm:items-center lg:right-auto lg:bottom-6 lg:left-6 lg:mx-0"
+          className="fixed inset-x-3 bottom-[calc(var(--bottom-nav-height)+0.75rem)] z-40 mx-auto flex max-w-md flex-col gap-3 rounded-xl bg-card p-4 shadow-float sm:flex-row sm:items-center lg:right-6 lg:bottom-6 lg:left-auto lg:mx-0"
         >
           <p className="text-sm text-muted-foreground">
             Hornilla guarda en tu dispositivo solo lo necesario para funcionar: tu sesión y tus

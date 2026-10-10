@@ -10,7 +10,10 @@ const PROMISES = ['Precio a la vista antes de pedir', 'Pagas al recibir', 'Sin i
 /** Desktop only: the kitchen photo with the burner ring and a floating card. The photo stays clean. */
 function AuthAside() {
   return (
-    <aside className="relative ml-auto w-full max-w-136" aria-label="Lo que ofrece Hornilla">
+    <aside
+      className="sticky top-[calc(var(--top-inset)+1.5rem)] ml-auto w-full max-w-136 self-start"
+      aria-label="Lo que ofrece Hornilla"
+    >
       <BurnerRing className="-right-12 -bottom-10 size-56" />
       <div className="relative aspect-4/5 max-h-[calc(100dvh-14rem)] w-full overflow-hidden rounded-3xl bg-muted shadow-float">
         <img
@@ -54,8 +57,8 @@ export function AuthFrame({ title, lead, children, footer }: AuthFrameProps) {
   return (
     <div className="mx-auto grid w-full max-w-7xl flex-1 gap-12 px-4 pt-6 pb-14 lg:grid-cols-[minmax(0,31rem)_1fr] lg:items-center lg:gap-24 lg:px-8 lg:pt-4 lg:pb-20">
       <section className="mx-auto w-full max-w-md lg:max-w-none lg:rounded-2xl lg:bg-card lg:p-10 lg:shadow-raised">
-        <h1 className="text-[2.125rem] font-extrabold lg:text-[2.5rem]">{title}</h1>
-        {lead && <p className="mt-3 text-lg text-muted-foreground">{lead}</p>}
+        <h1 className="text-[2.125rem] font-extrabold text-balance lg:text-[2.5rem]">{title}</h1>
+        {lead && <p className="mt-3 text-lg text-pretty text-muted-foreground">{lead}</p>}
         <div className="mt-7">{children}</div>
         {footer && <div className="mt-7 border-t pt-5 text-[0.9375rem]">{footer}</div>}
       </section>

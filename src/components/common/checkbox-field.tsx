@@ -31,7 +31,7 @@ export function CheckboxField({ children, error, className, ...props }: Checkbox
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? errorId : undefined}
             className={cn(
-              'peer size-6 cursor-pointer appearance-none rounded-sm border-[1.5px] border-input bg-card',
+              'peer size-6 cursor-pointer appearance-none rounded-[0.4375rem] border-[1.5px] border-input bg-card',
               'transition-colors motion-fast checked:border-foreground checked:bg-foreground',
               'aria-invalid:border-destructive',
             )}
