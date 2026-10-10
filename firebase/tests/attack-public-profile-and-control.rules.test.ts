@@ -149,14 +149,17 @@ describe('control document — an owner slips a change in next to a legitimate w
     ['suspended', WORLD.suspended.d, 'owner-suspended'],
     ['past due', WORLD.pastDue.d, 'owner-past-due'],
     ['on an expired trial', WORLD.expired.d, 'owner-expired'],
-  ])('blocks the owner of a distributor that is %s from reopening it in one batch', async (_c, d, uid) => {
-    const db = verified(env, uid);
-    const batch = writeBatch(db);
-    batch.update(control(db, d), { status: 'active', ...stamp });
-    batch.update(profile(db, d), { acceptingOrders: true, ...stamp });
+  ])(
+    'blocks the owner of a distributor that is %s from reopening it in one batch',
+    async (_c, d, uid) => {
+      const db = verified(env, uid);
+      const batch = writeBatch(db);
+      batch.update(control(db, d), { status: 'active', ...stamp });
+      batch.update(profile(db, d), { acceptingOrders: true, ...stamp });
 
-    await assertFails(batch.commit());
-  });
+      await assertFails(batch.commit());
+    },
+  );
 
   it('blocks the owner from replacing the control document of another distributor', async () => {
     const db = verified(env, 'owner-a');
@@ -173,7 +176,10 @@ describe('control document — an owner slips a change in next to a legitimate w
     const batch = writeBatch(db);
     batch.set(control(db, d), controlDoc('owner-expired'));
     batch.set(profile(db, d), distributorDoc(WORLD.expired.slug));
-    batch.set(doc(db, `distributors/${d}/members/owner-expired`), memberDoc(d, 'owner-expired', 'owner'));
+    batch.set(
+      doc(db, `distributors/${d}/members/owner-expired`),
+      memberDoc(d, 'owner-expired', 'owner'),
+    );
     batch.set(doc(db, `distributors/${d}/private/settings`), privateDoc('owner-expired'));
     batch.update(doc(db, 'users/owner-expired'), stamp);
 
@@ -263,7 +269,11 @@ describe('trial at its edge — the clock decides, not the client', () => {
 
   async function seedEdge(msFromNow: number, acceptingOrders: boolean) {
     const trialEndsAt = Timestamp.fromMillis(Date.now() + msFromNow);
-    await seedDoc(env, `distributors/${EDGE}`, distributorDoc('gas-borde', { acceptingOrders, ...old }));
+    await seedDoc(
+      env,
+      `distributors/${EDGE}`,
+      distributorDoc('gas-borde', { acceptingOrders, ...old }),
+    );
     await seedDoc(
       env,
       `distributors/${EDGE}/private/control`,

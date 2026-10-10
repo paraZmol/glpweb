@@ -145,7 +145,8 @@ describe('founding — a valid batch that carries something extra', () => {
     ],
     [
       'a platform admin document for the founder',
-      (batch, db) => batch.set(doc(db, `platformAdmins/${FOUNDER}`), { createdAt: serverTimestamp() }),
+      (batch, db) =>
+        batch.set(doc(db, `platformAdmins/${FOUNDER}`), { createdAt: serverTimestamp() }),
     ],
     [
       'an order in the new distributor',
@@ -191,27 +192,32 @@ describe('founding — reusing a founding that already happened', () => {
     const db = verified(env, FOUNDER);
     await assertFails(foundDistributor(db, { ...NEW, userUpdate: false }));
     await assertFails(foundDistributor(db, { ...NEW, slug: 'gas-segundo', userUpdate: false }));
-    await assertFails(
-      writeBatch(db).set(doc(db, 'slugs/gas-segundo'), slugDoc(NEW.d)).commit(),
-    );
+    await assertFails(writeBatch(db).set(doc(db, 'slugs/gas-segundo'), slugDoc(NEW.d)).commit());
   });
 
   it('blocks the founder from adding staff directly afterwards', async () => {
     const db = verified(env, FOUNDER);
     const friend = doc(db, `distributors/${NEW.d}/members/${CUSTOMER_UID}`);
-    await assertFails(writeBatch(db).set(friend, memberDoc(NEW.d, CUSTOMER_UID, 'driver')).commit());
+    await assertFails(
+      writeBatch(db)
+        .set(friend, memberDoc(NEW.d, CUSTOMER_UID, 'driver'))
+        .commit(),
+    );
   });
 });
 
 describe('founding — the trial window at its edges', () => {
-  const trialOf = (ms: number) => controlDoc(FOUNDER, { trialEndsAt: Timestamp.fromMillis(Date.now() + ms) });
+  const trialOf = (ms: number) =>
+    controlDoc(FOUNDER, { trialEndsAt: Timestamp.fromMillis(Date.now() + ms) });
 
   it.each([
     ['29 days and five minutes', 29 * DAY + 5 * MINUTE],
     ['exactly 30 days by the device clock', 30 * DAY],
     ['30 days and 55 minutes', 30 * DAY + 55 * MINUTE],
   ])('accepts a trial of %s', async (_case, ms) => {
-    await assertSucceeds(foundDistributor(verified(env, FOUNDER), { ...NEW, control: trialOf(ms) }));
+    await assertSucceeds(
+      foundDistributor(verified(env, FOUNDER), { ...NEW, control: trialOf(ms) }),
+    );
   });
 
   it.each([
@@ -230,7 +236,10 @@ describe('founding — forged identity', () => {
     ['e-mail verified as 1', { email: emailOf(FOUNDER), email_verified: 1 }],
     ['no e-mail claims at all', {}],
     ['a verified claim but no e-mail', { email_verified: true }],
-    ['a verified e-mail that is not the one it writes', { email: 'otra@example.com', email_verified: true }],
+    [
+      'a verified e-mail that is not the one it writes',
+      { email: 'otra@example.com', email_verified: true },
+    ],
   ])('blocks a token with %s', async (_case, token) => {
     const db = env.authenticatedContext(FOUNDER, token).firestore();
     await assertFails(foundDistributor(db, NEW));

@@ -78,7 +78,11 @@ describe('members — giving itself a role through a batch', () => {
   });
 
   it('blocks two owners from being skipped: an owner cannot promote itself in a rename batch', async () => {
-    await seedDoc(env, `distributors/${A}/members/co-owner`, memberDoc(A, 'co-owner', 'owner', old));
+    await seedDoc(
+      env,
+      `distributors/${A}/members/co-owner`,
+      memberDoc(A, 'co-owner', 'owner', old),
+    );
     const db = verified(env, 'co-owner');
     const batch = writeBatch(db);
     batch.update(doc(db, `distributors/${A}`), { name: 'Gas Demo Dos', ...stamp });
@@ -107,7 +111,9 @@ describe('members — giving itself a role through a batch', () => {
     const own = memberOf(verified(env, 'co-owner'), A, 'co-owner');
 
     await assertFails(updateDoc(own, { active: true, ...stamp }));
-    await assertFails(updateDoc(own, { distributorName: DISTRIBUTOR_NAME, active: true, ...stamp }));
+    await assertFails(
+      updateDoc(own, { distributorName: DISTRIBUTOR_NAME, active: true, ...stamp }),
+    );
     await assertFails(
       updateDoc(memberOf(verified(env, 'co-owner'), A, 'driver-a'), { active: false, ...stamp }),
     );
@@ -251,32 +257,41 @@ describe('read-only distributors — every business write that exists today', ()
   it.each([
     ['suspended', WORLD.suspended.d, 'owner-suspended', 'driver-suspended'],
     ['on an expired trial', WORLD.expired.d, 'owner-expired', 'driver-expired'],
-  ])('blocks the owner of one that is %s from managing its staff', async (_case, d, owner, driver) => {
-    const target = memberOf(verified(env, owner), d, driver);
-    await assertFails(updateDoc(target, { active: false, ...stamp }));
-    await assertFails(updateDoc(target, { role: 'dispatcher', ...stamp }));
-    await assertFails(updateDoc(target, { displayName: 'Otro', ...stamp }));
-  });
+  ])(
+    'blocks the owner of one that is %s from managing its staff',
+    async (_case, d, owner, driver) => {
+      const target = memberOf(verified(env, owner), d, driver);
+      await assertFails(updateDoc(target, { active: false, ...stamp }));
+      await assertFails(updateDoc(target, { role: 'dispatcher', ...stamp }));
+      await assertFails(updateDoc(target, { displayName: 'Otro', ...stamp }));
+    },
+  );
 
   it.each([
     ['suspended', WORLD.suspended.d, 'owner-suspended'],
     ['on an expired trial', WORLD.expired.d, 'owner-expired'],
     ['past due', WORLD.pastDue.d, 'owner-past-due'],
-  ])('blocks the owner of one that is %s from editing profile and contact data', async (_c, d, owner) => {
-    const db = verified(env, owner);
-    for (const change of [
-      { contactPhone: '900000050' },
-      { brandColor: '#0a7cff' },
-      { coverageRadiusKm: 50 },
-      { brands: ['Marca Uno'] },
-      { priceFromCents: 100 },
-    ]) {
-      await assertFails(updateDoc(doc(db, `distributors/${d}`), { ...change, ...stamp }));
-    }
-    await assertFails(
-      updateDoc(doc(db, `distributors/${d}/private/settings`), { ownerPhone: '900000051', ...stamp }),
-    );
-  });
+  ])(
+    'blocks the owner of one that is %s from editing profile and contact data',
+    async (_c, d, owner) => {
+      const db = verified(env, owner);
+      for (const change of [
+        { contactPhone: '900000050' },
+        { brandColor: '#0a7cff' },
+        { coverageRadiusKm: 50 },
+        { brands: ['Marca Uno'] },
+        { priceFromCents: 100 },
+      ]) {
+        await assertFails(updateDoc(doc(db, `distributors/${d}`), { ...change, ...stamp }));
+      }
+      await assertFails(
+        updateDoc(doc(db, `distributors/${d}/private/settings`), {
+          ownerPhone: '900000051',
+          ...stamp,
+        }),
+      );
+    },
+  );
 
   it('still lets the people behind it keep their own account', async () => {
     const db = verified(env, 'owner-suspended');

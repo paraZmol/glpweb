@@ -70,7 +70,11 @@ describe('public profile — text that shows as nothing', () => {
   it.each([
     ['only spaces', '   '],
     ['only tabs and line breaks', '\t\n\r\n'],
-    ['only non-breaking spaces', '   '],
+    ['only non-breaking spaces', '\u00a0\u00a0\u00a0'],
+    ['only ideographic spaces', '\u3000\u3000'],
+    ['only byte-order marks', '\ufeff\ufeff'],
+    ['a thin space after the name', 'Gas Demo\u2009'],
+    ['a vertical tab before the name', '\u000bGas Demo'],
     ['a space before the name', ' Gas Demo'],
     ['a space after the name', 'Gas Demo '],
     ['a line break after the name', 'Gas Demo\n'],
@@ -84,6 +88,7 @@ describe('public profile — text that shows as nothing', () => {
   it('accepts a name at the maximum length with accents and ñ', async () => {
     await assertSucceeds(ownerEdit({ name: 'ñ'.repeat(DISTRIBUTOR_NAME_MAX_LENGTH) }));
     await assertSucceeds(ownerEdit({ name: 'Gas Ñandú del Perú' }));
+    await assertSucceeds(ownerEdit({ name: 'Gas  Demo\u00a0Norte' }));
   });
 
   it.each([
@@ -124,7 +129,7 @@ describe('public profile — values that only look valid', () => {
     ['a plant holding a megabyte', { plant: { lat: 0, lng: 0, pad: 'x'.repeat(900_000) } }],
     ['NaN cylinders per order', { maxCylindersPerOrder: Number.NaN }],
     ['a NaN price', { priceFromCents: Number.NaN }],
-    ['a nested brand', { brands: [['Marca Uno']] }],
+    ['a brand as a map', { brands: [{ name: 'Marca Uno' }] }],
     ['a thousand brands', { brands: Array.from({ length: 1000 }, (_, index) => `M${index}`) }],
     ['currency in lower case', { currency: 'pen' }],
   ])('blocks an owner edit with %s', async (_case, change) => {

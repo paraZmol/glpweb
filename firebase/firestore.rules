@@ -5,7 +5,8 @@ rules_version = '2';
 // Deny by default; each collection is opened operation by operation and has tests in
 // firebase/tests. Limits mirror src/domain/tenancy/constants.ts (the tests read those constants).
 //
-// Data model (every listed field is required unless marked optional; no other field is accepted)
+// Data model (every listed field is required unless marked optional; no other field is accepted).
+// Every text is stored trimmed: white space at either end is refused.
 //
 // /users/{uid}                     private to the account
 //   displayName: string 1..80 · phone: null | '9' + 8 digits
@@ -33,7 +34,7 @@ rules_version = '2';
 //     says this distributor is writable right now". It is what the search filters by. Nobody
 //     flips it when a trial runs out, so it can stay true after the trial ended until the staff
 //     or a platform admin corrects it; no rule trusts it (they all read the control document).
-//   schedule: { days: list 1..7 of 0..6, opensAt: 'HH:MM', closesAt: 'HH:MM' }
+//   schedule: { days: list 1..7 of 0..6 without repeats, opensAt: 'HH:MM', closesAt: 'HH:MM' }
 //   maxCylindersPerOrder: int 1..20 · brands: list ≤ 8 of string 1..30
 //   priceFromCents: null | int 1..99900 · currency: 'PEN' · createdAt (immutable), updatedAt
 //
@@ -135,8 +136,14 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------------- field validators ----
+    // Stored text is always trimmed (the forms trim before validating): a value made of white
+    // space, or padded with it, is refused, so a "required" text cannot be blank. The class is
+    // what String.prototype.trim() removes in JavaScript; trim() of the rules leaves non-breaking
+    // and other Unicode spaces in place.
     function isText(value, min, max) {
-      return value is string && value.size() >= min && value.size() <= max;
+      return value is string && value.size() >= min && value.size() <= max
+        && !value.matches('(?s)^[\\s\\x0b\\pZ\\x{feff}].*')
+        && !value.matches('(?s).*[\\s\\x0b\\pZ\\x{feff}]$');
     }
 
     function isPhone(value) {
@@ -178,6 +185,8 @@ service cloud.firestore {
         && schedule.days is list
         && schedule.days.size() >= 1 && schedule.days.size() <= 7
         && schedule.days.hasOnly([0, 1, 2, 3, 4, 5, 6])
+        // No day twice (same check as checkSchedule in src/domain/tenancy/distributor-input.ts).
+        && schedule.days.toSet().size() == schedule.days.size()
         && isTimeOfDay(schedule.opensAt)
         && isTimeOfDay(schedule.closesAt);
     }
