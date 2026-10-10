@@ -88,6 +88,33 @@
   --highlight-strength: 100%;
   --photo-brightness: 1;
 
+  /* Gas cylinder drawing: neutral parts that never follow a brand (ui-system §9.4) */
+  --cylinder-valve: #9aa3b5;
+  --cylinder-valve-cap: #6d7589;
+  --cylinder-label: #ffffff;
+  --cylinder-label-ink: #14182b;
+  --cylinder-shade: #000000;
+  --cylinder-shine: #ffffff;
+
+  /* Motion tokens: mirror of src/lib/motion.ts (skill motion-system §1) */
+  --motion-instant: 100ms;
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-slow: 320ms;
+  --motion-map: 900ms;
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --motion-stagger: 40ms;
+  --motion-shimmer: 1400ms;
+  --motion-pulse: 1800ms;
+  --motion-step-bounce-delay: 600ms;
+  --press-scale: 0.97;
+  --press-scale-stepper: 0.9;
+
+  /* Space taken by fixed chrome, so floating pieces never sit under it */
+  --top-inset: 0px;
+  --bottom-nav-height: 0px;
+
   --chart-1: #ff6a13;
   --chart-2: #1565e8;
   --chart-3: #12a150;
@@ -280,6 +307,12 @@
   --color-map-water: var(--map-water);
   --color-map-label: var(--map-label);
   --color-map-casing: var(--map-casing);
+  --color-cylinder-valve: var(--cylinder-valve);
+  --color-cylinder-valve-cap: var(--cylinder-valve-cap);
+  --color-cylinder-label: var(--cylinder-label);
+  --color-cylinder-label-ink: var(--cylinder-label-ink);
+  --color-cylinder-shade: var(--cylinder-shade);
+  --color-cylinder-shine: var(--cylinder-shine);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -350,6 +383,147 @@
 }
 @utility burner-ring-thin {
   --burner-ring-width: 10px;
+}
+
+/* The offline banner and the bottom bar announce themselves so the rest can make room. */
+:root:has([data-offline-banner]) {
+  --top-inset: 2.75rem;
+}
+@media (width < 64rem) {
+  :root:has([data-bottom-nav]) {
+    --bottom-nav-height: calc(4rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Transitions by token ("transition-colors motion-fast"). Never a duration written by hand. */
+@utility motion-instant {
+  transition-duration: var(--motion-instant);
+  transition-timing-function: var(--motion-ease-out);
+}
+@utility motion-fast {
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--motion-ease-out);
+}
+@utility motion-base {
+  transition-duration: var(--motion-base);
+  transition-timing-function: var(--motion-ease-out);
+}
+@utility motion-slow {
+  transition-duration: var(--motion-slow);
+  transition-timing-function: var(--motion-ease-out);
+}
+
+/* Press feedback of everything tappable; the +/− stepper presses deeper (direction B). */
+@utility press {
+  &:active {
+    scale: var(--press-scale);
+  }
+}
+@utility press-stepper {
+  &:active {
+    scale: var(--press-scale-stepper);
+  }
+}
+
+/* Soft sheen over a skeleton. The block keeps the exact shape of what is loading. */
+@utility skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    translate: -100% 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--card) 75%, transparent),
+      transparent
+    );
+    animation: skeleton-shimmer var(--motion-shimmer) linear infinite;
+  }
+}
+
+/* Thin bar at the top while the next screen loads its code or data. */
+@utility navigation-progress {
+  animation: navigation-progress var(--motion-shimmer) var(--motion-ease-out) infinite;
+}
+
+/* Direction B: the current step of the order timeline lands with one short bounce. */
+@utility step-bounce {
+  animation: step-bounce var(--motion-slow) var(--motion-ease-out) var(--motion-step-bounce-delay)
+    both;
+}
+
+/* Direction B: halo of the active marker only (own position or the assigned driver). */
+@utility marker-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: marker-pulse var(--motion-pulse) var(--motion-ease-out) infinite;
+}
+
+@keyframes skeleton-shimmer {
+  to {
+    translate: 100% 0;
+  }
+}
+@keyframes navigation-progress {
+  from {
+    translate: -100% 0;
+  }
+  to {
+    translate: 250% 0;
+  }
+}
+@keyframes step-bounce {
+  0% {
+    scale: 0.8;
+  }
+  60% {
+    scale: 1.12;
+  }
+  100% {
+    scale: 1;
+  }
+}
+@keyframes marker-pulse {
+  0% {
+    scale: 0.6;
+    opacity: 0.55;
+  }
+  100% {
+    scale: 1.9;
+    opacity: 0;
+  }
+}
+
+/* Reduced motion: no travel, no scaling, no loops. The spinner of a busy button keeps turning. */
+@media (prefers-reduced-motion: reduce) {
+  *:not(.animate-spin),
+  *:not(.animate-spin)::before,
+  *:not(.animate-spin)::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .press:active,
+  .press-stepper:active {
+    scale: 1;
+  }
+  .skeleton-shimmer::after {
+    display: none;
+  }
+  .navigation-progress {
+    width: 100%;
+    opacity: 0.6;
+    animation: none !important;
+  }
+  .marker-pulse {
+    scale: 1.5;
+    opacity: 0.25;
+    animation: none !important;
+  }
 }
 
 @layer base {
