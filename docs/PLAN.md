@@ -264,7 +264,17 @@ Estimación: una persona con Claude, ~25 h/semana.
 - [~] 2.5 Página pública `/d/{slug}` — (2026-10-10) datos listos: lectura pública por slug con reglas y tests (`useDistributorBySlug`). **Falta**: la página
 - [~] 2.6 (2026-10-10: datos listos — consulta pública acotada, cobertura y orden por distancia en `src/domain`, `useNearbyDistributors`; **falta** la pantalla) Inicio del cliente: distribuidoras que atienden mi ubicación (cobertura = distancia a la planta ≤ radio), con marcas y precios. En el piloto se filtra en el navegador sobre la lista de distribuidoras activas (acotada); al crecer, índice por geohash
 - [~] 2.7 (2026-10-10: lado de datos listo — el perfil y los ajustes privados de la distribuidora guardan versión y fecha de aceptación exigidas por reglas, `registerAccount`/`foundDistributor` exigen las casillas, `useUserProfile` avisa si falta aceptar y `acceptCurrentTerms` lo registra. 2026-10-10: construidas `/terminos`, `/privacidad` y `/cookies` a partir de `docs/legal/*.md` (lector propio sin HTML en `src/domain/legal/legal-markdown.ts`), con versión, fecha y franja "Borrador en revisión"; enlaces en el pie y en el registro; casilla sin marcar en el registro y en `/aceptar-terminos`; aviso informativo de almacenamiento. **Falta verificación visual y E2E**, la casilla del alta de distribuidora (paso 2.2) y decidir con `legal-compliance` la frase de `terminos.md` que dice que el texto no se publica en la aplicación hasta su revisión) Páginas legales en la app a partir de los borradores de `docs/legal/` (términos, privacidad, cookies): enlaces en el pie y en el registro; el registro y el alta de distribuidora exigen aceptar los términos y guardan versión y fecha; aviso informativo de almacenamiento la primera vez. Se muestran marcadas como borrador hasta la revisión legal
-- [ ] 2.8 `legal-compliance` revisa el registro, el alta de distribuidora, el aviso de almacenamiento y las páginas legales; forma de reportar una promoción o un precio engañoso (se construye junto con las promociones, paso 3.5)
+- [x] 2.8 (2026-10-10) Primera revisión de `legal-compliance`: documentos de `docs/legal/` corregidos para decir lo que la app hace hoy; hallazgos convertidos en los pasos 2.9 y 2.10
+- [ ] 2.9 Ajustes que pide la revisión legal (código):
+  - cerrar sesión borra la copia local de Firestore y la distribuidora recordada, también en otras pestañas y en cierres involuntarios; después se vuelve a actualizar `cookies.md` y `privacidad.md`
+  - dos casillas en el registro (términos y edad; privacidad y uso de datos) y se guarda también la versión de privacidad aceptada (`privacy: { version, acceptedAt }`, con regla y test)
+  - en `/aceptar-terminos`: botón "No acepto: eliminar mi cuenta" y cuarta frase del resumen (el reclamo por una oferta es ante la distribuidora); bajo el botón de Google, qué datos entrega Google
+  - ficha pública de la distribuidora sin estado de pago, fin de prueba ni identificador de cuenta (pasan a `private/settings`; la ficha expone solo lo que el cliente necesita); aviso "estos datos serán públicos" en el alta
+  - validar el color de marca en el dominio, en el alta y en las reglas (`checkBrandColor`)
+  - textos: franja de borrador, aviso de almacenamiento, "Hornilla no cobra tus pedidos", y que el registro solo prometa lo que ya funciona
+  - enlace "Contacto y reclamos" en el pie y en la cuenta
+  - cabecera Content-Security-Policy en Hosting (con `security-auditor`)
+- [ ] 2.10 **Requisitos antes de registrar a una sola persona real** (piloto incluido): titular identificado y correo de contacto que funcione en `docs/legal/`; script local para eliminar o anonimizar una cuenta y otro para exportar sus datos; registro de solicitudes. Mientras no se cumpla, la app solo se usa con emuladores y datos de prueba
 - *Criterio*: tests de reglas prueban que A no toca nada de B; nadie puede darse un rol.
 
 ### Fase 3 — Catálogo, personal, vehículos, stock
@@ -319,6 +329,7 @@ Estimación: una persona con Claude, ~25 h/semana.
 ### Fase 10 — Lanzamiento
 - [ ] 10.1 Auditoría completa (todos los agentes), corregir CRÍTICO/ALTO
 - [ ] 10.2 Revisión por un profesional de `docs/legal/` (responsabilidad por promociones de las distribuidoras, frase sobre unidades, datos personales y ubicación, Libro de Reclamaciones), razón social y datos de contacto; datos de demostración
+- [ ] 10.2b Antes de abrir al público: términos 1.0 revisados y reaceptación de todos; "Eliminar mi cuenta", cambio de correo y descarga de mis datos dentro de la app; Libro de Reclamaciones si aplica; comprobación de que cada distribuidora está autorizada para vender GLP, según indique el profesional
 - [ ] 10.3 Dominio propio (opcional, único costo posible)
 
 ### Fase 11 — APK con Capacitor (opcional)
@@ -406,6 +417,9 @@ escritorio · agentes aplicables sin hallazgos CRÍTICO/ALTO · `regression-guar
 | 2026-10-10 | Borradores de términos, privacidad y cookies en `docs/legal/`; paso 2.7 para llevarlos a la app. Los términos dicen que precios y promociones son responsabilidad de cada distribuidora y que Hornilla no responde por promociones engañosas | Pedido del usuario. Una cláusula no exime por sí sola: se revisa con un profesional en 10.2 |
 | 2026-10-10 | Sin panel de consentimiento de cookies: solo aviso informativo, porque no hay analítica ni publicidad | Solo se usa almacenamiento necesario; si eso cambia, se pide consentimiento antes |
 | 2026-10-10 | Nuevo agente `legal-compliance` y paso 2.8 | Pedido del usuario: evitar denuncias por términos, privacidad, cookies y promociones |
+| 2026-10-10 | Los documentos legales siguen en 0.1 (segunda redacción): dicen lo que la app hace hoy, no lo que hará | Primera revisión de `legal-compliance`; subir el número exige un cambio coordinado de código y reglas |
+| 2026-10-10 | No se registra a ninguna persona real hasta cumplir el paso 2.10 | Sin responsable identificado ni forma de eliminar una cuenta no se pueden atender los derechos que promete la política de privacidad |
+| 2026-10-10 | Las pruebas con emuladores y navegador no se corren en el equipo del usuario mientras él lo esté usando; se verifican en el CI | Los emuladores de Firebase abrían ventanas que le quitaban el foco; arreglo en `scripts/emulators.mjs` pendiente de probar en Windows |
 | 2026-10-10 | `npm audit` informativo en CI | Único hallazgo: `@grpc/grpc-js` vía `firebase` (solo build de Node, no llega al navegador) |
 | 2026-10-10 | Fase 2 (datos): el documento `/distributors/{d}` es **público entero** y lo privado (datos del dueño, plan) va en `/distributors/{d}/private/settings` | Las reglas no filtran campos; el buscador y `/d/{slug}` necesitan leer sin sesión |
 | 2026-10-10 | Fase 2 (datos): direcciones del cliente en 10 casillas fijas (`a0`…`a9`) en vez de ids automáticos | Única forma de que las reglas impongan un tope sin servidor |
