@@ -265,7 +265,7 @@ Estimación: una persona con Claude, ~25 h/semana.
 - *Criterio*: tests de reglas prueban que A no toca nada de B; nadie puede darse un rol.
 
 ### Fase 3 — Catálogo, personal, vehículos, stock
-- [ ] 3.0 `marketing-advisor`: cómo nombrar y presentar recarga y balón completo, qué tipos de promoción ofrecer y sus textos (`docs/marketing/oferta-y-promociones.md`)
+- [~] 3.0 (2026-10-10, documento entregado; faltan las decisiones del usuario D1–D15 que trae) `marketing-advisor`: cómo nombrar y presentar recarga y balón completo, qué tipos de promoción ofrecer y sus textos (`docs/marketing/oferta-y-promociones.md`)
 - [ ] 3.1 Productos y precios: precio de recarga y precio de balón completo por producto
 - [ ] 3.2 Invitaciones de personal y roles; ayudantes
 - [ ] 3.3 Vehículos y capacidad
