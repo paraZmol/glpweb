@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="es-PE">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pedido en curso · Repartidor · Hornilla</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="base.js"></script>
+    <link rel="stylesheet" href="base.css" />
+    <style>
+      #mapa {
+        height: 400px;
+      }
+      .statusbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 8px 12px;
+        background: var(--background);
+        border-bottom: 1px solid var(--border-strong);
+        font-size: 0.86rem;
+        font-weight: 700;
+      }
+      .turn {
+        position: absolute;
+        z-index: 6;
+        top: 66px;
+        left: 12px;
+        right: 12px;
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+        padding: 0.7rem 1rem 0.7rem 0.75rem;
+        border-radius: 20px;
+      }
+      .turn .arrow {
+        display: grid;
+        place-items: center;
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        background: var(--flame);
+        color: var(--flame-foreground);
+        box-shadow: var(--glow-flame);
+        flex: none;
+      }
+      .sheet {
+        position: relative;
+        z-index: 5;
+        margin-top: -30px;
+        border-radius: 28px 28px 0 0;
+        background: var(--card);
+        border-top: 1px solid var(--border-strong);
+        box-shadow: var(--shadow-2);
+      }
+      .big-act {
+        display: grid;
+        justify-items: center;
+        align-content: center;
+        gap: 4px;
+        min-height: 68px;
+        border-radius: 18px;
+        font-weight: 700;
+        font-size: 0.86rem;
+        background: var(--sheen), var(--elevated);
+        border: 1px solid var(--border-strong);
+      }
+      .big-act .icon {
+        width: 26px;
+        height: 26px;
+        stroke-width: 2;
+      }
+      .cta-zone {
+        position: fixed;
+        inset: auto 0 0 0;
+        z-index: 40;
+        padding: 12px 14px calc(14px + env(safe-area-inset-bottom));
+        background: linear-gradient(180deg, transparent, var(--card) 30%);
+      }
+      @media (min-width: 1024px) {
+        body {
+          height: 100vh;
+          overflow: hidden;
+        }
+        #mapa {
+          position: fixed;
+          inset: 0;
+          height: auto;
+        }
+        .statusbar {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          width: 480px;
+          border: 1px solid var(--border-strong);
+          border-radius: 18px;
+          padding: 10px 14px;
+        }
+        .turn {
+          position: fixed;
+          top: 20px;
+          left: 20px;
+          right: auto;
+          width: 460px;
+        }
+        .sheet {
+          position: fixed;
+          top: 88px;
+          right: 20px;
+          bottom: 20px;
+          width: 480px;
+          margin: 0;
+          border: 1px solid var(--border-strong);
+          border-radius: 28px;
+          display: flex;
+          flex-direction: column;
+        }
+        .cta-zone {
+          position: static;
+          padding: 0;
+          margin-top: auto;
+          background: none;
+        }
+      }
+    </style>
+  </head>
+  <body class="amb-repartidor brand-scope">
+    <!-- Estado de la jornada -->
+    <header class="statusbar">
+      <span class="state" data-state="free"><span class="dot"></span>Jornada activa</span>
+      <span class="num flex items-center gap-1"><i data-i="package"></i>5 llenos</span>
+      <span class="flex-1"></span>
+      <span class="flex items-center gap-1" style="color: var(--state-free)"><i data-i="signal"></i>GPS</span>
+      <a href="#" class="icon-btn" aria-label="Cambiar a modo sol" style="width: 44px; height: 44px"><i data-i="sun"></i></a>
+    </header>
+
+    <div class="relative lg:static">
+      <div id="mapa" class="map"></div>
+      <div class="turn glass">
+        <span class="arrow"><i data-i="navigation" style="width: 30px; height: 30px"></i></span>
+        <div class="min-w-0">
+          <p class="num" style="font-weight: 700; font-size: 1.55rem; line-height: 1.1">650 m <span class="mute" style="font-size: 1rem">· 3 min</span></p>
+          <p class="small" style="font-weight: 600">Sigue por Av. Principal y voltea a la derecha en Av. Central</p>
+        </div>
+      </div>
+    </div>
+
+    <main class="sheet px-4 pt-5 pb-36 lg:p-6">
+      <div class="flex items-center gap-2">
+        <span class="state" data-state="busy"><i data-i="bike"></i>En camino</span>
+        <span class="small mute num" style="font-weight: 700">Pedido N.º 1042</span>
+        <span class="flex-1"></span>
+        <span class="tag"><i data-i="smartphone"></i>Web</span>
+      </div>
+
+      <h1 class="hx mt-3" style="font-size: 1.9rem">Jr. Las Flores 245</h1>
+      <p style="font-weight: 600; font-size: 1.05rem">Centro · puerta verde, frente al parque</p>
+      <p class="mute mt-1 flex items-center gap-2"><i data-i="user"></i>Rosa M. · “Tocar el timbre dos veces”</p>
+
+      <section class="sunken mt-4 p-4 flex items-center gap-3" aria-label="Qué entregar y cuánto cobrar">
+        <span style="width: 44px; flex: none" data-balon="10" data-color="#2D7FF9"></span>
+        <div class="flex-1 min-w-0">
+          <p style="font-weight: 700; white-space: nowrap">1 × Nevado 10 kg</p>
+          <p class="small mute">Recoge 1 vacío</p>
+        </div>
+        <div class="text-right">
+          <p class="tiny mute" style="font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase">Cobrar</p>
+          <p class="price" style="font-size: 1.7rem; line-height: 1.05">S/ 48.00</p>
+        </div>
+      </section>
+      <p class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1" style="font-weight: 600">
+        <span class="flex items-center gap-2 whitespace-nowrap"><i data-i="banknote" class="ember-text"></i>Efectivo · paga con S/ 50.00</span>
+        <span class="tag ml-auto" style="font-size: 0.9rem; color: var(--foreground)">Vuelto <strong class="num">S/ 2.00</strong></span>
+      </p>
+
+      <div class="grid grid-cols-3 gap-2 mt-5">
+        <a href="#" class="big-act pressable"><i data-i="phone"></i>Llamar</a>
+        <a href="#" class="big-act pressable" style="color: var(--whatsapp)"><i data-i="message"></i>WhatsApp</a>
+        <a href="#" class="big-act pressable"><i data-i="external"></i>Abrir en Maps</a>
+      </div>
+      <a href="#" class="btn btn-quiet btn-block mt-3" style="min-height: 56px"><i data-i="alert"></i>No puedo entregar</a>
+
+      <div class="cta-zone">
+        <button class="btn btn-action btn-xl"><i data-i="map-pin" style="width: 30px; height: 30px; stroke-width: 2.2"></i>Ya llegué</button>
+      </div>
+    </main>
+
+    <script>
+      Hornilla.onReady(() => {
+        Hornilla.map(document.getElementById('mapa'), {
+          label: 'Ruta hasta el cliente: 650 metros',
+          route: [[12, 3], [12, 4], [10, 4], [10, 6], [8.5, 6]],
+          progress: 0.62,
+          from: 0.4,
+          pins: [{ at: [8.5, 6], kind: 'home', label: 'Rosa M.' }],
+          view: { mobile: { c: [9.5, 4.9], z: 0.8, dy: -40 }, desktop: { c: [9.6, 5], z: 1.35, dx: 180 } },
+        });
+      });
+    </script>
+  </body>
+</html>

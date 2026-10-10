@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hornilla · Propuesta B "Cocina de casa"</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Gabarito:wght@500;600;700;800;900&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="base.js"></script>
+    <link rel="stylesheet" href="base.css" />
+  </head>
+  <body data-ambiente="cliente">
+    <main class="mx-auto max-w-[1100px] px-4 py-8 lg:px-8 lg:py-14">
+      <div class="flex items-center justify-between">
+        <span data-logo="36"></span>
+        <div class="flex gap-2">
+          <a class="chip" href="index.html?tema=claro">Claro</a>
+          <a class="chip" href="index.html?tema=oscuro">Oscuro</a>
+        </div>
+      </div>
+      <span class="tag tag-aji mt-10 !text-sm">Dirección B</span>
+      <h1 class="mt-3 text-[2.75rem] font-extrabold lg:text-[4.5rem]">Cocina de casa. <span class="resalte">El gas es el almuerzo de hoy.</span></h1>
+      <p class="mt-4 max-w-[40rem] text-lg text-muted">Blanco limpio, mandarina de mercado y azul de llama. Fotografía grande de cocina y gente real, balones dibujados que toman el color de cada marca, y un aro de hornilla como firma.</p>
+
+      <ul class="entra-grupo mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <li><a class="card block p-5" href="inicio.html"><span class="num tag">0 · Cliente</span><h2 class="mt-3 text-2xl font-extrabold">Inicio del cliente</h2><p class="mt-1 text-muted">Buscador de distribuidoras que llegan a tu dirección.</p></a></li>
+        <li><a class="card block p-5" href="portada.html"><span class="num tag">1 · Público</span><h2 class="mt-3 text-2xl font-extrabold">Portada para dueños</h2><p class="mt-1 text-muted">Promesa, tu página, 3 pasos, mapa en vivo, precio.</p></a></li>
+        <li><a class="card block p-5" href="distribuidora.html"><span class="num tag">2 · Cliente</span><h2 class="mt-3 text-2xl font-extrabold">Página de la distribuidora</h2><p class="mt-1 text-muted">Productos con + / − y barra «Pedir · S/ total».</p></a></li>
+        <li><a class="card block p-5" href="seguimiento.html"><span class="num tag">3 · Cliente</span><h2 class="mt-3 text-2xl font-extrabold">Seguimiento del pedido</h2><p class="mt-1 text-muted">Mapa, estado, tiempo estimado, llamar o WhatsApp.</p></a></li>
+        <li><a class="card block p-5" href="monitor.html"><span class="num tag">4 · Central</span><h2 class="mt-3 text-2xl font-extrabold">Monitor de la central</h2><p class="mt-1 text-muted">Repartidores por estado, cola e indicadores.</p></a></li>
+        <li><a class="card block p-5" href="repartidor.html"><span class="num tag">5 · Repartidor</span><h2 class="mt-3 text-2xl font-extrabold">Pedido en curso</h2><p class="mt-1 text-muted">Ruta, cliente y el botón «Ya llegué».</p></a></li>
+      </ul>
+
+      <h2 class="mt-14 text-3xl font-extrabold">Piezas de la dirección</h2>
+      <div class="mt-5 grid gap-4 lg:grid-cols-3">
+        <div class="card p-5">
+          <h3 class="text-xl font-bold">Símbolo</h3>
+          <div class="mt-4 flex items-center gap-4">
+            <span data-simbolo="72"></span>
+            <span class="grid h-[72px] w-[72px] place-items-center rounded-[22px] bg-primary" id="icono"></span>
+            <span class="grid h-[72px] w-[72px] place-items-center rounded-[22px] bg-[#14182b]" id="icono2"></span>
+          </div>
+          <p class="mt-3 text-sm text-muted">La corona de la hornilla vista desde arriba con la gota de llama: azul abajo, punta ámbar. A color, de un solo color sobre la marca y sobre tinta.</p>
+        </div>
+        <div class="card p-5">
+          <h3 class="text-xl font-bold">Balones por marca</h3>
+          <div class="mt-3 flex items-end gap-2">
+            <span data-marca="#1757d6" data-balon="10" data-alto="92"></span>
+            <span data-marca="#d62839" data-balon="15" data-alto="112"></span>
+            <span data-marca="#0e9f8e" data-balon="45" data-alto="148"></span>
+            <span data-marca="#f2b200" data-balon="10" data-alto="92"></span>
+          </div>
+        </div>
+        <div class="card p-5">
+          <h3 class="text-xl font-bold">Color y estados</h3>
+          <div class="mt-4 flex gap-2">
+            <span class="h-12 flex-1 rounded-2xl bg-primary"></span><span class="h-12 flex-1 rounded-2xl bg-secondary"></span><span class="h-12 flex-1 rounded-2xl bg-aji"></span><span class="h-12 flex-1 rounded-2xl bg-ink"></span><span class="h-12 flex-1 rounded-2xl bg-soft ring-1 ring-[color:var(--line)]"></span>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <span class="estado" data-estado="libre"><i data-i="check"></i> Libre</span>
+            <span class="estado" data-estado="ocupado"><i data-i="nav"></i> Con pedido</span>
+            <span class="estado" data-estado="pausa"><i data-i="pause"></i> En pausa</span>
+            <span class="estado" data-estado="sinsenal"><i data-i="wifi-off"></i> Sin señal</span>
+            <span class="estado" data-estado="alerta"><i data-i="alert"></i> Atención</span>
+          </div>
+        </div>
+      </div>
+      <p class="mt-10 text-sm text-muted">Parámetros: <code>?tema=claro|oscuro</code> y <code>?marca=e11d48</code> (hex sin #) en cualquier pantalla. Datos de demostración inventados.</p>
+    </main>
+    <script>
+      document.getElementById('icono').innerHTML = H.simbolo(52, 'var(--on-primary)', 'var(--on-primary)');
+      document.getElementById('icono2').innerHTML = H.simbolo(52, '#3d85f5');
+    </script>
+  </body>
+</html>

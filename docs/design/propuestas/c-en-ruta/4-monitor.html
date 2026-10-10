@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="es-PE" data-brand="#E11D48" data-brand-main>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Monitor · Gas Los Andes · Hornilla</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+      @theme inline {
+        --color-ink: var(--ink); --color-background: var(--background); --color-surface: var(--surface);
+        --color-surface-2: var(--surface-2); --color-foreground: var(--foreground); --color-foreground-2: var(--foreground-2);
+        --color-muted: var(--muted-foreground); --color-border: var(--border); --color-outline: var(--outline);
+        --color-signal: var(--signal); --color-brand: var(--brand); --color-on-brand: var(--on-brand);
+        --color-brand-text: var(--brand-text); --color-brand-tint: var(--brand-tint);
+        --font-display: var(--f-display); --font-dense: var(--f-dense); --font-sans: var(--f-sans);
+      }
+    </style>
+    <link rel="stylesheet" href="ruta.css" />
+  </head>
+  <body class="dense pb-[76px] lg:grid lg:h-dvh lg:grid-cols-[84px_1fr_420px] lg:grid-rows-[auto_1fr] lg:overflow-hidden lg:pb-0">
+    <!-- lateral (escritorio) -->
+    <nav class="block-ink hidden flex-col items-center gap-1 py-4 lg:row-span-2 lg:flex" aria-label="Secciones">
+      <a href="0-inicio.html" class="logo mb-4" data-logo="mark" aria-label="Hornilla"></a>
+      <a href="#" aria-current="page" class="side is-on"><i data-i="map"></i>Monitor</a>
+      <a href="#" class="side"><i data-i="list"></i>Pedidos</a>
+      <a href="#" class="side"><i data-i="truck"></i>Jornadas</a>
+      <a href="#" class="side"><i data-i="box"></i>Stock</a>
+      <a href="#" class="side"><i data-i="wallet"></i>Caja</a>
+      <a href="#" class="side"><i data-i="chart"></i>Reportes</a>
+      <span class="mono mono--sm mt-auto">LA</span>
+    </nav>
+
+    <!-- cabecera con indicadores -->
+    <header class="border-b-2 border-outline bg-surface lg:col-span-2">
+      <div class="block-ink flex h-12 items-center gap-3 px-4 lg:hidden">
+        <span class="logo !text-[20px]" data-logo="mark"></span>
+        <span class="display text-[24px] text-white">Monitor</span>
+        <span class="ml-auto font-dense text-[14px] font-semibold text-white/80">3:34 p. m.</span>
+        <span class="mono mono--sm">LA</span>
+      </div>
+      <div class="flex items-center gap-5 lg:h-[84px] lg:px-6">
+        <div class="hidden shrink-0 leading-none lg:block">
+          <h1 class="display text-[38px]">Monitor</h1>
+          <p class="mt-1 text-[14px] font-semibold text-muted">Gas Los Andes · sáb 10 oct · 3:34 p. m.</p>
+        </div>
+        <div class="flex flex-1 gap-2 overflow-x-auto px-4 py-3 lg:justify-end lg:px-0">
+          <div class="kpi shrink-0"><span class="label">Pedidos hoy</span><span class="giant">47</span></div>
+          <div class="kpi shrink-0 !border-[var(--outline-fill)] !bg-[var(--state-danger)] !text-white"><span class="label !text-white">Pendientes</span><span class="giant">3</span></div>
+          <div class="kpi shrink-0 !border-[var(--outline-fill)] !bg-signal !text-ink"><span class="label !text-ink">En camino</span><span class="giant">5</span></div>
+          <div class="kpi shrink-0"><span class="label">Entregados</span><span class="giant">39</span></div>
+          <div class="kpi shrink-0"><span class="label">Tiempo promedio</span><span class="giant">18<span class="text-[0.5em]"> MIN</span></span></div>
+          <div class="kpi shrink-0"><span class="label">Ventas del día</span><span class="giant"><span class="text-[0.5em]">S/ </span>2,256.00</span></div>
+        </div>
+        <a href="#" class="btn btn--brand hidden shrink-0 lg:inline-flex"><i data-i="phone"></i>Pedido telefónico<span class="plate plate--ghost !h-[22px] !text-[12px]">F2</span></a>
+      </div>
+    </header>
+
+    <!-- mapa -->
+    <section class="map h-[430px] lg:h-auto" data-map="monitor" aria-label="Mapa de repartidores">
+      <!-- repartidores (escritorio) -->
+      <div class="map-ctl left-5 top-5 hidden w-[310px] lg:block">
+        <div class="ficha ficha--float overflow-hidden">
+          <div class="flex items-center justify-between border-b-2 border-outline px-3 py-2">
+            <h2 class="display text-[22px]">Repartidores</h2>
+            <span class="plate">6 en jornada</span>
+          </div>
+          <ul class="stagger divide-y divide-border text-[15px]">
+            <li class="flex items-center gap-2 px-3 py-2"><b class="w-[78px] truncate font-semibold">Willy Q.</b><span class="st st--busy"><i data-i="moto"></i>Con pedido</span><span class="num ml-auto text-muted">6 llenos</span></li>
+            <li class="flex items-center gap-2 px-3 py-2"><b class="w-[78px] truncate font-semibold">Rosa M.</b><span class="st st--busy"><i data-i="moto"></i>Con pedido</span><span class="num ml-auto text-muted">3 llenos</span></li>
+            <li class="flex items-center gap-2 px-3 py-2"><b class="w-[78px] truncate font-semibold">Edwin T.</b><span class="st st--free"><i data-i="check"></i>Libre</span><span class="num ml-auto text-muted">9 llenos</span></li>
+            <li class="flex items-center gap-2 px-3 py-2"><b class="w-[78px] truncate font-semibold">Nilda C.</b><span class="st st--free"><i data-i="check"></i>Libre</span><span class="num ml-auto text-muted">11 llenos</span></li>
+            <li class="flex items-center gap-2 px-3 py-2"><b class="w-[78px] truncate font-semibold">Percy R.</b><span class="st st--paused"><i data-i="pause"></i>En pausa</span><span class="num ml-auto text-muted">12 min</span></li>
+            <li class="flex items-center gap-2 px-3 py-2"><b class="w-[78px] truncate font-semibold">Yessica P.</b><span class="st st--offline"><i data-i="nosignal"></i>Sin señal</span><span class="num ml-auto text-muted">6 min</span></li>
+          </ul>
+        </div>
+      </div>
+      <!-- leyenda -->
+      <div class="map-ctl bottom-4 left-3 right-3 flex gap-1.5 overflow-x-auto lg:bottom-5 lg:left-5 lg:right-auto">
+        <span class="st st--free shadow-[var(--sh-1)]"><i data-i="check"></i>Libre · 2</span>
+        <span class="st st--busy shadow-[var(--sh-1)]"><i data-i="moto"></i>Con pedido · 2</span>
+        <span class="st st--paused shadow-[var(--sh-1)]"><i data-i="pause"></i>En pausa · 1</span>
+        <span class="st st--offline shadow-[var(--sh-1)]"><i data-i="nosignal"></i>Sin señal · 1</span>
+      </div>
+      <div class="map-ctl right-3 top-3 lg:bottom-5 lg:right-5 lg:top-auto">
+        <button class="iconbtn" aria-label="Ver a todos los repartidores"><i data-i="locate"></i></button>
+      </div>
+    </section>
+
+    <!-- cola -->
+    <aside class="bg-background lg:overflow-y-auto lg:border-l-2 lg:border-outline" aria-labelledby="t-cola">
+      <div class="sticky top-0 z-10 border-b-2 border-outline bg-surface px-4 pb-3 pt-4 lg:px-5">
+        <div class="flex items-center justify-between">
+          <h2 id="t-cola" class="display text-[30px]">Cola de pedidos</h2>
+          <span class="flex items-center gap-1.5 text-[13px] font-semibold text-muted"><span class="h-2 w-2 rounded-full bg-[var(--state-free)]"></span>En vivo</span>
+        </div>
+        <div class="-mx-4 mt-3 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0">
+          <button class="chip !h-9" aria-pressed="true">Pendientes · 3</button>
+          <button class="chip !h-9" aria-pressed="false">En camino · 5</button>
+          <button class="chip !h-9" aria-pressed="false">Entregados · 39</button>
+        </div>
+      </div>
+
+      <ul class="stagger grid gap-3 p-4 lg:p-5">
+        <li class="ficha overflow-hidden">
+          <div class="flex items-center gap-2 px-3 pt-3">
+            <span class="plate">#1047</span>
+            <span class="st st--danger"><i data-i="alert"></i>12 min esperando</span>
+            <span class="label ml-auto text-muted">Teléfono</span>
+          </div>
+          <div class="px-3 pb-3 pt-2">
+            <p class="text-[18px] font-bold leading-tight">Av. Los Andes 512 · Independencia</p>
+            <p class="mt-0.5 text-[15px] text-foreground-2">Julia M. · 1 × Balón 10 kg Wayra</p>
+          </div>
+          <div class="flex items-center gap-3 border-t-2 border-outline bg-surface-2 px-3 py-2.5">
+            <p class="min-w-0 flex-1 text-[14px] leading-tight text-foreground-2"><b class="text-foreground">Edwin T.</b> está libre a 600 m</p>
+            <span class="giant text-[26px]"><span class="text-[0.6em]">S/</span> 48.00</span>
+            <a href="#" class="btn btn--sm">Asignar</a>
+          </div>
+        </li>
+        <li class="card overflow-hidden">
+          <div class="flex items-center gap-2 px-3 pt-3">
+            <span class="plate">#1048</span>
+            <span class="text-[14px] font-semibold text-muted">hace 3 min</span>
+            <span class="label ml-auto text-muted">Web</span>
+          </div>
+          <div class="px-3 pb-3 pt-2">
+            <p class="text-[18px] font-bold leading-tight">Jr. Las Flores 88 · Huaraz</p>
+            <p class="mt-0.5 text-[15px] text-foreground-2">Óscar D. · 2 × Balón 10 kg Qori</p>
+          </div>
+          <div class="flex items-center gap-3 border-t border-border bg-surface-2 px-3 py-2.5">
+            <p class="min-w-0 flex-1 text-[14px] leading-tight text-foreground-2">Visible para 2 repartidores libres</p>
+            <span class="giant text-[26px]"><span class="text-[0.6em]">S/</span> 93.00</span>
+            <a href="#" class="btn btn--sm btn--quiet">Asignar</a>
+          </div>
+        </li>
+        <li class="card overflow-hidden">
+          <div class="flex items-center gap-2 px-3 pt-3">
+            <span class="plate">#1049</span>
+            <span class="text-[14px] font-semibold text-muted">hace 1 min</span>
+            <span class="label ml-auto text-muted">Web</span>
+          </div>
+          <div class="px-3 pb-3 pt-2">
+            <p class="text-[18px] font-bold leading-tight">Psje. 2, Mz. C Lt. 4 · Huaraz</p>
+            <p class="mt-0.5 text-[15px] text-foreground-2">Dora V. (pollería) · 1 × Balón 45 kg Nevado</p>
+          </div>
+          <div class="flex items-center gap-3 border-t border-border bg-surface-2 px-3 py-2.5">
+            <p class="min-w-0 flex-1 text-[14px] leading-tight text-foreground-2">Visible para 2 repartidores libres</p>
+            <span class="giant text-[26px]"><span class="text-[0.6em]">S/</span> 215.00</span>
+            <a href="#" class="btn btn--sm btn--quiet">Asignar</a>
+          </div>
+        </li>
+      </ul>
+
+      <h3 class="label px-4 text-muted lg:px-5">En camino ahora</h3>
+      <ul class="grid gap-2 p-4 pt-2 lg:p-5 lg:pt-2">
+        <li class="card flex items-center gap-3 px-3 py-2.5">
+          <span class="mono mono--sm !bg-signal !text-ink">WQ</span>
+          <div class="min-w-0 flex-1 leading-tight"><p class="truncate text-[16px] font-semibold">#1042 · Jr. Los Pinos 245</p><p class="text-[14px] text-muted">Willy Q. · 2 × 10 kg</p></div>
+          <span class="plate plate--signal">8 min</span>
+        </li>
+        <li class="card flex items-center gap-3 px-3 py-2.5">
+          <span class="mono mono--sm !bg-signal !text-ink">RM</span>
+          <div class="min-w-0 flex-1 leading-tight"><p class="truncate text-[16px] font-semibold">#1045 · Jr. La Unión 310</p><p class="text-[14px] text-muted">Rosa M. · 1 × 15 kg</p></div>
+          <span class="plate plate--signal">4 min</span>
+        </li>
+        <li class="card flex items-center gap-3 px-3 py-2.5" aria-hidden="true">
+          <span class="skel h-9 w-9 !rounded-[9px]"></span>
+          <div class="flex-1"><div class="skel h-4 w-3/4"></div><div class="skel mt-2 h-3 w-1/2"></div></div>
+          <span class="skel h-6 w-14"></span>
+        </li>
+      </ul>
+    </aside>
+
+    <!-- celular: accion y barra -->
+    <a href="#" class="btn btn--brand fixed bottom-[76px] right-4 z-50 lg:hidden"><i data-i="phone"></i>Pedido telefónico</a>
+    <nav class="tabbar lg:hidden" aria-label="Secciones">
+      <a href="#" aria-current="page"><i data-i="map"></i>Monitor</a>
+      <a href="#"><i data-i="list"></i>Pedidos</a>
+      <a href="#"><i data-i="truck"></i>Jornadas</a>
+      <a href="#"><i data-i="wallet"></i>Caja</a>
+      <a href="#"><i data-i="more"></i>Más</a>
+    </nav>
+
+    <style>
+      .side { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: 68px; height: 60px; border-radius: 10px; border: 2px solid transparent; color: rgb(255 255 255 / 0.72); font: 700 12.5px/1 var(--f-display); letter-spacing: 0.07em; text-transform: uppercase; }
+      .side svg { width: 22px; height: 22px; }
+      .side.is-on { background: var(--signal); color: var(--ink); border-color: #000; box-shadow: 3px 3px 0 rgb(255 255 255 / 0.25); }
+    </style>
+    <script>
+      window.RUTA_MAPS = {
+        monitor: {
+          alt: 'Mapa con seis repartidores y tres pedidos pendientes',
+          view: { m: [290, -150, 980, 1080], d: [130, -120, 1180, 1030] },
+          routes: [
+            { pts: [[7, 6.2], [7, 5], [9, 5], [9, 4.4]], thin: true, done: 50, rider: { type: 'rider', state: 'busy', label: 'WQ', badge: 'busy', tag: '#1042 · 8 MIN', tagSignal: true } },
+            { pts: [[7, 6.2], [7, 7], [5, 7], [5, 8.4]], thin: true, done: 62, rider: { type: 'rider', state: 'busy', label: 'RM', badge: 'busy', tag: '#1045 · 4 MIN', tagSignal: true, tagPos: 'l' } },
+          ],
+          markers: [
+            { type: 'order', at: [9, 4.4], label: '#1042' },
+            { type: 'order', at: [5, 8.4], label: '#1045' },
+            { type: 'plant', at: [7.4, 6.2], brand: '#E11D48', main: true, icon: 'store', tag: 'PLANTA', tagPos: 'b' },
+            { type: 'rider', state: 'free', at: [8, 3.5], label: 'ET', badge: 'free' },
+            { type: 'rider', state: 'free', at: [9.9, 5.6], label: 'NC', badge: 'free' },
+            { type: 'rider', state: 'paused', at: [8.9, 6.3], label: 'PR', badge: 'paused' },
+            { type: 'rider', state: 'offline', at: [8.6, 8.2], label: 'YP', badge: 'offline', tag: 'SIN SEÑAL · 6 MIN', tagPos: 'l' },
+            { type: 'order', at: [8.6, 3], label: '#1047', late: true },
+            { type: 'order', at: [5.6, 6], label: '#1048' },
+            { type: 'order', at: [10.4, 7], label: '#1049' },
+          ],
+        },
+      };
+    </script>
+    <script src="ruta.js"></script>
+  </body>
+</html>

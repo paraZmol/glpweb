@@ -1,6 +1,6 @@
-# glpWEB — Plan maestro
+# Hornilla (glpWEB) — Plan maestro
 
-> **Estado: APROBADO por el usuario el 2026-10-10.** Fase 0 cerrada; sigue la fase 1.
+> **Estado: APROBADO por el usuario el 2026-10-10.** Fases 0 y 1 cerradas; sigue la fase 2.
 
 ## Cómo usar este plan
 - Es la única fuente de verdad. Lo que no está aquí va a "Ideas para después".
@@ -12,7 +12,9 @@
 
 ## 1. Visión
 
-**glpWEB** es un SaaS para distribuidoras de gas (GLP) en Perú. Cada distribuidora se da de alta
+**Hornilla** (nombre comercial; `glpWEB` es el nombre interno del proyecto) es una plataforma única
+donde la gente pide su gas a la distribuidora y marca que prefiera, y un SaaS para esas
+distribuidoras de gas (GLP) en Perú. Cada distribuidora se da de alta
 sola, configura su catálogo y su personal, recibe pedidos por la web/app y por teléfono, y ve en
 un mapa en vivo dónde está cada repartidor. El cliente pide su balón y ve en tiempo real dónde
 viene.
@@ -58,7 +60,11 @@ Una cuenta puede tener roles distintos en distribuidoras distintas (ej. dueño d
 
 1. **Cuenta**: registro/login con correo o Google, perfil, direcciones con pin en el mapa.
 2. **Alta de distribuidora** (autoservicio): nombre, enlace propio (`/d/mi-gas`), WhatsApp, ubicación de planta, radio de cobertura, color y logo. Queda en prueba gratis.
-3. **Página pública de la distribuidora**: catálogo con precios, horario, botón "Pedir".
+3. **Inicio del cliente (buscador)**: el cliente pone su ubicación y ve las distribuidoras y marcas
+   que atienden su zona, con precios, tiempo estimado y calificación; elige y pide. Es la entrada
+   principal de la plataforma.
+3b. **Página pública de la distribuidora** (`/d/{slug}`): catálogo con precios, horario, botón
+   "Pedir". Es el enlace que cada distribuidora comparte con sus propios clientes.
 4. **Catálogo y precios**: marcas, pesos (10/15/45 kg u otros), precio, activo/inactivo.
 5. **Personal y vehículos**: invitar por enlace, roles, moto/camión con capacidad.
 6. **Pedidos**:
@@ -236,9 +242,9 @@ Estimación: una persona con Claude, ~25 h/semana.
 - *Criterio*: `npm run check` en verde, emuladores arrancan, URL pública responde.
 
 ### Fase 1 — Dirección de diseño
-- [ ] 1.1 `image-scout`: banco de fotos (balones, repartidores en moto, cocina/hogar, calles peruanas) con `CREDITS.md`
-- [ ] 1.2 `design-director` ×3 en paralelo: portada para dueños, página pública de una distribuidora, seguimiento del pedido, monitor de la central, pantalla del repartidor
-- [ ] 1.3 Elegir dirección → `ui-system` + tokens
+- [x] 1.1 (2026-10-10) `image-scout`: banco de 31 fotos con licencia libre y `CREDITS.md` en `docs/design/images/`. No hay foto libre de un balón ni de un repartidor de gas peruano: el balón es una ilustración SVG
+- [x] 1.2 (2026-10-10) Tres propuestas maquetadas en `docs/design/propuestas/` (A Llama azul, B Cocina de casa, C En ruta) con página comparativa
+- [x] 1.3 (2026-10-10) Elegida **B · Cocina de casa con el logo de A y modo oscuro**. Spec en la skill `ui-system`, tokens y fuentes en `src/index.css`, logo en `src/components/brand/`, lista por pantalla y decisiones de producto pendientes en `docs/design/DIRECCION.md`
 - *Criterio*: dirección elegida por ti y escrita como spec.
 
 ### Fase 2 — Cuentas, distribuidoras y aislamiento
@@ -246,9 +252,10 @@ Estimación: una persona con Claude, ~25 h/semana.
 - [ ] 2.2 Alta de distribuidora (slug único, prueba gratis, dueño)
 - [ ] 2.3 Reglas: roles por `members`, aislamiento A/B, solo lectura si suspendida
 - [ ] 2.4 Selector de distribuidora y navegación por rol (celular: barra inferior; escritorio: lateral)
-- [ ] 2.4b Base de movimiento: fichas en `src/lib/motion.ts`, `PageTransition` en el enrutador, esqueletos, botón con carga, barra de navegación, avisos (`motion`, `sonner`)
+- [ ] 2.4b Base de movimiento (incluye los tres ajustes que pide la dirección B: presión 0.9 del selector +/−, rebote del paso actual, pulso del marcador activo): fichas en `src/lib/motion.ts`, `PageTransition` en el enrutador, esqueletos, botón con carga, barra de navegación, avisos (`motion`, `sonner`)
 - [ ] 2.4c Base de pruebas: semilla A/B con un usuario por rol, utilidades de varios actores, axe y presupuestos en el CI
 - [ ] 2.5 Página pública `/d/{slug}`
+- [ ] 2.6 Inicio del cliente: distribuidoras que atienden mi ubicación (cobertura = distancia a la planta ≤ radio), con marcas y precios. En el piloto se filtra en el navegador sobre la lista de distribuidoras activas (acotada); al crecer, índice por geohash
 - *Criterio*: tests de reglas prueban que A no toca nada de B; nadie puede darse un rol.
 
 ### Fase 3 — Catálogo, personal, vehículos, stock
@@ -352,10 +359,10 @@ escritorio · agentes aplicables sin hallazgos CRÍTICO/ALTO · `regression-guar
 
 | # | Decisión | Supuesto actual | Responder antes de |
 |---|---|---|---|
-| D1 | ¿Cada distribuidora tiene su propia página (`/d/mi-gas`) o además hay un buscador donde el cliente ve todas las distribuidoras cercanas? | Página propia; buscador queda para después. | Fase 2 |
+| D1 | ~~¿Página propia o buscador?~~ **Resuelta 2026-10-10**: plataforma única con buscador de distribuidoras cercanas como entrada principal, más la página propia de cada una. | — | — |
 | D2 | ¿Aceptas usar Cloudflare Workers gratis como servidor mínimo para push? | Sí, desde la fase 7. | Fase 7 |
 | D3 | "Ver dónde están todos mis distribuidores": ¿son los repartidores de cada dueño, o tú viendo todas las distribuidoras? | Ambos: monitor del dueño (fase 6) y mapa global del super admin (fase 9). | Fase 6 |
-| D4 | Nombre comercial y dominio | "glpWEB" provisional, `*.web.app`. | Fase 1 |
+| D4 | Nombre comercial y dominio | **Hornilla** (elegido 2026-10-10). Sigue en `*.web.app`. | Fase 10 |
 | D5 | ¿Proyecto Firebase nuevo o reutilizar `appglp2`? | Nuevo y limpio. | Fase 0.4 |
 | D6 | Precios de los planes | Prueba 30 días; definir con estudio de mercado. | Fase 9 |
 
@@ -371,6 +378,11 @@ escritorio · agentes aplicables sin hallazgos CRÍTICO/ALTO · `regression-guar
 | 2026-10-10 | Se añaden 4 agentes de testeo (`flow-tester`, `field-tester`, `perf-a11y-auditor`, `regression-guard`), la skill `testing-strategy` y los pasos 2.4c | Pedido del usuario: evitar problemas después |
 | 2026-10-10 | Se añade la skill `motion-system`, el punto de movimiento en §6 y el paso 2.4b | Pedido del usuario: cargas y transiciones coherentes |
 | 2026-10-10 | Se añade el agente exclusivo `publish-guard` y el guardián automático `scripts/check-public.mjs` (gancho de commit + CI) | Pedido del usuario: el repo es público |
+| 2026-10-10 | Nombre comercial **Hornilla**; D1 resuelta: buscador de distribuidoras como entrada principal (módulo 3, paso 2.6) | El usuario quiere una plataforma única donde la gente pida a distintas marcas |
+| 2026-10-10 | Dirección visual: B · Cocina de casa, con el logo de A y modo oscuro | Elección del usuario |
+| 2026-10-10 | Fuentes Gabarito y Figtree autoalojadas (`@fontsource-variable/*`); sale Geist | Son las de la dirección elegida |
+| 2026-10-10 | Los nombres de distribuidoras y marcas de las maquetas se quedan como datos de demostración | Decisión del usuario: son el molde hasta tener datos reales |
+| 2026-10-10 | Las maquetas quedan fuera del lint; sus capturas completas no se suben al repo | No son código de la app; pesan 80 MB y se regeneran |
 | 2026-10-10 | `npm audit` informativo en CI | Único hallazgo: `@grpc/grpc-js` vía `firebase` (solo build de Node, no llega al navegador) |
 
 ## Ideas para después

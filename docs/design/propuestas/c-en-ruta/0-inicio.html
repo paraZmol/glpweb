@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="es-PE">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hornilla · Pide tu balón de gas y mira dónde viene</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+      @theme inline {
+        --color-ink: var(--ink); --color-background: var(--background); --color-surface: var(--surface);
+        --color-surface-2: var(--surface-2); --color-foreground: var(--foreground); --color-foreground-2: var(--foreground-2);
+        --color-muted: var(--muted-foreground); --color-border: var(--border); --color-outline: var(--outline);
+        --color-signal: var(--signal); --color-brand: var(--brand); --color-on-brand: var(--on-brand);
+        --color-brand-text: var(--brand-text); --color-brand-tint: var(--brand-tint);
+        --font-display: var(--f-display); --font-dense: var(--f-dense); --font-sans: var(--f-sans);
+      }
+    </style>
+    <link rel="stylesheet" href="ruta.css" />
+  </head>
+  <body class="pb-[62px] lg:pb-0">
+    <header class="block-ink relative z-20">
+      <div class="mx-auto flex h-14 items-center gap-3 px-4 lg:h-16 lg:px-8">
+        <a href="0-inicio.html" class="logo text-white" data-logo aria-label="Hornilla, inicio"></a>
+        <nav class="ml-auto flex items-center gap-5">
+          <a href="1-duenos.html" class="hidden font-dense text-[16px] font-semibold text-white/85 underline-offset-4 hover:underline sm:block">Tengo una distribuidora</a>
+          <a href="#" class="hidden font-dense text-[16px] font-semibold text-white/85 lg:block">Mis pedidos</a>
+          <a href="#" class="btn btn--sm btn--quiet">Ingresar</a>
+        </nav>
+      </div>
+    </header>
+
+    <div class="lg:grid lg:grid-cols-[580px_1fr]">
+      <div class="lg:border-r-[2.5px] lg:border-[var(--outline-fill)]">
+        <!-- promesa + ubicacion -->
+        <section class="block-ink px-4 pb-7 pt-5 lg:px-8 lg:pb-9 lg:pt-8">
+          <h1 class="display text-[68px] lg:text-[96px]">¿Sin gas?<br /><span class="text-signal">Ya viene.</span></h1>
+          <p class="mt-3 max-w-[30rem] text-[17px] font-medium text-white/85 lg:text-[18px]">Elige tu distribuidora, pide en 3 toques y mira en el mapa por dónde viene tu balón.</p>
+          <label class="label mt-5 block text-white/70" for="dir">¿A dónde lo llevamos?</label>
+          <div class="field mt-2 !border-signal !shadow-[4px_4px_0_var(--signal)]">
+            <i data-i="map-pin" class="h-6 w-6 shrink-0"></i>
+            <input id="dir" class="min-w-0 flex-1 bg-transparent text-[18px] font-semibold outline-none" value="Jr. Los Pinos 245, Huaraz" />
+            <button class="plate plate--ink !h-8 cursor-pointer">Cambiar</button>
+          </div>
+          <a href="#" class="mt-3 inline-flex min-h-[44px] items-center gap-2 font-dense text-[16px] font-semibold text-white underline underline-offset-4"><i data-i="locate" class="h-5 w-5"></i>Usar mi ubicación actual</a>
+        </section>
+
+        <!-- mapa (celular) -->
+        <div class="map h-[300px] border-y-[2.5px] border-[var(--outline-fill)] lg:hidden" data-map="zona"></div>
+
+        <!-- resultados -->
+        <section class="px-4 pt-6 lg:px-8 lg:pt-8" aria-labelledby="t-res">
+          <p class="label text-muted">Jr. Los Pinos 245 · hoy, 3:34 p. m.</p>
+          <h2 id="t-res" class="display mt-1 text-[36px] lg:text-[44px]">4 distribuidoras llegan a tu puerta</h2>
+          <div class="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-wrap lg:px-0">
+            <button class="chip" aria-pressed="true">Más rápido</button>
+            <button class="chip" aria-pressed="false">Menor precio</button>
+            <button class="chip" aria-pressed="false">Mejor calificada</button>
+            <span class="mx-1 w-0.5 shrink-0 self-stretch bg-border"></span>
+            <button class="chip" aria-pressed="true">10 kg</button>
+            <button class="chip" aria-pressed="false">15 kg</button>
+            <button class="chip" aria-pressed="false">45 kg</button>
+          </div>
+
+          <ul class="stagger mt-4 grid gap-4">
+            <li>
+              <a href="2-distribuidora.html" class="ficha ficha--tap block overflow-hidden" data-brand="#E11D48" data-brand-main>
+                <div class="flex items-start gap-3 p-3 lg:p-4">
+                  <span class="mono">LA</span>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="display text-[28px] lg:text-[32px]">Gas Los Andes</h3>
+                    <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-dense text-[15px] font-semibold text-foreground-2"><span class="inline-flex items-center gap-1"><i data-i="star" class="h-4 w-4 fill-current"></i>4.8 <span class="font-medium text-muted">(132)</span></span><span class="text-muted">·</span><span>Wayra · Qori · Nevado</span></p>
+                  </div>
+                  <div class="eta !px-2.5 !py-1 !shadow-none"><span class="label !text-[11px]">Llega en</span><span class="giant !text-[32px]">15–25<small>MIN</small></span></div>
+                </div>
+                <div class="flex items-center justify-between gap-3 border-t-2 border-outline bg-surface-2 px-3 py-2.5 lg:px-4">
+                  <div><p class="label text-foreground-2">Balón 10 kg</p><p class="giant mt-1 text-[40px]"><span class="text-[0.5em] font-bold">S/</span> 48.00</p></div>
+                  <span class="st st--free hidden min-[420px]:inline-flex"><i data-i="check"></i>Abierto</span>
+                  <span class="btn btn--sm btn--brand">Pedir <i data-i="arrow"></i></span>
+                </div>
+              </a>
+            </li>
+            <li>
+              <a href="2-distribuidora.html" class="card ficha--tap block overflow-hidden" data-brand="#2563EB">
+                <div class="flex items-start gap-3 p-3 lg:p-4">
+                  <span class="mono">RH</span>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="display text-[28px] lg:text-[32px]">Rapigas Huaraz</h3>
+                    <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-dense text-[15px] font-semibold text-foreground-2"><span class="inline-flex items-center gap-1"><i data-i="star" class="h-4 w-4 fill-current"></i>4.7 <span class="font-medium text-muted">(203)</span></span><span class="text-muted">·</span><span>Wayra</span></p>
+                  </div>
+                  <div class="eta !px-2.5 !py-1 !shadow-none"><span class="label !text-[11px]">Llega en</span><span class="giant !text-[32px]">18–28<small>MIN</small></span></div>
+                </div>
+                <div class="flex items-center justify-between gap-3 border-t border-border bg-surface-2 px-3 py-2.5 lg:px-4">
+                  <div><p class="label text-foreground-2">Balón 10 kg</p><p class="giant mt-1 text-[40px]"><span class="text-[0.5em] font-bold">S/</span> 49.00</p></div>
+                  <span class="st st--free hidden min-[420px]:inline-flex"><i data-i="check"></i>Abierto</span>
+                  <span class="btn btn--sm btn--brand">Pedir <i data-i="arrow"></i></span>
+                </div>
+              </a>
+            </li>
+            <li>
+              <a href="2-distribuidora.html" class="card ficha--tap block overflow-hidden" data-brand="#EA580C">
+                <div class="flex items-start gap-3 p-3 lg:p-4">
+                  <span class="mono">DF</span>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="display text-[28px] lg:text-[32px]">Don Fuego</h3>
+                    <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-dense text-[15px] font-semibold text-foreground-2"><span class="inline-flex items-center gap-1"><i data-i="star" class="h-4 w-4 fill-current"></i>4.6 <span class="font-medium text-muted">(87)</span></span><span class="text-muted">·</span><span>Qori</span><span class="plate !h-[22px] !text-[12px]">Menor precio</span></p>
+                  </div>
+                  <div class="eta !px-2.5 !py-1 !shadow-none"><span class="label !text-[11px]">Llega en</span><span class="giant !text-[32px]">20–30<small>MIN</small></span></div>
+                </div>
+                <div class="flex items-center justify-between gap-3 border-t border-border bg-surface-2 px-3 py-2.5 lg:px-4">
+                  <div><p class="label text-foreground-2">Balón 10 kg</p><p class="giant mt-1 text-[40px]"><span class="text-[0.5em] font-bold">S/</span> 46.50</p></div>
+                  <span class="st st--free hidden min-[420px]:inline-flex"><i data-i="check"></i>Abierto</span>
+                  <span class="btn btn--sm btn--brand">Pedir <i data-i="arrow"></i></span>
+                </div>
+              </a>
+            </li>
+            <li>
+              <a href="2-distribuidora.html" class="card ficha--tap block overflow-hidden" data-brand="#0F766E">
+                <div class="flex items-start gap-3 p-3 lg:p-4">
+                  <span class="mono">EN</span>
+                  <div class="min-w-0 flex-1">
+                    <h3 class="display text-[28px] lg:text-[32px]">Gas El Nevado</h3>
+                    <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-dense text-[15px] font-semibold text-foreground-2"><span class="inline-flex items-center gap-1"><i data-i="star" class="h-4 w-4 fill-current"></i>4.4 <span class="font-medium text-muted">(41)</span></span><span class="text-muted">·</span><span>Nevado</span></p>
+                  </div>
+                  <div class="eta !px-2.5 !py-1 !shadow-none"><span class="label !text-[11px]">Llega en</span><span class="giant !text-[32px]">30–40<small>MIN</small></span></div>
+                </div>
+                <div class="flex items-center justify-between gap-3 border-t border-border bg-surface-2 px-3 py-2.5 lg:px-4">
+                  <div><p class="label text-foreground-2">Balón 10 kg</p><p class="giant mt-1 text-[40px]"><span class="text-[0.5em] font-bold">S/</span> 47.00</p></div>
+                  <span class="st st--paused hidden min-[420px]:inline-flex"><i data-i="clock"></i>Cierra en 25 min</span>
+                  <span class="btn btn--sm btn--brand">Pedir <i data-i="arrow"></i></span>
+                </div>
+              </a>
+            </li>
+            <!-- esqueleto: misma forma que la tarjeta -->
+            <li class="card overflow-hidden" aria-hidden="true">
+              <div class="flex items-start gap-3 p-3 lg:p-4">
+                <span class="skel h-12 w-12 !rounded-[12px]"></span>
+                <div class="flex-1"><div class="skel h-6 w-2/3"></div><div class="skel mt-2.5 h-4 w-1/2"></div></div>
+                <span class="skel h-[58px] w-[92px] !rounded-[10px]"></span>
+              </div>
+              <div class="flex items-center justify-between border-t border-border bg-surface-2 px-3 py-2.5 lg:px-4">
+                <div><div class="skel h-3 w-16"></div><div class="skel mt-2 h-8 w-28"></div></div>
+                <span class="skel h-11 w-24 !rounded-[10px]"></span>
+              </div>
+            </li>
+          </ul>
+          <p class="mt-3 pb-8 text-center font-dense text-[15px] text-muted">Buscando más distribuidoras cerca de ti…</p>
+        </section>
+      </div>
+
+      <!-- mapa (escritorio) -->
+      <div class="map hidden lg:block" data-map="zona">
+        <div class="map-ctl left-6 top-6"><span class="plate plate--lg shadow-[var(--sh-1)]"><i data-i="map-pin"></i>Tu zona · Huaraz</span></div>
+        <div class="map-ctl right-6 top-6"><button class="iconbtn" aria-label="Centrar en mi ubicación"><i data-i="locate"></i></button></div>
+      </div>
+    </div>
+
+    <!-- como funciona -->
+    <section class="border-t-[2.5px] border-[var(--outline-fill)] bg-surface">
+      <div class="mx-auto grid max-w-[1240px] gap-10 px-4 py-12 lg:grid-cols-[1fr_440px] lg:items-center lg:gap-20 lg:px-8 lg:py-20">
+        <div>
+          <p class="label text-muted">Así de simple</p>
+          <h2 class="display mt-2 text-[48px] lg:text-[76px]">Pide en 3 toques</h2>
+          <ol class="mt-8 grid gap-6">
+            <li class="flex items-start gap-4"><span class="stepnum">1</span><div><h3 class="display text-[26px] lg:text-[30px]">Elige quién te lo trae</h3><p class="mt-1 text-[17px] text-foreground-2">Compara precio, marca y cuánto demora cada distribuidora de tu zona.</p></div></li>
+            <li class="flex items-start gap-4"><span class="stepnum">2</span><div><h3 class="display text-[26px] lg:text-[30px]">Confirma tu dirección</h3><p class="mt-1 text-[17px] text-foreground-2">Pon el pin en tu casa una sola vez. Pagas al recibir: efectivo, Yape o Plin.</p></div></li>
+            <li class="flex items-start gap-4"><span class="stepnum">3</span><div><h3 class="display text-[26px] lg:text-[30px]">Míralo venir</h3><p class="mt-1 text-[17px] text-foreground-2">Sigue al repartidor en el mapa y entérate cuando esté en tu puerta.</p></div></li>
+          </ol>
+        </div>
+        <div class="frame mr-3">
+          <div class="photo aspect-[4/5]"><img src="../../images/pexels-4747813-mujer-celular-lima.jpg" alt="Mujer sonriente usando su celular en casa" style="object-position: 62% 30%" /></div>
+          <div class="eta absolute -left-3 bottom-8 z-10 lg:-left-10"><span class="label">Tu gas llega en</span><span class="giant">8<small>MIN</small></span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- para duenos -->
+    <section class="block-signal border-y-[2.5px] border-[var(--outline-fill)]">
+      <div class="mx-auto flex max-w-[1240px] flex-col gap-5 px-4 py-10 lg:flex-row lg:items-center lg:justify-between lg:px-8 lg:py-12">
+        <div>
+          <p class="label">Para distribuidoras</p>
+          <h2 class="display mt-2 text-[40px] lg:text-[56px]">¿Vendes gas? Súmate hoy.</h2>
+          <p class="mt-2 max-w-[36rem] text-[17px] font-medium">Recibe pedidos por aquí, mira a tus repartidores en el mapa y cierra la caja sin cuadernos.</p>
+        </div>
+        <a href="1-duenos.html" class="btn btn--ink shrink-0 !shadow-[4px_4px_0_#fff]">Crear mi página <i data-i="arrow"></i></a>
+      </div>
+    </section>
+    <footer class="block-ink">
+      <div class="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-4 px-4 py-8 font-dense text-[15px] text-white/70 lg:px-8">
+        <span class="logo text-white" data-logo></span>
+        <span>Hecho en Perú · ayuda@example.com</span>
+      </div>
+    </footer>
+
+    <nav class="tabbar lg:hidden" aria-label="Principal">
+      <a href="#" aria-current="page"><i data-i="home"></i>Inicio</a>
+      <a href="#"><i data-i="list"></i>Mis pedidos</a>
+      <a href="#"><i data-i="user"></i>Cuenta</a>
+    </nav>
+
+    <script>
+      window.RUTA_MAPS = {
+        zona: {
+          alt: 'Mapa de tu zona con cuatro distribuidoras y el tiempo que demora cada una',
+          view: { m: [300, 10, 900, 692], d: [265, -150, 1000, 2400] },
+          align: 'xMidYMin',
+          markers: [
+            { type: 'dist', at: [5.5, 4], brand: '#EA580C', label: 'DF', tag: '20–30 MIN' },
+            { type: 'dist', at: [9.6, 4.8], brand: '#2563EB', label: 'RH', tag: '18–28 MIN', tagPos: 'l' },
+            { type: 'dist', at: [9.6, 8], brand: '#0F766E', label: 'EN', tag: '30–40 MIN', tagPos: 'l' },
+            { type: 'dist', at: [7.4, 6.6], brand: '#E11D48', main: true, label: 'LA', big: true, tag: '15–25 MIN', tagSignal: true, tagPos: 'l' },
+            { type: 'me', at: [8.1, 5.5] },
+          ],
+        },
+      };
+    </script>
+    <script src="ruta.js"></script>
+  </body>
+</html>

@@ -1,134 +1,377 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
-@import '@fontsource-variable/geist';
+@import '@fontsource-variable/figtree';
+@import '@fontsource-variable/gabarito';
 
 /*
- * Provisional neutral tokens. The real palette, fonts and state colours are defined by
- * design-director once a visual direction is chosen (docs/PLAN.md, phase 1).
+ * Hornilla design tokens — direction "Cocina de casa".
+ * The spec (meaning, contrast and usage of every token) lives in .claude/skills/ui-system/SKILL.md.
+ * Change a value there first, then here. Components never write a hex: they use these tokens.
  */
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --border: oklch(0.922 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Surfaces and text */
+  --background: #ffffff;
+  --foreground: #14182b;
+  --surface-soft: #f3f6fb;
+  --card: #ffffff;
+  --card-foreground: #14182b;
+  --popover: #ffffff;
+  --popover-foreground: #14182b;
+  --secondary: #f3f6fb;
+  --secondary-foreground: #14182b;
+  --muted: #f3f6fb;
+  --muted-foreground: #565e76;
+  --accent: #f3f6fb;
+  --accent-foreground: #14182b;
+  --border: #e2e7f0;
+  --input: #8891a6;
+  --ring: #1565e8;
+  --destructive: #b42318;
+  --band: #14182b;
+  --band-foreground: #ffffff;
+
+  /* Brand: Hornilla's own mandarin. A distributor replaces these four through [data-brand]. */
+  --primary: #ff6a13;
+  --primary-foreground: #14182b;
+  --primary-text: #ad4d1a;
+  --primary-soft: #fff0e7;
+
+  /* System colours that never follow the brand */
+  --flame: #1565e8;
+  --flame-foreground: #ffffff;
+  --flame-text: #0f52c4;
+  --flame-soft: #e8f0fe;
+  --aji: #ffc933;
+  --aji-foreground: #14182b;
+
+  /* States: fill / text on a tinted chip / glyph on the fill */
+  --state-free: #12a150;
+  --state-free-text: #0a7038;
+  --state-free-foreground: #ffffff;
+  --state-busy: #1565e8;
+  --state-busy-text: #0f52c4;
+  --state-busy-foreground: #ffffff;
+  --state-paused: #e6a100;
+  --state-paused-text: #7d5200;
+  --state-paused-foreground: #14182b;
+  --state-offline: #7a8194;
+  --state-offline-text: #555c70;
+  --state-offline-foreground: #ffffff;
+  --state-danger: #d92d20;
+  --state-danger-text: #b42318;
+  --state-danger-foreground: #ffffff;
+
+  /* Logo flame gradient, tip to base (same in both themes) */
+  --logo-flame-tip: #ffb224;
+  --logo-flame-mid: #ff9a1f;
+  --logo-flame-glow: #5cc8ff;
+  --logo-flame-base: #2a6bff;
+
+  /* Map */
+  --map-street: #ffffff;
+  --map-block: #e9edf4;
+  --map-block-alt: #e1e6ef;
+  --map-park: #cfeedb;
+  --map-water: #cfe3fb;
+  --map-label: #636b82;
+  --map-casing: #ffffff;
+
+  /* Depth: two-layer shadows tinted with ink, plus a 1px rim */
+  --elevation-1: 0 1px 2px rgb(20 24 43 / 6%), 0 2px 8px rgb(20 24 43 / 5%);
+  --elevation-2: 0 2px 4px rgb(20 24 43 / 5%), 0 12px 28px rgb(20 24 43 / 10%);
+  --elevation-3: 0 4px 10px rgb(20 24 43 / 8%), 0 24px 56px rgb(20 24 43 / 18%);
+  --elevation-sheet: 0 -8px 32px rgb(20 24 43 / 14%);
+  --rim: rgb(20 24 43 / 6%);
+  --highlight-strength: 100%;
+  --photo-brightness: 1;
+
+  --chart-1: #ff6a13;
+  --chart-2: #1565e8;
+  --chart-3: #12a150;
+  --chart-4: #e6a100;
+  --chart-5: #7a8194;
+  --radius: 1rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #14182b;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--primary-soft);
+  --sidebar-accent-foreground: var(--primary-text);
+  --sidebar-border: #e2e7f0;
+  --sidebar-ring: #1565e8;
+}
+
+.dark {
+  --background: #0d111e;
+  --foreground: #f3f5fa;
+  --surface-soft: #121727;
+  --card: #191f31;
+  --card-foreground: #f3f5fa;
+  --popover: #191f31;
+  --popover-foreground: #f3f5fa;
+  --secondary: #222a40;
+  --secondary-foreground: #f3f5fa;
+  --muted: #222a40;
+  --muted-foreground: #a9b1c6;
+  --accent: #222a40;
+  --accent-foreground: #f3f5fa;
+  --border: #2d3650;
+  --input: #727c98;
+  --ring: #3d85f5;
+  --destructive: #ff8a80;
+  --band: #191f31;
+  --band-foreground: #ffffff;
+
+  --primary-text: #ff833b;
+  --primary-soft: #453439;
+
+  --flame: #3d85f5;
+  --flame-foreground: #0d111e;
+  --flame-text: #7fb0ff;
+  --flame-soft: #17274a;
+
+  --state-free: #2cc36b;
+  --state-free-text: #5bdc92;
+  --state-free-foreground: #0d111e;
+  --state-busy: #3d85f5;
+  --state-busy-text: #7fb0ff;
+  --state-busy-foreground: #0d111e;
+  --state-paused: #f2b632;
+  --state-paused-text: #f7cb66;
+  --state-paused-foreground: #0d111e;
+  --state-offline: #8c94a8;
+  --state-offline-text: #aab1c4;
+  --state-offline-foreground: #0d111e;
+  --state-danger: #f0554a;
+  --state-danger-text: #ff8a80;
+  --state-danger-foreground: #0d111e;
+
+  --map-street: #2a3350;
+  --map-block: #151b2d;
+  --map-block-alt: #111727;
+  --map-park: #143524;
+  --map-water: #12294d;
+  --map-label: #a3acc6;
+  --map-casing: #0d111e;
+
+  --elevation-1: 0 1px 2px rgb(0 0 0 / 40%), 0 2px 8px rgb(0 0 0 / 25%);
+  --elevation-2: 0 2px 4px rgb(0 0 0 / 35%), 0 12px 28px rgb(0 0 0 / 40%);
+  --elevation-3: 0 4px 10px rgb(0 0 0 / 40%), 0 24px 56px rgb(0 0 0 / 55%);
+  --elevation-sheet: 0 -8px 32px rgb(0 0 0 / 50%);
+  --rim: rgb(255 255 255 / 8%);
+  --highlight-strength: 70%;
+  --photo-brightness: 0.92;
+
+  --chart-2: #3d85f5;
+  --chart-3: #2cc36b;
+  --chart-4: #f2b632;
+  --chart-5: #8c94a8;
+  --sidebar: #191f31;
+  --sidebar-foreground: #f3f5fa;
+  --sidebar-border: #2d3650;
+  --sidebar-ring: #3d85f5;
+}
+
+/*
+ * Distributor brand colour. BrandTheme derives both themes in JS and writes the eight
+ * --brand-* values inline; the theme switch then needs no re-render.
+ */
+[data-brand] {
+  --primary: var(--brand-fill-light);
+  --primary-foreground: var(--brand-on-light);
+  --primary-text: var(--brand-text-light);
+  --primary-soft: var(--brand-soft-light);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--primary-soft);
+  --sidebar-accent-foreground: var(--primary-text);
+  --chart-1: var(--primary);
+}
+.dark [data-brand],
+.dark[data-brand] {
+  --primary: var(--brand-fill-dark);
+  --primary-foreground: var(--brand-on-dark);
+  --primary-text: var(--brand-text-dark);
+  --primary-soft: var(--brand-soft-dark);
+}
+
+/* Gas brand of a product (colour of the cylinder drawing). Same derivation, other prefix. */
+[data-gas-brand] {
+  --gas-brand: var(--gas-fill-light);
+  --gas-brand-foreground: var(--gas-on-light);
+  --gas-brand-text: var(--gas-text-light);
+  --gas-brand-soft: var(--gas-soft-light);
+}
+.dark [data-gas-brand] {
+  --gas-brand: var(--gas-fill-dark);
+  --gas-brand-foreground: var(--gas-on-dark);
+  --gas-brand-text: var(--gas-text-dark);
+  --gas-brand-soft: var(--gas-soft-dark);
+}
+
+/* Ambients: the driver reads ink in full sun, the office is dense. */
+[data-ambient='driver'] {
+  --muted-foreground: #2e3550;
+  font-size: 1.125rem;
+}
+.dark [data-ambient='driver'] {
+  --muted-foreground: #d5dae8;
+}
+[data-ambient='office'] {
+  font-size: 0.875rem;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --font-heading: var(--font-sans);
-  --font-sans: 'Geist Variable', sans-serif;
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
+  --color-surface-soft: var(--surface-soft);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-text: var(--primary-text);
+  --color-primary-soft: var(--primary-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-band: var(--band);
+  --color-band-foreground: var(--band-foreground);
+  --color-flame: var(--flame);
+  --color-flame-foreground: var(--flame-foreground);
+  --color-flame-text: var(--flame-text);
+  --color-flame-soft: var(--flame-soft);
+  --color-aji: var(--aji);
+  --color-aji-foreground: var(--aji-foreground);
+  --color-state-free: var(--state-free);
+  --color-state-free-text: var(--state-free-text);
+  --color-state-free-foreground: var(--state-free-foreground);
+  --color-state-busy: var(--state-busy);
+  --color-state-busy-text: var(--state-busy-text);
+  --color-state-busy-foreground: var(--state-busy-foreground);
+  --color-state-paused: var(--state-paused);
+  --color-state-paused-text: var(--state-paused-text);
+  --color-state-paused-foreground: var(--state-paused-foreground);
+  --color-state-offline: var(--state-offline);
+  --color-state-offline-text: var(--state-offline-text);
+  --color-state-offline-foreground: var(--state-offline-foreground);
+  --color-state-danger: var(--state-danger);
+  --color-state-danger-text: var(--state-danger-text);
+  --color-state-danger-foreground: var(--state-danger-foreground);
+  --color-gas-brand: var(--gas-brand, var(--primary));
+  --color-gas-brand-foreground: var(--gas-brand-foreground, var(--primary-foreground));
+  --color-gas-brand-text: var(--gas-brand-text, var(--primary-text));
+  --color-gas-brand-soft: var(--gas-brand-soft, var(--primary-soft));
+  --color-map-street: var(--map-street);
+  --color-map-block: var(--map-block);
+  --color-map-block-alt: var(--map-block-alt);
+  --color-map-park: var(--map-park);
+  --color-map-water: var(--map-water);
+  --color-map-label: var(--map-label);
+  --color-map-casing: var(--map-casing);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --font-sans: 'Figtree Variable', system-ui, sans-serif;
+  --font-heading: 'Gabarito Variable', 'Figtree Variable', system-ui, sans-serif;
+
+  /* Heading sizes share one tight line height (30 px and up are only used for headings). */
+  --text-3xl--line-height: 1.08;
+  --text-4xl--line-height: 1.08;
+  --text-5xl--line-height: 1.08;
+  --text-6xl--line-height: 1.08;
+  --text-7xl--line-height: 1.08;
+
+  /* 10 · 12 · 16 · 24 · 32 · 44 · 56 px */
+  --radius-sm: calc(var(--radius) * 0.625);
+  --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: calc(var(--radius) * 1.5);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-3xl: calc(var(--radius) * 2.75);
+  --radius-4xl: calc(var(--radius) * 3.5);
+
+  --shadow-card: var(--elevation-1), 0 0 0 1px var(--rim);
+  --shadow-raised: var(--elevation-2), 0 0 0 1px var(--rim);
+  --shadow-float: var(--elevation-3), 0 0 0 1px var(--rim);
+  --shadow-sheet: var(--elevation-sheet), 0 0 0 1px var(--rim);
+  --shadow-brand:
+    inset 0 1px 0 rgb(255 255 255 / 35%),
+    0 8px 20px color-mix(in srgb, var(--primary) 32%, transparent);
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+/* Marker-pen band under the key phrase of a headline. Never colour the words themselves. */
+@utility highlight-mark {
+  background: linear-gradient(
+    transparent 64%,
+    color-mix(in srgb, var(--primary) var(--highlight-strength), transparent) 64%,
+    color-mix(in srgb, var(--primary) var(--highlight-strength), transparent) 93%,
+    transparent 93%
+  );
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  margin: 0 -0.1em;
+  padding: 0 0.1em;
+  border-radius: 6px;
+}
+
+/* Dashed burner ring that peeks from behind a photo or a card. One per section at most. */
+@utility burner-ring {
+  position: absolute;
+  border: var(--burner-ring-width, 14px) dashed var(--burner-ring-color, var(--primary));
+  border-radius: 50%;
+  opacity: 0.9;
+  pointer-events: none;
+}
+@utility burner-ring-flame {
+  --burner-ring-color: var(--flame);
+}
+@utility burner-ring-thin {
+  --burner-ring-width: 10px;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+  }
+  :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
   }
 }

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="es-PE">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hornilla · Pide tu balón de gas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="base.js"></script>
+    <link rel="stylesheet" href="base.css" />
+    <style>
+      @media (min-width: 1024px) {
+        body {
+          height: 100vh;
+          overflow: hidden;
+        }
+      }
+      .dist-card {
+        display: grid;
+        gap: 0.85rem;
+        padding: 1rem;
+        transition: transform var(--dur-instant) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+      }
+      .dist-card:hover {
+        border-color: var(--brand-text);
+      }
+      .dist-card .mini {
+        width: 46px;
+        flex: none;
+      }
+      .dist-card[data-closed='true'] .body {
+        opacity: 0.62;
+      }
+    </style>
+  </head>
+  <body class="amb-cliente">
+    <header class="topbar">
+      <div class="flex items-center gap-3 px-4 lg:px-6 h-16">
+        <a href="index.html" class="wordmark"><span data-logo="34"></span>hornilla</a>
+        <button class="hidden lg:flex items-center gap-3 ml-8 surface pressable px-4 h-12 flex-1 max-w-xl text-left" style="border-radius: 999px">
+          <i data-i="map-pin" class="flame-text"></i>
+          <span class="min-w-0 flex-1 truncate"><span class="mute small">Entregar en</span> <strong>Jr. Las Flores 245, Centro</strong></span>
+          <span class="small flame-text" style="font-weight: 700">Cambiar</span>
+        </button>
+        <span class="flex-1 lg:hidden"></span>
+        <a href="1-duenos.html" class="hidden lg:inline-flex btn btn-quiet btn-sm ml-auto">Tengo una distribuidora</a>
+        <a href="#" class="hidden lg:inline-flex btn btn-quiet btn-sm">Mis pedidos</a>
+        <button class="btn btn-ghost btn-sm"><i data-i="user"></i>Ingresar</button>
+      </div>
+    </header>
+
+    <div class="lg:grid lg:grid-cols-[minmax(0,780px)_1fr] lg:h-[calc(100vh-65px)]">
+      <main class="lg:overflow-y-auto px-4 lg:px-6 pt-4 pb-28 lg:pb-8 lg:h-full">
+        <!-- Portada -->
+        <section class="photo rim h-[300px] lg:h-[250px]">
+          <img class="only-dark" src="../../images/pexels-6126281-llama-azul-hornilla.jpg" alt="" style="object-position: 50% 68%" />
+          <img class="only-light" src="../../images/pexels-13772359-tetera-llama-cocina.jpg" alt="" style="object-position: 62% 92%" />
+          <div class="photo-body">
+            <p class="eyebrow" style="color: #8fd8ff">Huaraz · 4 distribuidoras cerca</p>
+            <h1 class="hx mt-2" style="font-size: clamp(1.9rem, 3vw, 2.5rem)">¿Se acabó el gas?<br />Pídelo y míralo llegar.</h1>
+          </div>
+        </section>
+
+        <!-- Ubicacion (celular) -->
+        <button class="lg:hidden surface-raised pressable w-full flex items-center gap-3 p-3 text-left -mt-5 relative z-10 mx-auto" style="width: calc(100% - 24px); margin-left: 12px">
+          <span class="icon-btn flame-text" style="box-shadow: var(--glow-flame)"><i data-i="locate"></i></span>
+          <span class="min-w-0 flex-1">
+            <span class="block tiny mute" style="font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase">Entregar en</span>
+            <strong class="block truncate">Jr. Las Flores 245, Centro</strong>
+          </span>
+          <span class="small flame-text" style="font-weight: 700">Cambiar</span>
+        </button>
+
+        <!-- Lo de siempre -->
+        <section class="surface-raised mt-5 p-4 flex flex-wrap items-center gap-3" data-brand-main aria-label="Tu último pedido">
+          <span class="mini" style="width: 54px; flex: none" data-balon="10"></span>
+          <div class="min-w-0 flex-1">
+            <p class="tiny mute" style="font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase">Lo de siempre</p>
+            <p class="hx t-3">1 balón Nevado 10 kg</p>
+            <p class="small mute truncate">Gas Los Andes · <span class="price">S/ 48.00</span></p>
+          </div>
+          <a href="3-seguimiento.html" class="btn btn-action w-full sm:w-auto"><i data-i="repeat"></i>Repetir pedido</a>
+        </section>
+
+        <!-- Filtros -->
+        <div class="scroll-x mt-6 -mx-4 px-4 lg:mx-0 lg:px-0" role="group" aria-label="Tamaño del balón y orden">
+          <button class="chip" aria-pressed="true">10 kg</button>
+          <button class="chip" aria-pressed="false">15 kg</button>
+          <button class="chip" aria-pressed="false">45 kg</button>
+          <span style="width: 1px; background: var(--border-strong); margin: 8px 4px; flex: none"></span>
+          <button class="chip" aria-pressed="false"><i data-i="timer"></i>Más rápido</button>
+          <button class="chip" aria-pressed="false"><i data-i="banknote"></i>Menor precio</button>
+          <button class="chip" aria-pressed="false"><i data-i="star"></i>Mejor calificado</button>
+        </div>
+
+        <div class="flex items-baseline justify-between mt-6 mb-3">
+          <h2 class="hx t-2">Atienden tu zona</h2>
+          <span class="small mute">Balón de 10 kg</span>
+        </div>
+        <ul id="lista" class="stagger grid gap-3 lg:grid-cols-2"></ul>
+        <p class="small mute mt-4 flex items-center gap-2"><i data-i="shield"></i>Precio por recarga: entregas tu balón vacío. Pagas al recibir.</p>
+      </main>
+
+      <!-- Mapa (escritorio) -->
+      <aside class="hidden lg:block relative p-3 pl-0 h-full">
+        <div id="mapa" class="map h-full rim" style="border-radius: var(--radius-xl); box-shadow: 0 0 0 1px var(--border-strong), var(--shadow-2)"></div>
+        <div class="glass absolute left-4 bottom-8 p-3 pr-4 flex items-center gap-3 small" style="border-radius: 18px">
+          <span class="icon-btn" style="width: 36px; height: 36px; background: var(--action); color: var(--action-foreground); border: 0"><i data-i="home"></i></span>
+          <span><strong>Tu casa</strong><br /><span class="mute">Los círculos muestran hasta dónde reparte cada una.</span></span>
+        </div>
+      </aside>
+    </div>
+
+    <nav class="bottom-nav lg:hidden" aria-label="Principal">
+      <a href="0-inicio.html" aria-current="page"><i data-i="flame"></i>Inicio</a>
+      <a href="3-seguimiento.html"><i data-i="list"></i>Mis pedidos</a>
+      <a href="#"><i data-i="user"></i>Mi cuenta</a>
+    </nav>
+
+    <script>
+      Hornilla.onReady(() => {
+        const ic = Hornilla.icon;
+        const data = [
+          { n: 'Rapigas Huaraz', m: 'RH', c: 'F5A524', star: '4.9', votes: 341, eta: '10–20 min', km: '0,8 km', price: 4800, brands: 'Brasa · Cumbre', open: 'Abierto hasta las 9:00 p. m.', tag: 'La más rápida ahora' },
+          { n: 'Gas Los Andes', m: 'LA', c: Hornilla.brand.slice(1), star: '4.8', votes: 212, eta: '15–25 min', km: '1,2 km', price: 4600, brands: 'Nevado · Brasa', open: 'Abierto hasta las 8:00 p. m.', main: true },
+          { n: 'Don Fuego', m: 'DF', c: 'E5484D', star: '4.6', votes: 98, eta: '20–30 min', km: '1,9 km', price: 4500, brands: 'Brasa · Qori', open: 'Abierto hasta las 7:30 p. m.', tag: 'El menor precio' },
+          { n: 'Gas Cordillera', m: 'GC', c: '10B981', star: '4.4', votes: 57, eta: 'Mañana', km: '2,4 km', price: 4400, brands: 'Cumbre', open: 'Cerrado · abre mañana a las 7:00 a. m.', closed: true },
+        ];
+        const card = (d) => `
+          <li><a href="2-distribuidora.html" class="surface dist-card pressable" data-brand="${d.c}" data-closed="${!!d.closed}">
+            <div class="flex items-center gap-3">
+              <span class="monogram">${d.m}</span>
+              <div class="min-w-0 flex-1">
+                <h3 class="hx t-3 truncate">${d.n}</h3>
+                <p class="small mute flex items-center gap-1"><span class="flex items-center gap-1" style="color:var(--price);font-weight:700">${ic('star', 'icon-fill')}<span class="num">${d.star}</span></span>(${d.votes}) · a ${d.km}</p>
+              </div>
+              ${ic('chevron-right', 'mute')}
+            </div>
+            <div class="body sunken flex items-center gap-3 p-2 pr-3">
+              <span class="mini" data-balon="10" data-color="#${d.c}"></span>
+              <div class="min-w-0 flex-1">
+                <p class="tiny mute">Balón 10 kg desde</p>
+                <p class="price" style="font-size:1.5rem;line-height:1.1">${Hornilla.soles(d.price)}</p>
+              </div>
+              <div class="text-right">
+                <p class="tiny mute">${d.closed ? 'Llega' : 'Llega en'}</p>
+                <p class="num" style="font-weight:700;font-size:1.05rem;white-space:nowrap">${d.eta}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="state" data-state="${d.closed ? 'offline' : 'free'}">${ic(d.closed ? 'clock' : 'check')}${d.open}</span>
+              ${d.tag ? `<span class="tag">${d.tag}</span>` : ''}
+              <span class="tiny mute ml-auto">${d.brands}</span>
+            </div>
+          </a></li>`;
+        const skeleton = `<li class="surface dist-card" aria-hidden="true">
+            <div class="flex items-center gap-3"><span class="skeleton" style="width:48px;height:48px;border-radius:14px"></span>
+              <div class="flex-1 grid gap-2"><span class="skeleton" style="height:16px;width:60%"></span><span class="skeleton" style="height:12px;width:40%"></span></div></div>
+            <span class="skeleton" style="height:72px;border-radius:16px"></span>
+            <div class="flex gap-2 items-center"><span class="skeleton" style="height:24px;width:46%;border-radius:999px"></span><span class="small mute ml-auto">Buscando más distribuidoras…</span></div></li>`;
+        document.getElementById('lista').innerHTML = data.map(card).join('') + skeleton;
+
+        Hornilla.map(document.getElementById('mapa'), {
+          label: 'Mapa de distribuidoras que atienden tu zona',
+          coverage: [
+            { at: [8, 6], r: 250, color: '#F5A524' },
+            { at: [10, 4], r: 300, color: Hornilla.brand },
+            { at: [10.5, 7], r: 270, color: '#E5484D' },
+          ],
+          pins: [
+            { at: [8, 6], kind: 'plant', color: '#F5A524', fg: '#0A1330', label: 'Rapigas · S/ 48.00' },
+            { at: [10, 4], kind: 'plant', label: 'Los Andes · S/ 46.00' },
+            { at: [10.5, 7], kind: 'plant', color: '#E5484D', fg: '#fff', label: 'Don Fuego · S/ 45.00' },
+            { at: [8, 3], kind: 'plant', color: '#10B981', fg: '#0A1330', label: 'Cordillera · cerrado' },
+            { at: [9, 5.5], kind: 'home', label: 'Tu casa' },
+          ],
+          view: { mobile: { c: [9, 5.5] }, desktop: { c: [9.2, 5.2], z: 1 } },
+        });
+      });
+    </script>
+  </body>
+</html>

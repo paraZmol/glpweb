@@ -25,6 +25,8 @@ Te darán nombre, intención y límites. Entregas en `docs/design/propuestas/<cl
 - `capturas/`: PNG a 390×844 y 1440×900 de cada pantalla, más una variante con otro color de marca.
 
 Pantallas mínimas, con textos reales:
+0. **Inicio del cliente** (la entrada principal de Hornilla: mi ubicación, distribuidoras y marcas
+   que atienden mi zona con precio, tiempo estimado y calificación; elegir y pedir).
 1. **Portada para dueños** (promesa, "así se ve tu página", 3 pasos, mapa en vivo, precio, CTA).
 2. **Página pública de una distribuidora** (portada, productos con precio y +/−, barra "Pedir").
 3. **Seguimiento del pedido** (mapa, estado, tiempo estimado, llamar/WhatsApp).

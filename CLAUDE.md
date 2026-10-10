@@ -1,6 +1,8 @@
-# glpWEB
+# glpWEB — nombre comercial: Hornilla
 
-SaaS para distribuidoras de gas (GLP) en Perú: muchas distribuidoras en una sola plataforma.
+Plataforma única donde la gente pide gas a la distribuidora y marca que prefiera, y SaaS para
+esas distribuidoras (GLP) en Perú. En la interfaz el producto se llama **Hornilla**; `glpWEB` es
+solo el nombre interno (carpeta, repo, proyecto Firebase).
 Pedidos por web/app y por teléfono, jornada y cuadre de caja del repartidor, stock de planta y
 mapa en tiempo real. Una sola app web adaptativa e instalable (PWA). Roles: super admin, dueño,
 central, repartidor, cliente.

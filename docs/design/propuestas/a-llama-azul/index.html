@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es-PE">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hornilla · Dirección A "Llama azul"</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="base.js"></script>
+    <link rel="stylesheet" href="base.css" />
+  </head>
+  <body>
+    <main style="max-width: 980px; margin: 0 auto; padding: 40px 20px 64px">
+      <span class="wordmark" style="font-size: 1.5rem"><span data-logo="48"></span>hornilla</span>
+      <p class="eyebrow mt-8">Dirección A</p>
+      <h1 class="hx t-hero mt-2">Llama azul</h1>
+      <p class="lead mt-4" style="max-width: 640px">Nocturna, precisa y confiable. La luz azul sale de lo que está activo; el ámbar de la punta de la llama queda solo para la acción, el precio y tu casa.</p>
+
+      <div class="flex flex-wrap gap-2 mt-8" id="temas">
+        <a class="chip" data-tema="oscuro" href="?tema=oscuro"><i data-i="moon"></i>Oscuro</a>
+        <a class="chip" data-tema="claro" href="?tema=claro"><i data-i="sun"></i>Claro</a>
+        <span style="width: 1px; background: var(--border-strong); margin: 8px 4px"></span>
+        <a class="chip" data-marca="2D7FF9"><span class="dot" style="--c: #2d7ff9"></span>Marca azul</a>
+        <a class="chip" data-marca="E11D48"><span class="dot" style="--c: #e11d48"></span>Marca viva</a>
+        <a class="chip" data-marca="F59E0B"><span class="dot" style="--c: #f59e0b"></span>Marca clara</a>
+        <a class="chip" data-marca="1F2937"><span class="dot" style="--c: #5b6b85"></span>Marca oscura</a>
+      </div>
+
+      <ol class="stagger grid sm:grid-cols-2 gap-3 mt-8" id="pantallas"></ol>
+
+      <section class="surface p-6 mt-8">
+        <h2 class="hx t-2">Piezas de la dirección</h2>
+        <div class="flex flex-wrap items-end gap-6 mt-5">
+          <span style="width: 70px" data-balon="10" data-color="#2D7FF9"></span>
+          <span style="width: 70px" data-balon="15" data-color="#E5484D"></span>
+          <span style="width: 70px" data-balon="45" data-color="#10B981"></span>
+          <span data-dial="8|min|0.62"></span>
+          <div class="grid gap-2">
+            <span class="state" data-state="free"><i data-i="check"></i>Libre</span>
+            <span class="state" data-state="busy"><i data-i="bike"></i>Con pedido</span>
+            <span class="state" data-state="paused"><i data-i="pause"></i>En pausa</span>
+            <span class="state" data-state="offline"><i data-i="wifi-off"></i>Sin señal</span>
+            <span class="state" data-state="danger"><i data-i="alert"></i>Demora</span>
+          </div>
+          <div class="grid gap-2">
+            <button class="btn btn-action">Pedir · S/ 48.00</button>
+            <button class="btn btn-flame">Asignar</button>
+            <button class="btn btn-ghost">Ver sin mapa</button>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script>
+      Hornilla.onReady(() => {
+        const screens = [
+          ['0-inicio.html', 'Inicio del cliente', 'Buscador de distribuidoras que atienden tu zona', 'flame'],
+          ['1-duenos.html', 'Portada para dueños', 'Promesa, tu página, 3 pasos, mapa en vivo, precio', 'store'],
+          ['2-distribuidora.html', 'Página de una distribuidora', 'Productos con +/− y barra "Pedir · S/ total"', 'package'],
+          ['3-seguimiento.html', 'Seguimiento del pedido', 'Mapa, estado, tiempo estimado, llamar o WhatsApp', 'route'],
+          ['4-monitor.html', 'Monitor de la central', 'Repartidores por estado, cola e indicadores', 'map'],
+          ['5-repartidor.html', 'Repartidor: pedido en curso', 'Ruta, cliente, cobro y "Ya llegué"', 'bike'],
+        ];
+        document.getElementById('pantallas').innerHTML = screens
+          .map(
+            ([href, title, sub, icon], k) => `<li><a href="${href}" class="surface pressable flex items-center gap-4 p-4">
+            <span class="icon-btn flame-text" style="box-shadow:var(--glow-flame)">${Hornilla.icon(icon)}</span>
+            <span class="flex-1"><strong class="hx t-3 block"><span class="num mute">${k}</span> · ${title}</strong><span class="small mute">${sub}</span></span>
+            ${Hornilla.icon('chevron-right', 'mute')}</a></li>`,
+          )
+          .join('');
+        const p = new URLSearchParams(location.search);
+        document.querySelectorAll('#temas [data-tema]').forEach((a) => {
+          const q = new URLSearchParams(p);
+          q.set('tema', a.dataset.tema);
+          a.href = '?' + q;
+          a.setAttribute('aria-pressed', Hornilla.theme === a.dataset.tema);
+        });
+        document.querySelectorAll('#temas [data-marca]').forEach((a) => {
+          const q = new URLSearchParams(p);
+          q.set('marca', a.dataset.marca);
+          a.href = '?' + q;
+          a.setAttribute('aria-pressed', Hornilla.brand.slice(1).toUpperCase() === a.dataset.marca);
+        });
+      });
+    </script>
+  </body>
+</html>

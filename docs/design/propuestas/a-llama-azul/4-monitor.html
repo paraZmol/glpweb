@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="es-PE">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Monitor · Gas Los Andes · Hornilla</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="base.js"></script>
+    <link rel="stylesheet" href="base.css" />
+    <style>
+      #mapa {
+        height: 320px;
+      }
+      .panel-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 1.02rem;
+        letter-spacing: -0.02em;
+      }
+      .seg {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 1fr;
+        padding: 3px;
+        gap: 3px;
+        border-radius: 14px;
+        background: var(--sunken);
+        border: 1px solid var(--border);
+      }
+      .seg button {
+        min-height: 40px;
+        border-radius: 11px;
+        font-weight: 700;
+        font-size: 0.86rem;
+        color: var(--muted-foreground);
+        white-space: nowrap;
+      }
+      .seg button[aria-pressed='true'] {
+        background: var(--sheen), var(--elevated);
+        color: var(--foreground);
+        box-shadow: var(--shadow-1);
+        border: 1px solid var(--border-strong);
+      }
+      .ord-id {
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+      .legend {
+        margin-top: 0.5rem;
+      }
+      @media (min-width: 1024px) {
+        .legend {
+          position: absolute;
+          left: 12px;
+          bottom: 12px;
+          margin: 0;
+          padding: 8px;
+          border-radius: 16px;
+          background: var(--glass);
+          backdrop-filter: blur(18px);
+          border: 1px solid var(--border-strong);
+          box-shadow: var(--shadow-2);
+        }
+      }
+      .ord-id {
+        white-space: nowrap;
+      }
+      kbd {
+        font-family: var(--font-display);
+        font-size: 0.72rem;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 6px;
+        background: rgba(27, 16, 0, 0.16);
+      }
+      @media (min-width: 1024px) {
+        body {
+          height: 100vh;
+          overflow: hidden;
+          display: grid;
+          grid-template-columns: 212px 1fr;
+        }
+        #mapa {
+          height: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body class="amb-central brand-scope pb-40 lg:pb-0">
+    <!-- Lateral (escritorio) -->
+    <aside class="rail hidden lg:flex">
+      <a href="index.html" class="wordmark px-2 py-2" style="min-height: 0; color: var(--foreground)"><span data-logo="30"></span>hornilla</a>
+      <button class="surface pressable flex items-center gap-2 p-2 mt-3 mb-3 text-left">
+        <span class="monogram" style="width: 36px; height: 36px; border-radius: 11px; font-size: 0.8rem">LA</span>
+        <span class="min-w-0 flex-1" style="line-height: 1.2"><strong class="block truncate">Gas Los Andes</strong><span class="tiny mute">Central</span></span>
+        <i data-i="chevron-down" class="mute"></i>
+      </button>
+      <a href="#" aria-current="page"><i data-i="map"></i>Monitor</a>
+      <a href="#"><i data-i="list"></i>Pedidos</a>
+      <a href="#"><i data-i="truck"></i>Jornadas</a>
+      <a href="#"><i data-i="package"></i>Stock de planta</a>
+      <a href="#"><i data-i="users"></i>Personal</a>
+      <a href="#"><i data-i="chart"></i>Reportes</a>
+      <span class="flex-1"></span>
+      <div class="flex items-center gap-2 px-2 py-2">
+        <span class="avatar" style="width: 36px; height: 36px; font-size: 0.8rem">AP</span>
+        <span style="line-height: 1.2"><strong class="block">Ana P.</strong><span class="tiny mute">Operadora</span></span>
+      </div>
+    </aside>
+
+    <div class="lg:flex lg:flex-col lg:min-h-0 lg:h-screen">
+      <!-- Barra superior (celular) -->
+      <header class="topbar lg:hidden">
+        <div class="flex items-center gap-3 px-4 h-14">
+          <span class="monogram" style="width: 36px; height: 36px; border-radius: 11px; font-size: 0.8rem">LA</span>
+          <div style="line-height: 1.15" class="flex-1"><strong class="hx" style="font-size: 1.05rem">Monitor</strong><span class="block tiny mute">Gas Los Andes · 3:34 p. m.</span></div>
+          <button class="icon-btn" aria-label="Avisos"><i data-i="bell"></i></button>
+        </div>
+      </header>
+
+      <!-- Indicadores -->
+      <section class="flex items-center gap-3 px-4 lg:px-5 pt-3 lg:pt-4" aria-label="Indicadores del día">
+        <div class="hidden lg:block mr-2">
+          <h1 class="hx" style="font-size: 1.45rem">Monitor</h1>
+          <p class="tiny mute">Sábado 10 de octubre · <span class="num">3:34 p. m.</span></p>
+        </div>
+        <div class="scroll-x flex-1 -mx-4 px-4 lg:mx-0 lg:px-0">
+          <div class="surface kpi" data-state="pending" style="border-color: color-mix(in srgb, var(--price) 55%, transparent)"><p class="k">En espera</p><p class="v ember-text">3</p></div>
+          <div class="surface kpi"><p class="k">En curso</p><p class="v flame-text">6</p></div>
+          <div class="surface kpi"><p class="k">Entregados hoy</p><p class="v">38</p></div>
+          <div class="surface kpi"><p class="k">Entrega promedio</p><p class="v">21 <span style="font-size: 0.9rem">min</span></p></div>
+          <div class="surface kpi"><p class="k">Repartidores</p><p class="v">5 <span class="mute" style="font-size: 0.9rem">de 6 con señal</span></p></div>
+        </div>
+        <a href="#" class="btn btn-action hidden lg:inline-flex"><i data-i="headset"></i>Pedido por teléfono <kbd>N</kbd></a>
+      </section>
+
+      <!-- Tres paneles -->
+      <div class="lg:grid lg:grid-cols-[330px_1fr_290px] lg:gap-3 lg:p-4 lg:pt-3 lg:flex-1 lg:min-h-0 mt-3 lg:mt-0">
+        <!-- Mapa -->
+        <section class="relative lg:order-2 lg:min-h-0 px-4 lg:px-0">
+          <div id="mapa" class="map" style="border-radius: var(--radius-lg); box-shadow: 0 0 0 1px var(--border-strong), var(--shadow-1)"></div>
+          <div class="legend flex flex-wrap gap-1.5">
+            <span class="state" data-state="busy"><i data-i="bike"></i>2 con pedido</span>
+            <span class="state" data-state="free"><i data-i="check"></i>2 libres</span>
+            <span class="state" data-state="paused"><i data-i="pause"></i>1 en pausa</span>
+            <span class="state" data-state="offline"><i data-i="wifi-off"></i>1 sin señal</span>
+          </div>
+          <div class="glass absolute right-3 top-3 p-3 hidden lg:block" style="border-radius: 16px; width: 250px">
+            <p class="tiny mute">Pedido <span class="ord-id">N.º 1042</span> · Luis</p>
+            <p style="font-weight: 700">Jr. Las Flores 245, Centro</p>
+            <p class="small flex items-center gap-2 mt-1"><span class="state" data-state="busy"><i data-i="bike"></i>En camino</span><span class="num" style="font-weight: 700">llega en 8 min</span></p>
+          </div>
+        </section>
+
+        <!-- Cola -->
+        <section class="lg:order-1 lg:min-h-0 lg:flex lg:flex-col px-4 lg:px-0 mt-4 lg:mt-0" aria-label="Cola de pedidos">
+          <div class="seg" role="group">
+            <button aria-pressed="true">En espera · 3</button>
+            <button aria-pressed="false">En curso · 6</button>
+            <button aria-pressed="false" class="lg:hidden">Repartidores</button>
+          </div>
+          <ul id="cola" class="stagger grid grid-cols-1 gap-2 mt-3 content-start lg:flex-1 lg:min-h-0 scroll-y lg:pr-1"></ul>
+        </section>
+
+        <!-- Repartidores -->
+        <section class="hidden lg:flex lg:flex-col lg:order-3 lg:min-h-0 surface p-3" aria-label="Repartidores">
+          <p class="panel-title px-1">Repartidores <span class="tag">6 en jornada</span></p>
+          <ul id="flota" class="stagger grid grid-cols-1 gap-2 mt-3 content-start flex-1 min-h-0 scroll-y"></ul>
+        </section>
+      </div>
+    </div>
+
+    <!-- Celular: accion y navegacion -->
+    <div class="orderbar lg:hidden" style="bottom: 64px; background: none"><a href="#" class="btn btn-action btn-lg btn-block"><i data-i="headset"></i>Pedido por teléfono</a></div>
+    <nav class="bottom-nav lg:hidden" aria-label="Principal">
+      <a href="#" aria-current="page"><i data-i="map"></i>Monitor</a>
+      <a href="#"><i data-i="list"></i>Pedidos</a>
+      <a href="#"><i data-i="truck"></i>Jornadas</a>
+      <a href="#"><i data-i="package"></i>Stock</a>
+      <a href="#"><i data-i="menu"></i>Más</a>
+    </nav>
+
+    <script>
+      Hornilla.onReady(() => {
+        const ic = Hornilla.icon;
+        const queue = [
+          { id: 1045, wait: 'hace 9 min', late: true, addr: 'Av. Los Olivos 1120, Villa Sol', who: 'Carmen T.', items: '2 × Brasa 10 kg', total: 9200, via: 'Teléfono' },
+          { id: 1046, wait: 'hace 4 min', addr: 'Jr. Los Pinos 18, Centro', who: 'Restaurante El Fogón', items: '1 × Brasa 45 kg', total: 19600, via: 'Web' },
+          { id: 1047, wait: 'hace 1 min', fresh: true, addr: 'Pasaje Las Rosas 7, Los Jardines', who: 'Julio C.', items: '1 × Nevado 10 kg', total: 4800, via: 'Web' },
+        ];
+        const running = [
+          { id: 1042, driver: 'Luis', addr: 'Jr. Las Flores 245, Centro', eta: 'llega en 8 min', on: true },
+          { id: 1043, driver: 'Mayra', addr: 'Av. El Sol 640, Villa Sol', eta: 'llega en 12 min' },
+        ];
+        document.getElementById('cola').innerHTML =
+          queue
+            .map(
+              (o) => `<li class="row-card ${o.fresh ? 'flash' : ''}" data-state="${o.late ? 'danger' : 'pending'}">
+              <div class="flex items-center gap-2">
+                <span class="ord-id">N.º ${o.id}</span>
+                <span class="state" data-state="${o.late ? 'danger' : 'pending'}">${ic(o.late ? 'alert' : 'clock')}${o.late ? 'Demora · ' + o.wait.replace('hace ', '') : o.wait}</span>
+                <span class="price ml-auto" style="font-size:1.1em">${Hornilla.soles(o.total)}</span>
+              </div>
+              <p style="font-weight:700;font-size:1.05em">${o.addr}</p>
+              <div class="flex items-center gap-2">
+                <span class="tag" title="${o.via}">${ic(o.via === 'Web' ? 'smartphone' : 'phone')}${o.via}</span>
+                <p class="small mute flex-1 min-w-0 truncate"><strong style="color:var(--foreground)">${o.items}</strong> · ${o.who}</p>
+                <button class="btn btn-flame btn-sm" style="min-height:40px">Asignar</button>
+              </div></li>`,
+            )
+            .join('') +
+          `<li class="tiny mute px-1 pt-2" style="font-weight:700;letter-spacing:.08em;text-transform:uppercase">En curso</li>` +
+          running
+            .map(
+              (o) => `<li class="row-card ${o.on ? 'lit' : ''}" data-state="busy">
+              <div class="flex items-center gap-2"><span class="ord-id">N.º ${o.id}</span><span class="state" data-state="busy">${ic('bike')}${o.driver}</span><span class="num small ml-auto" style="font-weight:700">${o.eta}</span></div>
+              <p class="small mute">${o.addr}</p></li>`,
+            )
+            .join('');
+
+        const fleet = [
+          { n: 'Luis R.', s: 'busy', t: 'Con pedido', d: 'N.º 1042 · lleva 5 llenos', i: 'bike' },
+          { n: 'Mayra S.', s: 'busy', t: 'Con pedido', d: 'N.º 1043 · lleva 3 llenos', i: 'bike' },
+          { n: 'Jhon V.', s: 'free', t: 'Libre', d: 'A 600 m del N.º 1047 · 7 llenos', i: 'check' },
+          { n: 'César A.', s: 'free', t: 'Libre', d: 'Camión · 22 llenos', i: 'check' },
+          { n: 'Kevin D.', s: 'paused', t: 'En pausa', d: 'Desde hace 12 min · almuerzo', i: 'pause' },
+          { n: 'Dany Q.', s: 'offline', t: 'Sin señal', d: 'Última posición hace 6 min', i: 'wifi-off' },
+        ];
+        document.getElementById('flota').innerHTML = fleet
+          .map(
+            (f) => `<li class="flex items-center gap-2.5 p-2 sunken pressable" data-state="${f.s}">
+            <span class="avatar" style="width:40px;height:40px;font-size:.85rem">${f.n[0]}</span>
+            <span class="min-w-0 flex-1" style="line-height:1.3"><span class="flex items-center justify-between gap-2"><strong>${f.n}</strong><span class="state" data-state="${f.s}">${ic(f.i)}${f.t}</span></span><span class="tiny mute block truncate mt-0.5">${f.d}</span></span></li>`,
+          )
+          .join('');
+
+        Hornilla.map(document.getElementById('mapa'), {
+          label: 'Mapa de repartidores y pedidos en espera',
+          route: [[8, 6], [9, 6], [9, 5], [10, 5], [10, 4], [10.6, 4]],
+          progress: 0.45,
+          riderLabel: 'Luis',
+          pins: [
+            { at: [8, 6], kind: 'plant', label: 'Planta' },
+            { at: [10.6, 4], kind: 'home', label: 'N.º 1042' },
+            { at: [12.3, 4], kind: 'order', label: '1045 · 9 min' },
+            { at: [8, 4.6], kind: 'order', label: '1046 · 4 min' },
+            { at: [8.5, 3], kind: 'order', label: '1047 · 1 min' },
+          ],
+          riders: [
+            { at: [11.4, 3], state: 'busy', label: 'Mayra' },
+            { at: [8, 3.6], state: 'free', label: 'Jhon' },
+            { at: [12, 5.4], state: 'free', label: 'César' },
+            { at: [8.5, 7], state: 'paused', label: 'Kevin' },
+            { at: [11, 6.4], state: 'offline', label: 'Dany · hace 6 min' },
+          ],
+          view: { mobile: { c: [9.7, 4.8], z: 0.52 }, desktop: { c: [9.7, 4.75], z: 0.95 } },
+        });
+      });
+    </script>
+  </body>
+</html>
