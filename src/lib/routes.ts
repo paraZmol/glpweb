@@ -9,6 +9,9 @@ export const ROUTES = {
   terms: '/terminos',
   privacy: '/privacidad',
   cookies: '/cookies',
+  contact: '/contacto',
+  /** Public page of one distributor; build a real path with `distributorPath`. */
+  distributor: '/d/:slug',
   /** Sends a signed-in account to the area of its role. */
   appEntry: '/app',
   verifyEmail: '/verificar-correo',
@@ -16,10 +19,18 @@ export const ROUTES = {
   customerHome: '/inicio',
   customerOrders: '/pedidos',
   account: '/cuenta',
+  newDistributor: '/distribuidora/nueva',
   driverHome: '/reparto',
   officeHome: '/central',
   platformHome: '/plataforma',
 } as const;
+
+const DISTRIBUTOR_PREFIX = '/d/';
+
+/** Path of the public page of the distributor that owns `slug` (PLAN 2.5). */
+export function distributorPath(slug: string): string {
+  return `${DISTRIBUTOR_PREFIX}${encodeURIComponent(slug)}`;
+}
 
 export const AREA_HOME: Record<AppArea, string> = {
   customer: ROUTES.customerHome,
@@ -27,6 +38,13 @@ export const AREA_HOME: Record<AppArea, string> = {
   office: ROUTES.officeHome,
   platform: ROUTES.platformHome,
 };
+
+/** Told to the office home: the account has just founded this distributor (PLAN 2.2). */
+export const JUST_FOUNDED_STATE = { justFounded: true } as const;
+
+export function isJustFounded(state: unknown): boolean {
+  return typeof state === 'object' && state !== null && 'justFounded' in state;
+}
 
 /** Query parameter that remembers where a visitor was going before being asked to sign in. */
 export const RETURN_PARAM = 'desde';
@@ -68,8 +86,12 @@ const PARENT_OF: Record<string, string> = {
   [ROUTES.resetPassword]: ROUTES.signIn,
 };
 
+/** The two screens that list distributors: the page of one of them is their detail. */
+const FINDER_SCREENS: readonly string[] = [ROUTES.home, ROUTES.customerHome];
+
 function isDetailOf(child: string, parent: string): boolean {
   if (PARENT_OF[child] === parent) return true;
+  if (child.startsWith(DISTRIBUTOR_PREFIX) && FINDER_SCREENS.includes(parent)) return true;
   const base = parent.endsWith('/') ? parent : `${parent}/`;
   return parent !== ROUTES.home && child.startsWith(base);
 }

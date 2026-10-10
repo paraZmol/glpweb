@@ -26,13 +26,14 @@ import { useFocusFirstInvalid } from '@/lib/use-focus-first-invalid';
 import { useOnlineStatus } from '@/lib/use-online-status';
 
 const OFFLINE_TEXT = 'Sin conexión: para crear tu cuenta necesitas internet.';
-// Never ticked for the person: the box starts empty (PLAN 2.7).
+// Never ticked for the person: both boxes start empty (PLAN 2.7, 2.9).
 const EMPTY_FORM: RegistrationForm = {
   displayName: '',
   email: '',
   password: '',
   phone: '',
   acceptTerms: false,
+  acceptPrivacy: false,
 };
 /** Told to the verification screen: an e-mail was sent a moment ago, so "resend" starts waiting. */
 export const JUST_REGISTERED = { justRegistered: true };
@@ -59,11 +60,11 @@ export function RegisterPage() {
     event.preventDefault();
     const problems = validateRegistration(form);
     setErrors(problems);
-    // The box is checked again here on purpose: without it nothing is ever sent.
-    if (hasErrors(problems) || !form.acceptTerms || !isOnline) return;
+    // The boxes are checked again here on purpose: without both nothing is ever sent.
+    if (hasErrors(problems) || !form.acceptTerms || !form.acceptPrivacy || !isOnline) return;
     void run(async () => {
       try {
-        await registerAccount({ ...form, acceptTerms: true });
+        await registerAccount({ ...form, acceptTerms: true, acceptPrivacy: true });
         await navigate(ROUTES.verifyEmail, { replace: true, state: JUST_REGISTERED });
       } catch (error) {
         setErrors(registrationErrorsOf(error));

@@ -8,6 +8,7 @@ import {
   type RegistrationForm,
   registrationErrorsOf,
   signInErrorsOf,
+  validateConsents,
   validateProfile,
   validateRegistration,
   validateSignIn,
@@ -33,7 +34,9 @@ describe('validateRegistration', () => {
   it('refuses to go on without the terms box, even when everything else is right', () => {
     const errors = validateRegistration({ ...VALID, acceptTerms: false });
 
-    expect(Object.keys(errors)).toEqual(['acceptTerms']);
+    expect(errors).toEqual({
+      acceptTerms: 'Marca esta casilla para aceptar los términos y continuar.',
+    });
     expect(hasErrors(errors)).toBe(true);
   });
 
@@ -45,7 +48,18 @@ describe('validateRegistration', () => {
     const errors = validateRegistration({ ...VALID, ...patch });
 
     expect(Object.keys(errors)).toEqual(['acceptPrivacy']);
-    expect(errors.acceptPrivacy).toContain('privacidad');
+    expect(errors.acceptPrivacy).toBe(
+      'Marca esta casilla para autorizar el uso de tus datos y continuar.',
+    );
+  });
+
+  // PLAN 2.9: the same two boxes on the pending step of an existing account.
+  it('checks the two boxes on their own', () => {
+    expect(validateConsents({ acceptTerms: true, acceptPrivacy: true })).toEqual({});
+    expect(Object.keys(validateConsents({ acceptTerms: false, acceptPrivacy: false }))).toEqual([
+      'acceptTerms',
+      'acceptPrivacy',
+    ]);
   });
 
   it.each([

@@ -3,7 +3,7 @@ import { TextField } from '@/components/common/text-field';
 import { MIN_PASSWORD_LENGTH } from '@/domain/auth/session';
 import { DISPLAY_NAME_MAX_LENGTH } from '@/domain/tenancy/constants';
 import type { RegistrationErrors, RegistrationForm } from '@/features/auth/auth-forms';
-import { TermsConsent } from './terms-consent';
+import { LegalConsents, LegalVersionNote } from './legal-consents';
 
 export type SetRegistrationField = <Field extends keyof RegistrationForm>(
   field: Field,
@@ -16,7 +16,7 @@ type RegistrationFieldsProps = {
   set: SetRegistrationField;
 };
 
-/** The fields of the registration form (PLAN 2.1) and the box of the terms (PLAN 2.7). */
+/** The fields of the registration form (PLAN 2.1) and its two consent boxes (PLAN 2.9). */
 export function RegistrationFields({ form, errors, set }: RegistrationFieldsProps) {
   return (
     <>
@@ -62,11 +62,13 @@ export function RegistrationFields({ form, errors, set }: RegistrationFieldsProp
         error={errors.phone}
         hint="9 dígitos. Lo ve la distribuidora a la que le pidas, para coordinar la entrega."
       />
-      <TermsConsent
-        checked={form.acceptTerms}
-        onChange={(checked) => set('acceptTerms', checked)}
-        error={errors.acceptTerms}
+      <LegalConsents
+        acceptTerms={form.acceptTerms}
+        acceptPrivacy={form.acceptPrivacy === true}
+        onChange={set}
+        errors={errors}
       />
+      <LegalVersionNote />
     </>
   );
 }

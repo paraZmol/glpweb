@@ -13,6 +13,7 @@ const LEGAL_LINKS = [
   { to: ROUTES.terms, label: 'Términos y condiciones' },
   { to: ROUTES.privacy, label: 'Política de privacidad' },
   { to: ROUTES.cookies, label: 'Cookies y almacenamiento' },
+  { to: ROUTES.contact, label: 'Contacto y reclamos' },
 ];
 
 function PublicHeader() {
@@ -21,9 +22,17 @@ function PublicHeader() {
       <Link to={ROUTES.home} className="rounded-md">
         <HornillaLogo size={LOGO_PX} />
       </Link>
-      <Suspense fallback={<HeaderAccountPlaceholder />}>
-        <HeaderAccount />
-      </Suspense>
+      <div className="flex items-center gap-2">
+        <Link
+          to={ROUTES.newDistributor}
+          className="hidden min-h-10 items-center rounded-full px-4 text-[0.9375rem] font-semibold underline-offset-4 hover:underline lg:inline-flex"
+        >
+          Tengo una distribuidora
+        </Link>
+        <Suspense fallback={<HeaderAccountPlaceholder />}>
+          <HeaderAccount />
+        </Suspense>
+      </div>
     </header>
   );
 }
@@ -42,7 +51,7 @@ function PublicFooter() {
           </p>
         </div>
         <nav aria-label="Legal">
-          <ul className="flex flex-col gap-1 text-sm font-semibold sm:flex-row sm:gap-6">
+          <ul className="flex flex-col gap-1 text-sm font-semibold sm:flex-row sm:flex-wrap sm:gap-x-6">
             {LEGAL_LINKS.map((link) => (
               <li key={link.to}>
                 <Link

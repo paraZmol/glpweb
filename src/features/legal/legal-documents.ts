@@ -1,6 +1,7 @@
 import cookiesSource from '../../../docs/legal/cookies.md?raw';
 import privacySource from '../../../docs/legal/privacidad.md?raw';
 import termsSource from '../../../docs/legal/terminos.md?raw';
+import { contactEmailOf } from '../../domain/legal/legal-contact';
 import { type LegalDocument, parseLegalDocument } from '../../domain/legal/legal-markdown';
 
 /**
@@ -18,4 +19,12 @@ const SOURCES: Record<LegalDocumentId, string> = {
 
 export function legalDocument(id: LegalDocumentId): LegalDocument {
   return parseLegalDocument(SOURCES[id]);
+}
+
+/**
+ * Where to write to Hornilla, as the terms publish it (PLAN 2.9). Null while that value is
+ * still a placeholder: the contact page then says the channel is not open yet.
+ */
+export function platformContactEmail(): string | null {
+  return contactEmailOf(legalDocument('terms'));
 }

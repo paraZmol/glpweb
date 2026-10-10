@@ -1,11 +1,14 @@
-import { Check } from 'lucide-react';
+import { Check, Hammer } from 'lucide-react';
 import type { ReactNode } from 'react';
 import kettlePhoto from '../../../docs/design/images/pexels-13772359-tetera-llama-cocina.jpg';
 import { BurnerRing } from '@/components/brand/burner-ring';
 import { GLYPH_STROKE } from '@/lib/icons';
 import { useIsDesktop } from '@/lib/use-media-query';
 
-const PROMISES = ['Precio a la vista antes de pedir', 'Pagas al recibir', 'Sin instalar nada'];
+// Only what already works (PLAN 2.9); what is still being built is said as such, like the
+// "En construcción" stamp of the home.
+const PROMISES = ['Distribuidoras de tu zona', 'Sin instalar nada', 'Sin publicidad ni rastreo'];
+const COMING_NEXT = 'Pronto: pedir y ver llegar tu gas';
 
 /** Desktop only: the kitchen photo with the burner ring and a floating card. The photo stays clean. */
 function AuthAside() {
@@ -33,6 +36,10 @@ function AuthAside() {
             {promise}
           </li>
         ))}
+        <li className="mt-1 flex items-center gap-2.5 border-t pt-3 text-muted-foreground">
+          <Hammer aria-hidden="true" className="size-4" strokeWidth={GLYPH_STROKE} />
+          {COMING_NEXT}
+        </li>
       </ul>
     </aside>
   );

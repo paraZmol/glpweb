@@ -24,8 +24,10 @@ function DraftStrip({ draft }: { draft: DraftMark }) {
       <p className="mx-auto flex w-full max-w-7xl items-start gap-2.5 px-4 py-3 text-[0.9375rem] font-semibold lg:px-8">
         <FileText aria-hidden="true" className="mt-0.5 size-5 shrink-0" strokeWidth={ICON_STROKE} />
         <span>
-          <strong className="font-extrabold">Borrador en revisión.</strong> Este texto (versión{' '}
-          {draft.version}) todavía no pasó la revisión legal y puede cambiar antes del lanzamiento.
+          <strong className="font-extrabold">Borrador en revisión.</strong> Esta versión (
+          {draft.version}) es la que rige mientras Hornilla está en prueba y la que queda registrada
+          si la aceptas. Todavía no pasó la revisión legal final; cuando cambie, te avisaremos y te
+          pediremos aceptarla de nuevo.
         </span>
       </p>
     </div>

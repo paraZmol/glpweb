@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { FormStatus } from '@/components/account/form-parts';
 import { Button } from '@/components/common/button';
 import { TextField } from '@/components/common/text-field';
+import { TextLink } from '@/components/common/text-link';
 import { DISPLAY_NAME_MAX_LENGTH } from '@/domain/tenancy/constants';
 import type { UserProfile } from '@/domain/tenancy/types';
 import { saveProfile } from '@/features/auth/auth-actions';
@@ -12,6 +13,7 @@ import {
   profileErrorsOf,
   validateProfile,
 } from '@/features/auth/auth-forms';
+import { ROUTES } from '@/lib/routes';
 import { useAsyncAction } from '@/lib/use-async-action';
 import { useFocusFirstInvalid } from '@/lib/use-focus-first-invalid';
 import { useOnlineStatus } from '@/lib/use-online-status';
@@ -81,7 +83,12 @@ export function ProfileForm({ uid, profile, email, onSaved }: ProfileFormProps) 
         type="email"
         value={email ?? ''}
         readOnly
-        hint="Con este correo ingresas. Por ahora no se puede cambiar desde aquí."
+        hint={
+          <>
+            Con este correo ingresas. Para eliminar tu cuenta o cambiar tu correo, escribe a{' '}
+            <TextLink to={ROUTES.contact}>Contacto y reclamos</TextLink>.
+          </>
+        }
       />
       <FormStatus error={errors.form} isOnline={isOnline} offlineText={OFFLINE_TEXT} />
       <Button

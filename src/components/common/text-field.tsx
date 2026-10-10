@@ -11,8 +11,8 @@ export type TextFieldProps = Omit<ComponentProps<'input'>, 'id' | 'className'> &
   label: string;
   /** Message under the field when its value was rejected. */
   error?: string;
-  /** Standing help under the field ("Mínimo 8 caracteres."). */
-  hint?: string;
+  /** Standing help under the field ("Mínimo 8 caracteres."). May carry a link. */
+  hint?: ReactNode;
   /** Control placed inside the field, at its right edge (show password, clear…). */
   trailing?: ReactNode;
   className?: string;
@@ -33,7 +33,15 @@ export function FieldError({ id, children }: { id: string; children: ReactNode }
 }
 
 /** Field of ui-system §8: label on top, 48 px tall, radius 16, with help and error message. */
-export function TextField({ label, error, hint, trailing, className, ...props }: TextFieldProps) {
+export function TextField({
+  label,
+  error,
+  hint,
+  trailing,
+  className,
+  'aria-invalid': isMarkedInvalid,
+  ...props
+}: TextFieldProps) {
   const id = useId();
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
@@ -49,7 +57,8 @@ export function TextField({ label, error, hint, trailing, className, ...props }:
         <input
           {...props}
           id={id}
-          aria-invalid={error ? true : undefined}
+          // A field can also be wrong as part of a group whose message is shown once, outside.
+          aria-invalid={error || isMarkedInvalid ? true : undefined}
           aria-describedby={describedBy || undefined}
           className={cn(
             'h-12 w-full rounded-lg border-[1.5px] border-input bg-muted px-4 text-base',

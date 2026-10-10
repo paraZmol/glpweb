@@ -27,9 +27,11 @@ export interface RegistrationForm {
 
 const MISSING_NAME = 'Escribe tu nombre.';
 const MISSING_PASSWORD = 'Escribe tu contraseña.';
-const MISSING_CONSENT = 'Marca la casilla para aceptar los términos y continuar.';
+const MISSING_CONSENT = 'Marca esta casilla para aceptar los términos y continuar.';
 const MISSING_PRIVACY_CONSENT =
-  'Marca la casilla para aceptar la política de privacidad y continuar.';
+  'Marca esta casilla para autorizar el uso de tus datos y continuar.';
+
+export type ConsentErrors = FormErrors<'acceptTerms' | 'acceptPrivacy'>;
 
 /** Message for an address that is not an e-mail; undefined when its shape is fine. */
 export function emailProblemOf(email: string): string | undefined {
@@ -62,6 +64,20 @@ export function validateProfile(form: { displayName: string; phone: string }): P
 }
 
 /**
+ * The two boxes every account ticks (PLAN 2.9): terms and age; privacy policy and use of data.
+ * Anything but `true` is a missing consent.
+ */
+export function validateConsents(boxes: {
+  acceptTerms: boolean;
+  acceptPrivacy?: boolean;
+}): ConsentErrors {
+  return withoutEmpty({
+    acceptTerms: boxes.acceptTerms ? undefined : MISSING_CONSENT,
+    acceptPrivacy: boxes.acceptPrivacy === true ? undefined : MISSING_PRIVACY_CONSENT,
+  });
+}
+
+/**
  * Every problem of the registration form at once, so the person fixes them in one go. The two
  * boxes (terms and age; privacy) are two more fields: without both nothing is sent (PLAN 2.7,
  * 2.9).
@@ -73,8 +89,7 @@ export function validateRegistration(form: RegistrationForm): RegistrationErrors
     password: isAcceptablePassword(form.password)
       ? undefined
       : describeAuthError(authErrorFor('weakPassword')),
-    acceptTerms: form.acceptTerms ? undefined : MISSING_CONSENT,
-    acceptPrivacy: form.acceptPrivacy === true ? undefined : MISSING_PRIVACY_CONSENT,
+    ...validateConsents(form),
   });
 }
 

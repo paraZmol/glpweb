@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { type InlineRun, type LegalBlock, plainText } from '../../domain/legal/legal-markdown';
 import { PRIVACY_VERSION, TERMS_VERSION } from '../../domain/legal/versions';
-import { LEGAL_DOCUMENT_IDS, legalDocument } from './legal-documents';
+import { LEGAL_DOCUMENT_IDS, legalDocument, platformContactEmail } from './legal-documents';
 
 function runsOf(block: LegalBlock): InlineRun[][] {
   if (block.kind === 'heading') return [[{ text: block.text, strong: false }]];
@@ -43,6 +43,11 @@ describe('legal documents of docs/legal', () => {
 
     expect(new Set(anchors).size).toBe(anchors.length);
     expect(anchors.every((anchor) => anchor !== '')).toBe(true);
+  });
+
+  // PLAN 2.10: until the holder and its address exist, the app has no contact e-mail to show.
+  it('never offers a placeholder of the terms as the contact e-mail', () => {
+    expect(platformContactEmail() ?? '').not.toMatch(/[[\]\s]/);
   });
 
   it('shows the same terms and privacy versions that an account accepts', () => {
