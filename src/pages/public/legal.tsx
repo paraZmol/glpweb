@@ -37,7 +37,7 @@ function SideIndex({ blocks, currentId }: { blocks: LegalBlock[]; currentId: Leg
     block.kind === 'heading' && block.level === 2 ? [block] : [],
   );
   const linkClass =
-    'inline-flex min-h-11 items-center underline-offset-4 hover:text-foreground hover:underline lg:min-h-9';
+    'inline-flex min-h-11 items-center py-1.5 leading-snug underline-offset-4 hover:text-foreground hover:underline lg:min-h-9';
   return (
     <aside className="flex flex-col gap-6 text-[0.9375rem] lg:sticky lg:top-[calc(var(--top-inset)+2rem)] lg:self-start">
       <nav aria-label="Secciones de este documento" className="rounded-xl bg-muted p-4 lg:p-5">
@@ -77,7 +77,9 @@ export function LegalPage({ documentId }: { documentId: LegalDocumentId }) {
       {legal.draft && <DraftStrip draft={legal.draft} />}
       <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 pt-8 pb-16 lg:grid-cols-[18rem_minmax(0,44rem)] lg:gap-16 lg:px-8 lg:pt-12 lg:pb-24">
         <header className="lg:col-start-2 lg:row-start-1">
-          <h1 className="text-[2.125rem] font-extrabold lg:text-[3.25rem]">{legal.title}</h1>
+          <h1 className="text-[2.125rem] font-extrabold text-balance lg:text-[3.25rem]">
+            {legal.title}
+          </h1>
           {legal.draft && (
             <p className="mt-3 font-semibold text-muted-foreground tabular-nums">
               Versión {legal.draft.version} · {formatLegalDate(legal.draft.date)}

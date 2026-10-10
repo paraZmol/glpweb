@@ -16,7 +16,7 @@ export function NotFoundPage() {
         <p className="font-heading text-lg font-bold text-muted-foreground tabular-nums">
           Error 404
         </p>
-        <h1 className="mt-2 text-[2.625rem] font-extrabold lg:text-7xl">
+        <h1 className="mt-2 text-[2.625rem] font-extrabold text-balance lg:text-7xl">
           Esta página <Highlight>no existe.</Highlight>
         </h1>
         <p className="mt-5 max-w-120 text-lg text-muted-foreground lg:text-xl">

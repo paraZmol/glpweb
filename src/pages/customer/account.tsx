@@ -17,8 +17,8 @@ function SessionPanel({ email }: { email: string | null }) {
     <Panel>
       <h2 className="text-xl font-bold">Sesión</h2>
       <p className="mt-1.5 text-muted-foreground">
-        Ingresaste como <strong className="break-all text-foreground">{email}</strong>. Para volver
-        a entrar vas a necesitar ese correo.
+        Ingresaste como <strong className="wrap-anywhere text-foreground">{email}</strong>. Para
+        volver a entrar vas a necesitar ese correo.
       </p>
       <Button
         variant="line"

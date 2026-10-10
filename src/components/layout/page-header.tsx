@@ -14,11 +14,11 @@ type PageHeaderProps = {
 /** Title block of a screen inside the app (type scale of ui-system §7). */
 export function PageHeader({ title, lead, dense = false, aside }: PageHeaderProps) {
   return (
-    <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <header className="flex flex-col items-start gap-4 lg:flex-row lg:items-end lg:justify-between">
       <div>
         <h1
           className={cn(
-            'font-extrabold',
+            'font-extrabold text-balance',
             dense ? 'text-2xl lg:text-[1.75rem]' : 'text-[2.125rem] lg:text-[2.5rem]',
           )}
         >
