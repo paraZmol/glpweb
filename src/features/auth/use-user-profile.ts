@@ -1,17 +1,32 @@
+import { getUserProfile } from '../../data/users-repo';
+import { needsTermsAcceptance } from '../../domain/legal/versions';
 import type { UserProfile } from '../../domain/tenancy/types';
 import { type ReloadableResource, useAsyncResource } from '../../lib/use-async-resource';
-import { ensureProfile } from './auth-actions';
 import { useSignedInSession } from './use-session';
 
+export interface AccountProfile {
+  /**
+   * Null when the account has no profile yet: a first Google sign-in, or a registration that
+   * lost the connection before its profile was stored. It is never created behind the scenes,
+   * because a profile carries the acceptance of the terms.
+   */
+  profile: UserProfile | null;
+  /**
+   * True when the person must accept the current terms before going on (no profile, or an
+   * older version accepted). Show the acceptance step and call `acceptCurrentTerms(uid)`.
+   */
+  needsTermsAcceptance: boolean;
+}
+
 /**
- * The profile of the signed-in account, created on first use when missing (an account that
- * registered but lost the connection before its profile was stored). `idle` when signed out.
- * One read per sign-in; call `reload()` after `saveProfile`.
+ * The profile of the signed-in account and whether the terms are pending (PLAN 2.1, 2.7).
+ * `idle` when signed out. One read per sign-in; call `reload()` after `saveProfile` or
+ * `acceptCurrentTerms`.
  */
-export function useUserProfile(): ReloadableResource<UserProfile> {
-  const session = useSignedInSession();
-  return useAsyncResource(session?.uid ?? null, () => {
-    if (!session) throw new Error('useUserProfile loaded without a session');
-    return ensureProfile(session);
+export function useUserProfile(): ReloadableResource<AccountProfile> {
+  const uid = useSignedInSession()?.uid ?? null;
+  return useAsyncResource(uid, async () => {
+    const profile = await getUserProfile(uid ?? '');
+    return { profile, needsTermsAcceptance: needsTermsAcceptance(profile) };
   });
 }

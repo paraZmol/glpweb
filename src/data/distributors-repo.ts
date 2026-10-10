@@ -61,6 +61,11 @@ export interface FoundingRequest {
   distributor: NewDistributor;
   /** Device time; the rules accept the trial end within a window around server time. */
   now: Date;
+  /**
+   * Version of the terms the founder accepted while also declaring it may represent the
+   * business. Both are stored with server time; only pass it after the person really did both.
+   */
+  termsVersion: string;
 }
 
 function publicDocument({ founder, distributor, now }: FoundingRequest) {
@@ -115,6 +120,8 @@ async function foundInTransaction(tx: Transaction, id: string, request: Founding
     ownerPhone: distributor.ownerPhone,
     ownerEmail: founder.email,
     plan: 'trial',
+    terms: { version: request.termsVersion, acceptedAt: serverTimestamp() },
+    authorityDeclaredAt: serverTimestamp(),
     ...stamps,
   });
   tx.update(userRef, { ownedDistributorIds: arrayUnion(id), updatedAt: serverTimestamp() });

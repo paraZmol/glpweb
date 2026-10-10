@@ -10,10 +10,12 @@
 import { pathToFileURL } from 'node:url';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, Timestamp, writeBatch } from 'firebase/firestore';
+import { EMULATOR_HOST, EMULATOR_PROJECT_ID, emulatorPorts } from '../../scripts/lane-ports.mjs';
 import {
   SEED_CREATED_AT,
   SEED_DISTRIBUTORS,
   SEED_PASSWORD,
+  SEED_TERMS_VERSION,
   SEED_USERS,
   type SeedDistributor,
   type SeedUser,
@@ -22,6 +24,7 @@ import {
 export interface SeedOptions {
   /** Must start with `demo-`: those ids can never reach a real Firebase project. */
   projectId?: string;
+  /** Ports default to the lane in E2E_LANE (scripts/lane-ports.mjs). */
   firestorePort?: number;
   authPort?: number;
   /** Wipe Firestore and Auth of that emulator project first. Default true. */
@@ -34,15 +37,12 @@ export interface SeedSummary {
   distributors: number;
 }
 
-const EMULATOR_HOST = '127.0.0.1';
-const DEFAULT_PROJECT_ID = 'demo-glpweb';
-const DEFAULT_FIRESTORE_PORT = 8080;
-const DEFAULT_AUTH_PORT = 9099;
 const DEFAULT_SCHEDULE = { days: [0, 1, 2, 3, 4, 5, 6], opensAt: '07:00', closesAt: '20:00' };
 const DEFAULT_MAX_CYLINDERS_PER_ORDER = 3;
 
 const createdAt = Timestamp.fromDate(new Date(SEED_CREATED_AT));
 const stamps = { createdAt, updatedAt: createdAt };
+const terms = { version: SEED_TERMS_VERSION, acceptedAt: createdAt };
 
 function founderOf(distributor: SeedDistributor): SeedUser {
   const founder = distributor.members.find((member) => member.role === 'owner');
@@ -80,6 +80,8 @@ function privateDocument(distributor: SeedDistributor) {
     ownerPhone: founder.phone,
     ownerEmail: founder.email,
     plan: 'trial',
+    terms,
+    authorityDeclaredAt: createdAt,
     ...stamps,
   };
 }
@@ -106,11 +108,13 @@ function writeDistributor(batch: Batch, db: Db, distributor: SeedDistributor) {
 
 function writeProfiles(batch: Batch, db: Db, distributors: SeedDistributor[]) {
   for (const user of Object.values(SEED_USERS)) {
+    if (!user.hasProfile) continue;
     const founded = distributors.filter((distributor) => founderOf(distributor).uid === user.uid);
     batch.set(doc(db, `users/${user.uid}`), {
       displayName: user.displayName,
       phone: user.phone,
       ownedDistributorIds: founded.map((distributor) => distributor.id),
+      terms,
       ...stamps,
     });
   }
@@ -146,7 +150,8 @@ async function seedAccounts(projectId: string, authPort: number, clear: boolean)
 }
 
 export async function seedEmulators(options: SeedOptions = {}): Promise<SeedSummary> {
-  const projectId = options.projectId ?? DEFAULT_PROJECT_ID;
+  const projectId = options.projectId ?? EMULATOR_PROJECT_ID;
+  const ports = emulatorPorts();
   const clear = options.clear ?? true;
   if (!projectId.startsWith('demo-')) {
     throw new Error(`Refusing to seed "${projectId}": only demo-* emulator projects are allowed`);
@@ -154,11 +159,11 @@ export async function seedEmulators(options: SeedOptions = {}): Promise<SeedSumm
   const distributors: SeedDistributor[] = Object.values(SEED_DISTRIBUTORS);
   const env = await initializeTestEnvironment({
     projectId,
-    firestore: { host: EMULATOR_HOST, port: options.firestorePort ?? DEFAULT_FIRESTORE_PORT },
+    firestore: { host: EMULATOR_HOST, port: options.firestorePort ?? ports.firestore },
   });
   try {
     if (clear) await env.clearFirestore();
-    await seedAccounts(projectId, options.authPort ?? DEFAULT_AUTH_PORT, clear);
+    await seedAccounts(projectId, options.authPort ?? ports.auth, clear);
     await env.withSecurityRulesDisabled(async (context) => {
       const db = context.firestore();
       const batch = writeBatch(db);

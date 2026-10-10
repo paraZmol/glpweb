@@ -6,27 +6,44 @@ import {
   prepareNewDistributor,
   prepareProfilePatch,
 } from '../../domain/tenancy/distributor-input';
+import { TERMS_VERSION } from '../../domain/legal/versions';
 import { EmailNotVerifiedError, InvalidInputError } from '../../domain/tenancy/errors';
+import { checkConsent, collectIssues } from '../../domain/tenancy/field-checks';
 import { normalizeSlug, type SlugIssue, validateSlug } from '../../domain/tenancy/slug';
 import { forgetVisibleDistributors } from './visible-distributors';
 
+/** The sign-up form plus the two declarations the founder must tick (terms §2, PLAN 2.7). */
+export interface FoundingInput extends NewDistributorInput {
+  /** "Acepto los términos". Only `true` is accepted. */
+  acceptTerms: true;
+  /**
+   * "Declaro que puedo representar a este negocio y que cuenta con las autorizaciones para
+   * comercializar GLP". Only `true` is accepted.
+   */
+  declaresAuthority: true;
+}
+
 /**
  * Founds a distributor for the signed-in account (PLAN 2.2) and returns its id. The account
- * becomes its owner and the distributor starts a free trial.
+ * becomes its owner and the distributor starts a free trial. The acceptance of the terms and
+ * the authority declaration are stored, with server time, in its private settings.
  * Throws `EmailNotVerifiedError`, `InvalidInputError` (per-field issues), `SlugTakenError`,
  * `DistributorLimitError`, `ProfileRequiredError`, `PermissionDeniedError` or `OfflineError`.
  */
-export async function foundDistributor(
-  session: Session,
-  input: NewDistributorInput,
-): Promise<string> {
+export async function foundDistributor(session: Session, input: FoundingInput): Promise<string> {
   if (!canFoundDistributor(session) || session.email === null) throw new EmailNotVerifiedError();
   const prepared = prepareNewDistributor(input);
-  if (!prepared.ok) throw new InvalidInputError(prepared.issues);
+  const consents = collectIssues([
+    ['acceptTerms', checkConsent(input.acceptTerms)],
+    ['declaresAuthority', checkConsent(input.declaresAuthority)],
+  ]);
+  const issues = [...(prepared.ok ? [] : prepared.issues), ...consents];
+  if (!prepared.ok || issues.length > 0) throw new InvalidInputError(issues);
   const id = await distributorsRepo.createDistributor({
     founder: { uid: session.uid, email: session.email },
     distributor: prepared.value,
     now: new Date(),
+    termsVersion: TERMS_VERSION,
   });
   forgetVisibleDistributors();
   return id;

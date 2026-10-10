@@ -6,6 +6,7 @@ import {
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -44,8 +45,10 @@ import {
   seedProfile,
   seedWorld,
   slugDoc,
+  termsDoc,
   unverified,
   verified,
+  without,
   WORLD,
 } from './helpers';
 
@@ -202,6 +205,26 @@ describe('founding a distributor (PLAN 2.2)', () => {
   it.each([
     ['member with another role', { member: memberDoc(NEW.d, FOUNDER, 'dispatcher') }],
     ['inactive owner member', { member: memberDoc(NEW.d, FOUNDER, 'owner', { active: false }) }],
+    [
+      'member whose uid is not its document id',
+      { member: memberDoc(NEW.d, 'someone-else', 'owner') },
+    ],
+    [
+      'member with an unknown role',
+      { member: memberDoc(NEW.d, FOUNDER, 'owner', { role: 'admin' }) },
+    ],
+    [
+      'member with an empty name',
+      { member: memberDoc(NEW.d, FOUNDER, 'owner', { displayName: '' }) },
+    ],
+    [
+      'member with an oversized name',
+      { member: memberDoc(NEW.d, FOUNDER, 'owner', { displayName: 'n'.repeat(81) }) },
+    ],
+    [
+      'member with active as text',
+      { member: memberDoc(NEW.d, FOUNDER, 'owner', { active: 'yes' }) },
+    ],
     ['member with an extra field', { member: memberDoc(NEW.d, FOUNDER, 'owner', { admin: true }) }],
     ['member for another distributor', { member: memberDoc(WORLD.a.d, FOUNDER, 'owner') }],
     [
@@ -213,6 +236,27 @@ describe('founding a distributor (PLAN 2.2)', () => {
     [
       'settings with a foreign e-mail',
       { settings: privateDoc(FOUNDER, { ownerEmail: 'x@example.com' }) },
+    ],
+    ['settings without the terms', { settings: without(privateDoc(FOUNDER), 'terms') }],
+    [
+      'settings on a terms version that does not exist',
+      { settings: privateDoc(FOUNDER, { terms: termsDoc({ version: '9.9' }) }) },
+    ],
+    [
+      'settings with a made-up terms date',
+      { settings: privateDoc(FOUNDER, { terms: termsDoc({ acceptedAt: PAST }) }) },
+    ],
+    [
+      'settings without the authority declaration',
+      { settings: without(privateDoc(FOUNDER), 'authorityDeclaredAt') },
+    ],
+    [
+      'settings with a made-up authority declaration date',
+      { settings: privateDoc(FOUNDER, { authorityDeclaredAt: PAST }) },
+    ],
+    [
+      'settings with the authority declaration as a flag',
+      { settings: privateDoc(FOUNDER, { authorityDeclaredAt: true }) },
     ],
     ['settings with an extra field', { settings: privateDoc(FOUNDER, { discount: 100 }) }],
     ['settings with an invalid phone', { settings: privateDoc(FOUNDER, { ownerPhone: '123' }) }],
@@ -605,6 +649,10 @@ describe('/distributors/{d}/private/settings', () => {
     ['the plan', { plan: 'pro' }],
     ['the founder', { ownerUid: 'dispatcher-a' }],
     ['the e-mail', { ownerEmail: 'otro@example.com' }],
+    ['the terms it accepted', { terms: termsDoc() }],
+    ['the terms, by removing them', { terms: deleteField() }],
+    ['the authority declaration', { authorityDeclaredAt: serverTimestamp() }],
+    ['the authority declaration, by removing it', { authorityDeclaredAt: deleteField() }],
     ['createdAt', { createdAt: serverTimestamp() }],
     ['an extra field', { credits: 100 }],
     ['an invalid phone', { ownerPhone: '123' }],

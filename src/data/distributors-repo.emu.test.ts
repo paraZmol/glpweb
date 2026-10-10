@@ -8,6 +8,7 @@ import {
 } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
 import { markEmailVerified } from '../../tests/support/emulator';
+import { TERMS_VERSION } from '../domain/legal/versions';
 import { MAX_DISTRIBUTORS_PER_ACCOUNT, TRIAL_DAYS } from '../domain/tenancy/constants';
 import { type NewDistributor, prepareNewDistributor } from '../domain/tenancy/distributor-input';
 import {
@@ -55,12 +56,17 @@ async function freshFounder(key: string) {
   const session = await registerWithEmail({ email, password: SEED_PASSWORD, displayName: key });
   await markEmailVerified(session.uid);
   await refreshSession();
-  await createUserProfile(session.uid, { displayName: 'N. Fundadora', phone: null });
+  await createUserProfile(session.uid, { displayName: 'N. Fundadora', phone: null }, TERMS_VERSION);
   return { uid: session.uid, email };
 }
 
 const found = (founder: { uid: string; email: string }, slug: string, now = new Date()) =>
-  createDistributor({ founder, distributor: newDistributor(slug), now });
+  createDistributor({
+    founder,
+    distributor: newDistributor(slug),
+    now,
+    termsVersion: TERMS_VERSION,
+  });
 
 beforeAll(async () => {
   await seedEmulators();
@@ -90,6 +96,8 @@ describe('createDistributor', () => {
       ownerEmail: founder.email,
       ownerPhone: '900000092',
       plan: 'trial',
+      terms: { version: TERMS_VERSION, acceptedAt: expect.any(Date) },
+      authorityDeclaredAt: expect.any(Date),
     });
     expect((await getUserProfile(founder.uid))?.ownedDistributorIds).toEqual([id]);
   });
@@ -130,13 +138,13 @@ describe('createDistributor', () => {
 
   it('refuses an account without a profile', async () => {
     const session = await registerWithEmail({
-      email: 'sin-perfil@example.com',
+      email: 'aun-sin-perfil@example.com',
       password: SEED_PASSWORD,
       displayName: 'O. Sin Perfil',
     });
     await markEmailVerified(session.uid);
     await refreshSession();
-    const founder = { uid: session.uid, email: 'sin-perfil@example.com' };
+    const founder = { uid: session.uid, email: 'aun-sin-perfil@example.com' };
 
     await expect(found(founder, 'gas-demo-sin-perfil')).rejects.toBeInstanceOf(
       ProfileRequiredError,

@@ -12,6 +12,8 @@ import {
   Timestamp,
   writeBatch,
 } from 'firebase/firestore';
+import { EMULATOR_HOST, emulatorPorts } from '../../scripts/lane-ports.mjs';
+import { TERMS_VERSION } from '../../src/domain/legal/versions';
 import { DEFAULT_SCHEDULE, TRIAL_DAYS } from '../../src/domain/tenancy/constants';
 import type { DistributorStatus, MemberRole } from '../../src/domain/tenancy/types';
 
@@ -25,8 +27,8 @@ export function createEnv(suffix: string): Promise<RulesTestEnvironment> {
     projectId: `demo-glpweb-${suffix}`,
     firestore: {
       rules: readFileSync('firebase/firestore.rules', 'utf8'),
-      host: '127.0.0.1',
-      port: 8080,
+      host: EMULATOR_HOST,
+      port: emulatorPorts().firestore,
     },
   });
 }
@@ -51,11 +53,22 @@ export const daysFromNow = (days: number) => Timestamp.fromMillis(Date.now() + d
 // Valid documents, as a well-behaved client writes them. Tests change one thing at a time.
 // ---------------------------------------------------------------------------------------------
 
+/** A copy of `data` without one field, to attack "required" checks. */
+export function without(data: Record<string, unknown>, field: string): Record<string, unknown> {
+  const { [field]: _dropped, ...rest } = data;
+  return rest;
+}
+
+export function termsDoc(change: Record<string, unknown> = {}) {
+  return { version: TERMS_VERSION, acceptedAt: serverTimestamp(), ...change };
+}
+
 export function userDoc(change: Record<string, unknown> = {}) {
   return {
     displayName: 'C. Persona',
     phone: null,
     ownedDistributorIds: [],
+    terms: termsDoc(),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     ...change,
@@ -131,6 +144,8 @@ export function privateDoc(ownerUid: string, change: Record<string, unknown> = {
     ownerPhone: '900000002',
     ownerEmail: emailOf(ownerUid),
     plan: 'trial',
+    terms: termsDoc(),
+    authorityDeclaredAt: serverTimestamp(),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     ...change,

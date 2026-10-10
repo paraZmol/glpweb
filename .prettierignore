@@ -8,3 +8,4 @@ playwright-report
 docs
 CLAUDE.md
 src/components/ui
+firebase.lane-*.json

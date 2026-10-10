@@ -206,9 +206,11 @@ describe('members — nobody gives itself a role (PLAN fase 2 criterio)', () => 
 describe('members — an owner manages the staff', () => {
   const NEWBIE = 'newbie';
 
-  it.each([...MEMBER_ROLES])('lets the owner add a member as %s', async (role) => {
+  // Staff joins only by accepting an invitation (phase 3): an owner cannot enrol an account
+  // that never agreed to it.
+  it.each([...MEMBER_ROLES])('blocks the owner from adding a member as %s', async (role) => {
     const db = verified(env, 'owner-a');
-    await assertSucceeds(setDoc(memberOf(db, A, NEWBIE), memberDoc(A, NEWBIE, role)));
+    await assertFails(setDoc(memberOf(db, A, NEWBIE), memberDoc(A, NEWBIE, role)));
   });
 
   it('lets the owner change the role, the name and the active flag of a member', async () => {
@@ -231,22 +233,6 @@ describe('members — an owner manages the staff', () => {
     await assertFails(updateDoc(memberOf(db, A, 'driver-a'), { role: 'owner', ...stamp }));
     await assertFails(updateDoc(memberOf(db, A, 'driver-a'), { active: false, ...stamp }));
     await assertFails(deleteDoc(memberOf(db, A, 'driver-a')));
-  });
-
-  it.each([
-    ['an unknown role', { role: 'admin' }],
-    ['a role list', { role: ['owner'] }],
-    ['active as text', { active: 'yes' }],
-    ['an empty name', { displayName: '' }],
-    ['an oversized name', { displayName: 'n'.repeat(81) }],
-    ['a uid that is not the document id', { uid: 'someone-else' }],
-    ['another distributor id', { distributorId: B }],
-    ['an extra field', { permissions: ['all'] }],
-    ['a made-up createdAt', { createdAt: PAST }],
-    ['a made-up updatedAt', { updatedAt: PAST }],
-  ])('blocks the owner from adding a member with %s', async (_case, change) => {
-    const db = verified(env, 'owner-a');
-    await assertFails(setDoc(memberOf(db, A, NEWBIE), memberDoc(A, NEWBIE, 'driver', change)));
   });
 
   it.each([

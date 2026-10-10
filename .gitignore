@@ -9,6 +9,7 @@ dev-dist/
 .firebase/
 *-debug.log
 firebase-export-*/
+firebase.lane-*.json
 serviceAccount*.json
 *service-account*.json
 

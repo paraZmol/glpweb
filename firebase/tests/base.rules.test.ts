@@ -7,21 +7,23 @@ import {
 import { get, ref, set } from 'firebase/database';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { afterAll, beforeAll, describe, it } from 'vitest';
+import { EMULATOR_HOST, emulatorPorts } from '../../scripts/lane-ports.mjs';
 
 let env: RulesTestEnvironment;
+const ports = emulatorPorts();
 
 beforeAll(async () => {
   env = await initializeTestEnvironment({
     projectId: 'demo-glpweb',
     firestore: {
       rules: readFileSync('firebase/firestore.rules', 'utf8'),
-      host: '127.0.0.1',
-      port: 8080,
+      host: EMULATOR_HOST,
+      port: ports.firestore,
     },
     database: {
       rules: readFileSync('firebase/database.rules.json', 'utf8'),
-      host: '127.0.0.1',
-      port: 9000,
+      host: EMULATOR_HOST,
+      port: ports.database,
     },
   });
 });

@@ -10,6 +10,8 @@ rules_version = '2';
 // /users/{uid}                     private to the account
 //   displayName: string 1..80 · phone: null | '9' + 8 digits
 //   ownedDistributorIds: list ≤ 3 — grows only inside a founding batch (caps distributors/account)
+//   terms: { version: an allowed terms version, acceptedAt: timestamp = request.time when it
+//     is written } — required from creation, can be renewed, never removed
 //   createdAt, updatedAt: timestamp (= request.time when written; createdAt immutable)
 //
 // /users/{uid}/addresses/{slot}    private to the account; slot is a0..a9 (caps addresses at 10)
@@ -34,6 +36,8 @@ rules_version = '2';
 // /distributors/{d}/private/settings   founder, owners and platform admins only
 //   ownerUid (immutable) · ownerName: string 1..80 · ownerPhone · ownerEmail (= token e-mail,
 //   immutable) · plan: 'trial' (immutable from the app) · createdAt, updatedAt
+//   terms: { version, acceptedAt } and authorityDeclaredAt: both = request.time at founding,
+//     immutable (the founder accepted the terms and declared it may represent the business)
 //
 // /distributors/{d}/members/{uid}
 //   uid (= document id) · distributorId (= d) · role: owner | dispatcher | driver
@@ -154,6 +158,19 @@ service cloud.firestore {
         && isTimeOfDay(schedule.closesAt);
     }
 
+    // Acceptance of the terms (docs/legal). Same list as TERMS_VERSIONS in
+    // src/domain/legal/versions.ts.
+    function acceptedTermsVersions() {
+      return ['0.1'];
+    }
+
+    function isTermsAcceptance(terms) {
+      return terms is map
+        && hasExactly(terms, ['version', 'acceptedAt'])
+        && terms.version in acceptedTermsVersions()
+        && terms.acceptedAt is timestamp;
+    }
+
     // Rules cannot loop: the list is capped at 8 and each position is checked by hand.
     function isBrandAt(brands, index) {
       return brands.size() <= index || isText(brands[index], 1, 30);
@@ -168,7 +185,10 @@ service cloud.firestore {
 
     // -------------------------------------------------------------------- document validators ----
     function isValidUserProfile(data) {
-      return hasExactly(data, ['displayName', 'phone', 'ownedDistributorIds', 'createdAt', 'updatedAt'])
+      return hasExactly(data, [
+          'displayName', 'phone', 'ownedDistributorIds', 'terms', 'createdAt', 'updatedAt'
+        ])
+        && isTermsAcceptance(data.terms)
         && isText(data.displayName, 1, 80)
         && (data.phone == null || isPhone(data.phone))
         && data.ownedDistributorIds is list && data.ownedDistributorIds.size() <= 3
@@ -217,8 +237,11 @@ service cloud.firestore {
 
     function isValidPrivateSettings(data) {
       return hasExactly(data, [
-          'ownerUid', 'ownerName', 'ownerPhone', 'ownerEmail', 'plan', 'createdAt', 'updatedAt'
+          'ownerUid', 'ownerName', 'ownerPhone', 'ownerEmail', 'plan', 'terms',
+          'authorityDeclaredAt', 'createdAt', 'updatedAt'
         ])
+        && isTermsAcceptance(data.terms)
+        && data.authorityDeclaredAt is timestamp
         && data.ownerUid is string
         && isText(data.ownerName, 1, 80)
         && isPhone(data.ownerPhone)
@@ -250,6 +273,7 @@ service cloud.firestore {
       allow create: if isSelf(uid)
         && isValidUserProfile(request.resource.data)
         && request.resource.data.ownedDistributorIds.size() == 0
+        && request.resource.data.terms.acceptedAt == request.time
         && stampedNow(request.resource.data);
 
       // Reads added by rules: 0 for a profile edit, 1 (getAfter) inside a founding batch.
@@ -257,6 +281,8 @@ service cloud.firestore {
         && isValidUserProfile(request.resource.data)
         && unchanged(['createdAt'])
         && request.resource.data.updatedAt == request.time
+        // Terms can only be accepted again, now; the validator already forbids removing them.
+        && (unchanged(['terms']) || request.resource.data.terms.acceptedAt == request.time)
         && (unchanged(['ownedDistributorIds']) || recordsFounding());
 
       // No delete: it would reset ownedDistributorIds and with it the cap per account.
@@ -385,6 +411,8 @@ service cloud.firestore {
           && request.resource.data.ownerUid == request.auth.uid
           && request.resource.data.ownerEmail == request.auth.token.email
           && request.resource.data.plan == 'trial'
+          && request.resource.data.terms.acceptedAt == request.time
+          && request.resource.data.authorityDeclaredAt == request.time
           && stampedNow(request.resource.data)
           && foundedNow(d);
 
@@ -406,24 +434,18 @@ service cloud.firestore {
         // Reads added by rules: 1.
         allow list: if request.query.limit <= 100 && hasRole(d, ['owner', 'dispatcher']);
 
-        // Two ways in, and no other:
-        //  1. the founder's own member, as owner, inside the founding batch (1 read: getAfter);
-        //  2. an active owner adds someone else while the distributor is writable (2 reads).
-        // Nobody can create a member document for itself outside (1). Invitations (phase 3)
-        // will add a third, equally explicit, way.
-        allow create: if signedIn()
+        // One way in, and no other: the founder's own member, as owner, inside the founding
+        // batch. Nobody creates a member document for itself or for anyone else outside it.
+        // Invitations (phase 3) will add the second, equally explicit, way: the invited account
+        // creates its own member with exactly the role of a valid invitation.
+        // Reads added by rules: 1 (getAfter distributor).
+        allow create: if isSelf(memberUid)
+          && emailVerified()
           && isValidMember(request.resource.data, d, memberUid)
           && stampedNow(request.resource.data)
-          && (
-            (
-              memberUid == request.auth.uid
-              && request.resource.data.role == 'owner'
-              && request.resource.data.active == true
-              && emailVerified()
-              && foundedNow(d)
-            )
-            || (memberUid != request.auth.uid && hasRole(d, ['owner']) && writable(d))
-          );
+          && request.resource.data.role == 'owner'
+          && request.resource.data.active == true
+          && foundedNow(d);
 
         // An owner changes others, never itself, and never the founder: the acting owner and
         // the founder always stay, so a distributor cannot be left without an owner.

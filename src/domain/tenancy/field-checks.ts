@@ -33,6 +33,11 @@ export function checkPhone(value: string): Check {
   return isValidPeruvianMobile(value) ? null : 'invalid';
 }
 
+/** A consent the person must give explicitly (a ticked box): anything but `true` is missing. */
+export function checkConsent(value: unknown): Check {
+  return value === true ? null : 'required';
+}
+
 export function collectIssues(checks: readonly (readonly [string, Check])[]): FieldIssue[] {
   return checks.flatMap(([field, code]) => (code ? [{ field, code }] : []));
 }

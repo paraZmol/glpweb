@@ -31,6 +31,9 @@ const FIELD_MESSAGES: Record<string, string> = {
   'plant:invalid': 'Marca la ubicación de la planta en el mapa.',
   'location:invalid': 'Marca la ubicación en el mapa.',
   'brandColor:invalid': 'Elige un color válido.',
+  'acceptTerms:required': 'Debes aceptar los términos para continuar.',
+  'declaresAuthority:required':
+    'Confirma que puedes representar al negocio y que cuenta con las autorizaciones para vender gas.',
 };
 
 /** Message in Spanish for one rejected form field. */

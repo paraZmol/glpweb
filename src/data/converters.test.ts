@@ -134,6 +134,7 @@ describe('parseUserProfile', () => {
       displayName: 'C. Cliente',
       phone: null,
       ownedDistributorIds: [],
+      terms: null,
       createdAt: AT,
       updatedAt: AT,
     });
@@ -179,6 +180,33 @@ describe('parsePrivateSettings', () => {
       createdAt: stamp,
     });
 
-    expect(settings).toMatchObject({ ownerUid: 'owner-a', plan: 'trial' });
+    expect(settings).toMatchObject({
+      ownerUid: 'owner-a',
+      plan: 'trial',
+      terms: null,
+      authorityDeclaredAt: null,
+    });
+  });
+
+  it('reads the acceptance of the terms and the authority declaration', () => {
+    const settings = parsePrivateSettings('settings', 'p', {
+      ownerUid: 'owner-a',
+      terms: { version: '0.1', acceptedAt: stamp },
+      authorityDeclaredAt: stamp,
+      createdAt: stamp,
+    });
+
+    expect(settings.terms).toEqual({ version: '0.1', acceptedAt: AT });
+    expect(settings.authorityDeclaredAt).toEqual(AT);
+  });
+
+  it('ignores a malformed acceptance instead of trusting it', () => {
+    const settings = parsePrivateSettings('settings', 'p', {
+      ownerUid: 'owner-a',
+      terms: { version: 1, acceptedAt: 'ayer' },
+      createdAt: stamp,
+    });
+
+    expect(settings.terms).toBeNull();
   });
 });

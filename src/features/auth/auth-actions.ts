@@ -13,10 +13,11 @@ import {
   prepareUserProfile,
   type UserProfileInput,
 } from '../../domain/tenancy/account-input';
+import { TERMS_VERSION } from '../../domain/legal/versions';
 import { DISPLAY_NAME_MAX_LENGTH } from '../../domain/tenancy/constants';
 import { InvalidInputError } from '../../domain/tenancy/errors';
-import type { Validated } from '../../domain/tenancy/field-checks';
-import type { Address, UserProfile } from '../../domain/tenancy/types';
+import { checkConsent, collectIssues, type Validated } from '../../domain/tenancy/field-checks';
+import type { Address } from '../../domain/tenancy/types';
 
 const FALLBACK_DISPLAY_NAME = 'Sin nombre';
 
@@ -30,25 +31,36 @@ function checkCredentials(email: string, password: string): void {
   if (!isAcceptablePassword(password)) throw authErrorFor('weakPassword');
 }
 
+function requireConsents(consents: Record<string, unknown>): void {
+  const issues = collectIssues(
+    Object.entries(consents).map(([field, value]) => [field, checkConsent(value)] as const),
+  );
+  if (issues.length > 0) throw new InvalidInputError(issues);
+}
+
 export interface RegistrationInput extends UserProfileInput {
   email: string;
   password: string;
+  /** The person ticked "acepto los términos". Only `true` is accepted (PLAN 2.7). */
+  acceptTerms: true;
 }
 
 /**
- * Creates the account, sends the verification e-mail and stores the profile (PLAN 2.1).
- * Throws `AuthError` (see its `code`) or `InvalidInputError`.
+ * Creates the account, sends the verification e-mail and stores the profile with the
+ * acceptance of the current terms (PLAN 2.1, 2.7). Nothing is created without `acceptTerms`.
+ * Throws `AuthError` (see its `code`) or `InvalidInputError` (field `acceptTerms` included).
  */
 export async function registerAccount(input: RegistrationInput): Promise<Session> {
   const email = normalizeEmail(input.email);
   const profile = unwrap(prepareUserProfile(input));
+  requireConsents({ acceptTerms: input.acceptTerms });
   checkCredentials(email, input.password);
   const session = await authRepo.registerWithEmail({
     email,
     password: input.password,
     displayName: profile.displayName,
   });
-  await usersRepo.createUserProfile(session.uid, profile);
+  await usersRepo.createUserProfile(session.uid, profile, TERMS_VERSION);
   return session;
 }
 
@@ -56,29 +68,32 @@ export function signIn(email: string, password: string): Promise<Session> {
   return authRepo.signInWithEmail(normalizeEmail(email), password);
 }
 
-/** The profile of an account that may be new (first Google sign-in): created when missing. */
-export function ensureProfile(session: Session): Promise<UserProfile> {
-  const name = (session.displayName ?? '').trim().slice(0, DISPLAY_NAME_MAX_LENGTH);
-  const fallback = { displayName: name || FALLBACK_DISPLAY_NAME, phone: null };
-  return usersRepo.ensureUserProfile(session.uid, fallback);
+/**
+ * Records that the signed-in account accepts the current terms, now. CALLING THIS IS THE
+ * ACCEPTANCE: only call it from the handler of an explicit "acepto" control, never on load.
+ * - Account without a profile (first Google sign-in, or a registration cut before its profile
+ *   was stored): creates the profile with the acceptance, named after the session.
+ * - Account with a profile on an older version: renews the acceptance.
+ * Then call `reload()` on `useUserProfile()`.
+ */
+export async function acceptCurrentTerms(uid: string): Promise<void> {
+  if (await usersRepo.getUserProfile(uid)) return usersRepo.acceptTerms(uid, TERMS_VERSION);
+  const session = authRepo.currentSession();
+  const ownName = session?.uid === uid ? (session.displayName ?? '') : '';
+  const displayName = ownName.trim().slice(0, DISPLAY_NAME_MAX_LENGTH) || FALLBACK_DISPLAY_NAME;
+  return usersRepo.createUserProfile(uid, { displayName, phone: null }, TERMS_VERSION);
 }
 
 /**
  * Google sign-in. Resolves to the session, or to null when the browser had to leave for a
  * full-page redirect; in that case `finishGoogleRedirect()` completes it after the reload.
+ * A first-time account has no profile yet: `useUserProfile()` reports it so the screen can ask
+ * for the terms (nothing is accepted on the person's behalf).
  */
-export async function signInWithGoogle(): Promise<Session | null> {
-  const session = await authRepo.signInWithGoogle();
-  if (session) await ensureProfile(session);
-  return session;
-}
+export const signInWithGoogle: () => Promise<Session | null> = authRepo.signInWithGoogle;
 
 /** Call once when the app starts. Null when this load did not come back from a redirect. */
-export async function finishGoogleRedirect(): Promise<Session | null> {
-  const session = await authRepo.completeRedirectSignIn();
-  if (session) await ensureProfile(session);
-  return session;
-}
+export const finishGoogleRedirect: () => Promise<Session | null> = authRepo.completeRedirectSignIn;
 
 export const signOut = authRepo.signOutSession;
 export const resendVerificationEmail = authRepo.resendVerificationEmail;

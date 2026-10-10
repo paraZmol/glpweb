@@ -1,4 +1,5 @@
 import type { GeoPoint } from '../geo/distance';
+import type { TermsAcceptance } from '../legal/versions';
 
 export const DISTRIBUTOR_STATUSES = ['trial', 'active', 'pastDue', 'suspended'] as const;
 export type DistributorStatus = (typeof DISTRIBUTOR_STATUSES)[number];
@@ -61,6 +62,10 @@ export interface DistributorPrivateSettings {
   ownerPhone: string;
   ownerEmail: string;
   plan: DistributorPlan;
+  /** The founder accepted the terms when founding. Null only in documents older than the field. */
+  terms: TermsAcceptance | null;
+  /** When the founder declared it may represent the business and that it may sell GLP. */
+  authorityDeclaredAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -81,6 +86,8 @@ export interface UserProfile {
   phone: string | null;
   /** Maintained by the creation batch and checked by the rules; caps distributors per account. */
   ownedDistributorIds: string[];
+  /** Null only in documents older than the field: check with `needsTermsAcceptance`. */
+  terms: TermsAcceptance | null;
   createdAt: Date;
   updatedAt: Date;
 }

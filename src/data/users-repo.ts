@@ -33,30 +33,36 @@ export function getUserProfile(uid: string): Promise<UserProfile | null> {
   });
 }
 
-/** Creates the profile. Fails with `PermissionDeniedError` if it already exists. */
-export function createUserProfile(uid: string, profile: PreparedUserProfile): Promise<void> {
+/**
+ * Creates the profile together with the acceptance of `termsVersion`: the rules refuse a
+ * profile without it, so only call this after the person actually accepted the terms.
+ * Fails with `PermissionDeniedError` if the profile already exists.
+ */
+export function createUserProfile(
+  uid: string,
+  profile: PreparedUserProfile,
+  termsVersion: string,
+): Promise<void> {
   return guarded(() =>
     setDoc(userRef(uid), {
       displayName: profile.displayName,
       phone: profile.phone,
       ownedDistributorIds: [],
+      terms: { version: termsVersion, acceptedAt: serverTimestamp() },
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }),
   );
 }
 
-/** Returns the profile, creating it from `fallback` the first time the account is seen. */
-export async function ensureUserProfile(
-  uid: string,
-  fallback: PreparedUserProfile,
-): Promise<UserProfile> {
-  const existing = await getUserProfile(uid);
-  if (existing) return existing;
-  await createUserProfile(uid, fallback);
-  const created = await getUserProfile(uid);
-  if (!created) throw new Error(`Profile of ${uid} was not readable right after creating it`);
-  return created;
+/** Records that the account accepted `termsVersion` now (server time). The profile must exist. */
+export function acceptTerms(uid: string, termsVersion: string): Promise<void> {
+  return guarded(() =>
+    updateDoc(userRef(uid), {
+      terms: { version: termsVersion, acceptedAt: serverTimestamp() },
+      updatedAt: serverTimestamp(),
+    }),
+  );
 }
 
 export function updateUserProfile(uid: string, profile: PreparedUserProfile): Promise<void> {

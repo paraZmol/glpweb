@@ -1,11 +1,11 @@
 // Admin shortcuts into the emulators for repository and browser tests. Emulators only: the
 // `owner` bearer is the emulator's admin token and means nothing anywhere else.
-const EMULATOR_HOST = '127.0.0.1';
-const AUTH_PORT = 9099;
-export const EMULATOR_PROJECT_ID = 'demo-glpweb';
+import { EMULATOR_HOST, EMULATOR_PROJECT_ID, emulatorPorts } from '../../scripts/lane-ports.mjs';
+
+export { EMULATOR_PROJECT_ID };
 
 async function authAdmin(method: string, path: string, body?: unknown): Promise<unknown> {
-  const response = await fetch(`http://${EMULATOR_HOST}:${AUTH_PORT}${path}`, {
+  const response = await fetch(`http://${EMULATOR_HOST}:${emulatorPorts().auth}${path}`, {
     method,
     headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),

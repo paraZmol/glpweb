@@ -1,21 +1,25 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SEED_CUSTOMER_LOCATION, SEED_PASSWORD, SEED_USERS } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
+import { TERMS_VERSION } from '../domain/legal/versions';
 import { ADDRESS_SLOT_IDS } from '../domain/tenancy/account-input';
 import { MAX_ADDRESSES_PER_USER } from '../domain/tenancy/constants';
 import { AddressLimitError, PermissionDeniedError } from '../domain/tenancy/errors';
 import { registerWithEmail, signInWithEmail, signOutSession } from './auth-repo';
 import { isPlatformAdmin } from './platform-repo';
 import {
+  acceptTerms,
   addAddress,
   createUserProfile,
   deleteAddress,
-  ensureUserProfile,
   getUserProfile,
   listAddresses,
   updateAddress,
   updateUserProfile,
 } from './users-repo';
+
+/** The emulator and the test share a machine, but allow for a coarse clock. */
+const CLOCK_SLACK_MS = 5_000;
 
 const HOME = {
   label: 'Casa',
@@ -34,23 +38,51 @@ afterAll(async () => {
 
 // PLAN 2.1
 describe('profile', () => {
-  it('creates the profile the first time and returns the stored one afterwards', async () => {
+  it('creates the profile with the acceptance of the terms, stamped by the server', async () => {
+    const session = await signInWithEmail(SEED_USERS.noProfile.email, SEED_PASSWORD);
+    const before = Date.now();
+
+    expect(await getUserProfile(session.uid)).toBeNull();
+    await createUserProfile(
+      session.uid,
+      { displayName: 'L. Reciente', phone: null },
+      TERMS_VERSION,
+    );
+
+    const created = await getUserProfile(session.uid);
+    expect(created).toMatchObject({
+      displayName: 'L. Reciente',
+      phone: null,
+      ownedDistributorIds: [],
+      terms: { version: TERMS_VERSION },
+    });
+    expect(created?.terms?.acceptedAt.getTime()).toBeGreaterThan(before - CLOCK_SLACK_MS);
+  });
+
+  it('refuses a profile that accepts a version of the terms that does not exist', async () => {
     const session = await registerWithEmail({
       email: 'perfil-nuevo@example.com',
       password: SEED_PASSWORD,
       displayName: 'M. Perfil',
     });
+    const profile = { displayName: 'M. Perfil', phone: null };
 
+    await expect(createUserProfile(session.uid, profile, '9.9')).rejects.toBeInstanceOf(
+      PermissionDeniedError,
+    );
     expect(await getUserProfile(session.uid)).toBeNull();
-    const created = await ensureUserProfile(session.uid, { displayName: 'M. Perfil', phone: null });
-    const again = await ensureUserProfile(session.uid, { displayName: 'Otro', phone: '900000081' });
+  });
 
-    expect(created).toMatchObject({
-      displayName: 'M. Perfil',
-      phone: null,
-      ownedDistributorIds: [],
-    });
-    expect(again.displayName).toBe('M. Perfil');
+  it('renews the acceptance without touching the rest of the profile', async () => {
+    const { uid } = await signInWithEmail(SEED_USERS.dispatcherB.email, SEED_PASSWORD);
+    const seededAt = (await getUserProfile(uid))?.terms?.acceptedAt.getTime() ?? 0;
+
+    await acceptTerms(uid, TERMS_VERSION);
+
+    const renewed = await getUserProfile(uid);
+    expect(renewed?.terms?.acceptedAt.getTime()).toBeGreaterThan(seededAt);
+    expect(renewed?.displayName).toBe(SEED_USERS.dispatcherB.displayName);
+    await expect(acceptTerms(uid, '9.9')).rejects.toBeInstanceOf(PermissionDeniedError);
   });
 
   it('updates the name and the phone', async () => {
@@ -71,7 +103,7 @@ describe('profile', () => {
 
     await expect(getUserProfile(other)).rejects.toBeInstanceOf(PermissionDeniedError);
     await expect(updateUserProfile(other, intruder)).rejects.toBeInstanceOf(PermissionDeniedError);
-    await expect(createUserProfile('uid-libre', intruder)).rejects.toBeInstanceOf(
+    await expect(createUserProfile('uid-libre', intruder, TERMS_VERSION)).rejects.toBeInstanceOf(
       PermissionDeniedError,
     );
   });

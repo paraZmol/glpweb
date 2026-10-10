@@ -7,7 +7,11 @@ import { readFileSync } from 'node:fs';
 
 const stagedOnly = process.argv.includes('--staged');
 const git = (...args) =>
-  execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  execFileSync('git', args, {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+    windowsHide: true,
+  });
 
 const IGNORED_PATHS = [
   /^package-lock\.json$/,

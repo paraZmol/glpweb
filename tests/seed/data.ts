@@ -16,6 +16,8 @@ export interface SeedUser {
   displayName: string;
   phone: string;
   emailVerified: boolean;
+  /** False for an account that signed in but never got a profile (terms still pending). */
+  hasProfile: boolean;
 }
 
 export interface SeedDistributor {
@@ -36,12 +38,16 @@ export interface SeedDistributor {
   members: { user: SeedUser; role: SeedRole }[];
 }
 
+/** Version of the terms every seeded profile and distributor accepted. */
+export const SEED_TERMS_VERSION = '0.1';
+
 const user = (key: string, displayName: string, phoneSuffix: string, emailVerified = true) => ({
   uid: `seed-${key}`,
   email: `${key}@example.com`,
   displayName,
   phone: `9000000${phoneSuffix}`,
   emailVerified,
+  hasProfile: true,
 });
 
 export const SEED_USERS = {
@@ -59,6 +65,8 @@ export const SEED_USERS = {
   admin: user('admin', 'J. Plataforma', '61'),
   /** Registered but never followed the verification link. */
   unverified: user('sin-verificar', 'K. Nueva', '71', false),
+  /** Verified account without a profile: what a first Google sign-in looks like. */
+  noProfile: { ...user('sin-perfil', 'L. Reciente', '81'), hasProfile: false },
 } as const satisfies Record<string, SeedUser>;
 
 export const SEED_CREATED_AT = '2025-12-01T15:00:00Z';

@@ -5,6 +5,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { type GeoPoint, isValidGeoPoint } from '../domain/geo/distance';
+import type { TermsAcceptance } from '../domain/legal/versions';
 import {
   DEFAULT_BRAND_COLOR,
   DEFAULT_COVERAGE_RADIUS_KM,
@@ -90,6 +91,20 @@ export class FieldReader {
     return value.filter((item): item is string => typeof item === 'string');
   }
 
+  dateOrNull(key: string): Date | null {
+    const value: unknown = this.data[key];
+    return value instanceof Timestamp ? value.toDate() : null;
+  }
+
+  /** A malformed acceptance reads as none: the account is simply asked again. */
+  terms(key: string): TermsAcceptance | null {
+    const value: unknown = this.data[key];
+    if (typeof value !== 'object' || value === null) return null;
+    const { version, acceptedAt } = value as Record<string, unknown>;
+    if (typeof version !== 'string' || !(acceptedAt instanceof Timestamp)) return null;
+    return { version, acceptedAt: acceptedAt.toDate() };
+  }
+
   geoPoint(key: string): GeoPoint {
     return this.pick(key, 'a { lat, lng } point', toGeoPoint);
   }
@@ -125,6 +140,7 @@ export const parseUserProfile: Parser<UserProfile> = (id, path, data) => {
     displayName: read.text('displayName'),
     phone: read.textOrNull('phone'),
     ownedDistributorIds: read.textList('ownedDistributorIds'),
+    terms: read.terms('terms'),
     createdAt,
     updatedAt: read.date('updatedAt', createdAt),
   };
@@ -180,6 +196,8 @@ export const parsePrivateSettings: Parser<DistributorPrivateSettings> = (_id, pa
     ownerPhone: read.text('ownerPhone', ''),
     ownerEmail: read.text('ownerEmail', ''),
     plan: read.oneOf('plan', DISTRIBUTOR_PLANS, 'trial'),
+    terms: read.terms('terms'),
+    authorityDeclaredAt: read.dateOrNull('authorityDeclaredAt'),
     createdAt,
     updatedAt: read.date('updatedAt', createdAt),
   };

@@ -35,6 +35,19 @@ central, repartidor, cliente.
 - Desarrollo y tests siempre contra **emuladores**; nunca escribir datos de prueba en el
   proyecto Firebase real.
 - Desplegar reglas o hosting al proyecto real es una acción hacia afuera: confirmar antes.
+- **Carriles** (`E2E_LANE=N`, de 0 a 9; 0 por defecto): cada carril tiene sus propios puertos de
+  emuladores y de vista previa, así dos agentes corren `npm run check`, `npm run emulators` o
+  `npm run e2e` a la vez sin pisarse. Los emuladores se lanzan siempre con
+  `scripts/emulators.mjs` (lo hacen los scripts de npm): se niega a arrancar si el carril está
+  ocupado y al terminar cierra los emuladores de su carril, también si algo falla. Cada emulador
+  sube 10 por carril; la vista previa sube 1 (fuente: `scripts/lane-ports.mjs`).
+
+  | Carril | Auth | Firestore | Firestore WS | Database | Hosting | UI | Hub | Logging | Vista previa |
+  |---|---|---|---|---|---|---|---|---|---|
+  | 0 | 9099 | 8080 | 9150 | 9000 | 5000 | 4000 | 4400 | 4500 | 4173 |
+  | 1 | 9109 | 8090 | 9160 | 9010 | 5010 | 4010 | 4410 | 4510 | 4174 |
+  | 3 | 9129 | 8110 | 9180 | 9030 | 5030 | 4030 | 4430 | 4530 | 4176 |
+  | N | 9099+10N | 8080+10N | 9150+10N | 9000+10N | 5000+10N | 4000+10N | 4400+10N | 4500+10N | 4173+N |
 
 ## Reglas de arquitectura
 1. **Aislamiento entre distribuidoras**: todo dato de negocio vive bajo `/distributors/{d}/…`.

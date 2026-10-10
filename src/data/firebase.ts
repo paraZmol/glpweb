@@ -10,8 +10,9 @@ import {
 import { EMULATOR_PROJECT_ID, firebaseConfig } from './firebase-config';
 
 const EMULATOR_HOST = '127.0.0.1';
-const AUTH_EMULATOR_PORT = 9099;
-const FIRESTORE_EMULATOR_PORT = 8080;
+// Lane 0 by default; scripts/emulators.mjs passes the ports of another lane (E2E_LANE=N).
+const AUTH_EMULATOR_PORT = Number(import.meta.env.VITE_AUTH_EMULATOR_PORT ?? 9099);
+const FIRESTORE_EMULATOR_PORT = Number(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT ?? 8080);
 
 // Development always talks to the emulators; only a production build reaches the real project.
 const useEmulators = import.meta.env.DEV || import.meta.env.VITE_USE_EMULATORS === 'true';

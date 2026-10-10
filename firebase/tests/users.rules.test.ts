@@ -6,6 +6,7 @@ import {
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -15,8 +16,9 @@ import {
   Timestamp,
   updateDoc,
 } from 'firebase/firestore';
-import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { serverTimestamp } from 'firebase/firestore';
+import { TERMS_VERSION, TERMS_VERSIONS } from '../../src/domain/legal/versions';
 import { ADDRESS_SLOT_IDS } from '../../src/domain/tenancy/account-input';
 import {
   ADDRESS_LABEL_MAX_LENGTH,
@@ -33,6 +35,7 @@ import {
   CUSTOMER_UID,
   seedDoc,
   seedWorld,
+  termsDoc,
   unverified,
   userDoc,
   verified,
@@ -101,7 +104,7 @@ describe('/users/{uid} — create', () => {
     await assertFails(setDoc(doc(verified(env, NEWCOMER), `users/${NEWCOMER}`), userDoc(change)));
   });
 
-  it.each(['displayName', 'phone', 'ownedDistributorIds', 'createdAt', 'updatedAt'])(
+  it.each(['displayName', 'phone', 'ownedDistributorIds', 'terms', 'createdAt', 'updatedAt'])(
     'blocks a profile without %s',
     async (field) => {
       const { [field]: _dropped, ...partial } = userDoc() as Record<string, unknown>;
@@ -118,6 +121,62 @@ describe('/users/{uid} — create', () => {
   it('blocks a profile that already claims distributors', async () => {
     const claim = userDoc({ ownedDistributorIds: [WORLD.a.d] });
     await assertFails(setDoc(doc(verified(env, NEWCOMER), `users/${NEWCOMER}`), claim));
+  });
+});
+
+// PLAN 2.7
+describe('/users/{uid} — acceptance of the terms', () => {
+  const own = () => doc(verified(env, CUSTOMER_UID), `users/${CUSTOMER_UID}`);
+  const fresh = () => doc(verified(env, NEWCOMER), `users/${NEWCOMER}`);
+  const stamp = { updatedAt: serverTimestamp() };
+
+  it.each([...TERMS_VERSIONS])('accepts a new profile on terms version %s', async (version) => {
+    await assertSucceeds(setDoc(fresh(), userDoc({ terms: termsDoc({ version }) })));
+  });
+
+  it.each([
+    ['a version that does not exist', termsDoc({ version: '9.9' })],
+    ['an empty version', termsDoc({ version: '' })],
+    ['a numeric version', termsDoc({ version: 0.1 })],
+    ['a made-up acceptance date', termsDoc({ acceptedAt: PAST })],
+    ['an acceptance date as text', termsDoc({ acceptedAt: '2026-01-01' })],
+    ['no acceptance date', { version: TERMS_VERSION }],
+    ['no version', { acceptedAt: serverTimestamp() }],
+    ['an extra key', termsDoc({ ip: '127.0.0.1' })],
+    ['terms as a flag', true],
+    ['terms as text', TERMS_VERSION],
+    ['terms as null', null],
+  ])('blocks a new profile with %s', async (_case, terms) => {
+    await assertFails(setDoc(fresh(), userDoc({ terms })));
+  });
+
+  it('lets the account accept the terms again, stamped now', async () => {
+    await assertSucceeds(updateDoc(own(), { terms: termsDoc(), ...stamp }));
+  });
+
+  it('leaves the acceptance alone when the profile is edited', async () => {
+    const before = (await getDoc(own())).data()?.terms;
+    await updateDoc(own(), { displayName: 'C. Otra', ...stamp });
+
+    expect((await getDoc(own())).data()?.terms).toEqual(before);
+  });
+
+  it.each([
+    ['a version that does not exist', { terms: termsDoc({ version: '9.9' }) }],
+    ['a made-up acceptance date', { terms: termsDoc({ acceptedAt: PAST }) }],
+    ['only the version, keeping the old date', { 'terms.version': TERMS_VERSION + '.1' }],
+    ['a backdated date, keeping the version', { 'terms.acceptedAt': PAST }],
+    ['an extra key', { 'terms.note': 'x' }],
+    ['terms removed', { terms: deleteField() }],
+    ['the acceptance date removed', { 'terms.acceptedAt': deleteField() }],
+    ['terms as null', { terms: null }],
+  ])('blocks an update with %s', async (_case, change) => {
+    await assertFails(updateDoc(own(), { ...change, ...stamp }));
+  });
+
+  it('blocks accepting the terms in the name of another account', async () => {
+    const intruder = doc(verified(env, 'owner-a'), `users/${CUSTOMER_UID}`);
+    await assertFails(updateDoc(intruder, { terms: termsDoc(), ...stamp }));
   });
 });
 
