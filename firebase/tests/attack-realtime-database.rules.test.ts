@@ -101,7 +101,7 @@ describe.each(ACTORS)('Realtime Database closed — %s', (_who, connect) => {
 
   it('cannot push, run a transaction or write several paths at once', async () => {
     const db = connect().database();
-    await assertFails(push(ref(db, 'locations/dist-a'), { lat: 0, lng: 0 }));
+    await assertFails(set(push(ref(db, 'locations/dist-a')), { lat: 0, lng: 0 }));
     await assertFails(runTransaction(ref(db, 'staff/dist-a/pretender'), () => 'owner'));
     await assertFails(
       update(ref(db), {

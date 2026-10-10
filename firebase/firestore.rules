@@ -27,7 +27,7 @@ rules_version = '2';
 //
 // /distributors/{d}                PUBLIC: every field can be read by anyone, so it holds only
 //                                  what a customer needs. No plan, no trial date, no account id.
-//   name: string 2..60 · slug (immutable)
+//   name: string 2..60 with at least one letter or digit · slug (immutable)
 //   contactPhone, whatsapp: '9' + 8 digits · addressLine: string 0..160
 //   plant: { lat, lng } · coverageRadiusKm: number 1..50 · brandColor: '#rrggbb' lowercase
 //   acceptingOrders: bool — derived: whoever writes it must write exactly "the control document
@@ -146,6 +146,13 @@ service cloud.firestore {
         && !value.matches('(?s).*[\\s\\x0b\\pZ\\x{feff}]$');
     }
 
+    // The public name of a distributor carries at least one letter or digit: punctuation, emoji
+    // or invisible characters alone are not a name (same check as checkName in
+    // src/domain/tenancy/distributor-input.ts).
+    function isBusinessName(value) {
+      return isText(value, 2, 60) && value.matches('(?s).*[\\pL\\pN].*');
+    }
+
     function isPhone(value) {
       return value is string && value.matches('^9[0-9]{8}$');
     }
@@ -260,7 +267,7 @@ service cloud.firestore {
           'coverageRadiusKm', 'brandColor', 'acceptingOrders', 'schedule',
           'maxCylindersPerOrder', 'brands', 'priceFromCents', 'currency', 'createdAt', 'updatedAt'
         ])
-        && isText(data.name, 2, 60)
+        && isBusinessName(data.name)
         && data.slug is string
         && isPhone(data.contactPhone)
         && isPhone(data.whatsapp)

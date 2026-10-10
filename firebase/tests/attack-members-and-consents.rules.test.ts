@@ -177,6 +177,16 @@ describe('members — the group query "my memberships" pointed elsewhere', () =>
     const db = anonymous(env);
     await assertFails(getDocs(query(group(db), where('uid', '==', 'owner-a'), limit(5))));
   });
+
+  it.each(['users', 'addresses', 'slugs', 'platformAdmins', 'orders', 'invites', 'shifts'])(
+    'blocks a group query over "%s", which has no group rule',
+    async (collectionId) => {
+      for (const uid of [CUSTOMER_UID, 'owner-a', ADMIN_UID]) {
+        const db = verified(env, uid);
+        await assertFails(getDocs(query(collectionGroup(db, collectionId), limit(1))));
+      }
+    },
+  );
 });
 
 describe('consents — taking them back or dating them', () => {

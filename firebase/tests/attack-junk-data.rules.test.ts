@@ -78,6 +78,10 @@ describe('public profile — text that shows as nothing', () => {
     ['a space before the name', ' Gas Demo'],
     ['a space after the name', 'Gas Demo '],
     ['a line break after the name', 'Gas Demo\n'],
+    ['only zero-width spaces', '​​​'],
+    ['only a right-to-left override', '‮‮'],
+    ['only punctuation', '......'],
+    ['only emoji', '🔥🔥'],
   ])('blocks a distributor name with %s, when editing and when founding', async (_case, name) => {
     await assertFails(ownerEdit({ name }));
     const distributor = distributorDoc(NEW.slug, { name });
@@ -89,6 +93,8 @@ describe('public profile — text that shows as nothing', () => {
     await assertSucceeds(ownerEdit({ name: 'ñ'.repeat(DISTRIBUTOR_NAME_MAX_LENGTH) }));
     await assertSucceeds(ownerEdit({ name: 'Gas Ñandú del Perú' }));
     await assertSucceeds(ownerEdit({ name: 'Gas  Demo\u00a0Norte' }));
+    await assertSucceeds(ownerEdit({ name: 'A1' }));
+    await assertSucceeds(ownerEdit({ name: '24 Horas \ud83d\udd25' }));
   });
 
   it.each([

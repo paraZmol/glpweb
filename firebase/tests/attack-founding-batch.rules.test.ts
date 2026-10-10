@@ -241,7 +241,7 @@ describe('founding — forged identity', () => {
       { email: 'otra@example.com', email_verified: true },
     ],
   ])('blocks a token with %s', async (_case, token) => {
-    const db = env.authenticatedContext(FOUNDER, token).firestore();
+    const db = env.authenticatedContext(FOUNDER, token as never).firestore();
     await assertFails(foundDistributor(db, NEW));
   });
 
