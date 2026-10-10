@@ -665,7 +665,7 @@ El dueño del producto delegó estas decisiones en la coordinación con este ase
 
 | # | Resuelto |
 |---|---|
-| D1 | "Balón completo" con "gas + envase" siempre al lado; "Con envase" como etiqueta corta. La prueba con cinco personas se hace antes de la fase 4. |
+| D1 | "Balón completo" con "gas + envase" siempre al lado; "Con envase" como etiqueta corta. **Nombre definitivo** (decisión del 2026-10-10): la prueba previa deja de ser requisito; se revisa solo si el piloto muestra confusión. |
 | D2 | Sin casilla obligatoria. Aviso "Ten a la mano" y enlace "No tengo balón vacío". |
 | D3 | En la puerta sin vacío: cancelar con el motivo "Sin balón vacío" y volver a crear desde la central. |
 | D4 | Dato por distribuidora (`acceptsOtherBrandEmpties`), visible bajo "Ten a la mano". |
