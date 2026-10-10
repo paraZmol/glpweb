@@ -1,11 +1,12 @@
-import type { Distributor } from './types';
+import type { DistributorControl } from './types';
 
-type WritableInput = Pick<Distributor, 'status' | 'trialEndsAt'>;
+type WritableInput = Pick<DistributorControl, 'status' | 'trialEndsAt'>;
 
 /**
  * A distributor accepts business writes while it is `active`, or on `trial` before the trial
  * ends. `pastDue` and `suspended` are read-only. firebase/firestore.rules repeats this condition
- * (`isWritableData`); the rules tests prove both agree.
+ * (`isWritableData`) over the control document; the rules tests prove both agree. It is also the
+ * value the public `acceptingOrders` flag must carry whenever somebody writes it.
  */
 export function isWritable(distributor: WritableInput, now: Date): boolean {
   if (distributor.status === 'active') return true;

@@ -1,5 +1,5 @@
 import { trialDaysLeft } from './status';
-import type { Distributor } from './types';
+import type { DistributorControl } from './types';
 
 /**
  * How the plan of a distributor stands today, for the office header. `tone` maps to a system
@@ -13,7 +13,7 @@ export type PlanSummary =
   | { kind: 'suspended' };
 
 export function planSummaryOf(
-  distributor: Pick<Distributor, 'status' | 'trialEndsAt'>,
+  distributor: Pick<DistributorControl, 'status' | 'trialEndsAt'>,
   now: Date,
 ): PlanSummary {
   if (distributor.status !== 'trial') return { kind: distributor.status };

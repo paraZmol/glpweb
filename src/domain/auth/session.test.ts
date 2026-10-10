@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   canFoundDistributor,
+  hasSessionEnded,
   isAcceptablePassword,
   isValidEmail,
   MIN_PASSWORD_LENGTH,
@@ -47,7 +48,6 @@ describe('canFoundDistributor', () => {
     email: 'a@example.com',
     emailVerified: true,
     displayName: null,
-    photoUrl: null,
     providerIds: ['password'],
   };
 
@@ -55,5 +55,18 @@ describe('canFoundDistributor', () => {
     expect(canFoundDistributor(session)).toBe(true);
     expect(canFoundDistributor({ ...session, emailVerified: false })).toBe(false);
     expect(canFoundDistributor({ ...session, email: null })).toBe(false);
+  });
+});
+
+// PLAN 2.9: a tab clears its local data whenever the account it was showing is gone.
+describe('hasSessionEnded', () => {
+  it.each([
+    ['signing out', 'u1', null, true],
+    ['another account taking its place', 'u1', 'u2', true],
+    ['the first sign-in', null, 'u1', false],
+    ['a token renewal of the same account', 'u1', 'u1', false],
+    ['staying signed out', null, null, false],
+  ])('%s → %s', (_case, previous, next, expected) => {
+    expect(hasSessionEnded(previous, next)).toBe(expected);
   });
 });

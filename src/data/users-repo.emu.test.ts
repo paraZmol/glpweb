@@ -1,14 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SEED_CUSTOMER_LOCATION, SEED_PASSWORD, SEED_USERS } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
-import { TERMS_VERSION } from '../domain/legal/versions';
+import { CURRENT_LEGAL_VERSIONS, PRIVACY_VERSION, TERMS_VERSION } from '../domain/legal/versions';
 import { ADDRESS_SLOT_IDS } from '../domain/tenancy/account-input';
 import { MAX_ADDRESSES_PER_USER } from '../domain/tenancy/constants';
 import { AddressLimitError, PermissionDeniedError } from '../domain/tenancy/errors';
 import { registerWithEmail, signInWithEmail, signOutSession } from './auth-repo';
 import { isPlatformAdmin } from './platform-repo';
 import {
-  acceptTerms,
+  acceptLegalVersions,
   addAddress,
   createUserProfile,
   deleteAddress,
@@ -38,7 +38,7 @@ afterAll(async () => {
 
 // PLAN 2.1
 describe('profile', () => {
-  it('creates the profile with the acceptance of the terms, stamped by the server', async () => {
+  it('creates the profile with both acceptances, stamped by the server', async () => {
     const session = await signInWithEmail(SEED_USERS.noProfile.email, SEED_PASSWORD);
     const before = Date.now();
 
@@ -46,7 +46,7 @@ describe('profile', () => {
     await createUserProfile(
       session.uid,
       { displayName: 'L. Reciente', phone: null },
-      TERMS_VERSION,
+      CURRENT_LEGAL_VERSIONS,
     );
 
     const created = await getUserProfile(session.uid);
@@ -55,19 +55,24 @@ describe('profile', () => {
       phone: null,
       ownedDistributorIds: [],
       terms: { version: TERMS_VERSION },
+      privacy: { version: PRIVACY_VERSION },
     });
     expect(created?.terms?.acceptedAt.getTime()).toBeGreaterThan(before - CLOCK_SLACK_MS);
+    expect(created?.privacy?.acceptedAt).toEqual(created?.terms?.acceptedAt);
   });
 
-  it('refuses a profile that accepts a version of the terms that does not exist', async () => {
+  it.each([
+    ['of the terms', { ...CURRENT_LEGAL_VERSIONS, termsVersion: '9.9' }],
+    ['of the privacy policy', { ...CURRENT_LEGAL_VERSIONS, privacyVersion: '9.9' }],
+  ])('refuses a profile that accepts a version %s that does not exist', async (_case, versions) => {
     const session = await registerWithEmail({
-      email: 'perfil-nuevo@example.com',
+      email: `perfil-${versions.termsVersion}-${versions.privacyVersion}@example.com`,
       password: SEED_PASSWORD,
       displayName: 'M. Perfil',
     });
     const profile = { displayName: 'M. Perfil', phone: null };
 
-    await expect(createUserProfile(session.uid, profile, '9.9')).rejects.toBeInstanceOf(
+    await expect(createUserProfile(session.uid, profile, versions)).rejects.toBeInstanceOf(
       PermissionDeniedError,
     );
     expect(await getUserProfile(session.uid)).toBeNull();
@@ -77,12 +82,14 @@ describe('profile', () => {
     const { uid } = await signInWithEmail(SEED_USERS.dispatcherB.email, SEED_PASSWORD);
     const seededAt = (await getUserProfile(uid))?.terms?.acceptedAt.getTime() ?? 0;
 
-    await acceptTerms(uid, TERMS_VERSION);
+    await acceptLegalVersions(uid, CURRENT_LEGAL_VERSIONS);
 
     const renewed = await getUserProfile(uid);
     expect(renewed?.terms?.acceptedAt.getTime()).toBeGreaterThan(seededAt);
+    expect(renewed?.privacy?.acceptedAt.getTime()).toBeGreaterThan(seededAt);
     expect(renewed?.displayName).toBe(SEED_USERS.dispatcherB.displayName);
-    await expect(acceptTerms(uid, '9.9')).rejects.toBeInstanceOf(PermissionDeniedError);
+    const unknown = { ...CURRENT_LEGAL_VERSIONS, privacyVersion: '9.9' };
+    await expect(acceptLegalVersions(uid, unknown)).rejects.toBeInstanceOf(PermissionDeniedError);
   });
 
   it('updates the name and the phone', async () => {
@@ -103,9 +110,9 @@ describe('profile', () => {
 
     await expect(getUserProfile(other)).rejects.toBeInstanceOf(PermissionDeniedError);
     await expect(updateUserProfile(other, intruder)).rejects.toBeInstanceOf(PermissionDeniedError);
-    await expect(createUserProfile('uid-libre', intruder, TERMS_VERSION)).rejects.toBeInstanceOf(
-      PermissionDeniedError,
-    );
+    await expect(
+      createUserProfile('uid-libre', intruder, CURRENT_LEGAL_VERSIONS),
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
   });
 });
 

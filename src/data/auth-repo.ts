@@ -1,5 +1,6 @@
 import {
   createUserWithEmailAndPassword,
+  deleteUser,
   getRedirectResult,
   GoogleAuthProvider,
   onIdTokenChanged,
@@ -26,7 +27,6 @@ function toSession(user: User): Session {
     email: user.email,
     emailVerified: user.emailVerified,
     displayName: user.displayName,
-    photoUrl: user.photoURL,
     providerIds: user.providerData.map((provider) => provider.providerId),
   };
 }
@@ -101,6 +101,15 @@ export function completeRedirectSignIn(): Promise<Session | null> {
 
 export function signOutSession(): Promise<void> {
   return translating(() => signOut(auth));
+}
+
+/**
+ * Deletes the signed-in account from Firebase Auth. It removes nothing from Firestore: the
+ * caller decides whether there is anything left behind (see `discardUnacceptedAccount`).
+ * Firebase asks for a recent sign-in: an old session fails with `recentLoginRequired`.
+ */
+export function deleteOwnAccount(): Promise<void> {
+  return translating(() => deleteUser(requireUser()));
 }
 
 export function resendVerificationEmail(): Promise<void> {

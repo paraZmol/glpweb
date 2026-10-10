@@ -7,6 +7,7 @@ export const paths = {
   slug: (slug: string) => `slugs/${slug}`,
   distributors: () => 'distributors',
   distributor: (d: string) => `distributors/${d}`,
+  distributorControl: (d: string) => `distributors/${d}/private/control`,
   distributorPrivateSettings: (d: string) => `distributors/${d}/private/settings`,
   members: (d: string) => `distributors/${d}/members`,
   member: (d: string, uid: string) => `distributors/${d}/members/${uid}`,

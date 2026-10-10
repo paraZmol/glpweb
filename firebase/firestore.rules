@@ -12,6 +12,7 @@ rules_version = '2';
 //   ownedDistributorIds: list ≤ 3 — grows only inside a founding batch (caps distributors/account)
 //   terms: { version: an allowed terms version, acceptedAt: timestamp = request.time when it
 //     is written } — required from creation, can be renewed, never removed
+//   privacy: the same shape for the privacy policy, with its own list of allowed versions
 //   createdAt, updatedAt: timestamp (= request.time when written; createdAt immutable)
 //
 // /users/{uid}/addresses/{slot}    private to the account; slot is a0..a9 (caps addresses at 10)
@@ -23,15 +24,23 @@ rules_version = '2';
 // /slugs/{slug}                    public get, no list; immutable
 //   distributorId: string · createdAt
 //
-// /distributors/{d}                PUBLIC: every field can be read by anyone
-//   name: string 2..60 · slug (immutable) · ownerUid (founder, immutable)
+// /distributors/{d}                PUBLIC: every field can be read by anyone, so it holds only
+//                                  what a customer needs. No plan, no trial date, no account id.
+//   name: string 2..60 · slug (immutable)
 //   contactPhone, whatsapp: '9' + 8 digits · addressLine: string 0..160
 //   plant: { lat, lng } · coverageRadiusKm: number 1..50 · brandColor: '#rrggbb' lowercase
-//   status: trial | active | pastDue | suspended (only a platform admin changes it)
-//   trialEndsAt: timestamp (immutable from the app)
+//   acceptingOrders: bool — derived: whoever writes it must write exactly "the control document
+//     says this distributor is writable right now". It is what the search filters by. Nobody
+//     flips it when a trial runs out, so it can stay true after the trial ended until the staff
+//     or a platform admin corrects it; no rule trusts it (they all read the control document).
 //   schedule: { days: list 1..7 of 0..6, opensAt: 'HH:MM', closesAt: 'HH:MM' }
 //   maxCylindersPerOrder: int 1..20 · brands: list ≤ 8 of string 1..30
 //   priceFromCents: null | int 1..99900 · currency: 'PEN' · createdAt (immutable), updatedAt
+//
+// /distributors/{d}/private/control    staff of {d} and platform admins only; read by the rules
+//   ownerUid (founder, immutable) · status: trial | active | pastDue | suspended (only a
+//   platform admin changes it) · trialEndsAt: timestamp (immutable from the app)
+//   createdAt (immutable; = request.time only in the founding batch), updatedAt
 //
 // /distributors/{d}/private/settings   founder, owners and platform admins only
 //   ownerUid (immutable) · ownerName: string 1..80 · ownerPhone · ownerEmail (= token e-mail,
@@ -41,7 +50,10 @@ rules_version = '2';
 //
 // /distributors/{d}/members/{uid}
 //   uid (= document id) · distributorId (= d) · role: owner | dispatcher | driver
-//   active: bool · displayName: string 1..80 · createdAt (immutable), updatedAt
+//   active: bool · displayName: string 1..80
+//   distributorName: string 2..60 — copy of the public name, so the selector of distributors
+//     needs no extra read; it can only ever be written equal to the public name
+//   createdAt (immutable), updatedAt
 //
 // Billed reads added by the rules (get / exists / getAfter) are noted on each `allow`.
 // ===============================================================================================
@@ -76,21 +88,33 @@ service cloud.firestore {
     }
 
     // ------------------------------------------------------------------------- tenant state ----
-    // Same condition as isWritable() in src/domain/tenancy/status.ts.
-    function isWritableData(distributor) {
-      return distributor.status == 'active'
-        || (distributor.status == 'trial' && distributor.trialEndsAt > request.time);
+    function isStaff(d) {
+      return hasRole(d, ['owner', 'dispatcher', 'driver']);
+    }
+
+    function distributorPath(d) {
+      return /databases/$(database)/documents/distributors/$(d);
+    }
+
+    function controlPath(d) {
+      return /databases/$(database)/documents/distributors/$(d)/private/control;
+    }
+
+    // Same condition as isWritable() in src/domain/tenancy/status.ts, over the control document.
+    function isWritableData(control) {
+      return control.status == 'active'
+        || (control.status == 'trial' && control.trialEndsAt > request.time);
     }
 
     function writable(d) {
-      return isWritableData(get(/databases/$(database)/documents/distributors/$(d)).data);
+      return isWritableData(get(controlPath(d)).data);
     }
 
-    // True only inside the batch that creates distributor `d` with the caller as founder:
-    // createdAt is forced to request.time on create and is immutable afterwards.
+    // True only inside the batch that creates distributor `d` with the caller as founder: the
+    // control document gets createdAt = request.time on create and never again.
     function foundedNow(d) {
-      let distributor = getAfter(/databases/$(database)/documents/distributors/$(d)).data;
-      return distributor.ownerUid == request.auth.uid && distributor.createdAt == request.time;
+      let control = getAfter(controlPath(d)).data;
+      return control.ownerUid == request.auth.uid && control.createdAt == request.time;
     }
 
     // ------------------------------------------------------------------------------- diffs ----
@@ -164,11 +188,24 @@ service cloud.firestore {
       return ['0.1'];
     }
 
+    // Same list as PRIVACY_VERSIONS in src/domain/legal/versions.ts.
+    function acceptedPrivacyVersions() {
+      return ['0.1'];
+    }
+
+    function isAcceptance(acceptance, versions) {
+      return acceptance is map
+        && hasExactly(acceptance, ['version', 'acceptedAt'])
+        && acceptance.version in versions
+        && acceptance.acceptedAt is timestamp;
+    }
+
     function isTermsAcceptance(terms) {
-      return terms is map
-        && hasExactly(terms, ['version', 'acceptedAt'])
-        && terms.version in acceptedTermsVersions()
-        && terms.acceptedAt is timestamp;
+      return isAcceptance(terms, acceptedTermsVersions());
+    }
+
+    function isPrivacyAcceptance(privacy) {
+      return isAcceptance(privacy, acceptedPrivacyVersions());
     }
 
     // Rules cannot loop: the list is capped at 8 and each position is checked by hand.
@@ -186,9 +223,11 @@ service cloud.firestore {
     // -------------------------------------------------------------------- document validators ----
     function isValidUserProfile(data) {
       return hasExactly(data, [
-          'displayName', 'phone', 'ownedDistributorIds', 'terms', 'createdAt', 'updatedAt'
+          'displayName', 'phone', 'ownedDistributorIds', 'terms', 'privacy', 'createdAt',
+          'updatedAt'
         ])
         && isTermsAcceptance(data.terms)
+        && isPrivacyAcceptance(data.privacy)
         && isText(data.displayName, 1, 80)
         && (data.phone == null || isPhone(data.phone))
         && data.ownedDistributorIds is list && data.ownedDistributorIds.size() <= 3
@@ -208,13 +247,12 @@ service cloud.firestore {
 
     function isValidDistributor(data) {
       return hasExactly(data, [
-          'name', 'slug', 'ownerUid', 'contactPhone', 'whatsapp', 'addressLine', 'plant',
-          'coverageRadiusKm', 'brandColor', 'status', 'trialEndsAt', 'schedule',
+          'name', 'slug', 'contactPhone', 'whatsapp', 'addressLine', 'plant',
+          'coverageRadiusKm', 'brandColor', 'acceptingOrders', 'schedule',
           'maxCylindersPerOrder', 'brands', 'priceFromCents', 'currency', 'createdAt', 'updatedAt'
         ])
         && isText(data.name, 2, 60)
         && data.slug is string
-        && data.ownerUid is string
         && isPhone(data.contactPhone)
         && isPhone(data.whatsapp)
         && isText(data.addressLine, 0, 160)
@@ -222,8 +260,7 @@ service cloud.firestore {
         && data.coverageRadiusKm is number
         && data.coverageRadiusKm >= 1 && data.coverageRadiusKm <= 50
         && data.brandColor is string && data.brandColor.matches('^#[0-9a-f]{6}$')
-        && data.status in ['trial', 'active', 'pastDue', 'suspended']
-        && data.trialEndsAt is timestamp
+        && data.acceptingOrders is bool
         && isSchedule(data.schedule)
         && data.maxCylindersPerOrder is int
         && data.maxCylindersPerOrder >= 1 && data.maxCylindersPerOrder <= 20
@@ -231,6 +268,15 @@ service cloud.firestore {
         && (data.priceFromCents == null
           || (data.priceFromCents is int && data.priceFromCents >= 1 && data.priceFromCents <= 99900))
         && data.currency == 'PEN'
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidControl(data) {
+      return hasExactly(data, ['ownerUid', 'status', 'trialEndsAt', 'createdAt', 'updatedAt'])
+        && data.ownerUid is string
+        && data.status in ['trial', 'active', 'pastDue', 'suspended']
+        && data.trialEndsAt is timestamp
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
@@ -253,13 +299,15 @@ service cloud.firestore {
 
     function isValidMember(data, d, memberUid) {
       return hasExactly(data, [
-          'uid', 'distributorId', 'role', 'active', 'displayName', 'createdAt', 'updatedAt'
+          'uid', 'distributorId', 'role', 'active', 'displayName', 'distributorName',
+          'createdAt', 'updatedAt'
         ])
         && data.uid == memberUid
         && data.distributorId == d
         && data.role in ['owner', 'dispatcher', 'driver']
         && data.active is bool
         && isText(data.displayName, 1, 80)
+        && isText(data.distributorName, 2, 60)
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
@@ -274,6 +322,7 @@ service cloud.firestore {
         && isValidUserProfile(request.resource.data)
         && request.resource.data.ownedDistributorIds.size() == 0
         && request.resource.data.terms.acceptedAt == request.time
+        && request.resource.data.privacy.acceptedAt == request.time
         && stampedNow(request.resource.data);
 
       // Reads added by rules: 0 for a profile edit, 1 (getAfter) inside a founding batch.
@@ -281,8 +330,10 @@ service cloud.firestore {
         && isValidUserProfile(request.resource.data)
         && unchanged(['createdAt'])
         && request.resource.data.updatedAt == request.time
-        // Terms can only be accepted again, now; the validator already forbids removing them.
+        // Each text can only be accepted again, now; the validator already forbids removing
+        // an acceptance. A profile older than `privacy` gains it the same way.
         && (unchanged(['terms']) || request.resource.data.terms.acceptedAt == request.time)
+        && (unchanged(['privacy']) || request.resource.data.privacy.acceptedAt == request.time)
         && (unchanged(['ownedDistributorIds']) || recordsFounding());
 
       // No delete: it would reset ownedDistributorIds and with it the cap per account.
@@ -334,53 +385,49 @@ service cloud.firestore {
 
       // Only inside the founding batch of the distributor it points to. An existing slug makes
       // this write an update, which nobody is allowed: that is what makes slugs unique.
-      // Reads added by rules: 1 (getAfter).
+      // Reads added by rules: 2 (getAfter control, getAfter distributor).
       allow create: if emailVerified()
         && isSlug(slug)
         && hasExactly(request.resource.data, ['distributorId', 'createdAt'])
         && isDocId(request.resource.data.distributorId)
         && request.resource.data.createdAt == request.time
         && foundedNow(request.resource.data.distributorId)
-        && getAfter(/databases/$(database)/documents/distributors/$(request.resource.data.distributorId)).data.slug == slug;
+        && getAfter(distributorPath(request.resource.data.distributorId)).data.slug == slug;
     }
 
     // ========================================================================= distributors ====
     match /distributors/{d} {
       // PUBLIC document by design (see the data model above): nothing private lives here.
+      // Reads added by rules: 0.
       allow get: if true;
 
-      // The search page: bounded, and only statuses that may be shown. The query must carry
-      // `where('status', 'in', ['trial', 'active'])` (or a subset) and `limit(n ≤ 50)`.
+      // The search page: bounded, and only distributors that take orders. The query must carry
+      // `where('acceptingOrders', '==', true)` and `limit(n ≤ 50)`.
+      // Reads added by rules: 0.
       allow list: if request.query.limit <= 50
-        && resource.data.status in ['trial', 'active'];
+        && resource.data.acceptingOrders == true;
 
-      // Founding batch (PLAN 2.2): distributor + slug + owner member + private settings + the
-      // founder's ownedDistributorIds, all or nothing.
-      // trialEndsAt: the client cannot write "server time + 30 days", so the rule accepts a
-      // window instead: more than 29 days and at most 30 days + 1 hour after request.time. The
-      // upper bound is the one that matters (nobody grants itself a longer trial); the lower
-      // bound tolerates a device clock that runs up to a day behind.
-      // Reads added by rules: 4 (getAfter slug, member, settings, founder profile).
+      // Founding batch (PLAN 2.2): distributor + control + slug + owner member + private
+      // settings + the founder's ownedDistributorIds, all or nothing. This document vouches for
+      // the slug; the control document vouches for everything else.
+      // Reads added by rules: 2 (getAfter slug, getAfter control).
       allow create: if emailVerified()
         && isDocId(d)
         && isValidDistributor(request.resource.data)
-        && request.resource.data.ownerUid == request.auth.uid
-        && request.resource.data.status == 'trial'
-        && request.resource.data.trialEndsAt > request.time + duration.value(29, 'd')
-        && request.resource.data.trialEndsAt <= request.time + duration.value(721, 'h')
+        && request.resource.data.acceptingOrders == true
         && stampedNow(request.resource.data)
         && isSlug(request.resource.data.slug)
         // The catalogue does not exist yet; these are filled from it later.
         && request.resource.data.brands.size() == 0
         && request.resource.data.priceFromCents == null
         && getAfter(/databases/$(database)/documents/slugs/$(request.resource.data.slug)).data.distributorId == d
-        && getAfter(/databases/$(database)/documents/distributors/$(d)/members/$(request.auth.uid)).data.role == 'owner'
-        && getAfter(/databases/$(database)/documents/distributors/$(d)/private/settings).data.ownerUid == request.auth.uid
-        && d in getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.ownedDistributorIds;
+        && foundedNow(d);
 
       // Owner: profile whitelist only, and only while the distributor is writable.
-      // Platform admin: status only.
-      // Reads added by rules: 1 (owner: get member · admin: exists platformAdmins).
+      // Staff or platform admin: bring `acceptingOrders` in line with the control document, in
+      // either direction. It can only ever be written as the truth, so it needs no more trust.
+      // Reads added by rules: 2 (owner: get member, get control · staff: getAfter control, get
+      // member), 3 for a platform admin (the member lookup fails first).
       allow update: if isValidDistributor(request.resource.data)
         && request.resource.data.updatedAt == request.time
         && (
@@ -390,23 +437,61 @@ service cloud.firestore {
               'brandColor', 'schedule', 'maxCylindersPerOrder', 'brands', 'priceFromCents',
               'updatedAt'
             ])
-            && isWritableData(resource.data)
             && hasRole(d, ['owner'])
+            && writable(d)
           )
-          || (onlyChanges(['status', 'updatedAt']) && isPlatformAdmin())
+          || (
+            onlyChanges(['acceptingOrders', 'updatedAt'])
+            && request.resource.data.acceptingOrders == isWritableData(getAfter(controlPath(d)).data)
+            && (isStaff(d) || isPlatformAdmin())
+          )
         );
 
       // No delete from the app.
 
+      // ----------------------------------------------------------------- private/control ----
+      match /private/control {
+        // Reads added by rules: 0 for the founder, 1 for the rest of the staff, 2 for a
+        // platform admin.
+        allow get: if signedIn()
+          && (resource.data.ownerUid == request.auth.uid || isStaff(d) || isPlatformAdmin());
+
+        // The anchor of the founding batch: it proves the other four pieces exist and belong to
+        // the caller. trialEndsAt: the client cannot write "server time + 30 days", so the rule
+        // accepts a window instead: more than 29 days and at most 30 days + 1 hour after
+        // request.time. The upper bound is the one that matters (nobody grants itself a longer
+        // trial); the lower bound tolerates a device clock that runs up to a day behind.
+        // Reads added by rules: 4 (getAfter distributor, member, settings, founder profile).
+        allow create: if emailVerified()
+          && isValidControl(request.resource.data)
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.status == 'trial'
+          && request.resource.data.trialEndsAt > request.time + duration.value(29, 'd')
+          && request.resource.data.trialEndsAt <= request.time + duration.value(721, 'h')
+          && stampedNow(request.resource.data)
+          && getAfter(distributorPath(d)).data.createdAt == request.time
+          && getAfter(/databases/$(database)/documents/distributors/$(d)/members/$(request.auth.uid)).data.role == 'owner'
+          && getAfter(/databases/$(database)/documents/distributors/$(d)/private/settings).data.ownerUid == request.auth.uid
+          && d in getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.ownedDistributorIds;
+
+        // Platform admin: status only, and the public flag must agree once the request is
+        // applied (so a change that opens or closes the distributor carries both documents).
+        // Reads added by rules: 2 (exists platformAdmins, getAfter distributor).
+        allow update: if isPlatformAdmin()
+          && isValidControl(request.resource.data)
+          && onlyChanges(['status', 'updatedAt'])
+          && request.resource.data.updatedAt == request.time
+          && getAfter(distributorPath(d)).data.acceptingOrders == isWritableData(request.resource.data);
+      }
+
       // ---------------------------------------------------------------- private/settings ----
-      match /private/{docId} {
+      match /private/settings {
         // Reads added by rules: 0 for the founder, 1–2 for a co-owner or a platform admin.
-        allow get: if docId == 'settings' && signedIn()
+        allow get: if signedIn()
           && (resource.data.ownerUid == request.auth.uid || hasRole(d, ['owner']) || isPlatformAdmin());
 
-        // Reads added by rules: 1 (getAfter distributor).
-        allow create: if docId == 'settings'
-          && emailVerified()
+        // Reads added by rules: 1 (getAfter control).
+        allow create: if emailVerified()
           && isValidPrivateSettings(request.resource.data)
           && request.resource.data.ownerUid == request.auth.uid
           && request.resource.data.ownerEmail == request.auth.token.email
@@ -416,9 +501,8 @@ service cloud.firestore {
           && stampedNow(request.resource.data)
           && foundedNow(d);
 
-        // Reads added by rules: 1 (get distributor).
-        allow update: if docId == 'settings'
-          && signedIn()
+        // Reads added by rules: 1 (get control).
+        allow update: if signedIn()
           && resource.data.ownerUid == request.auth.uid
           && isValidPrivateSettings(request.resource.data)
           && onlyChanges(['ownerName', 'ownerPhone', 'updatedAt'])
@@ -438,31 +522,50 @@ service cloud.firestore {
         // batch. Nobody creates a member document for itself or for anyone else outside it.
         // Invitations (phase 3) will add the second, equally explicit, way: the invited account
         // creates its own member with exactly the role of a valid invitation.
-        // Reads added by rules: 1 (getAfter distributor).
+        // Reads added by rules: 2 (getAfter distributor, getAfter control).
         allow create: if isSelf(memberUid)
           && emailVerified()
           && isValidMember(request.resource.data, d, memberUid)
           && stampedNow(request.resource.data)
           && request.resource.data.role == 'owner'
           && request.resource.data.active == true
+          && carriesPublicName()
           && foundedNow(d);
 
         // An owner changes others, never itself, and never the founder: the acting owner and
         // the founder always stay, so a distributor cannot be left without an owner.
-        // Reads added by rules: 2 (get member, get distributor).
+        // Reads added by rules: 2 (get member, get control).
+        //
+        // Second kind of update: refreshing the copy of the distributor's name. Any member may
+        // do it on its own document and an owner on anyone's (the rename batch), because the
+        // only value accepted is the public name as it stands once the request is applied.
+        // Reads added by rules: 1 (getAfter distributor) on the own document, 2 for an owner.
         allow update: if signedIn()
-          && memberUid != request.auth.uid
           && isValidMember(request.resource.data, d, memberUid)
-          && onlyChanges(['role', 'active', 'displayName', 'updatedAt'])
           && request.resource.data.updatedAt == request.time
-          && hasRole(d, ['owner'])
-          && writableAndNotFounder(memberUid);
+          && (
+            (
+              memberUid != request.auth.uid
+              && onlyChanges(['role', 'active', 'displayName', 'updatedAt'])
+              && hasRole(d, ['owner'])
+              && writableAndNotFounder(memberUid)
+            )
+            || (
+              onlyChanges(['distributorName', 'updatedAt'])
+              && carriesPublicName()
+              && (isSelf(memberUid) || hasRole(d, ['owner']))
+            )
+          );
 
         // No delete: staff is deactivated (`active: false`), so history keeps its author.
 
         function writableAndNotFounder(uid) {
-          let distributor = get(/databases/$(database)/documents/distributors/$(d)).data;
-          return isWritableData(distributor) && distributor.ownerUid != uid;
+          let control = get(controlPath(d)).data;
+          return isWritableData(control) && control.ownerUid != uid;
+        }
+
+        function carriesPublicName() {
+          return request.resource.data.distributorName == getAfter(distributorPath(d)).data.name;
         }
       }
 

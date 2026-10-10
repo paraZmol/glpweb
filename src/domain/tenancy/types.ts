@@ -1,14 +1,8 @@
 import type { GeoPoint } from '../geo/distance';
-import type { TermsAcceptance } from '../legal/versions';
+import type { LegalAcceptance } from '../legal/versions';
 
 export const DISTRIBUTOR_STATUSES = ['trial', 'active', 'pastDue', 'suspended'] as const;
 export type DistributorStatus = (typeof DISTRIBUTOR_STATUSES)[number];
-
-/** Statuses the public search may list. An expired trial is filtered out with `isWritable`. */
-export const VISIBLE_DISTRIBUTOR_STATUSES = [
-  'trial',
-  'active',
-] as const satisfies readonly DistributorStatus[];
 
 export const MEMBER_ROLES = ['owner', 'dispatcher', 'driver'] as const;
 export type MemberRole = (typeof MEMBER_ROLES)[number];
@@ -24,23 +18,26 @@ export interface Schedule {
 }
 
 /**
- * Public document `/distributors/{d}`: anyone can read every field, signed in or not.
- * Nothing about the owner as a person belongs here (see `DistributorPrivateSettings`).
+ * Public document `/distributors/{d}`: anyone can read every field, signed in or not, so it
+ * holds only what a customer needs to find the business and order from it. Nothing about the
+ * plan, the trial or the founder lives here (PLAN 2.9): see `DistributorControl`.
  */
-export interface Distributor {
+export interface PublicDistributor {
   id: string;
   name: string;
   slug: string;
-  /** Opaque account id of the founder; immutable. */
-  ownerUid: string;
   contactPhone: string;
   whatsapp: string;
   addressLine: string;
   plant: GeoPoint;
   coverageRadiusKm: number;
   brandColor: string;
-  status: DistributorStatus;
-  trialEndsAt: Date;
+  /**
+   * Whether the distributor takes orders. Derived from the control document by whoever changes
+   * it; it can lag behind an expired trial until the staff or a platform admin opens the panel.
+   * The security rules never trust it: they read the control document.
+   */
+  acceptingOrders: boolean;
   schedule: Schedule;
   maxCylindersPerOrder: number;
   /** Denormalised from the catalogue for the search page. */
@@ -50,6 +47,27 @@ export interface Distributor {
   currency: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * Control document `/distributors/{d}/private/control`: where the distributor stands with the
+ * platform. Readable by its staff and by platform admins only; the security rules read it to
+ * decide whether the distributor is writable.
+ */
+export interface DistributorControl {
+  /** Opaque account id of the founder; immutable. */
+  ownerUid: string;
+  status: DistributorStatus;
+  trialEndsAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/** The distributor as its own staff sees it: the public profile plus its control data. */
+export interface Distributor extends PublicDistributor {
+  ownerUid: string;
+  status: DistributorStatus;
+  trialEndsAt: Date;
 }
 
 export const DISTRIBUTOR_PLANS = ['trial'] as const;
@@ -63,7 +81,7 @@ export interface DistributorPrivateSettings {
   ownerEmail: string;
   plan: DistributorPlan;
   /** The founder accepted the terms when founding. Null only in documents older than the field. */
-  terms: TermsAcceptance | null;
+  terms: LegalAcceptance | null;
   /** When the founder declared it may represent the business and that it may sell GLP. */
   authorityDeclaredAt: Date | null;
   createdAt: Date;
@@ -76,6 +94,11 @@ export interface Member {
   role: MemberRole;
   active: boolean;
   displayName: string;
+  /**
+   * Name of the distributor, copied here so the selector needs no extra read (PLAN 2.9). Empty
+   * in a document older than the field.
+   */
+  distributorName: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -87,7 +110,9 @@ export interface UserProfile {
   /** Maintained by the creation batch and checked by the rules; caps distributors per account. */
   ownedDistributorIds: string[];
   /** Null only in documents older than the field: check with `needsTermsAcceptance`. */
-  terms: TermsAcceptance | null;
+  terms: LegalAcceptance | null;
+  /** Acceptance of the privacy policy; null only in documents older than the field. */
+  privacy: LegalAcceptance | null;
   createdAt: Date;
   updatedAt: Date;
 }

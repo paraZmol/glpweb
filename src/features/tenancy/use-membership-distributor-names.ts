@@ -2,22 +2,33 @@ import { getDistributor } from '../../data/distributors-repo';
 import type { Member } from '../../domain/tenancy/types';
 import { useAsyncResource } from '../../lib/use-async-resource';
 
-const MIN_MEMBERSHIPS_FOR_SELECTOR = 2;
+/** id → name for the memberships that already carry the name of their distributor. */
+export function namesFromMemberships(memberships: readonly Member[]): Record<string, string> {
+  return Object.fromEntries(
+    memberships
+      .filter((membership) => membership.distributorName !== '')
+      .map((membership) => [membership.distributorId, membership.distributorName]),
+  );
+}
 
 /**
- * Names for the distributor selector (PLAN 2.4): a member document does not carry the name of
- * its distributor, so each one is read from its public document. Nothing is read for an account
- * with a single distributor; the list is capped by the memberships query itself.
- * Returns id → name, empty while loading or when the read fails (the selector then falls back).
+ * Names for the distributor selector (PLAN 2.4, 2.9). Every member document carries the name
+ * of its distributor, so this costs NO read; `membership.distributorName` can be used directly.
+ * Only a membership written before that field existed is looked up in the public document.
+ * Returns id → name; a name still being looked up is missing (the selector then falls back).
  */
 export function useMembershipDistributorNames(
   memberships: readonly Member[],
 ): Record<string, string> {
-  const ids = memberships.map((membership) => membership.distributorId).sort();
-  const key = ids.length >= MIN_MEMBERSHIPS_FOR_SELECTOR ? ids.join('|') : null;
+  const known = namesFromMemberships(memberships);
+  const unnamed = memberships
+    .map((membership) => membership.distributorId)
+    .filter((id) => !(id in known))
+    .sort();
+  const key = unnamed.length > 0 ? unnamed.join('|') : null;
 
-  const names = useAsyncResource(key, async () => {
-    const distributors = await Promise.all(ids.map((id) => getDistributor(id)));
+  const looked = useAsyncResource(key, async () => {
+    const distributors = await Promise.all(unnamed.map((id) => getDistributor(id)));
     return Object.fromEntries(
       distributors.flatMap((distributor) =>
         distributor ? [[distributor.id, distributor.name]] : [],
@@ -25,5 +36,5 @@ export function useMembershipDistributorNames(
     );
   });
 
-  return names.status === 'ready' ? names.data : {};
+  return looked.status === 'ready' ? { ...known, ...looked.data } : known;
 }

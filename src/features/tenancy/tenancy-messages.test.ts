@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AccountInUseError,
   DistributorLimitError,
   InvalidInputError,
   PermissionDeniedError,
@@ -11,6 +12,16 @@ describe('describeFieldIssue', () => {
   it('prefers the message written for that field', () => {
     expect(describeFieldIssue({ field: 'contactPhone', code: 'invalid' })).toContain('9 dígitos');
     expect(describeFieldIssue({ field: 'slug', code: 'tooShort' })).toContain('al menos 3');
+  });
+
+  // PLAN 2.9
+  it('explains a brand colour that cannot be seen and a missing privacy consent', () => {
+    const faint = { field: 'brandColor', code: 'tooFaint', suggestion: '#c2410c' } as const;
+
+    expect(describeFieldIssue(faint)).toContain('no se distingue del fondo');
+    expect(describeFieldIssue({ field: 'acceptPrivacy', code: 'required' })).toContain(
+      'política de privacidad',
+    );
   });
 
   it('falls back to the generic message of the code', () => {
@@ -39,6 +50,7 @@ describe('describeTenancyError', () => {
     [new SlugTakenError('gas-demo'), 'otra distribuidora'],
     [new DistributorLimitError(3), 'hasta 3'],
     [new PermissionDeniedError(), 'solo lectura'],
+    [new AccountInUseError(), 'Contacto'],
     [new Error('unexpected'), 'Vuelve a intentar'],
   ])('explains %o', (error, fragment) => {
     expect(describeTenancyError(error)).toContain(fragment);

@@ -8,7 +8,7 @@ import {
 } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
 import { markEmailVerified } from '../../tests/support/emulator';
-import { TERMS_VERSION } from '../domain/legal/versions';
+import { CURRENT_LEGAL_VERSIONS, TERMS_VERSION } from '../domain/legal/versions';
 import { MAX_DISTRIBUTORS_PER_ACCOUNT, TRIAL_DAYS } from '../domain/tenancy/constants';
 import { type NewDistributor, prepareNewDistributor } from '../domain/tenancy/distributor-input';
 import {
@@ -24,12 +24,17 @@ import {
   createDistributor,
   getDistributor,
   getDistributorBySlug,
+  getDistributorControl,
   getDistributorPrivateSettings,
+  getStaffDistributor,
   isSlugAvailable,
   listMyMemberships,
   listVisibleDistributors,
+  syncAcceptingOrders,
+  syncMemberDistributorName,
   updateDistributorProfile,
 } from './distributors-repo';
+import { setDistributorStatus } from './platform-repo';
 import { createUserProfile, getUserProfile } from './users-repo';
 
 const { a: A, b: B, c: SUSPENDED, d: EXPIRED } = SEED_DISTRIBUTORS;
@@ -56,7 +61,8 @@ async function freshFounder(key: string) {
   const session = await registerWithEmail({ email, password: SEED_PASSWORD, displayName: key });
   await markEmailVerified(session.uid);
   await refreshSession();
-  await createUserProfile(session.uid, { displayName: 'N. Fundadora', phone: null }, TERMS_VERSION);
+  const profile = { displayName: 'N. Fundadora', phone: null };
+  await createUserProfile(session.uid, profile, CURRENT_LEGAL_VERSIONS);
   return { uid: session.uid, email };
 }
 
@@ -84,12 +90,23 @@ describe('createDistributor', () => {
 
     const id = await found(founder, 'gas-demo-nueva', now);
 
-    const distributor = await getDistributorBySlug('gas-demo-nueva');
-    expect(distributor).toMatchObject({ id, status: 'trial', ownerUid: founder.uid, brands: [] });
+    expect(await getDistributorBySlug('gas-demo-nueva')).toMatchObject({
+      id,
+      acceptingOrders: true,
+      brands: [],
+    });
+    const distributor = await getStaffDistributor(id);
+    expect(distributor).toMatchObject({ id, status: 'trial', ownerUid: founder.uid });
     expect(distributor && isWritable(distributor, now)).toBe(true);
     expect(distributor && trialDaysLeft(distributor, now)).toBe(TRIAL_DAYS);
     expect(await listMyMemberships(founder.uid)).toMatchObject([
-      { uid: founder.uid, distributorId: id, role: 'owner', active: true },
+      {
+        uid: founder.uid,
+        distributorId: id,
+        role: 'owner',
+        active: true,
+        distributorName: 'Gas Demo Nueva',
+      },
     ]);
     expect(await getDistributorPrivateSettings(id)).toMatchObject({
       ownerUid: founder.uid,
@@ -184,9 +201,28 @@ describe('getDistributorBySlug', () => {
   it('still resolves a suspended distributor so the page can say it is unavailable', async () => {
     const suspended = await getDistributorBySlug(SUSPENDED.slug);
 
-    expect(suspended?.status).toBe('suspended');
-    expect(suspended && isWritable(suspended, new Date())).toBe(false);
+    expect(suspended?.acceptingOrders).toBe(false);
   });
+
+  // PLAN 2.9
+  it.each([
+    ['suspended', SUSPENDED],
+    ['on an expired trial', EXPIRED],
+    ['active', A],
+  ])(
+    'tells a visitor nothing about the plan of a distributor that is %s',
+    async (_case, seeded) => {
+      await signOutSession();
+
+      const visible = await getDistributorBySlug(seeded.slug);
+
+      expect(visible).not.toHaveProperty('status');
+      expect(visible).not.toHaveProperty('trialEndsAt');
+      expect(visible).not.toHaveProperty('ownerUid');
+      await expect(getDistributorControl(seeded.id)).rejects.toBeInstanceOf(PermissionDeniedError);
+      await expect(getStaffDistributor(seeded.id)).rejects.toBeInstanceOf(PermissionDeniedError);
+    },
+  );
 
   it('returns null for an unknown slug', async () => {
     expect(await getDistributorBySlug('no-existe')).toBeNull();
@@ -196,13 +232,14 @@ describe('getDistributorBySlug', () => {
 
 // PLAN 2.6
 describe('listVisibleDistributors', () => {
-  it('lists trial and active distributors, never a suspended one, without a session', async () => {
+  it('lists the distributors that take orders, without a session', async () => {
     await signOutSession();
 
     const ids = (await listVisibleDistributors()).map((distributor) => distributor.id);
 
-    expect(ids).toEqual(expect.arrayContaining([A.id, B.id, EXPIRED.id]));
+    expect(ids).toEqual(expect.arrayContaining([A.id, B.id]));
     expect(ids).not.toContain(SUSPENDED.id);
+    expect(ids).not.toContain(EXPIRED.id);
   });
 
   it('honours a smaller limit', async () => {
@@ -212,7 +249,7 @@ describe('listVisibleDistributors', () => {
   it('feeds the search: only the seeded distributors that reach the customer, nearest first', async () => {
     const seeded = (await listVisibleDistributors()).filter((d) => d.id.startsWith('seed-'));
 
-    const nearby = findNearbyDistributors(seeded, SEED_CUSTOMER_LOCATION, new Date());
+    const nearby = findNearbyDistributors(seeded, SEED_CUSTOMER_LOCATION);
 
     expect(nearby.map((entry) => entry.distributor.id)).toEqual([A.id, B.id]);
     expect(nearby[0]?.distributor).toMatchObject({ brands: A.brands, priceFromCents: 3800 });
@@ -235,8 +272,21 @@ describe('updateDistributorProfile', () => {
       ...edit,
       plant: { lat: -12.08, lng: -77.03 },
       schedule: { opensAt: '06:30', closesAt: '21:00' },
-      status: 'active',
+      acceptingOrders: true,
     });
+  });
+
+  // PLAN 2.9: the selector reads the name from the membership.
+  it('carries a new name to the membership of every member', async () => {
+    await signInAs(SEED_USERS.ownerB);
+    await updateDistributorProfile(B.id, { name: 'Gas Demo Sur Renombrada' });
+
+    for (const user of [SEED_USERS.ownerB, SEED_USERS.dispatcherB, SEED_USERS.driverB]) {
+      const session = await signInAs(user);
+      expect(await listMyMemberships(session.uid)).toMatchObject([
+        { distributorId: B.id, distributorName: 'Gas Demo Sur Renombrada' },
+      ]);
+    }
   });
 
   it.each([
@@ -260,7 +310,7 @@ describe('listMyMemberships and private settings', () => {
     const session = await signInAs(SEED_USERS.driverA);
 
     expect(await listMyMemberships(session.uid)).toMatchObject([
-      { distributorId: A.id, role: 'driver', active: true },
+      { distributorId: A.id, role: 'driver', active: true, distributorName: A.name },
     ]);
   });
 
@@ -289,5 +339,72 @@ describe('listMyMemberships and private settings', () => {
     expect(await getDistributorPrivateSettings(A.id)).toMatchObject({
       ownerEmail: SEED_USERS.ownerA.email,
     });
+  });
+});
+
+// PLAN 2.9: what only the staff may know, and how the public flag follows it.
+describe('control document and the public "takes orders" flag', () => {
+  it.each([
+    ['the owner', SEED_USERS.ownerA],
+    ['the dispatcher', SEED_USERS.dispatcherA],
+    ['the driver', SEED_USERS.driverA],
+  ])('shows %s the plan state of its distributor', async (_who, user) => {
+    await signInAs(user);
+
+    expect(await getStaffDistributor(A.id)).toMatchObject({
+      id: A.id,
+      status: 'active',
+      ownerUid: SEED_USERS.ownerA.uid,
+      trialEndsAt: expect.any(Date),
+    });
+  });
+
+  it.each([
+    ['a customer', SEED_USERS.customer],
+    ['the owner of another distributor', SEED_USERS.ownerB],
+  ])('keeps it from %s', async (_who, user) => {
+    await signInAs(user);
+
+    await expect(getDistributorControl(A.id)).rejects.toBeInstanceOf(PermissionDeniedError);
+  });
+
+  it('lets the staff write the flag only as the control document says', async () => {
+    await signInAs(SEED_USERS.ownerD);
+
+    await expect(syncAcceptingOrders(EXPIRED.id, true)).rejects.toBeInstanceOf(
+      PermissionDeniedError,
+    );
+    await syncAcceptingOrders(EXPIRED.id, false);
+
+    expect((await getDistributor(EXPIRED.id))?.acceptingOrders).toBe(false);
+  });
+
+  it('lets a member correct only its own copy of the name, and only to the real one', async () => {
+    const session = await signInAs(SEED_USERS.driverA);
+
+    await syncMemberDistributorName(A.id, session.uid, A.name);
+    await expect(
+      syncMemberDistributorName(A.id, session.uid, 'Otro Nombre'),
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
+  });
+
+  it('lets a platform admin suspend and reactivate, moving the search with it', async () => {
+    await signInAs(SEED_USERS.admin);
+
+    expect(await setDistributorStatus(A.id, 'suspended', new Date())).toBe(true);
+    expect((await getDistributor(A.id))?.acceptingOrders).toBe(false);
+    expect((await listVisibleDistributors()).map((d) => d.id)).not.toContain(A.id);
+
+    await setDistributorStatus(A.id, 'active', new Date());
+    expect((await getDistributor(A.id))?.acceptingOrders).toBe(true);
+    expect(await setDistributorStatus('no-existe', 'active', new Date())).toBe(false);
+  });
+
+  it('refuses a status change from anyone who is not a platform admin', async () => {
+    await signInAs(SEED_USERS.ownerC);
+
+    await expect(setDistributorStatus(SUSPENDED.id, 'active', new Date())).rejects.toBeInstanceOf(
+      PermissionDeniedError,
+    );
   });
 });

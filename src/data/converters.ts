@@ -5,7 +5,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { type GeoPoint, isValidGeoPoint } from '../domain/geo/distance';
-import type { TermsAcceptance } from '../domain/legal/versions';
+import type { LegalAcceptance } from '../domain/legal/versions';
 import {
   DEFAULT_BRAND_COLOR,
   DEFAULT_COVERAGE_RADIUS_KM,
@@ -16,12 +16,13 @@ import {
 import { CorruptDocumentError } from '../domain/tenancy/errors';
 import {
   type Address,
-  type Distributor,
   DISTRIBUTOR_PLANS,
   DISTRIBUTOR_STATUSES,
+  type DistributorControl,
   type DistributorPrivateSettings,
   type Member,
   MEMBER_ROLES,
+  type PublicDistributor,
   type Schedule,
   type UserProfile,
 } from '../domain/tenancy/types';
@@ -97,7 +98,7 @@ export class FieldReader {
   }
 
   /** A malformed acceptance reads as none: the account is simply asked again. */
-  terms(key: string): TermsAcceptance | null {
+  acceptance(key: string): LegalAcceptance | null {
     const value: unknown = this.data[key];
     if (typeof value !== 'object' || value === null) return null;
     const { version, acceptedAt } = value as Record<string, unknown>;
@@ -140,7 +141,8 @@ export const parseUserProfile: Parser<UserProfile> = (id, path, data) => {
     displayName: read.text('displayName'),
     phone: read.textOrNull('phone'),
     ownedDistributorIds: read.textList('ownedDistributorIds'),
-    terms: read.terms('terms'),
+    terms: read.acceptance('terms'),
+    privacy: read.acceptance('privacy'),
     createdAt,
     updatedAt: read.date('updatedAt', createdAt),
   };
@@ -160,7 +162,7 @@ export const parseAddress: Parser<Address> = (id, path, data) => {
   };
 };
 
-export const parseDistributor: Parser<Distributor> = (id, path, data) => {
+export const parsePublicDistributor: Parser<PublicDistributor> = (id, path, data) => {
   const read = new FieldReader(path, data);
   const createdAt = read.date('createdAt');
   const contactPhone = read.text('contactPhone');
@@ -168,20 +170,32 @@ export const parseDistributor: Parser<Distributor> = (id, path, data) => {
     id,
     name: read.text('name'),
     slug: read.text('slug'),
-    ownerUid: read.text('ownerUid'),
     contactPhone,
     whatsapp: read.text('whatsapp', contactPhone),
     addressLine: read.text('addressLine', ''),
     plant: read.geoPoint('plant'),
     coverageRadiusKm: read.number('coverageRadiusKm', DEFAULT_COVERAGE_RADIUS_KM),
     brandColor: read.text('brandColor', DEFAULT_BRAND_COLOR),
-    status: read.oneOf('status', DISTRIBUTOR_STATUSES),
-    trialEndsAt: read.date('trialEndsAt'),
+    // A document older than the flag is not listed until somebody with the right to do so
+    // derives it from the control document.
+    acceptingOrders: read.flag('acceptingOrders', false),
     schedule: read.schedule('schedule'),
     maxCylindersPerOrder: read.number('maxCylindersPerOrder', DEFAULT_MAX_CYLINDERS_PER_ORDER),
     brands: read.textList('brands'),
     priceFromCents: read.integerOrNull('priceFromCents'),
     currency: read.text('currency', DEFAULT_CURRENCY),
+    createdAt,
+    updatedAt: read.date('updatedAt', createdAt),
+  };
+};
+
+export const parseControl: Parser<DistributorControl> = (_id, path, data) => {
+  const read = new FieldReader(path, data);
+  const createdAt = read.date('createdAt');
+  return {
+    ownerUid: read.text('ownerUid'),
+    status: read.oneOf('status', DISTRIBUTOR_STATUSES),
+    trialEndsAt: read.date('trialEndsAt'),
     createdAt,
     updatedAt: read.date('updatedAt', createdAt),
   };
@@ -196,7 +210,7 @@ export const parsePrivateSettings: Parser<DistributorPrivateSettings> = (_id, pa
     ownerPhone: read.text('ownerPhone', ''),
     ownerEmail: read.text('ownerEmail', ''),
     plan: read.oneOf('plan', DISTRIBUTOR_PLANS, 'trial'),
-    terms: read.terms('terms'),
+    terms: read.acceptance('terms'),
     authorityDeclaredAt: read.dateOrNull('authorityDeclaredAt'),
     createdAt,
     updatedAt: read.date('updatedAt', createdAt),
@@ -213,6 +227,7 @@ export const parseMember: Parser<Member> = (id, path, data) => {
     // A member without the flag predates it; never assume access that was not granted.
     active: read.flag('active', false),
     displayName: read.text('displayName', ''),
+    distributorName: read.text('distributorName', ''),
     createdAt,
     updatedAt: read.date('updatedAt', createdAt),
   };
@@ -237,6 +252,7 @@ function readOnlyConverter<T>(parse: Parser<T>): FirestoreDataConverter<T> {
 
 export const userProfileConverter = readOnlyConverter(parseUserProfile);
 export const addressConverter = readOnlyConverter(parseAddress);
-export const distributorConverter = readOnlyConverter(parseDistributor);
+export const publicDistributorConverter = readOnlyConverter(parsePublicDistributor);
+export const controlConverter = readOnlyConverter(parseControl);
 export const privateSettingsConverter = readOnlyConverter(parsePrivateSettings);
 export const memberConverter = readOnlyConverter(parseMember);

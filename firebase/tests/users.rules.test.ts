@@ -18,7 +18,12 @@ import {
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { serverTimestamp } from 'firebase/firestore';
-import { TERMS_VERSION, TERMS_VERSIONS } from '../../src/domain/legal/versions';
+import {
+  PRIVACY_VERSION,
+  PRIVACY_VERSIONS,
+  TERMS_VERSION,
+  TERMS_VERSIONS,
+} from '../../src/domain/legal/versions';
 import { ADDRESS_SLOT_IDS } from '../../src/domain/tenancy/account-input';
 import {
   ADDRESS_LABEL_MAX_LENGTH,
@@ -33,6 +38,7 @@ import {
   anonymous,
   createEnv,
   CUSTOMER_UID,
+  privacyDoc,
   seedDoc,
   seedWorld,
   termsDoc,
@@ -104,13 +110,18 @@ describe('/users/{uid} — create', () => {
     await assertFails(setDoc(doc(verified(env, NEWCOMER), `users/${NEWCOMER}`), userDoc(change)));
   });
 
-  it.each(['displayName', 'phone', 'ownedDistributorIds', 'terms', 'createdAt', 'updatedAt'])(
-    'blocks a profile without %s',
-    async (field) => {
-      const { [field]: _dropped, ...partial } = userDoc() as Record<string, unknown>;
-      await assertFails(setDoc(doc(verified(env, NEWCOMER), `users/${NEWCOMER}`), partial));
-    },
-  );
+  it.each([
+    'displayName',
+    'phone',
+    'ownedDistributorIds',
+    'terms',
+    'privacy',
+    'createdAt',
+    'updatedAt',
+  ])('blocks a profile without %s', async (field) => {
+    const { [field]: _dropped, ...partial } = userDoc() as Record<string, unknown>;
+    await assertFails(setDoc(doc(verified(env, NEWCOMER), `users/${NEWCOMER}`), partial));
+  });
 
   it('blocks a made-up createdAt or updatedAt', async () => {
     const db = verified(env, NEWCOMER);
@@ -124,59 +135,81 @@ describe('/users/{uid} — create', () => {
   });
 });
 
-// PLAN 2.7
-describe('/users/{uid} — acceptance of the terms', () => {
+// PLAN 2.7 and 2.9: two consents, each with its own version and server date.
+describe.each([
+  ['terms', TERMS_VERSION, TERMS_VERSIONS, termsDoc],
+  ['privacy', PRIVACY_VERSION, PRIVACY_VERSIONS, privacyDoc],
+] as const)('/users/{uid} — acceptance of %s', (field, current, versions, acceptance) => {
   const own = () => doc(verified(env, CUSTOMER_UID), `users/${CUSTOMER_UID}`);
   const fresh = () => doc(verified(env, NEWCOMER), `users/${NEWCOMER}`);
   const stamp = { updatedAt: serverTimestamp() };
 
-  it.each([...TERMS_VERSIONS])('accepts a new profile on terms version %s', async (version) => {
-    await assertSucceeds(setDoc(fresh(), userDoc({ terms: termsDoc({ version }) })));
+  it.each([...versions])('accepts a new profile on version %s', async (version) => {
+    await assertSucceeds(setDoc(fresh(), userDoc({ [field]: acceptance({ version }) })));
   });
 
   it.each([
-    ['a version that does not exist', termsDoc({ version: '9.9' })],
-    ['an empty version', termsDoc({ version: '' })],
-    ['a numeric version', termsDoc({ version: 0.1 })],
-    ['a made-up acceptance date', termsDoc({ acceptedAt: PAST })],
-    ['an acceptance date as text', termsDoc({ acceptedAt: '2026-01-01' })],
-    ['no acceptance date', { version: TERMS_VERSION }],
+    ['a version that does not exist', acceptance({ version: '9.9' })],
+    ['an empty version', acceptance({ version: '' })],
+    ['a numeric version', acceptance({ version: 0.1 })],
+    ['a made-up acceptance date', acceptance({ acceptedAt: PAST })],
+    ['an acceptance date as text', acceptance({ acceptedAt: '2026-01-01' })],
+    ['no acceptance date', { version: current }],
     ['no version', { acceptedAt: serverTimestamp() }],
-    ['an extra key', termsDoc({ ip: '127.0.0.1' })],
-    ['terms as a flag', true],
-    ['terms as text', TERMS_VERSION],
-    ['terms as null', null],
-  ])('blocks a new profile with %s', async (_case, terms) => {
-    await assertFails(setDoc(fresh(), userDoc({ terms })));
+    ['an extra key', acceptance({ ip: '127.0.0.1' })],
+    ['the acceptance as a flag', true],
+    ['the acceptance as text', current],
+    ['the acceptance as null', null],
+  ])('blocks a new profile with %s', async (_case, value) => {
+    await assertFails(setDoc(fresh(), userDoc({ [field]: value })));
   });
 
-  it('lets the account accept the terms again, stamped now', async () => {
-    await assertSucceeds(updateDoc(own(), { terms: termsDoc(), ...stamp }));
+  it('lets the account accept again, stamped now', async () => {
+    await assertSucceeds(updateDoc(own(), { [field]: acceptance(), ...stamp }));
   });
 
   it('leaves the acceptance alone when the profile is edited', async () => {
-    const before = (await getDoc(own())).data()?.terms;
+    const before = (await getDoc(own())).data()?.[field];
     await updateDoc(own(), { displayName: 'C. Otra', ...stamp });
 
-    expect((await getDoc(own())).data()?.terms).toEqual(before);
+    expect((await getDoc(own())).data()?.[field]).toEqual(before);
   });
 
   it.each([
-    ['a version that does not exist', { terms: termsDoc({ version: '9.9' }) }],
-    ['a made-up acceptance date', { terms: termsDoc({ acceptedAt: PAST }) }],
-    ['only the version, keeping the old date', { 'terms.version': TERMS_VERSION + '.1' }],
-    ['a backdated date, keeping the version', { 'terms.acceptedAt': PAST }],
-    ['an extra key', { 'terms.note': 'x' }],
-    ['terms removed', { terms: deleteField() }],
-    ['the acceptance date removed', { 'terms.acceptedAt': deleteField() }],
-    ['terms as null', { terms: null }],
+    ['a version that does not exist', { [field]: acceptance({ version: '9.9' }) }],
+    ['a made-up acceptance date', { [field]: acceptance({ acceptedAt: PAST }) }],
+    ['only the version, keeping the old date', { [`${field}.version`]: `${current}.1` }],
+    ['a backdated date, keeping the version', { [`${field}.acceptedAt`]: PAST }],
+    ['an extra key', { [`${field}.note`]: 'x' }],
+    ['the acceptance removed', { [field]: deleteField() }],
+    ['the acceptance date removed', { [`${field}.acceptedAt`]: deleteField() }],
+    ['the acceptance as null', { [field]: null }],
   ])('blocks an update with %s', async (_case, change) => {
     await assertFails(updateDoc(own(), { ...change, ...stamp }));
   });
 
-  it('blocks accepting the terms in the name of another account', async () => {
+  it('blocks accepting in the name of another account', async () => {
     const intruder = doc(verified(env, 'owner-a'), `users/${CUSTOMER_UID}`);
-    await assertFails(updateDoc(intruder, { terms: termsDoc(), ...stamp }));
+    await assertFails(updateDoc(intruder, { [field]: acceptance(), ...stamp }));
+  });
+});
+
+describe('/users/{uid} — both consents together (PLAN 2.9)', () => {
+  const stamp = { updatedAt: serverTimestamp() };
+
+  it('lets the account renew both in one write', async () => {
+    const own = doc(verified(env, CUSTOMER_UID), `users/${CUSTOMER_UID}`);
+    await assertSucceeds(updateDoc(own, { terms: termsDoc(), privacy: privacyDoc(), ...stamp }));
+  });
+
+  it('lets a profile older than the privacy consent gain it, and nothing else until then', async () => {
+    const { privacy: _dropped, ...older } = userDoc({ createdAt: PAST, updatedAt: PAST });
+    await seedDoc(env, 'users/older', { ...older, terms: termsDoc({ acceptedAt: PAST }) });
+    const own = doc(verified(env, 'older'), 'users/older');
+
+    await assertFails(updateDoc(own, { displayName: 'C. Otra', ...stamp }));
+    await assertSucceeds(updateDoc(own, { privacy: privacyDoc(), ...stamp }));
+    await assertSucceeds(updateDoc(own, { displayName: 'C. Otra', ...stamp }));
   });
 });
 

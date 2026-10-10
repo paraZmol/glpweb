@@ -17,6 +17,7 @@ import {
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -29,13 +30,15 @@ import {
 import { EDITABLE_PROFILE_FIELDS } from '../../src/domain/tenancy/distributor-input';
 import { RESERVED_SLUGS } from '../../src/domain/tenancy/slug';
 import { isWritable } from '../../src/domain/tenancy/status';
-import { VISIBLE_DISTRIBUTOR_STATUSES } from '../../src/domain/tenancy/types';
+import { DISTRIBUTOR_STATUSES, type DistributorStatus } from '../../src/domain/tenancy/types';
 import {
   ADMIN_UID,
   anonymous,
+  controlDoc,
   createEnv,
   CUSTOMER_UID,
   daysFromNow,
+  type Db,
   distributorDoc,
   foundDistributor,
   type FoundingOptions,
@@ -82,11 +85,13 @@ describe('founding a distributor (PLAN 2.2)', () => {
     await foundDistributor(db, NEW);
 
     const distributor = (await getDoc(doc(db, `distributors/${NEW.d}`))).data();
+    const control = (await getDoc(doc(db, `distributors/${NEW.d}/private/control`))).data();
     const member = (await getDoc(doc(db, `distributors/${NEW.d}/members/${FOUNDER}`))).data();
     const slug = (await getDoc(doc(db, `slugs/${NEW.slug}`))).data();
     const profile = (await getDoc(doc(db, `users/${FOUNDER}`))).data();
-    expect(distributor?.status).toBe('trial');
-    expect(distributor?.ownerUid).toBe(FOUNDER);
+    expect(distributor?.acceptingOrders).toBe(true);
+    expect(control?.status).toBe('trial');
+    expect(control?.ownerUid).toBe(FOUNDER);
     expect(member?.role).toBe('owner');
     expect(slug?.distributorId).toBe(NEW.d);
     expect(profile?.ownedDistributorIds).toEqual([NEW.d]);
@@ -117,6 +122,7 @@ describe('founding a distributor (PLAN 2.2)', () => {
     ['without the private settings', { settings: null }],
     ['without recording it in the founder profile', { userUpdate: false }],
     ['without the distributor itself', { distributor: null }],
+    ['without the control document', { control: null }],
   ])('blocks a batch %s', async (_case, change) => {
     await assertFails(foundDistributor(verified(env, FOUNDER), { ...NEW, ...change }));
   });
@@ -152,6 +158,7 @@ describe('founding a distributor (PLAN 2.2)', () => {
     },
   );
 
+  // PLAN 2.9: plan state and founder live in the control document, never in the public one.
   it.each([
     ['already active', { status: 'active' }],
     ['suspended', { status: 'suspended' }],
@@ -165,28 +172,40 @@ describe('founding a distributor (PLAN 2.2)', () => {
     ['owned by someone else', { ownerUid: 'owner-a' }],
     ['with a made-up createdAt', { createdAt: PAST }],
     ['with a made-up updatedAt', { updatedAt: PAST }],
+    ['with an extra field', { plan: 'pro' }],
+  ])('blocks founding one whose control document is %s', async (_case, change) => {
+    const control = controlDoc(FOUNDER, change);
+    await assertFails(foundDistributor(verified(env, FOUNDER), { ...NEW, control }));
+  });
+
+  it.each([
+    ['that does not take orders', { acceptingOrders: false }],
+    ['with acceptingOrders as text', { acceptingOrders: 'yes' }],
+    ['with a made-up createdAt', { createdAt: PAST }],
+    ['with a made-up updatedAt', { updatedAt: PAST }],
     ['with brands before having a catalogue', { brands: ['Marca Uno'] }],
     ['with a price before having a catalogue', { priceFromCents: 3800 }],
     ['with another currency', { currency: 'USD' }],
     ['with an extra field', { verifiedByPlatform: true }],
     ['with a plan field', { plan: 'pro' }],
+    ['that publishes its status', { status: 'trial' }],
+    ['that publishes its trial end', { trialEndsAt: daysFromNow(TRIAL_DAYS) }],
+    ['that publishes the account of its founder', { ownerUid: FOUNDER }],
   ])('blocks founding one %s', async (_case, change) => {
-    const distributor = distributorDoc(FOUNDER, NEW.slug, change);
+    const distributor = distributorDoc(NEW.slug, change);
     await assertFails(foundDistributor(verified(env, FOUNDER), { ...NEW, distributor }));
   });
 
   it.each([
     'name',
     'slug',
-    'ownerUid',
     'contactPhone',
     'whatsapp',
     'addressLine',
     'plant',
     'coverageRadiusKm',
     'brandColor',
-    'status',
-    'trialEndsAt',
+    'acceptingOrders',
     'schedule',
     'maxCylindersPerOrder',
     'brands',
@@ -195,12 +214,17 @@ describe('founding a distributor (PLAN 2.2)', () => {
     'createdAt',
     'updatedAt',
   ])('blocks founding one without %s', async (field) => {
-    const { [field]: _dropped, ...distributor } = distributorDoc(FOUNDER, NEW.slug) as Record<
-      string,
-      unknown
-    >;
+    const distributor = without(distributorDoc(NEW.slug), field);
     await assertFails(foundDistributor(verified(env, FOUNDER), { ...NEW, distributor }));
   });
+
+  it.each(['ownerUid', 'status', 'trialEndsAt', 'createdAt', 'updatedAt'])(
+    'blocks founding one whose control document lacks %s',
+    async (field) => {
+      const control = without(controlDoc(FOUNDER), field);
+      await assertFails(foundDistributor(verified(env, FOUNDER), { ...NEW, control }));
+    },
+  );
 
   it.each([
     ['member with another role', { member: memberDoc(NEW.d, FOUNDER, 'dispatcher') }],
@@ -227,6 +251,14 @@ describe('founding a distributor (PLAN 2.2)', () => {
     ],
     ['member with an extra field', { member: memberDoc(NEW.d, FOUNDER, 'owner', { admin: true }) }],
     ['member for another distributor', { member: memberDoc(WORLD.a.d, FOUNDER, 'owner') }],
+    [
+      'member that names the distributor differently',
+      { member: memberDoc(NEW.d, FOUNDER, 'owner', { distributorName: 'Otro Nombre' }) },
+    ],
+    [
+      'member without the name of the distributor',
+      { member: without(memberDoc(NEW.d, FOUNDER, 'owner'), 'distributorName') },
+    ],
     [
       'member with a made-up createdAt',
       { member: memberDoc(NEW.d, FOUNDER, 'owner', { createdAt: PAST }) },
@@ -341,7 +373,7 @@ describe('field validation, on founding and on editing', () => {
   ];
 
   it.each(INVALID)('blocks founding with %s', async (_case, change) => {
-    const distributor = distributorDoc(FOUNDER, NEW.slug, change);
+    const distributor = distributorDoc(NEW.slug, change);
     await assertFails(foundDistributor(verified(env, FOUNDER), { ...NEW, distributor }));
   });
 
@@ -371,49 +403,136 @@ describe('field validation, on founding and on editing', () => {
 });
 
 describe('/distributors/{d} — public read', () => {
-  const visible = where('status', 'in', [...VISIBLE_DISTRIBUTOR_STATUSES]);
+  const listed = where('acceptingOrders', '==', true);
+  const PUBLIC_FIELDS = Object.keys(distributorDoc('x')).sort();
 
   it.each([
     ['an anonymous visitor', () => anonymous(env)],
     ['a customer', () => verified(env, CUSTOMER_UID)],
     ['a member of another distributor', () => verified(env, 'driver-b')],
-  ])('lets %s read one distributor, whatever its status', async (_who, connect) => {
+  ])('lets %s read one distributor, whatever its state', async (_who, connect) => {
     const db = connect();
     await assertSucceeds(getDoc(doc(db, `distributors/${WORLD.a.d}`)));
     await assertSucceeds(getDoc(doc(db, `distributors/${WORLD.suspended.d}`)));
   });
 
-  it('lets anyone list visible distributors with a bounded query', async () => {
+  it('lets anyone list the distributors that take orders, with a bounded query', async () => {
     const all = collection(anonymous(env), 'distributors');
     const result = await assertSucceeds(
-      getDocs(query(all, visible, limit(DISTRIBUTOR_SEARCH_LIMIT))),
+      getDocs(query(all, listed, limit(DISTRIBUTOR_SEARCH_LIMIT))),
     );
     const ids = result.docs.map((snapshot) => snapshot.id).sort();
-    expect(ids).toEqual([WORLD.a.d, WORLD.b.d, WORLD.expired.d, WORLD.trial.d].sort());
+    expect(ids).toEqual([WORLD.a.d, WORLD.b.d, WORLD.trial.d].sort());
   });
 
   it.each([
-    ['without a limit', () => [visible]],
-    ['with a limit above the cap', () => [visible, limit(DISTRIBUTOR_SEARCH_LIMIT + 1)]],
-    ['without a status filter', () => [limit(10)]],
-    ['filtered to suspended', () => [where('status', '==', 'suspended'), limit(10)]],
-    ['filtered to past due', () => [where('status', '==', 'pastDue'), limit(10)]],
+    ['without a limit', () => [listed]],
+    ['with a limit above the cap', () => [listed, limit(DISTRIBUTOR_SEARCH_LIMIT + 1)]],
+    ['without a filter', () => [limit(10)]],
     [
-      'with a status list that includes suspended',
-      () => [where('status', 'in', ['trial', 'active', 'suspended']), limit(10)],
+      'filtered to those that do not take orders',
+      () => [where('acceptingOrders', '==', false), limit(10)],
     ],
-    ['filtered by owner only', () => [where('ownerUid', '==', 'owner-a'), limit(10)]],
+    [
+      'with a filter that includes both',
+      () => [where('acceptingOrders', 'in', [true, false]), limit(10)],
+    ],
+    ['filtered by status', () => [where('status', '==', 'suspended'), limit(10)]],
+    ['filtered by owner', () => [where('ownerUid', '==', 'owner-a'), limit(10)]],
   ])('blocks a public list %s', async (_case, constraints) => {
     const all = collection(verified(env, CUSTOMER_UID), 'distributors');
     await assertFails(getDocs(query(all, ...constraints())));
   });
 
-  it('holds nothing private in the public document', async () => {
-    const snapshot = await getDoc(doc(anonymous(env), `distributors/${WORLD.a.d}`));
-    const leaked = Object.keys(snapshot.data() ?? {}).filter((key) =>
-      ['ownerName', 'ownerPhone', 'ownerEmail', 'plan', 'notes'].includes(key),
+  // PLAN 2.9: a visitor cannot find out the billing state, the trial end or the founder.
+  it.each(Object.values(WORLD))(
+    'shows a visitor only the public fields of $d, whatever its plan state',
+    async (seeded) => {
+      const snapshot = await getDoc(doc(anonymous(env), `distributors/${seeded.d}`));
+
+      expect(Object.keys(snapshot.data() ?? {}).sort()).toEqual(PUBLIC_FIELDS);
+      expect(PUBLIC_FIELDS).not.toEqual(
+        expect.arrayContaining(['status', 'trialEndsAt', 'ownerUid', 'plan', 'ownerEmail']),
+      );
+    },
+  );
+
+  it.each([
+    ['suspended', WORLD.suspended],
+    ['past due', WORLD.pastDue],
+    ['on an expired trial', WORLD.expired],
+  ])('shows a distributor that is %s only as "not taking orders"', async (_case, seeded) => {
+    const snapshot = await getDoc(doc(anonymous(env), `distributors/${seeded.d}`));
+
+    expect(snapshot.data()?.acceptingOrders).toBe(false);
+  });
+});
+
+describe('/distributors/{d}/private/control — who learns the plan state (PLAN 2.9)', () => {
+  const control = (db: Db, d = WORLD.a.d) => doc(db, `distributors/${d}/private/control`);
+
+  it.each(['owner-a', 'dispatcher-a', 'driver-a', ADMIN_UID])('lets %s read it', async (uid) => {
+    await assertSucceeds(getDoc(control(verified(env, uid))));
+  });
+
+  it('lets the staff of a suspended distributor read why it is read-only', async () => {
+    const db = verified(env, 'driver-suspended');
+    const snapshot = await assertSucceeds(getDoc(control(db, WORLD.suspended.d)));
+    expect(snapshot.data()?.status).toBe('suspended');
+  });
+
+  it.each([
+    ['an anonymous visitor', () => anonymous(env)],
+    ['an unverified stranger', () => unverified(env, 'stranger')],
+    ['a customer', () => verified(env, CUSTOMER_UID)],
+    ['the owner of another distributor', () => verified(env, 'owner-b')],
+    ['a driver of another distributor', () => verified(env, 'driver-b')],
+  ])('blocks %s from reading it, for every plan state', async (_who, connect) => {
+    const db = connect();
+    for (const seeded of [WORLD.a, WORLD.suspended, WORLD.pastDue, WORLD.expired, WORLD.trial]) {
+      await assertFails(getDoc(control(db, seeded.d)));
+    }
+    await assertFails(
+      getDocs(query(collection(db, `distributors/${WORLD.a.d}/private`), limit(2))),
     );
-    expect(leaked).toEqual([]);
+  });
+
+  it('blocks a member who was deactivated', async () => {
+    const path = `distributors/${WORLD.a.d}/members/driver-a`;
+    const deactivated = memberDoc(WORLD.a.d, 'driver-a', 'driver', {
+      active: false,
+      createdAt: PAST,
+      updatedAt: PAST,
+    });
+    await seedDoc(env, path, deactivated);
+
+    await assertFails(getDoc(control(verified(env, 'driver-a'))));
+  });
+
+  it.each([
+    ['lifting its own suspension', WORLD.suspended, 'owner-suspended', { status: 'active' }],
+    ['marking itself as paid', WORLD.pastDue, 'owner-past-due', { status: 'active' }],
+    [
+      'extending its trial',
+      WORLD.expired,
+      'owner-expired',
+      { trialEndsAt: daysFromNow(TRIAL_DAYS) },
+    ],
+    ['handing the distributor to someone else', WORLD.a, 'owner-a', { ownerUid: 'dispatcher-a' }],
+    ['going from active back to trial', WORLD.a, 'owner-a', { status: 'trial' }],
+  ] as const)('blocks an owner from %s', async (_case, seeded, owner, change) => {
+    const own = control(verified(env, owner), seeded.d);
+    await assertFails(updateDoc(own, { ...change, ...stamp }));
+  });
+
+  it('blocks replacing, deleting or re-creating it outside the founding batch', async () => {
+    const db = verified(env, 'owner-suspended');
+    const own = control(db, WORLD.suspended.d);
+    await assertFails(setDoc(own, controlDoc('owner-suspended')));
+    await assertFails(deleteDoc(own));
+    await assertFails(
+      setDoc(control(verified(env, CUSTOMER_UID), 'dist-ghost'), controlDoc(CUSTOMER_UID)),
+    );
   });
 });
 
@@ -450,12 +569,12 @@ describe('/distributors/{d} — owner edit', () => {
   });
 
   it.each([
-    ['its status to suspended', { status: 'suspended' }],
-    ['its status to past due', { status: 'pastDue' }],
-    ['its status to trial', { status: 'trial' }],
-    ['its trial end', { trialEndsAt: daysFromNow(3650) }],
+    ['its public profile to carry a status', { status: 'suspended' }],
+    ['its public profile to carry a trial end', { trialEndsAt: daysFromNow(3650) }],
+    ['its public profile to carry a founder', { ownerUid: 'dispatcher-a' }],
     ['its slug', { slug: 'gas-otro' }],
-    ['its founder', { ownerUid: 'dispatcher-a' }],
+    ['acceptingOrders together with the profile', { name: 'Gas Demo Dos', acceptingOrders: false }],
+    ['acceptingOrders to false while it takes orders', { acceptingOrders: false }],
     ['its createdAt', { createdAt: serverTimestamp() }],
     ['its currency', { currency: 'USD' }],
     ['an extra field', { featured: true }],
@@ -528,28 +647,88 @@ describe('/distributors/{d} — owner edit', () => {
   });
 });
 
-describe('/distributors/{d} — platform admin', () => {
-  const asAdmin = (d: string) => doc(verified(env, ADMIN_UID), `distributors/${d}`);
+/** What a platform admin sends: the status and, when it must change, the public flag. */
+function setStatus(db: Db, d: string, status: string, acceptingOrders?: boolean): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(doc(db, `distributors/${d}/private/control`), { status, ...stamp });
+  if (acceptingOrders !== undefined) {
+    batch.update(doc(db, `distributors/${d}`), { acceptingOrders, ...stamp });
+  }
+  return batch.commit();
+}
 
-  it.each(['suspended', 'active', 'pastDue', 'trial'])(
-    'lets the admin set status %s',
+describe('distributor status — platform admin (PLAN 2.9)', () => {
+  const admin = () => verified(env, ADMIN_UID);
+  // WORLD.a is active with its trial long over: only `active` keeps it open.
+  const TAKES_ORDERS: Record<DistributorStatus, boolean> = {
+    active: true,
+    trial: false,
+    pastDue: false,
+    suspended: false,
+  };
+
+  it.each([...DISTRIBUTOR_STATUSES])(
+    'lets the admin set status %s together with the public flag',
     async (status) => {
-      await assertSucceeds(updateDoc(asAdmin(WORLD.a.d), { status, ...stamp }));
+      await assertSucceeds(setStatus(admin(), WORLD.a.d, status, TAKES_ORDERS[status]));
     },
   );
 
-  it('lets the admin lift a suspension', async () => {
-    await assertSucceeds(updateDoc(asAdmin(WORLD.suspended.d), { status: 'active', ...stamp }));
+  it('lets the admin lift a suspension, which lists the distributor again', async () => {
+    await assertSucceeds(setStatus(admin(), WORLD.suspended.d, 'active', true));
+
+    const listed = await getDoc(doc(anonymous(env), `distributors/${WORLD.suspended.d}`));
+    expect(listed.data()?.acceptingOrders).toBe(true);
+  });
+
+  it('lets the admin change the status alone when the public flag already agrees', async () => {
+    await assertSucceeds(setStatus(admin(), WORLD.pastDue.d, 'suspended'));
   });
 
   it.each([
-    ['an unknown status', { status: 'banned' }],
-    ['the name', { status: 'suspended', name: 'Cambiado' }],
+    ['suspending without unlisting', WORLD.a.d, 'suspended', undefined],
+    ['suspending while writing "takes orders"', WORLD.a.d, 'suspended', true],
+    ['reactivating without listing', WORLD.suspended.d, 'active', undefined],
+    ['reactivating while writing "does not take orders"', WORLD.suspended.d, 'active', false],
+    ['an unknown status', WORLD.a.d, 'banned', false],
+  ] as const)('blocks the admin from %s', async (_case, d, status, flag) => {
+    await assertFails(setStatus(admin(), d, status, flag));
+  });
+
+  it.each([
     ['the founder', { ownerUid: ADMIN_UID }],
-    ['the slug', { slug: 'gas-otro' }],
     ['the trial end', { trialEndsAt: daysFromNow(365) }],
-  ])('blocks the admin from changing %s', async (_case, change) => {
-    await assertFails(updateDoc(asAdmin(WORLD.a.d), { ...change, ...stamp }));
+    ['createdAt', { createdAt: serverTimestamp() }],
+    ['an extra field', { note: 'x' }],
+  ])('blocks the admin from changing %s in the control document', async (_case, change) => {
+    const control = doc(admin(), `distributors/${WORLD.a.d}/private/control`);
+    await assertFails(updateDoc(control, { ...change, ...stamp }));
+  });
+
+  it.each([
+    ['the name', { name: 'Cambiado' }],
+    ['the slug', { slug: 'gas-otro' }],
+    ['the flag, to something the control document does not say', { acceptingOrders: false }],
+  ])('blocks the admin from changing %s in the public profile', async (_case, change) => {
+    await assertFails(
+      updateDoc(doc(admin(), `distributors/${WORLD.a.d}`), { ...change, ...stamp }),
+    );
+  });
+
+  it('blocks a status change without a fresh updatedAt', async () => {
+    const control = doc(admin(), `distributors/${WORLD.pastDue.d}/private/control`);
+    await assertFails(updateDoc(control, { status: 'suspended' }));
+    await assertFails(updateDoc(control, { status: 'suspended', updatedAt: PAST }));
+  });
+
+  it.each([
+    ['its owner', 'owner-a'],
+    ['its dispatcher', 'dispatcher-a'],
+    ['the owner of another distributor', 'owner-b'],
+    ['a customer', CUSTOMER_UID],
+  ])('blocks %s from changing the status', async (_who, uid) => {
+    await assertFails(setStatus(verified(env, uid), WORLD.a.d, 'suspended', false));
+    await assertFails(setStatus(verified(env, uid), WORLD.pastDue.d, 'suspended'));
   });
 
   it('blocks someone who only claims to be admin in the token', async () => {
@@ -559,8 +738,90 @@ describe('/distributors/{d} — platform admin', () => {
       role: 'admin',
       email_verified: true,
     });
-    const target = doc(fake.firestore(), `distributors/${WORLD.a.d}`);
-    await assertFails(updateDoc(target, { status: 'suspended', ...stamp }));
+    await assertFails(setStatus(fake.firestore(), WORLD.a.d, 'suspended', false));
+    await assertFails(getDoc(doc(fake.firestore(), `distributors/${WORLD.a.d}/private/control`)));
+  });
+});
+
+// Nobody flips the public flag when a trial runs out: the staff or an admin corrects it, and the
+// only value the rules accept is what the control document says at that moment.
+describe('acceptingOrders — keeping the public flag true to the control document (PLAN 2.9)', () => {
+  const STALE = WORLD.expired;
+  const flag = (db: Db, d: string) => doc(db, `distributors/${d}`);
+
+  beforeEach(async () => {
+    // The trial ran out and nobody touched the public document since.
+    await seedDoc(
+      env,
+      `distributors/${STALE.d}`,
+      distributorDoc(STALE.slug, { acceptingOrders: true, createdAt: PAST, updatedAt: PAST }),
+    );
+  });
+
+  it('still refuses writes to a distributor whose flag is stale: no rule trusts the flag', async () => {
+    const db = verified(env, 'owner-expired');
+    await assertFails(updateDoc(flag(db, STALE.d), { name: 'Gas Demo Dos', ...stamp }));
+  });
+
+  it.each(['owner-expired', 'driver-expired', ADMIN_UID])(
+    'lets %s unlist a distributor whose trial ran out',
+    async (uid) => {
+      await assertSucceeds(
+        updateDoc(flag(verified(env, uid), STALE.d), { acceptingOrders: false, ...stamp }),
+      );
+    },
+  );
+
+  it.each([
+    ['an anonymous visitor', () => anonymous(env)],
+    ['a customer', () => verified(env, CUSTOMER_UID)],
+    ['the owner of another distributor', () => verified(env, 'owner-b')],
+  ])('blocks %s from unlisting it', async (_who, connect) => {
+    await assertFails(updateDoc(flag(connect(), STALE.d), { acceptingOrders: false, ...stamp }));
+  });
+
+  it.each([
+    ['a suspended distributor', WORLD.suspended.d, 'owner-suspended'],
+    ['a distributor that is past due', WORLD.pastDue.d, 'owner-past-due'],
+  ])('blocks the owner of %s from listing it again', async (_case, d, owner) => {
+    await assertFails(
+      updateDoc(flag(verified(env, owner), d), { acceptingOrders: true, ...stamp }),
+    );
+  });
+
+  it('blocks the staff from unlisting a distributor that takes orders', async () => {
+    for (const uid of ['owner-a', 'driver-a', ADMIN_UID]) {
+      await assertFails(
+        updateDoc(flag(verified(env, uid), WORLD.a.d), { acceptingOrders: false, ...stamp }),
+      );
+    }
+  });
+
+  it('blocks slipping a profile change in with the correction', async () => {
+    const db = verified(env, 'owner-expired');
+    await assertFails(
+      updateDoc(flag(db, STALE.d), { acceptingOrders: false, name: 'Gas Demo Dos', ...stamp }),
+    );
+  });
+
+  it('lets the staff list it again once the control document says it is open', async () => {
+    await seedDoc(
+      env,
+      `distributors/${STALE.d}/private/control`,
+      controlDoc('owner-expired', { status: 'active', createdAt: PAST, updatedAt: PAST }),
+    );
+    await seedDoc(
+      env,
+      `distributors/${STALE.d}`,
+      distributorDoc(STALE.slug, { acceptingOrders: false, createdAt: PAST, updatedAt: PAST }),
+    );
+
+    await assertSucceeds(
+      updateDoc(flag(verified(env, 'driver-expired'), STALE.d), {
+        acceptingOrders: true,
+        ...stamp,
+      }),
+    );
   });
 });
 
@@ -594,8 +855,13 @@ describe('/slugs/{slug}', () => {
   });
   it('blocks claiming the slug of a distributor that was left without its slug document', async () => {
     // Inconsistent data that only an admin script could leave behind.
-    const orphan = distributorDoc('owner-a', 'gas-huerfano', { createdAt: PAST, updatedAt: PAST });
+    const orphan = distributorDoc('gas-huerfano', { createdAt: PAST, updatedAt: PAST });
     await seedDoc(env, 'distributors/dist-orphan', orphan);
+    await seedDoc(
+      env,
+      'distributors/dist-orphan/private/control',
+      controlDoc('owner-a', { status: 'active', createdAt: PAST, updatedAt: PAST }),
+    );
 
     for (const uid of [CUSTOMER_UID, 'owner-b', 'owner-a']) {
       const claim = setDoc(doc(verified(env, uid), 'slugs/gas-huerfano'), slugDoc('dist-orphan'));

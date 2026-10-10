@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { Session, SessionState } from '../../domain/auth/session';
-import type { MemberRole, UserProfile } from '../../domain/tenancy/types';
+import type { Member, MemberRole, UserProfile } from '../../domain/tenancy/types';
 import type { ReloadableResource } from '../../lib/use-async-resource';
 import type { AccountProfile } from '../auth/use-user-profile';
 import type { CurrentDistributor } from '../tenancy/use-current-distributor';
@@ -25,6 +25,15 @@ export function useAccountGate(): AccountGateValue {
   return value;
 }
 
+/**
+ * The membership the panels work with, known from the moment the memberships load: also while
+ * the distributor itself is still on its way (first load, or right after switching).
+ */
+export function membershipOf(current: CurrentDistributor): Member | null {
+  if (current.status === 'ready') return current.membership;
+  return current.status === 'loading' ? (current.membership ?? null) : null;
+}
+
 /** The account as a page behind a guard sees it: the session is known to exist. */
 export interface Account {
   session: Session;
@@ -47,7 +56,7 @@ export function useAccount(): Account {
     profile: profile.status === 'ready' ? profile.data.profile : null,
     reloadProfile: profile.reload,
     current,
-    role: current.status === 'ready' ? current.membership.role : null,
+    role: membershipOf(current)?.role ?? null,
     isPlatformAdmin: platformAdmin.status === 'ready' && platformAdmin.data,
   };
 }

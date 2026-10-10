@@ -1,4 +1,5 @@
 import {
+  AccountInUseError,
   AddressLimitError,
   DistributorLimitError,
   EmailNotVerifiedError,
@@ -17,6 +18,7 @@ const ISSUE_MESSAGES: Record<FieldIssue['code'], string> = {
   tooLong: 'Es demasiado largo.',
   outOfRange: 'Está fuera del rango permitido.',
   invalid: 'Revisa este dato.',
+  tooFaint: 'Ese color casi no se distingue del fondo. Prueba con un tono más intenso.',
   invalidCharacters: 'Usa solo letras minúsculas, números y guiones.',
   reserved: 'Ese enlace está reservado. Prueba con otro.',
 };
@@ -32,6 +34,7 @@ const FIELD_MESSAGES: Record<string, string> = {
   'location:invalid': 'Marca la ubicación en el mapa.',
   'brandColor:invalid': 'Elige un color válido.',
   'acceptTerms:required': 'Debes aceptar los términos para continuar.',
+  'acceptPrivacy:required': 'Debes aceptar la política de privacidad para continuar.',
   'declaresAuthority:required':
     'Confirma que puedes representar al negocio y que cuenta con las autorizaciones para vender gas.',
 };
@@ -61,6 +64,9 @@ export function describeTenancyError(error: unknown): string {
     return `Puedes guardar hasta ${error.limit} direcciones. Borra una para agregar otra.`;
   }
   if (error instanceof ProfileRequiredError) return 'Completa tu perfil antes de continuar.';
+  if (error instanceof AccountInUseError) {
+    return 'Tu cuenta ya tiene datos guardados. Para eliminarla, escríbenos desde Contacto.';
+  }
   if (error instanceof PermissionDeniedError) {
     return 'No tienes permiso para hacer esto, o la distribuidora está en solo lectura.';
   }

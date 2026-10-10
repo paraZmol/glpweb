@@ -38,8 +38,9 @@ export interface SeedDistributor {
   members: { user: SeedUser; role: SeedRole }[];
 }
 
-/** Version of the terms every seeded profile and distributor accepted. */
+/** Versions of the terms and of the privacy policy every seeded profile accepted. */
 export const SEED_TERMS_VERSION = '0.1';
+export const SEED_PRIVACY_VERSION = '0.1';
 
 const user = (key: string, displayName: string, phoneSuffix: string, emailVerified = true) => ({
   uid: `seed-${key}`,
@@ -132,7 +133,10 @@ export const SEED_DISTRIBUTORS = {
     priceFromCents: null,
     members: [{ user: SEED_USERS.ownerC, role: 'owner' }],
   },
-  /** Still `trial`, but the trial ended: read-only. */
+  /**
+   * Still `trial`, but the trial ended: read-only. Seeded as already unlisted (its public
+   * `acceptingOrders` is false), which is how it looks once its staff opened the panel.
+   */
   d: {
     id: 'seed-dist-d',
     name: 'Gas Demo Prueba Vencida',

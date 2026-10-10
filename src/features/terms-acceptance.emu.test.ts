@@ -2,12 +2,19 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SEED_PASSWORD, SEED_USERS } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
 import { markEmailVerified } from '../../tests/support/emulator';
-import { currentSession, refreshSession } from '../data/auth-repo';
+import { currentSession, refreshSession, registerWithEmail } from '../data/auth-repo';
 import { getDistributorPrivateSettings } from '../data/distributors-repo';
 import { getUserProfile } from '../data/users-repo';
-import { InvalidInputError } from '../domain/tenancy/errors';
-import { needsTermsAcceptance, TERMS_VERSION } from '../domain/legal/versions';
-import { acceptCurrentTerms, registerAccount, signIn, signOut } from './auth/auth-actions';
+import { AccountInUseError, InvalidInputError } from '../domain/tenancy/errors';
+import { needsTermsAcceptance, PRIVACY_VERSION, TERMS_VERSION } from '../domain/legal/versions';
+import {
+  acceptCurrentTerms,
+  acceptLegalDocuments,
+  discardUnacceptedAccount,
+  registerAccount,
+  signIn,
+  signOut,
+} from './auth/auth-actions';
 import { type FoundingInput, foundDistributor } from './tenancy/tenancy-actions';
 
 const REGISTRATION = {
@@ -15,6 +22,7 @@ const REGISTRATION = {
   password: SEED_PASSWORD,
   displayName: 'P. Acepta',
   acceptTerms: true as const,
+  acceptPrivacy: true,
 };
 
 const FOUNDING: FoundingInput = {
@@ -43,30 +51,36 @@ afterAll(async () => {
   await signOut();
 });
 
-// PLAN 2.7
-describe('terms at registration', () => {
-  it('creates nothing when the terms are not accepted', async () => {
+// PLAN 2.7 and 2.9
+describe('the two consents at registration', () => {
+  it.each([
+    ['the terms', { acceptTerms: unticked }, ['acceptTerms']],
+    ['the privacy policy', { acceptPrivacy: false }, ['acceptPrivacy']],
+    ['the privacy box at all', { acceptPrivacy: undefined }, ['acceptPrivacy']],
+    ['either', { acceptTerms: unticked, acceptPrivacy: false }, ['acceptTerms', 'acceptPrivacy']],
+  ])('creates nothing without %s', async (_case, change, expected) => {
     await signOut();
 
-    const failure = await registerAccount({ ...REGISTRATION, acceptTerms: unticked }).catch(
+    const failure = await registerAccount({ ...REGISTRATION, ...change }).catch(
       (error: unknown) => error,
     );
 
-    expect(fieldsOf(failure)).toEqual(['acceptTerms']);
+    expect(fieldsOf(failure)).toEqual(expected);
     expect(currentSession()).toBeNull();
     await expect(signIn(REGISTRATION.email, REGISTRATION.password)).rejects.toThrow();
   });
 
-  it('stores the accepted version with the profile', async () => {
+  it('stores both accepted versions with the profile', async () => {
     const session = await registerAccount(REGISTRATION);
 
     const profile = await getUserProfile(session.uid);
     expect(profile?.terms?.version).toBe(TERMS_VERSION);
+    expect(profile?.privacy?.version).toBe(PRIVACY_VERSION);
     expect(needsTermsAcceptance(profile)).toBe(false);
   });
 });
 
-describe('acceptCurrentTerms', () => {
+describe('acceptLegalDocuments', () => {
   it('does not invent a profile for an account that never accepted', async () => {
     const session = await signIn(SEED_USERS.noProfile.email, SEED_PASSWORD);
 
@@ -79,12 +93,13 @@ describe('acceptCurrentTerms', () => {
   it('creates the missing profile, named after the session, once the person accepts', async () => {
     const session = await signIn(SEED_USERS.noProfile.email, SEED_PASSWORD);
 
-    await acceptCurrentTerms(session.uid);
+    await acceptLegalDocuments(session.uid);
 
     const profile = await getUserProfile(session.uid);
     expect(profile).toMatchObject({
       displayName: SEED_USERS.noProfile.displayName,
       terms: { version: TERMS_VERSION },
+      privacy: { version: PRIVACY_VERSION },
     });
     expect(needsTermsAcceptance(profile)).toBe(false);
   });
@@ -93,10 +108,54 @@ describe('acceptCurrentTerms', () => {
     const session = await signIn(SEED_USERS.customer.email, SEED_PASSWORD);
     const seededAt = (await getUserProfile(session.uid))?.terms?.acceptedAt.getTime() ?? 0;
 
+    await acceptLegalDocuments(session.uid);
+
+    const renewed = await getUserProfile(session.uid);
+    expect(renewed?.terms?.acceptedAt.getTime()).toBeGreaterThan(seededAt);
+    expect(renewed?.privacy?.acceptedAt.getTime()).toBeGreaterThan(seededAt);
+  });
+
+  it('still answers to its old name, recording both texts', async () => {
+    const session = await signIn(SEED_USERS.dispatcherA.email, SEED_PASSWORD);
+    const seededAt = (await getUserProfile(session.uid))?.privacy?.acceptedAt.getTime() ?? 0;
+
     await acceptCurrentTerms(session.uid);
 
-    const renewedAt = (await getUserProfile(session.uid))?.terms?.acceptedAt.getTime() ?? 0;
+    const renewedAt = (await getUserProfile(session.uid))?.privacy?.acceptedAt.getTime() ?? 0;
     expect(renewedAt).toBeGreaterThan(seededAt);
+  });
+});
+
+// PLAN 2.9: "No acepto: eliminar mi cuenta".
+describe('discardUnacceptedAccount', () => {
+  it('refuses an account that already has a profile, and leaves it signed in', async () => {
+    const session = await signIn(SEED_USERS.customer.email, SEED_PASSWORD);
+
+    await expect(discardUnacceptedAccount(session.uid)).rejects.toBeInstanceOf(AccountInUseError);
+
+    expect(currentSession()?.uid).toBe(session.uid);
+    expect(await getUserProfile(session.uid)).not.toBeNull();
+  });
+
+  it('refuses to act on any account other than the signed-in one', async () => {
+    await signIn(SEED_USERS.customer.email, SEED_PASSWORD);
+
+    await expect(discardUnacceptedAccount(SEED_USERS.unverified.uid)).rejects.toMatchObject({
+      code: 'notSignedIn',
+    });
+  });
+
+  it('removes an account that never accepted: it can no longer sign in', async () => {
+    const fresh = await registerWithEmail({
+      email: 'no-acepta@example.com',
+      password: SEED_PASSWORD,
+      displayName: 'Q. No Acepta',
+    });
+
+    await discardUnacceptedAccount(fresh.uid);
+
+    expect(currentSession()).toBeNull();
+    await expect(signIn('no-acepta@example.com', SEED_PASSWORD)).rejects.toThrow();
   });
 });
 

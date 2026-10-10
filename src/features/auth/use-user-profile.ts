@@ -12,8 +12,9 @@ export interface AccountProfile {
    */
   profile: UserProfile | null;
   /**
-   * True when the person must accept the current terms before going on (no profile, or an
-   * older version accepted). Show the acceptance step and call `acceptCurrentTerms(uid)`.
+   * True when the person must accept the current terms or privacy policy before going on (no
+   * profile, one of the two missing, or an older version of either). Show the acceptance step
+   * and call `acceptLegalDocuments(uid)`.
    */
   needsTermsAcceptance: boolean;
 }
@@ -21,7 +22,7 @@ export interface AccountProfile {
 /**
  * The profile of the signed-in account and whether the terms are pending (PLAN 2.1, 2.7).
  * `idle` when signed out. One read per sign-in; call `reload()` after `saveProfile` or
- * `acceptCurrentTerms`.
+ * `acceptLegalDocuments`.
  */
 export function useUserProfile(): ReloadableResource<AccountProfile> {
   const uid = useSignedInSession()?.uid ?? null;

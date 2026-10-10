@@ -9,7 +9,8 @@ import {
 import { CorruptDocumentError } from '../domain/tenancy/errors';
 import {
   parseAddress,
-  parseDistributor,
+  parseControl,
+  parsePublicDistributor,
   parseMember,
   parsePrivateSettings,
   parseUserProfile,
@@ -21,17 +22,15 @@ const stamp = Timestamp.fromDate(AT);
 const MINIMAL_DISTRIBUTOR = {
   name: 'Gas Demo A',
   slug: 'gas-demo-a',
-  ownerUid: 'owner-a',
   contactPhone: '900000001',
   plant: { lat: -12.0464, lng: -77.0428 },
-  status: 'active',
-  trialEndsAt: stamp,
+  acceptingOrders: true,
   createdAt: stamp,
 };
 
-describe('parseDistributor', () => {
+describe('parsePublicDistributor', () => {
   it('reads a full document', () => {
-    const distributor = parseDistributor('dist-a', 'distributors/dist-a', {
+    const distributor = parsePublicDistributor('dist-a', 'distributors/dist-a', {
       ...MINIMAL_DISTRIBUTOR,
       whatsapp: '900000002',
       addressLine: 'Av. Principal 100',
@@ -52,12 +51,16 @@ describe('parseDistributor', () => {
       schedule: { days: [1, 2], opensAt: '08:00', closesAt: '18:00' },
       brands: ['Marca Uno'],
       priceFromCents: 3800,
-      trialEndsAt: AT,
+      acceptingOrders: true,
     });
   });
 
   it('fills defaults for fields that were added after the document was written', () => {
-    const distributor = parseDistributor('dist-a', 'distributors/dist-a', MINIMAL_DISTRIBUTOR);
+    const distributor = parsePublicDistributor(
+      'dist-a',
+      'distributors/dist-a',
+      MINIMAL_DISTRIBUTOR,
+    );
 
     expect(distributor).toMatchObject({
       whatsapp: '900000001',
@@ -76,24 +79,71 @@ describe('parseDistributor', () => {
   it.each([
     ['a missing name', { name: undefined }],
     ['a numeric slug', { slug: 5 }],
-    ['an unknown status', { status: 'vip' }],
     ['a plant off the globe', { plant: { lat: 120, lng: 0 } }],
     ['a plant as text', { plant: '-12,-77' }],
-    ['trialEndsAt as text', { trialEndsAt: '2026-01-01' }],
     ['no createdAt', { createdAt: null }],
   ])('rejects %s instead of guessing', (_case, change) => {
     const data = { ...MINIMAL_DISTRIBUTOR, ...change };
-    expect(() => parseDistributor('dist-a', 'distributors/dist-a', data)).toThrow(
+    expect(() => parsePublicDistributor('dist-a', 'distributors/dist-a', data)).toThrow(
       CorruptDocumentError,
+    );
+  });
+
+  // PLAN 2.9: the public profile carries no plan, trial date or account id.
+  it('never returns the control fields, even from a document that still has them', () => {
+    const legacy = { ...MINIMAL_DISTRIBUTOR, ownerUid: 'owner-a', status: 'pastDue' };
+    const distributor = parsePublicDistributor('dist-a', 'distributors/dist-a', {
+      ...legacy,
+      trialEndsAt: stamp,
+    });
+
+    expect(Object.keys(distributor)).not.toEqual(
+      expect.arrayContaining(['ownerUid', 'status', 'trialEndsAt']),
+    );
+    expect(distributor).not.toHaveProperty('ownerUid');
+    expect(distributor).not.toHaveProperty('status');
+    expect(distributor).not.toHaveProperty('trialEndsAt');
+  });
+
+  it('does not list a document written before the acceptingOrders flag existed', () => {
+    const { acceptingOrders: _dropped, ...older } = MINIMAL_DISTRIBUTOR;
+
+    expect(parsePublicDistributor('dist-a', 'distributors/dist-a', older).acceptingOrders).toBe(
+      false,
     );
   });
 
   it('drops list items and prices of the wrong type', () => {
     const data = { ...MINIMAL_DISTRIBUTOR, brands: ['Marca Uno', 7, null], priceFromCents: 38.5 };
-    const distributor = parseDistributor('dist-a', 'distributors/dist-a', data);
+    const distributor = parsePublicDistributor('dist-a', 'distributors/dist-a', data);
 
     expect(distributor.brands).toEqual(['Marca Uno']);
     expect(distributor.priceFromCents).toBeNull();
+  });
+});
+
+describe('parseControl', () => {
+  const CONTROL = { ownerUid: 'owner-a', status: 'trial', trialEndsAt: stamp, createdAt: stamp };
+  const path = 'distributors/dist-a/private/control';
+
+  it('reads the plan state of a distributor', () => {
+    expect(parseControl('control', path, CONTROL)).toEqual({
+      ownerUid: 'owner-a',
+      status: 'trial',
+      trialEndsAt: AT,
+      createdAt: AT,
+      updatedAt: AT,
+    });
+  });
+
+  it.each([
+    ['an unknown status', { status: 'vip' }],
+    ['trialEndsAt as text', { trialEndsAt: '2026-01-01' }],
+    ['no founder', { ownerUid: undefined }],
+  ])('rejects %s instead of guessing', (_case, change) => {
+    expect(() => parseControl('control', path, { ...CONTROL, ...change })).toThrow(
+      CorruptDocumentError,
+    );
   });
 });
 
@@ -107,7 +157,14 @@ describe('parseMember', () => {
       role: 'driver',
       active: true,
       displayName: '',
+      distributorName: '',
     });
+  });
+
+  it('reads the copy of the distributor name', () => {
+    const named = { ...MEMBER, distributorName: 'Gas Demo A' };
+
+    expect(parseMember('driver-a', 'p', named).distributorName).toBe('Gas Demo A');
   });
 
   it('treats a member without the active flag as inactive', () => {
@@ -135,6 +192,7 @@ describe('parseUserProfile', () => {
       phone: null,
       ownedDistributorIds: [],
       terms: null,
+      privacy: null,
       createdAt: AT,
       updatedAt: AT,
     });

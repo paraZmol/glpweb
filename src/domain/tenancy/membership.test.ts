@@ -16,6 +16,7 @@ function member(distributorId: string, role: MemberRole, active = true): Member 
     role,
     active,
     displayName: 'A. Persona',
+    distributorName: 'Gas Demo',
     createdAt: AT,
     updatedAt: AT,
   };

@@ -11,7 +11,6 @@ const SESSION: Session = {
   email: 'persona@example.com',
   emailVerified: true,
   displayName: 'Persona Demo',
-  photoUrl: null,
   providerIds: ['password'],
 };
 const DRIVER = { uid: 'u1', distributorId: 'd1', role: 'driver', active: true } as Member;
@@ -64,6 +63,20 @@ describe('accessInputFor', () => {
   it('gives a customer no role, and staff the role of the selected distributor', () => {
     expect(accessInputFor('home', account()).role).toEqual({ status: 'ready', value: null });
     expect(accessInputFor('home', account({ current: readyAs(DRIVER) })).role).toEqual({
+      status: 'ready',
+      value: 'driver',
+    });
+  });
+
+  // PLAN 2.9: switching distributor must not drop the area to a skeleton.
+  it('already knows the role while the chosen distributor is still loading', () => {
+    const current: CurrentDistributor = {
+      status: 'loading',
+      membership: DRIVER,
+      memberships: [DRIVER],
+    };
+
+    expect(accessInputFor('driver', account({ current })).role).toEqual({
       status: 'ready',
       value: 'driver',
     });

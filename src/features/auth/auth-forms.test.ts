@@ -19,6 +19,7 @@ const VALID: RegistrationForm = {
   password: 'x'.repeat(MIN_PASSWORD_LENGTH),
   phone: '',
   acceptTerms: true,
+  acceptPrivacy: true,
 };
 
 // PLAN 2.1 and 2.7: the registration form.
@@ -34,6 +35,17 @@ describe('validateRegistration', () => {
 
     expect(Object.keys(errors)).toEqual(['acceptTerms']);
     expect(hasErrors(errors)).toBe(true);
+  });
+
+  // PLAN 2.9: the privacy policy has its own box.
+  it.each([
+    ['unticked', { acceptPrivacy: false }],
+    ['missing from the form', { acceptPrivacy: undefined }],
+  ])('refuses to go on with the privacy box %s', (_case, patch) => {
+    const errors = validateRegistration({ ...VALID, ...patch });
+
+    expect(Object.keys(errors)).toEqual(['acceptPrivacy']);
+    expect(errors.acceptPrivacy).toContain('privacidad');
   });
 
   it.each([
@@ -63,9 +75,16 @@ describe('validateRegistration', () => {
       password: '',
       phone: '',
       acceptTerms: false,
+      acceptPrivacy: false,
     });
 
-    expect(Object.keys(errors).sort()).toEqual(['acceptTerms', 'displayName', 'email', 'password']);
+    expect(Object.keys(errors).sort()).toEqual([
+      'acceptPrivacy',
+      'acceptTerms',
+      'displayName',
+      'email',
+      'password',
+    ]);
     expect(errors.displayName).toBe('Escribe tu nombre.');
   });
 });

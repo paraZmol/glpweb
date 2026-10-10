@@ -105,12 +105,12 @@ describe('prepareProfilePatch', () => {
     const result = prepareProfilePatch({
       name: ' Gas Demo B ',
       brands: [' Marca Uno ', 'Marca Dos'],
-      brandColor: '#ABCDEF',
+      brandColor: '#0A7CFF',
     });
 
     expect(result).toEqual({
       ok: true,
-      value: { name: 'Gas Demo B', brands: ['Marca Uno', 'Marca Dos'], brandColor: '#abcdef' },
+      value: { name: 'Gas Demo B', brands: ['Marca Uno', 'Marca Dos'], brandColor: '#0a7cff' },
     });
   });
 
@@ -164,5 +164,41 @@ describe('prepareProfilePatch', () => {
     ['absurd price', { priceFromCents: MAX_PRICE_CENTS + 1 }, 'priceFromCents:outOfRange'],
   ])('rejects %s', (_case, patch, expected) => {
     expect(patchIssues(patch)).toEqual([expected]);
+  });
+});
+
+// PLAN 2.9: a brand colour the page background swallows is refused, with a tone to offer.
+describe('brand colour visibility', () => {
+  const NEARLY_WHITE = '#fffdf7';
+  const PALE_YELLOW = '#fef08a';
+
+  it.each([NEARLY_WHITE, PALE_YELLOW])('rejects %s when editing the profile', (brandColor) => {
+    const result = prepareProfilePatch({ brandColor });
+
+    expect(result.ok).toBe(false);
+    const [issue] = result.ok ? [] : result.issues;
+    expect(issue).toMatchObject({ field: 'brandColor', code: 'tooFaint' });
+    expect(issue?.suggestion).toMatch(/^#[0-9a-f]{6}$/);
+    expect(prepareProfilePatch({ brandColor: issue?.suggestion ?? '' }).ok).toBe(true);
+  });
+
+  it('rejects it when founding too, and reports it once', () => {
+    const result = prepareNewDistributor({ ...VALID, brandColor: NEARLY_WHITE });
+
+    const issues = result.ok ? [] : result.issues;
+    expect(issues.map((issue) => `${issue.field}:${issue.code}`)).toEqual(['brandColor:tooFaint']);
+    expect(issues[0]?.suggestion).toBeDefined();
+  });
+
+  it('keeps calling a malformed colour invalid, without a suggestion', () => {
+    const result = prepareProfilePatch({ brandColor: 'rojo' });
+
+    expect(result.ok ? [] : result.issues).toEqual([{ field: 'brandColor', code: 'invalid' }]);
+  });
+
+  it('accepts the default colour and every seeded one', () => {
+    for (const brandColor of [DEFAULT_BRAND_COLOR, '#0a7cff', '#5c6770', '#2f9e44', '#e11d48']) {
+      expect(prepareProfilePatch({ brandColor }).ok).toBe(true);
+    }
   });
 });

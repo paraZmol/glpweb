@@ -1,6 +1,6 @@
 import type { AccessGate, AccessInput, Loadable } from '../../domain/auth/access';
 import type { MemberRole } from '../../domain/tenancy/types';
-import type { AccountGateValue } from './account-context';
+import { type AccountGateValue, membershipOf } from './account-context';
 
 const LOADING = { status: 'loading' } as const;
 const FAILED = { status: 'error' } as const;
@@ -14,8 +14,9 @@ function termsPendingOf({ profile }: AccountGateValue): Loadable<boolean> {
 function roleOf({ current }: AccountGateValue): Loadable<MemberRole | null> {
   if (current.status === 'error') return FAILED;
   if (current.status === 'none') return { status: 'ready', value: null };
-  if (current.status !== 'ready') return LOADING;
-  return { status: 'ready', value: current.membership.role };
+  // The role is known as soon as the memberships are: the distributor may still be loading.
+  const membership = membershipOf(current);
+  return membership ? { status: 'ready', value: membership.role } : LOADING;
 }
 
 function adminOf({ platformAdmin }: AccountGateValue): Loadable<boolean> {

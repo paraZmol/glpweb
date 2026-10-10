@@ -10,7 +10,7 @@ export type FormErrors<Field extends string> = Partial<Record<Field | 'form', st
 
 export type SignInErrors = FormErrors<'email' | 'password'>;
 export type RegistrationErrors = FormErrors<
-  'displayName' | 'email' | 'password' | 'phone' | 'acceptTerms'
+  'displayName' | 'email' | 'password' | 'phone' | 'acceptTerms' | 'acceptPrivacy'
 >;
 export type ProfileErrors = FormErrors<'displayName' | 'phone'>;
 
@@ -19,12 +19,17 @@ export interface RegistrationForm {
   email: string;
   password: string;
   phone: string;
+  /** First box: terms and age. */
   acceptTerms: boolean;
+  /** Second box: privacy policy and use of data (PLAN 2.9). A form without it does not pass. */
+  acceptPrivacy?: boolean;
 }
 
 const MISSING_NAME = 'Escribe tu nombre.';
 const MISSING_PASSWORD = 'Escribe tu contraseña.';
 const MISSING_CONSENT = 'Marca la casilla para aceptar los términos y continuar.';
+const MISSING_PRIVACY_CONSENT =
+  'Marca la casilla para aceptar la política de privacidad y continuar.';
 
 /** Message for an address that is not an e-mail; undefined when its shape is fine. */
 export function emailProblemOf(email: string): string | undefined {
@@ -57,8 +62,9 @@ export function validateProfile(form: { displayName: string; phone: string }): P
 }
 
 /**
- * Every problem of the registration form at once, so the person fixes them in one go. The box
- * of the terms is one more field: without it nothing is sent (PLAN 2.7).
+ * Every problem of the registration form at once, so the person fixes them in one go. The two
+ * boxes (terms and age; privacy) are two more fields: without both nothing is sent (PLAN 2.7,
+ * 2.9).
  */
 export function validateRegistration(form: RegistrationForm): RegistrationErrors {
   return withoutEmpty({
@@ -68,6 +74,7 @@ export function validateRegistration(form: RegistrationForm): RegistrationErrors
       ? undefined
       : describeAuthError(authErrorFor('weakPassword')),
     acceptTerms: form.acceptTerms ? undefined : MISSING_CONSENT,
+    acceptPrivacy: form.acceptPrivacy === true ? undefined : MISSING_PRIVACY_CONSENT,
   });
 }
 

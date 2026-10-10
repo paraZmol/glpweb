@@ -1,3 +1,4 @@
+import { checkBrandColor } from '../brand/brand-color-check';
 import { type GeoPoint, isValidGeoPoint } from '../geo/distance';
 import {
   ADDRESS_LINE_MAX_LENGTH,
@@ -32,7 +33,7 @@ import {
   type Validated,
 } from './field-checks';
 import { normalizeSlug, validateSlug } from './slug';
-import type { Distributor, Schedule } from './types';
+import type { PublicDistributor, Schedule } from './types';
 
 /** What the sign-up form collects. Everything else gets a default the owner can edit later. */
 export interface NewDistributorInput {
@@ -64,10 +65,10 @@ export const EDITABLE_PROFILE_FIELDS = [
   'maxCylindersPerOrder',
   'brands',
   'priceFromCents',
-] as const satisfies readonly (keyof Distributor)[];
+] as const satisfies readonly (keyof PublicDistributor)[];
 
 export type DistributorProfilePatch = Partial<
-  Pick<Distributor, (typeof EDITABLE_PROFILE_FIELDS)[number]>
+  Pick<PublicDistributor, (typeof EDITABLE_PROFILE_FIELDS)[number]>
 >;
 
 function checkSchedule(schedule: Schedule): Check {
@@ -90,7 +91,9 @@ const checkPrice = (priceCents: number | null): Check =>
   priceCents === null ? null : checkInteger(priceCents, 1, MAX_PRICE_CENTS);
 
 const PROFILE_CHECKS: {
-  [K in keyof DistributorProfilePatch]-?: (value: NonNullable<Distributor[K]> | null) => Check;
+  [K in keyof DistributorProfilePatch]-?: (
+    value: NonNullable<PublicDistributor[K]> | null,
+  ) => Check;
 } = {
   name: (v) => checkText(v ?? '', DISTRIBUTOR_NAME_MIN_LENGTH, DISTRIBUTOR_NAME_MAX_LENGTH),
   contactPhone: (v) => checkPhone(v ?? ''),
@@ -120,6 +123,24 @@ function normalizePatch(patch: DistributorProfilePatch): DistributorProfilePatch
   return normalized;
 }
 
+/**
+ * A brand colour must also be visible: one that the page background swallows is refused with
+ * the closest tone that passes (decision of 2026-10-10, PLAN 2.9). The security rules cannot
+ * compute contrast, so this check exists only here; it protects looks, not data.
+ */
+function brandColorIssue(color: string): FieldIssue | null {
+  const check = checkBrandColor(color);
+  if (check.ok || check.reason === 'invalid') return null;
+  return { field: 'brandColor', code: 'tooFaint', suggestion: check.suggestion };
+}
+
+/** One rejected field of a profile edit, or null when the value is fine. */
+function profileIssue(field: keyof DistributorProfilePatch, value: unknown): FieldIssue | null {
+  const code = (PROFILE_CHECKS[field] as (v: unknown) => Check)(value);
+  if (code) return { field, code };
+  return field === 'brandColor' ? brandColorIssue(value as string) : null;
+}
+
 /** Normalises and validates an edit of the public profile. Unknown fields are dropped. */
 export function prepareProfilePatch(
   patch: DistributorProfilePatch,
@@ -130,8 +151,8 @@ export function prepareProfilePatch(
   for (const field of EDITABLE_PROFILE_FIELDS) {
     const fieldValue = normalized[field];
     if (fieldValue === undefined) continue;
-    const code = (PROFILE_CHECKS[field] as (v: unknown) => Check)(fieldValue);
-    if (code) issues.push({ field, code });
+    const issue = profileIssue(field, fieldValue);
+    if (issue) issues.push(issue);
     value[field] = fieldValue;
   }
   return issues.length > 0 ? { ok: false, issues } : { ok: true, value };

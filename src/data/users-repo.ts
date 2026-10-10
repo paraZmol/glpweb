@@ -15,6 +15,7 @@ import {
   type PreparedAddress,
   type PreparedUserProfile,
 } from '../domain/tenancy/account-input';
+import type { LegalVersions } from '../domain/legal/versions';
 import { MAX_ADDRESSES_PER_USER } from '../domain/tenancy/constants';
 import { AddressLimitError } from '../domain/tenancy/errors';
 import type { Address, UserProfile } from '../domain/tenancy/types';
@@ -33,35 +34,43 @@ export function getUserProfile(uid: string): Promise<UserProfile | null> {
   });
 }
 
+/** The two acceptances as the rules expect them: allowed version, server time. */
+function acceptanceFields({ termsVersion, privacyVersion }: LegalVersions) {
+  return {
+    terms: { version: termsVersion, acceptedAt: serverTimestamp() },
+    privacy: { version: privacyVersion, acceptedAt: serverTimestamp() },
+  };
+}
+
 /**
- * Creates the profile together with the acceptance of `termsVersion`: the rules refuse a
- * profile without it, so only call this after the person actually accepted the terms.
- * Fails with `PermissionDeniedError` if the profile already exists.
+ * Creates the profile together with the acceptance of the terms and of the privacy policy: the
+ * rules refuse a profile without both, so only call this after the person actually accepted
+ * them. Fails with `PermissionDeniedError` if the profile already exists.
  */
 export function createUserProfile(
   uid: string,
   profile: PreparedUserProfile,
-  termsVersion: string,
+  versions: LegalVersions,
 ): Promise<void> {
   return guarded(() =>
     setDoc(userRef(uid), {
       displayName: profile.displayName,
       phone: profile.phone,
       ownedDistributorIds: [],
-      terms: { version: termsVersion, acceptedAt: serverTimestamp() },
+      ...acceptanceFields(versions),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }),
   );
 }
 
-/** Records that the account accepted `termsVersion` now (server time). The profile must exist. */
-export function acceptTerms(uid: string, termsVersion: string): Promise<void> {
+/**
+ * Records that the account accepted those versions of the terms and of the privacy policy now
+ * (server time). The profile must exist.
+ */
+export function acceptLegalVersions(uid: string, versions: LegalVersions): Promise<void> {
   return guarded(() =>
-    updateDoc(userRef(uid), {
-      terms: { version: termsVersion, acceptedAt: serverTimestamp() },
-      updatedAt: serverTimestamp(),
-    }),
+    updateDoc(userRef(uid), { ...acceptanceFields(versions), updatedAt: serverTimestamp() }),
   );
 }
 

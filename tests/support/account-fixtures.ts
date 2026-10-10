@@ -13,7 +13,6 @@ export const SESSION: Session = {
   email: 'persona@example.com',
   emailVerified: true,
   displayName: 'Persona Demo',
-  photoUrl: null,
   providerIds: ['password'],
 };
 
@@ -23,6 +22,7 @@ export const PROFILE: UserProfile = {
   phone: null,
   ownedDistributorIds: [],
   terms: { version: '0.1', acceptedAt: NOW },
+  privacy: { version: '0.1', acceptedAt: NOW },
   createdAt: NOW,
   updatedAt: NOW,
 };
@@ -39,6 +39,7 @@ export function distributorOf(id: string, patch: Partial<Distributor> = {}): Dis
     plant: { lat: -12.05, lng: -77.04 },
     coverageRadiusKm: 5,
     brandColor: '#e11d48',
+    acceptingOrders: true,
     status: 'trial',
     trialEndsAt: IN_TWELVE_DAYS,
     schedule: { days: [1, 2, 3, 4, 5, 6], opensAt: '07:00', closesAt: '20:00' },
@@ -59,6 +60,7 @@ export function memberOf(role: MemberRole, distributorId = 'd-norte'): Member {
     role,
     active: true,
     displayName: PROFILE.displayName,
+    distributorName: 'Gas Demo Norte',
     createdAt: NOW,
     updatedAt: NOW,
   };

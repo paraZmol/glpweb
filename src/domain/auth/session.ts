@@ -6,13 +6,20 @@ export interface Session {
   email: string | null;
   emailVerified: boolean;
   displayName: string | null;
-  photoUrl: string | null;
   /** `password`, `google.com`… */
   providerIds: string[];
 }
 
 export type SessionState =
   { status: 'loading' } | { status: 'signedOut' } | { status: 'signedIn'; session: Session };
+
+/**
+ * True when the account a tab was showing is gone: signed out, or replaced by another one. Both
+ * can come from another tab, or from the account being disabled or deleted (PLAN 2.9).
+ */
+export function hasSessionEnded(previousUid: string | null, nextUid: string | null): boolean {
+  return previousUid !== null && previousUid !== nextUid;
+}
 
 export const MIN_PASSWORD_LENGTH = 8;
 /** Firebase Auth rejects longer passwords. */

@@ -15,6 +15,7 @@ import {
   SEED_CREATED_AT,
   SEED_DISTRIBUTORS,
   SEED_PASSWORD,
+  SEED_PRIVACY_VERSION,
   SEED_TERMS_VERSION,
   SEED_USERS,
   type SeedDistributor,
@@ -43,6 +44,7 @@ const DEFAULT_MAX_CYLINDERS_PER_ORDER = 3;
 const createdAt = Timestamp.fromDate(new Date(SEED_CREATED_AT));
 const stamps = { createdAt, updatedAt: createdAt };
 const terms = { version: SEED_TERMS_VERSION, acceptedAt: createdAt };
+const privacy = { version: SEED_PRIVACY_VERSION, acceptedAt: createdAt };
 
 function founderOf(distributor: SeedDistributor): SeedUser {
   const founder = distributor.members.find((member) => member.role === 'owner');
@@ -50,24 +52,38 @@ function founderOf(distributor: SeedDistributor): SeedUser {
   return founder.user;
 }
 
+/** Same condition as `isWritable` in src/domain/tenancy/status.ts (this file imports no app code). */
+function takesOrders(distributor: SeedDistributor): boolean {
+  if (distributor.status === 'active') return true;
+  return distributor.status === 'trial' && new Date(distributor.trialEndsAt) > new Date();
+}
+
+/** What anyone can read: no plan, no trial date, no account id (PLAN 2.9). */
 function publicDocument(distributor: SeedDistributor) {
   return {
     name: distributor.name,
     slug: distributor.slug,
-    ownerUid: founderOf(distributor).uid,
     contactPhone: distributor.contactPhone,
     whatsapp: distributor.contactPhone,
     addressLine: distributor.addressLine,
     plant: { ...distributor.plant },
     coverageRadiusKm: distributor.coverageRadiusKm,
     brandColor: distributor.brandColor,
-    status: distributor.status,
-    trialEndsAt: Timestamp.fromDate(new Date(distributor.trialEndsAt)),
+    acceptingOrders: takesOrders(distributor),
     schedule: DEFAULT_SCHEDULE,
     maxCylindersPerOrder: DEFAULT_MAX_CYLINDERS_PER_ORDER,
     brands: [...distributor.brands],
     priceFromCents: distributor.priceFromCents,
     currency: 'PEN',
+    ...stamps,
+  };
+}
+
+function controlDocument(distributor: SeedDistributor) {
+  return {
+    ownerUid: founderOf(distributor).uid,
+    status: distributor.status,
+    trialEndsAt: Timestamp.fromDate(new Date(distributor.trialEndsAt)),
     ...stamps,
   };
 }
@@ -92,6 +108,7 @@ type Db = Parameters<typeof writeBatch>[0];
 function writeDistributor(batch: Batch, db: Db, distributor: SeedDistributor) {
   const { id, slug } = distributor;
   batch.set(doc(db, `distributors/${id}`), publicDocument(distributor));
+  batch.set(doc(db, `distributors/${id}/private/control`), controlDocument(distributor));
   batch.set(doc(db, `distributors/${id}/private/settings`), privateDocument(distributor));
   batch.set(doc(db, `slugs/${slug}`), { distributorId: id, createdAt });
   for (const { user, role } of distributor.members) {
@@ -101,6 +118,7 @@ function writeDistributor(batch: Batch, db: Db, distributor: SeedDistributor) {
       role,
       active: true,
       displayName: user.displayName,
+      distributorName: distributor.name,
       ...stamps,
     });
   }
@@ -115,6 +133,7 @@ function writeProfiles(batch: Batch, db: Db, distributors: SeedDistributor[]) {
       phone: user.phone,
       ownedDistributorIds: founded.map((distributor) => distributor.id),
       terms,
+      privacy,
       ...stamps,
     });
   }

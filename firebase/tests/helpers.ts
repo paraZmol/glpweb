@@ -13,7 +13,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { EMULATOR_HOST, emulatorPorts } from '../../scripts/lane-ports.mjs';
-import { TERMS_VERSION } from '../../src/domain/legal/versions';
+import { PRIVACY_VERSION, TERMS_VERSION } from '../../src/domain/legal/versions';
 import { DEFAULT_SCHEDULE, TRIAL_DAYS } from '../../src/domain/tenancy/constants';
 import type { DistributorStatus, MemberRole } from '../../src/domain/tenancy/types';
 
@@ -63,12 +63,17 @@ export function termsDoc(change: Record<string, unknown> = {}) {
   return { version: TERMS_VERSION, acceptedAt: serverTimestamp(), ...change };
 }
 
+export function privacyDoc(change: Record<string, unknown> = {}) {
+  return { version: PRIVACY_VERSION, acceptedAt: serverTimestamp(), ...change };
+}
+
 export function userDoc(change: Record<string, unknown> = {}) {
   return {
     displayName: 'C. Persona',
     phone: null,
     ownedDistributorIds: [],
     terms: termsDoc(),
+    privacy: privacyDoc(),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     ...change,
@@ -87,28 +92,37 @@ export function addressDoc(change: Record<string, unknown> = {}) {
   };
 }
 
-export function distributorDoc(
-  ownerUid: string,
-  slug: string,
-  change: Record<string, unknown> = {},
-) {
+export const DISTRIBUTOR_NAME = 'Gas Demo';
+
+/** The public document: what anyone can read. */
+export function distributorDoc(slug: string, change: Record<string, unknown> = {}) {
   return {
-    name: 'Gas Demo',
+    name: DISTRIBUTOR_NAME,
     slug,
-    ownerUid,
     contactPhone: '900000001',
     whatsapp: '900000001',
     addressLine: 'Av. Principal 100',
     plant: { lat: -12.0464, lng: -77.0428 },
     coverageRadiusKm: 5,
     brandColor: '#d9480f',
-    status: 'trial',
-    trialEndsAt: daysFromNow(TRIAL_DAYS),
+    acceptingOrders: true,
     schedule: { ...DEFAULT_SCHEDULE, days: [...DEFAULT_SCHEDULE.days] },
     maxCylindersPerOrder: 3,
     brands: [],
     priceFromCents: null,
     currency: 'PEN',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...change,
+  };
+}
+
+/** The control document: plan state and founder, private to the staff. */
+export function controlDoc(ownerUid: string, change: Record<string, unknown> = {}) {
+  return {
+    ownerUid,
+    status: 'trial',
+    trialEndsAt: daysFromNow(TRIAL_DAYS),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     ...change,
@@ -131,6 +145,7 @@ export function memberDoc(
     role,
     active: true,
     displayName: 'A. Persona',
+    distributorName: DISTRIBUTOR_NAME,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     ...change,
@@ -153,8 +168,8 @@ export function privateDoc(ownerUid: string, change: Record<string, unknown> = {
 }
 
 // ---------------------------------------------------------------------------------------------
-// The founding batch (PLAN 2.2): distributor + slug + owner member + private settings + the
-// founder's own list of distributors. Every piece can be replaced or dropped to attack it.
+// The founding batch (PLAN 2.2): distributor + control + slug + owner member + private settings
+// + the founder's own list of distributors. Every piece can be replaced or dropped to attack it.
 // ---------------------------------------------------------------------------------------------
 
 type Piece = Record<string, unknown> | null;
@@ -166,6 +181,7 @@ export interface FoundingOptions {
   /** Document id of the slug, when the attack wants it to differ from the distributor's slug. */
   slugId?: string;
   distributor?: Piece;
+  control?: Piece;
   slugData?: Piece;
   member?: Piece;
   settings?: Piece;
@@ -178,7 +194,11 @@ export function foundDistributor(db: Db, options: FoundingOptions): Promise<void
   const pieces: [string, Piece][] = [
     [
       `distributors/${d}`,
-      options.distributor === undefined ? distributorDoc(uid, slug) : options.distributor,
+      options.distributor === undefined ? distributorDoc(slug) : options.distributor,
+    ],
+    [
+      `distributors/${d}/private/control`,
+      options.control === undefined ? controlDoc(uid) : options.control,
     ],
     [
       `slugs/${options.slugId ?? slug}`,
@@ -273,6 +293,10 @@ export const CUSTOMER_UID = 'customer';
 
 const founderOf = (seeded: SeededDistributor) => Object.keys(seeded.members)[0] ?? '';
 
+/** Same condition as the domain `isWritable`, at the moment of seeding. */
+const takesOrders = ({ status, trialEndsAt }: SeededDistributor) =>
+  status === 'active' || (status === 'trial' && trialEndsAt.toMillis() > Date.now());
+
 export async function seedWorld(env: RulesTestEnvironment): Promise<void> {
   const at = Timestamp.fromDate(new Date('2026-02-01T12:00:00Z'));
   const stamps = { createdAt: at, updatedAt: at };
@@ -284,7 +308,11 @@ export async function seedWorld(env: RulesTestEnvironment): Promise<void> {
       const { d, slug, status, trialEndsAt } = seeded;
       batch.set(
         doc(db, `distributors/${d}`),
-        distributorDoc(founder, slug, { status, trialEndsAt, ...stamps }),
+        distributorDoc(slug, { acceptingOrders: takesOrders(seeded), ...stamps }),
+      );
+      batch.set(
+        doc(db, `distributors/${d}/private/control`),
+        controlDoc(founder, { status, trialEndsAt, ...stamps }),
       );
       batch.set(doc(db, `slugs/${slug}`), { distributorId: d, createdAt: at });
       batch.set(doc(db, `distributors/${d}/private/settings`), privateDoc(founder, stamps));

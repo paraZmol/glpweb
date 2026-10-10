@@ -1,12 +1,21 @@
 import { isValidPeruvianMobile } from './contact';
 import type { SlugIssue } from './slug';
 
-export type FieldIssueCode = 'required' | 'tooLong' | 'tooShort' | 'outOfRange' | 'invalid';
+export type FieldIssueCode =
+  | 'required'
+  | 'tooLong'
+  | 'tooShort'
+  | 'outOfRange'
+  | 'invalid'
+  /** A brand colour that cannot be told apart from the page background. */
+  | 'tooFaint';
 
 /** One rejected form field. Screens map `code` to a message in Spanish. */
 export interface FieldIssue {
   field: string;
   code: FieldIssueCode | SlugIssue;
+  /** A value the form can offer instead; today only the closest visible tone of a brand colour. */
+  suggestion?: string;
 }
 
 export type Validated<T> = { ok: true; value: T } | { ok: false; issues: FieldIssue[] };

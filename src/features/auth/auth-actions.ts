@@ -13,9 +13,9 @@ import {
   prepareUserProfile,
   type UserProfileInput,
 } from '../../domain/tenancy/account-input';
-import { TERMS_VERSION } from '../../domain/legal/versions';
+import { CURRENT_LEGAL_VERSIONS } from '../../domain/legal/versions';
 import { DISPLAY_NAME_MAX_LENGTH } from '../../domain/tenancy/constants';
-import { InvalidInputError } from '../../domain/tenancy/errors';
+import { AccountInUseError, InvalidInputError } from '../../domain/tenancy/errors';
 import { checkConsent, collectIssues, type Validated } from '../../domain/tenancy/field-checks';
 import type { Address } from '../../domain/tenancy/types';
 
@@ -41,26 +41,34 @@ function requireConsents(consents: Record<string, unknown>): void {
 export interface RegistrationInput extends UserProfileInput {
   email: string;
   password: string;
-  /** The person ticked "acepto los términos". Only `true` is accepted (PLAN 2.7). */
+  /** The person ticked "acepto los términos y soy mayor de edad". Only `true` is accepted. */
   acceptTerms: true;
+  /**
+   * The person ticked the second box, "acepto la política de privacidad" (PLAN 2.9). Only
+   * `true` is accepted: a registration without it is refused with an issue on `acceptPrivacy`.
+   * The type leaves it optional only so a form that does not send it yet still compiles.
+   */
+  acceptPrivacy?: boolean;
 }
 
 /**
  * Creates the account, sends the verification e-mail and stores the profile with the
- * acceptance of the current terms (PLAN 2.1, 2.7). Nothing is created without `acceptTerms`.
- * Throws `AuthError` (see its `code`) or `InvalidInputError` (field `acceptTerms` included).
+ * acceptance of the current terms and privacy policy (PLAN 2.1, 2.7, 2.9). Nothing is created
+ * without both boxes.
+ * Throws `AuthError` (see its `code`) or `InvalidInputError` (fields `acceptTerms` and
+ * `acceptPrivacy` included).
  */
 export async function registerAccount(input: RegistrationInput): Promise<Session> {
   const email = normalizeEmail(input.email);
   const profile = unwrap(prepareUserProfile(input));
-  requireConsents({ acceptTerms: input.acceptTerms });
+  requireConsents({ acceptTerms: input.acceptTerms, acceptPrivacy: input.acceptPrivacy });
   checkCredentials(email, input.password);
   const session = await authRepo.registerWithEmail({
     email,
     password: input.password,
     displayName: profile.displayName,
   });
-  await usersRepo.createUserProfile(session.uid, profile, TERMS_VERSION);
+  await usersRepo.createUserProfile(session.uid, profile, CURRENT_LEGAL_VERSIONS);
   return session;
 }
 
@@ -69,19 +77,40 @@ export function signIn(email: string, password: string): Promise<Session> {
 }
 
 /**
- * Records that the signed-in account accepts the current terms, now. CALLING THIS IS THE
- * ACCEPTANCE: only call it from the handler of an explicit "acepto" control, never on load.
+ * Records that the signed-in account accepts the current terms AND the current privacy policy,
+ * now (PLAN 2.7, 2.9). CALLING THIS IS THE ACCEPTANCE OF BOTH: only call it from the handler of
+ * an explicit "acepto" control with the two boxes ticked, never on load.
  * - Account without a profile (first Google sign-in, or a registration cut before its profile
- *   was stored): creates the profile with the acceptance, named after the session.
- * - Account with a profile on an older version: renews the acceptance.
+ *   was stored): creates the profile with both acceptances, named after the session.
+ * - Account with a profile on an older version of either text: renews both.
  * Then call `reload()` on `useUserProfile()`.
  */
-export async function acceptCurrentTerms(uid: string): Promise<void> {
-  if (await usersRepo.getUserProfile(uid)) return usersRepo.acceptTerms(uid, TERMS_VERSION);
+export async function acceptLegalDocuments(uid: string): Promise<void> {
+  if (await usersRepo.getUserProfile(uid)) {
+    return usersRepo.acceptLegalVersions(uid, CURRENT_LEGAL_VERSIONS);
+  }
   const session = authRepo.currentSession();
   const ownName = session?.uid === uid ? (session.displayName ?? '') : '';
   const displayName = ownName.trim().slice(0, DISPLAY_NAME_MAX_LENGTH) || FALLBACK_DISPLAY_NAME;
-  return usersRepo.createUserProfile(uid, { displayName, phone: null }, TERMS_VERSION);
+  return usersRepo.createUserProfile(uid, { displayName, phone: null }, CURRENT_LEGAL_VERSIONS);
+}
+
+/** @deprecated Old name of `acceptLegalDocuments`: it records both texts, not only the terms. */
+export const acceptCurrentTerms = acceptLegalDocuments;
+
+/**
+ * "No acepto: eliminar mi cuenta" (PLAN 2.9): removes the signed-in account from Firebase Auth
+ * when it never accepted the terms, so it has no profile and nothing else to clean up. That is
+ * the case of a first Google sign-in, where the account exists before the person accepts.
+ * Throws `AccountInUseError` if a profile exists (that deletion is handled on request, privacy
+ * policy §7) and `AuthError` with code `recentLoginRequired` if the session is old: ask the
+ * person to sign in again and retry. The session ends; the local data is cleared by the same
+ * path as any other sign-out.
+ */
+export async function discardUnacceptedAccount(uid: string): Promise<void> {
+  if (authRepo.currentSession()?.uid !== uid) throw authErrorFor('notSignedIn');
+  if (await usersRepo.getUserProfile(uid)) throw new AccountInUseError();
+  await authRepo.deleteOwnAccount();
 }
 
 /**

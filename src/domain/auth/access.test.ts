@@ -15,7 +15,6 @@ const SESSION: Session = {
   email: 'persona@example.com',
   emailVerified: true,
   displayName: 'Persona Demo',
-  photoUrl: null,
   providerIds: ['password'],
 };
 

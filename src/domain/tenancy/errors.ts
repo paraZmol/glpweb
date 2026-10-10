@@ -43,6 +43,16 @@ export class ProfileRequiredError extends DomainError {
   }
 }
 
+/**
+ * The account already has a profile, so it cannot simply be discarded: its data has to be
+ * removed with it, which the app cannot do by itself (privacy policy §7).
+ */
+export class AccountInUseError extends DomainError {
+  constructor() {
+    super('The account already has a profile and cannot be discarded from the app');
+  }
+}
+
 /** Every address slot of the account is in use. */
 export class AddressLimitError extends DomainError {
   constructor(readonly limit: number) {

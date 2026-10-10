@@ -17,6 +17,7 @@ import {
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { MEMBERS_QUERY_LIMIT, MEMBERSHIPS_QUERY_LIMIT } from '../../src/domain/tenancy/constants';
@@ -27,6 +28,8 @@ import {
   createEnv,
   CUSTOMER_UID,
   type Db,
+  DISTRIBUTOR_NAME,
+  distributorDoc,
   memberDoc,
   seedDoc,
   seedWorld,
@@ -243,6 +246,8 @@ describe('members — an owner manages the staff', () => {
     ['createdAt', { createdAt: serverTimestamp() }],
     ['an extra field', { salary: 1000 }],
     ['an oversized name', { displayName: 'n'.repeat(81) }],
+    ['another distributor name', { distributorName: 'Otra Distribuidora' }],
+    ['a role and another distributor name', { role: 'dispatcher', distributorName: 'Otra' }],
   ])('blocks the owner from changing a member to have %s', async (_case, change) => {
     const driver = memberOf(verified(env, 'owner-a'), A, 'driver-a');
     await assertFails(updateDoc(driver, { ...change, ...stamp }));
@@ -306,6 +311,99 @@ describe('members — an owner manages the staff', () => {
     const driver = memberOf(verified(env, 'co-owner'), A, 'driver-a');
 
     await assertFails(updateDoc(driver, { active: false, ...stamp }));
+  });
+});
+
+// PLAN 2.9: each membership carries the name of its distributor, so the selector reads nothing
+// extra. The copy can only ever be written equal to the public name.
+describe('members — the copy of the distributor name', () => {
+  const RENAMED = 'Gas Demo Renombrado';
+  const rename = { distributorName: RENAMED, ...stamp };
+
+  /** The public name changed and the copies were left behind (more staff than one batch). */
+  async function seedRenamed(d = A) {
+    const renamed = distributorDoc(WORLD.a.slug, {
+      name: RENAMED,
+      createdAt: PAST,
+      updatedAt: PAST,
+    });
+    await seedDoc(env, `distributors/${d}`, renamed);
+  }
+
+  it.each(['owner-a', 'dispatcher-a', 'driver-a'])(
+    'lets %s bring its own copy up to date',
+    async (uid) => {
+      await seedRenamed();
+      await assertSucceeds(updateDoc(memberOf(verified(env, uid), A, uid), rename));
+    },
+  );
+
+  it('lets an owner bring the copy of anyone up to date, the founder included', async () => {
+    await seedRenamed();
+    const coOwner = memberDoc(A, 'co-owner', 'owner', { createdAt: PAST, updatedAt: PAST });
+    await seedDoc(env, memberPath(A, 'co-owner'), coOwner);
+    const db = verified(env, 'co-owner');
+
+    await assertSucceeds(updateDoc(memberOf(db, A, 'driver-a'), rename));
+    await assertSucceeds(updateDoc(memberOf(db, A, 'owner-a'), rename));
+  });
+
+  it('lets the owner rename the distributor and every copy in one batch', async () => {
+    const db = verified(env, 'owner-a');
+    const batch = writeBatch(db);
+    batch.update(doc(db, `distributors/${A}`), { name: RENAMED, ...stamp });
+    for (const uid of Object.keys(WORLD.a.members)) batch.update(memberOf(db, A, uid), rename);
+
+    await assertSucceeds(batch.commit());
+  });
+
+  it.each([
+    ['a name the distributor does not have', { distributorName: 'Inventado', ...stamp }],
+    ['the new name before the distributor has it', rename],
+    ['an empty name', { distributorName: '', ...stamp }],
+    ['the name without a fresh updatedAt', { distributorName: DISTRIBUTOR_NAME }],
+  ])('blocks writing %s', async (_case, change) => {
+    await assertFails(updateDoc(memberOf(verified(env, 'driver-a'), A, 'driver-a'), change));
+    await assertFails(updateDoc(memberOf(verified(env, 'owner-a'), A, 'driver-a'), change));
+  });
+
+  it('blocks using the correction to change anything else', async () => {
+    await seedRenamed();
+    const own = memberOf(verified(env, 'driver-a'), A, 'driver-a');
+
+    await assertFails(updateDoc(own, { ...rename, role: 'owner' }));
+    await assertFails(updateDoc(own, { ...rename, displayName: 'Otro Nombre' }));
+    await assertFails(updateDoc(own, { ...rename, active: true, uid: 'owner-a' }));
+  });
+
+  it.each([
+    ['an anonymous visitor', () => anonymous(env)],
+    ['a customer', () => verified(env, CUSTOMER_UID)],
+    ['its dispatcher', () => verified(env, 'dispatcher-a')],
+    ['the owner of another distributor', () => verified(env, 'owner-b')],
+    ['a platform admin', () => verified(env, ADMIN_UID)],
+  ])('blocks %s from correcting the copy of someone else', async (_who, connect) => {
+    await seedRenamed();
+    await assertFails(updateDoc(memberOf(connect(), A, 'driver-a'), rename));
+  });
+
+  it('blocks an owner of A from renaming B through its members (aislamiento A/B)', async () => {
+    const db = verified(env, 'owner-a');
+    const batch = writeBatch(db);
+    batch.update(doc(db, `distributors/${B}`), { name: RENAMED, ...stamp });
+    batch.update(memberOf(db, B, 'driver-b'), rename);
+
+    await assertFails(batch.commit());
+  });
+
+  it('keeps the rename closed for a suspended distributor', async () => {
+    const d = WORLD.suspended.d;
+    const db = verified(env, 'owner-suspended');
+    const batch = writeBatch(db);
+    batch.update(doc(db, `distributors/${d}`), { name: RENAMED, ...stamp });
+    batch.update(memberOf(db, d, 'driver-suspended'), rename);
+
+    await assertFails(batch.commit());
   });
 });
 
