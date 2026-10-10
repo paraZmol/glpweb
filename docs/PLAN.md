@@ -226,7 +226,7 @@ Estimación: una persona con Claude, ~25 h/semana.
 - [x] 0.5 (2026-10-10) Esqueleto Vite + React + TS + Tailwind 4 + shadcn + router; lint, formato y tipos
 - [x] 0.6 (2026-10-10) Emuladores de Firebase + primer test de reglas + Playwright (móvil y escritorio)
 - [x] 0.7 (2026-10-10) Servidor MCP de Firebase en `.mcp.json`; skills oficiales instaladas: `firebase-firestore`, `firestore-rules-creation`, `firebase-security-rules-auditor`, `firebase-hosting-basics`, `firebase-auth-basics`, `shadcn`
-- [~] 0.8 Página "en construcción" publicada en https://glpweb-app.web.app (2026-10-10); `.github/workflows/ci.yml` escrito. Falta: primera corrida del CI (depende del repo remoto)
+- [x] 0.8 (2026-10-10) Página "en construcción" publicada en https://glpweb-app.web.app; CI en GitHub Actions en verde en su primera corrida
 - *Criterio*: `npm run check` en verde, emuladores arrancan, URL pública responde.
 
 ### Fase 1 — Dirección de diseño
@@ -345,6 +345,8 @@ aplicables sin hallazgos CRÍTICO/ALTO · paso marcado aquí con fecha.
 | 2026-10-10 | Plan inicial | — |
 | 2026-10-10 | Plan aprobado; D2, D3 y D5 quedan con su supuesto (Worker sí, ambos mapas, proyecto nuevo `glpweb-app`) | Visto bueno del usuario |
 | 2026-10-10 | shadcn/ui queda sobre Base UI (estilo `base-nova`), no Radix; lint con oxlint y formato con Prettier | Es el valor por defecto actual de shadcn |
+| 2026-10-10 | Trabajo por ramas `fase-N/…`, `main` estable, etiqueta por fase (ver CLAUDE.md) | Pedido del usuario: ver las mejoras por separado y poder volver atrás |
+| 2026-10-10 | Repo público en vez de privado | Decisión del usuario; regla de no subir nada personal ni secreto |
 | 2026-10-10 | `npm audit` informativo en CI | Único hallazgo: `@grpc/grpc-js` vía `firebase` (solo build de Node, no llega al navegador) |
 
 ## Ideas para después

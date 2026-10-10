@@ -56,6 +56,20 @@ central, repartidor, cliente.
    de Firebase es pública por diseño; la seguridad está en las reglas.
 10. Campos nuevos en documentos existentes: siempre opcionales o con valor por defecto al leer.
 
+## Ramas y vuelta atrás
+-  es siempre lo estable y lo publicado. **Nunca se trabaja directo en .**
+- Cada paso del plan va en su rama:  (ej. ).
+  Commits pequeños y frecuentes; se sube la rama para que el CI la pruebe.
+- Se une a  con  solo con CI en verde y los agentes de calidad pasados.
+  La rama se conserva en GitHub hasta cerrar la fase.
+- Al cerrar cada fase: etiqueta  en . Es el punto de retorno ante una emergencia
+  ( para mirar; para volver de verdad,  del merge —
+  nunca  ni  sobre ).
+- Solo se despliega a Hosting desde . Para mostrar una rama sin tocar producción: canal de
+  vista previa ().
+- El repo es **público**: antes de cada commit, comprobar que no entra nada personal ni secreto
+  (correos, teléfonos, nombres de empresas reales, claves, datos de clientes).
+
 ## Convenciones
 - Código, nombres de colecciones y comentarios en **inglés**; textos de interfaz en **español
   neutro** (sin asumir género). Precio `S/ 38.00`, hora `3:30 p. m.`.
