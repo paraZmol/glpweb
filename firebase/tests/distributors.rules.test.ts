@@ -196,6 +196,7 @@ describe('founding a distributor (PLAN 2.2)', () => {
     ],
     ['with the approval as text', { listingApproved: 'true' }],
     ['with an approval date while not approved', { approvedAt: serverTimestamp() }],
+    ['with an approver while not approved', { approvedBy: ADMIN_UID }],
     ['with a note written by itself', { reviewNote: 'Todo en orden.' }],
   ])('blocks founding one whose control document is %s', async (_case, change) => {
     const control = controlDoc(FOUNDER, change);
@@ -769,6 +770,15 @@ describe('/distributors/{d} — owner edit', () => {
 
       await assertSucceeds(updateDoc(pending, { name: 'Gas Demo Corregido', ...stamp }));
       await assertSucceeds(updateDoc(pending, { contactPhone: '900000023', ...stamp }));
+    });
+
+    it('blocks the owner of a listing that waits from listing it with an edit of the name', async () => {
+      const pending = target('owner-pending', WORLD.pending.d);
+
+      await assertFails(
+        updateDoc(pending, { name: 'Gas Demo Corregido', acceptingOrders: true, ...stamp }),
+      );
+      await assertFails(updateDoc(pending, { acceptingOrders: true, ...stamp }));
     });
 
     it('blocks the owner from using the return to review to unlist without an edit', async () => {

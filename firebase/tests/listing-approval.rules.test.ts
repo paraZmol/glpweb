@@ -286,6 +286,53 @@ describe('sending a listing back to its owner', () => {
   });
 });
 
+// The return to review is the owner's alone, and it carries nothing else with it.
+describe('the control document of a listing that waits — who else may touch it', () => {
+  it.each([
+    ['its driver', 'driver-pending'],
+    ['the owner of another distributor', 'owner-a'],
+    ['a customer', CUSTOMER_UID],
+  ])(
+    'blocks %s from writing "not approved" over it, although nothing changes',
+    async (_who, uid) => {
+      await assertFails(updateDoc(controlOf(verified(env, uid), PENDING), backToReview()));
+    },
+  );
+
+  it('lets its owner write "not approved" over it again: it is already so', async () => {
+    await assertSucceeds(
+      updateDoc(controlOf(verified(env, 'owner-pending'), PENDING), backToReview()),
+    );
+  });
+
+  it.each([
+    ['its status', { status: 'active' }],
+    ['its trial end', { trialEndsAt: daysFromNow(365) }],
+    ['its founder', { ownerUid: 'driver-pending' }],
+    ['a note', { reviewNote: 'Ya lo corregí.' }],
+  ])(
+    'blocks its owner from changing %s together with the return to review',
+    async (_case, change) => {
+      const control = controlOf(verified(env, 'owner-pending'), PENDING);
+
+      await assertFails(updateDoc(control, { ...backToReview(), ...change }));
+    },
+  );
+
+  it('blocks an approval that never says who signed it, even once approved', async () => {
+    const db = admin();
+    const batch = writeBatch(db);
+    batch.update(controlOf(db, PENDING), {
+      listingApproved: true,
+      approvedAt: serverTimestamp(),
+      ...stamp,
+    });
+    batch.update(profileOf(db, PENDING), { acceptingOrders: true, ...stamp });
+
+    await assertFails(batch.commit());
+  });
+});
+
 describe('listings that wait for review — the platform list', () => {
   const waiting = (db: Db, ...constraints: QueryConstraint[]) =>
     query(collectionGroup(db, 'private'), ...constraints);
