@@ -3,8 +3,11 @@ import { REVIEW_NOTE_MAX_LENGTH } from './constants';
 import {
   answersReviewNote,
   hasReadOnlyDistributor,
+  isInPlatformList,
   isOpenToPublic,
   listingStateOf,
+  PLATFORM_LIST_FILTERS,
+  platformListOf,
   prepareReviewNote,
   statusAfterReactivation,
   touchesIdentity,
@@ -84,6 +87,49 @@ describe('listingStateOf', () => {
 
   it('is not operating when the trial is over', () => {
     expect(listingStateOf(control('trial', BEFORE, true), NOW)).toBe('notOperating');
+  });
+});
+
+// PLAN 2.11. role-walker 2026-10-11: an approved or suspended distributor opened by its address
+// was shown under the title of the pending ones.
+describe('lists of the platform', () => {
+  it.each([
+    ['trial', false, ['inReview']],
+    ['trial', true, ['approved']],
+    ['active', true, ['approved']],
+    ['pastDue', false, ['inReview']],
+    ['suspended', true, ['approved', 'suspended']],
+    ['suspended', false, ['inReview', 'suspended']],
+  ] as const)('a %s distributor, approved %s, shows in %j', (status, listingApproved, expected) => {
+    const listed = PLATFORM_LIST_FILTERS.filter((filter) =>
+      isInPlatformList({ status, listingApproved }, filter),
+    );
+
+    expect(listed).toEqual(expected);
+  });
+
+  it.each([
+    ['trial', false, 'inReview'],
+    ['pastDue', false, 'inReview'],
+    ['active', true, 'approved'],
+    ['pastDue', true, 'approved'],
+    ['suspended', true, 'suspended'],
+    ['suspended', false, 'suspended'],
+  ] as const)(
+    'a %s distributor, approved %s, is looked for in %s',
+    (status, approved, expected) => {
+      expect(platformListOf({ status, listingApproved: approved })).toBe(expected);
+    },
+  );
+
+  it('always looks for a distributor in a list that shows it', () => {
+    for (const status of DISTRIBUTOR_STATUSES) {
+      for (const listingApproved of [true, false]) {
+        const listed = { status, listingApproved };
+
+        expect(isInPlatformList(listed, platformListOf(listed))).toBe(true);
+      }
+    }
   });
 });
 

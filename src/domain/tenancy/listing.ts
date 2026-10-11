@@ -50,6 +50,23 @@ export function answersReviewNote(control: Omit<ReviewTrail, 'correctedAt'>): bo
 export const PLATFORM_LIST_FILTERS = ['inReview', 'approved', 'suspended'] as const;
 export type PlatformListFilter = (typeof PLATFORM_LIST_FILTERS)[number];
 
+type ListedControl = Pick<DistributorControl, 'status' | 'listingApproved'>;
+
+/** Whether a distributor shows in one list of the platform. The repository asks the same. */
+export function isInPlatformList(control: ListedControl, filter: PlatformListFilter): boolean {
+  if (filter === 'suspended') return control.status === 'suspended';
+  return control.listingApproved === (filter === 'approved');
+}
+
+/**
+ * The list a distributor is looked for in when nothing says which: a suspended one among the
+ * suspended (it is where it can be reactivated), else by whether its listing is approved.
+ */
+export function platformListOf(control: ListedControl): PlatformListFilter {
+  if (control.status === 'suspended') return 'suspended';
+  return control.listingApproved ? 'approved' : 'inReview';
+}
+
 /**
  * What a customer uses to recognise and reach the business. Changing any of them after the
  * approval sends the listing back to review: otherwise an approved distributor could turn into
