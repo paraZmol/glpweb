@@ -58,7 +58,7 @@ test('the platform admin opens the platform panel, and nobody else is offered it
   await owner.page.goto('/cuenta');
 
   await expect(admin.page).toHaveURL(/\/plataforma$/);
-  await expect(heading(admin.page)).toHaveText('Distribuidoras.');
+  await expect(heading(admin.page)).toHaveText('Altas pendientes.');
   await expect(admin.page.getByText(DENIED_NOTICE)).toHaveCount(0);
   await expect(heading(owner.page)).toHaveText('Tu cuenta.');
   await expect(owner.page.getByRole('link', { name: 'Abrir Central' })).toBeVisible();
@@ -89,8 +89,9 @@ test('the owners of A and B work at the same time and each sees only their own',
 
   await expect(heading(ownerOfA.page)).toHaveText(`Hoy en ${a.name}.`);
   await expect(heading(ownerOfB.page)).toHaveText(`Hoy en ${b.name}.`);
-  await expect(ownerOfA.page.getByText(`/d/${a.slug}`)).toBeVisible();
-  await expect(ownerOfB.page.getByText(`/d/${b.slug}`)).toBeVisible();
+  // Exact: the listing status above also shows the link, as a whole address (PLAN 2.11).
+  await expect(ownerOfA.page.getByText(`/d/${a.slug}`, { exact: true })).toBeVisible();
+  await expect(ownerOfB.page.getByText(`/d/${b.slug}`, { exact: true })).toBeVisible();
   await expect(ownerOfA.page.getByLabel('Cambiar de distribuidora')).toHaveCount(0);
   for (const path of ['/central', '/cuenta', '/pedidos', '/inicio']) {
     await ownerOfA.page.goto(path);

@@ -104,7 +104,7 @@ export function PlatformHomePage() {
       />
       <div className="grid items-start gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
         {showsList && (
-          <Panel dense className="lg:p-4">
+          <Panel dense className="lg:max-h-[calc(100dvh-11rem)] lg:overflow-y-auto lg:p-4">
             <PendingList pending={pending} />
           </Panel>
         )}
