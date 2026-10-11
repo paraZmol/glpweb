@@ -82,7 +82,7 @@ export function SetupChecklist({ distributor, isListed }: SetupChecklistProps) {
           detail={
             isListed
               ? 'Así la ven tus clientes. Comparte el enlace.'
-              : 'Por ahora solo la ve tu personal: será pública cuando Hornilla revise tus datos.'
+              : 'Ahora solo la ve tu personal: no es pública.'
           }
           action={
             <ButtonLink

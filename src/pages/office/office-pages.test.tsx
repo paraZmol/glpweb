@@ -144,7 +144,7 @@ describe('office home with the listing status (PLAN 2.11)', () => {
     expect(text.indexOf('Tu ficha en Hornilla')).toBeLessThan(
       text.indexOf('Completa tu distribuidora'),
     );
-    expect(text).toContain('Por ahora solo la ve tu personal');
+    expect(text).toContain('Ahora solo la ve tu personal');
     expect(hrefs(html)).toContain(ROUTES.officeProfile);
   });
 

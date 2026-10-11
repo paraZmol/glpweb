@@ -68,7 +68,7 @@ export function ListingReviewView({ review, admin, onDecided }: ListingReviewVie
       {control.reviewNote && (
         <figure className="rounded-lg bg-muted p-3.5">
           <figcaption className="text-[0.8125rem] font-bold text-muted-foreground">
-            Nota enviada a su titular
+            Nota enviada a la distribuidora
           </figcaption>
           <blockquote className="mt-1 font-semibold wrap-anywhere whitespace-pre-line">
             {control.reviewNote}

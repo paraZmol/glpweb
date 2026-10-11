@@ -38,7 +38,7 @@ describe('reviewActionsOf', () => {
 describe('reviewNoteProblemOf', () => {
   it.each(['', '   ', '\n\t'])('asks for a note when it is %j', (note) => {
     expect(reviewNoteProblemOf(note)).toBe(
-      'Escribe qué debe corregir: es lo que su titular va a leer en su panel.',
+      'Escribe qué debe corregir: es lo que la distribuidora va a leer en su panel.',
     );
   });
 

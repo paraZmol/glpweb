@@ -248,7 +248,7 @@ test('the admin asks for changes with a note, the founder corrects the data, and
   await admin.page.getByRole('button', { name: 'Pedir cambios', exact: true }).click();
   await admin.page.getByRole('button', { name: 'Enviar nota' }).click();
   await expect(
-    admin.page.getByText('Escribe qué debe corregir: es lo que su titular va a leer en su panel.'),
+    admin.page.getByText('Escribe qué debe corregir: es lo que la distribuidora va a leer en su panel.'),
   ).toBeVisible();
   await admin.page.getByLabel('Nota para la distribuidora').fill(NOTE);
   await admin.page.getByRole('button', { name: 'Enviar nota' }).click();
