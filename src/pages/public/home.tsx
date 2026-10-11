@@ -10,7 +10,7 @@ import { useDeliveryLocation } from '@/features/location/use-delivery-location';
 import { ICON_STROKE } from '@/lib/icons';
 import { usePageTitle } from '@/lib/page-title';
 
-/** The kitchen photo with the ring behind it and the honest stamp on top. The photo stays clean. */
+/** The kitchen photo with the ring behind it. The photo stays clean. */
 function HeroPhoto() {
   return (
     <div className="relative lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:ml-10">
@@ -22,10 +22,6 @@ function HeroPhoto() {
           fetchPriority="high"
           className="absolute inset-0 size-full object-cover object-[66%_50%] brightness-(--photo-brightness)"
         />
-        <p className="absolute top-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-aji px-3 py-1 text-[0.8125rem] font-bold text-aji-foreground lg:top-5 lg:left-5 lg:text-sm">
-          <Hammer aria-hidden="true" className="size-4" strokeWidth={ICON_STROKE} />
-          En construcción
-        </p>
       </div>
     </div>
   );
@@ -33,7 +29,7 @@ function HeroPhoto() {
 
 /**
  * Home of Hornilla for everybody, with or without a session (PLAN 2.6): say where you are and
- * see which distributors reach you. Phone: headline, photo and the "Entregar en" card riding
+ * see which distributors reach you. Phone: stamp, headline, photo and the "Entregar en" card riding
  * on it. Desktop: headline and card on the left, photo on the right, results on a soft band.
  */
 export function HomePage() {
@@ -44,12 +40,18 @@ export function HomePage() {
     <>
       <div className="mx-auto grid w-full max-w-7xl gap-y-5 px-4 pt-2 pb-8 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-x-14 lg:gap-y-8 lg:px-8 lg:pt-6 lg:pb-16">
         <header className="lg:col-start-1 lg:row-start-1 lg:self-end">
-          <h1 className="text-[2.625rem] font-extrabold text-balance lg:text-7xl">
-            Pide tu gas y <Highlight>míralo llegar.</Highlight>
+          {/* Next to the headline, not on the photo: ordering and tracking are not built yet,
+              and whoever reads only the headline must know it (PLAN 2.11). */}
+          <p className="inline-flex items-center gap-1.5 rounded-full bg-aji px-3 py-1 text-[0.8125rem] font-bold text-aji-foreground lg:text-sm">
+            <Hammer aria-hidden="true" className="size-4" strokeWidth={ICON_STROKE} />
+            En construcción
+          </p>
+          <h1 className="mt-3 text-[2.625rem] font-extrabold text-balance lg:mt-4 lg:text-7xl">
+            Pide tu gas a <Highlight>quien llega a tu puerta.</Highlight>
           </h1>
           <p className="mt-4 max-w-120 text-lg text-pretty text-muted-foreground lg:mt-5 lg:text-xl">
-            Hornilla reúne a las distribuidoras de gas de tu barrio. Dinos dónde estás y mira quién
-            llega hasta tu puerta.
+            Hornilla reúne a las distribuidoras de gas de tu barrio. Dinos dónde estás, mira quién
+            llega hasta ahí y llámala o escríbele. Pedir desde aquí llega pronto.
           </p>
         </header>
         <HeroPhoto />

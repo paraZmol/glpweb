@@ -1,6 +1,6 @@
 import { CheckboxField } from '@/components/common/checkbox-field';
 import { TextLink } from '@/components/common/text-link';
-import { TERMS_VERSION } from '@/domain/legal/versions';
+import { PRIVACY_VERSION, TERMS_VERSION } from '@/domain/legal/versions';
 import type { ConsentErrors } from '@/features/auth/auth-forms';
 import { ROUTES } from '@/lib/routes';
 
@@ -61,7 +61,8 @@ export function LegalConsents({
 export function LegalVersionNote({ className }: { className?: string }) {
   return (
     <p className={className ?? 'text-sm text-muted-foreground tabular-nums'}>
-      Versión {TERMS_VERSION}, preliminar y en revisión.
+      Términos versión {TERMS_VERSION} y Política de privacidad versión {PRIVACY_VERSION},
+      preliminares y en revisión.
     </p>
   );
 }

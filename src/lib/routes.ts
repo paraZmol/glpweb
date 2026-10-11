@@ -22,7 +22,11 @@ export const ROUTES = {
   newDistributor: '/distribuidora/nueva',
   driverHome: '/reparto',
   officeHome: '/central',
+  /** The owner edits the public profile of the distributor (PLAN 2.11). */
+  officeProfile: '/central/ficha',
   platformHome: '/plataforma',
+  /** One listing under review; build a real path with `platformListingPath`. */
+  platformListing: '/plataforma/altas/:distributorId',
 } as const;
 
 const DISTRIBUTOR_PREFIX = '/d/';
@@ -30,6 +34,13 @@ const DISTRIBUTOR_PREFIX = '/d/';
 /** Path of the public page of the distributor that owns `slug` (PLAN 2.5). */
 export function distributorPath(slug: string): string {
   return `${DISTRIBUTOR_PREFIX}${encodeURIComponent(slug)}`;
+}
+
+const LISTING_PREFIX = '/plataforma/altas/';
+
+/** Path of the review of one listing in the platform panel (PLAN 2.11). */
+export function platformListingPath(distributorId: string): string {
+  return `${LISTING_PREFIX}${encodeURIComponent(distributorId)}`;
 }
 
 export const AREA_HOME: Record<AppArea, string> = {
@@ -77,6 +88,41 @@ export function signInPathFrom(from: string): string {
   const target = safeReturnPath(from);
   if (target === null || target === ROUTES.home) return ROUTES.signIn;
   return `${ROUTES.signIn}?${RETURN_PARAM}=${encodeURIComponent(target)}`;
+}
+
+/** Path of the registration screen that remembers where the visitor was going (PLAN 2.11). */
+export function registerPathFrom(from: string | null | undefined): string {
+  const target = safeReturnPath(from);
+  if (target === null || target === ROUTES.home) return ROUTES.register;
+  return `${ROUTES.register}?${RETURN_PARAM}=${encodeURIComponent(target)}`;
+}
+
+/** The pending steps and the entry never are a destination of their own. */
+const NOT_A_DESTINATION: readonly string[] = [
+  ROUTES.verifyEmail,
+  ROUTES.acceptTerms,
+  ROUTES.appEntry,
+  ROUTES.home,
+];
+
+/**
+ * Where an account was going when a pending step (verify the e-mail, accept the terms) stood in
+ * its way. It travels in the navigation state, so the addresses of the steps stay clean and it
+ * lasts as long as the tab (PLAN 2.11). Undefined when there is nowhere special to go.
+ */
+export function destinationState(from: string | null | undefined): { after: string } | undefined {
+  const target = safeReturnPath(from);
+  if (target === null || NOT_A_DESTINATION.includes(target.split(/[?#]/)[0] ?? '')) {
+    return undefined;
+  }
+  return { after: target };
+}
+
+/** Reads what `destinationState` wrote, distrusting it like any other outside value. */
+export function destinationOf(state: unknown): string | null {
+  if (typeof state !== 'object' || state === null || !('after' in state)) return null;
+  const { after } = state;
+  return typeof after === 'string' ? (destinationState(after)?.after ?? null) : null;
 }
 
 export type TransitionDirection = 'forward' | 'back' | 'fade';

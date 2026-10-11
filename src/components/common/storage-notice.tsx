@@ -36,7 +36,8 @@ export function StorageNotice() {
           <p className="min-w-0 flex-1 text-xs leading-snug text-muted-foreground sm:text-sm">
             Hornilla guarda en tu dispositivo solo lo necesario para funcionar
             <span className="hidden sm:inline">
-              : tu sesión, una copia de tus datos recientes y tus preferencias
+              : tu sesión, una copia de tus datos recientes, tus preferencias y el último punto
+              desde el que buscaste
             </span>
             . Sin publicidad ni rastreo.{' '}
             <Link

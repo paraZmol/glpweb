@@ -1,6 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import { SEED_PASSWORD } from '../../seed/data';
 import { markEmailVerified, sentAuthEmails } from '../../support/emulator';
+import { expectDeviceCleared } from '../support/device-storage';
 import { findAuthAccount, readDocument, uniqueTag } from '../support/emulator-admin';
 import { dismissStorageNotice } from '../support/storage-notice';
 
@@ -13,6 +14,8 @@ const TERMS_BOX = /Acepto los Términos y condiciones/;
 const PRIVACY_BOX = /Leí la Política de privacidad/;
 const CURRENT_VERSION = '0.1';
 const NEW_NAME = 'Y. Registro';
+/** Follows the fake pattern 9000000xx of the seed. */
+const NEW_PHONE = '900000097';
 
 const heading = (page: Page) => page.getByRole('heading', { level: 1 });
 
@@ -21,8 +24,6 @@ async function register(page: Page, email: string) {
   await page.getByLabel('Nombre', { exact: true }).fill(NEW_NAME);
   await page.getByLabel('Correo', { exact: true }).fill(email);
   await page.getByLabel('Contraseña', { exact: true }).fill(SEED_PASSWORD);
-  await page.getByRole('checkbox', { name: TERMS_BOX }).check();
-  await page.getByRole('checkbox', { name: PRIVACY_BOX }).check();
   await page.getByRole('button', { name: 'Crear cuenta', exact: true }).click();
   await expect(page).toHaveURL(/\/verificar-correo$/);
 }
@@ -67,6 +68,10 @@ test('a new person registers, verifies the e-mail, accepts the terms and lands o
   // Verified: now the terms, and only then the profile with both acceptances.
   await expect(page).toHaveURL(/\/aceptar-terminos$/);
   expect(await readDocument(`users/${account?.localId}`)).toBeNull();
+  // What was typed when registering waits here to be confirmed or corrected.
+  await expect(page.getByLabel('Nombre', { exact: true })).toHaveValue(NEW_NAME);
+  await expect(page.getByLabel('Celular (opcional)')).toHaveValue('');
+  await page.getByLabel('Celular (opcional)').fill(NEW_PHONE);
   await page.getByRole('checkbox', { name: TERMS_BOX }).check();
   await page.getByRole('checkbox', { name: PRIVACY_BOX }).check();
   await page.getByRole('button', { name: 'Aceptar y continuar' }).click();
@@ -75,6 +80,7 @@ test('a new person registers, verifies the e-mail, accepts the terms and lands o
   // The name typed at registration was kept in the tab and is the one of the profile.
   expect(await readDocument(`users/${account?.localId}`)).toMatchObject({
     displayName: NEW_NAME,
+    phone: NEW_PHONE,
     ownedDistributorIds: [],
     terms: { version: CURRENT_VERSION },
     privacy: { version: CURRENT_VERSION },
@@ -89,14 +95,12 @@ test('a new person registers, verifies the e-mail, accepts the terms and lands o
 });
 
 // PLAN 2.1 (the wait between two verification e-mails, `RESEND_WAIT_SECONDS`).
-// FIXME 2026-10-10 — defect of the app, reported by flow-tester, not fixed here:
-// right after registering, "Reenviar correo" should be held back for a minute ("Reenviar en
-// 0:59"), because an e-mail has just been sent. It is enabled at once: the registration screen
-// navigates to /verificar-correo with the `justRegistered` state, but while it is still on
-// screen (exit transition) it sees a session with no action running and renders its own
-// `<Navigate to="/app" replace />`; /app then redirects to /verificar-correo WITHOUT the state.
-// The browser goes /registro → /verificar-correo → /app → /verificar-correo.
-test.fixme('resending the verification e-mail is held back right after registering', async ({
+// Defect reported by flow-tester on 2026-10-10, fixed on 2026-10-11 (PLAN 2.11): right after
+// registering, "Reenviar correo" was enabled at once. The registration screen navigated to
+// /verificar-correo with the `justRegistered` state but, still on screen during its exit
+// transition, saw a session with no action running and rendered its own redirect to /app,
+// which came back to /verificar-correo WITHOUT the state.
+test('resending the verification e-mail is held back right after registering', async ({
   page,
 }, testInfo) => {
   const email = `registro-${uniqueTag(testInfo)}@example.com`;
@@ -107,16 +111,12 @@ test.fixme('resending the verification e-mail is held back right after registeri
   await expect(page.getByRole('button', { name: /Reenviar en/ })).toBeDisabled();
 });
 
-// PLAN 2.2 ("Falta: que el registro conserve el destino…").
-// FIXME 2026-10-10 — defect of the app, reported by flow-tester, not fixed here:
-// a visitor taps "Súmala a Hornilla", is asked to sign in at /ingresar?desde=/distribuidora/nueva
-// and, having no account, follows "Crear cuenta". The link to /registro drops the `desde`
-// parameter, the registration always navigates to /verificar-correo and, once verified, the
-// guard sends the account to the area of its role: the person ends on /inicio (the customer
-// home) and has to find the way to the sign-up of the distributor again. Expected: after
-// registering, verifying and accepting the terms (the order since PLAN 2.11), land on
-// /distribuidora/nueva.
-test.fixme('registering from "¿Tienes una distribuidora?" ends on the sign-up of the distributor', async ({
+// PLAN 2.2, 2.11 ("que el registro conserve el destino"). Defect reported by flow-tester on
+// 2026-10-10, fixed on 2026-10-11: a visitor taps "Súmala a Hornilla", is asked to sign in at
+// /ingresar?desde=/distribuidora/nueva and, having no account, follows "Crear cuenta". The
+// destination was lost on the way and the person ended on the customer home. Now it travels
+// with the account through the registration, the verification and the terms.
+test('registering from "¿Tienes una distribuidora?" ends on the sign-up of the distributor', async ({
   page,
 }, testInfo) => {
   const email = `registro-${uniqueTag(testInfo)}@example.com`;
@@ -125,7 +125,7 @@ test.fixme('registering from "¿Tienes una distribuidora?" ends on the sign-up o
   await expect(page).toHaveURL(/\/ingresar\?desde=%2Fdistribuidora%2Fnueva$/);
   await expect(page.getByText('Ingresa para continuar.')).toBeVisible();
   await page.getByRole('main').getByRole('link', { name: 'Crear cuenta' }).click();
-  await expect(page).toHaveURL(/\/registro/);
+  await expect(page).toHaveURL(/\/registro\?desde=%2Fdistribuidora%2Fnueva$/);
 
   await register(page, email);
   await verifyAndComeBack(page, email);
@@ -137,4 +137,45 @@ test.fixme('registering from "¿Tienes una distribuidora?" ends on the sign-up o
 
   await expect(page).toHaveURL(/\/distribuidora\/nueva$/);
   await expect(heading(page)).toContainText('tu negocio.');
+});
+
+// PLAN 2.11: the destination also survives a reload of the tab on either pending step.
+test('the destination survives reloading the tab on both pending steps', async ({
+  page,
+}, testInfo) => {
+  const email = `registro-${uniqueTag(testInfo)}@example.com`;
+  await page.goto('/registro?desde=%2Fdistribuidora%2Fnueva');
+  await register(page, email);
+
+  await page.reload();
+  await expect(heading(page)).toContainText('Verifica tu correo.');
+  await verifyAndComeBack(page, email);
+  await expect(page).toHaveURL(/\/aceptar-terminos$/);
+  await page.reload();
+  await page.getByRole('checkbox', { name: TERMS_BOX }).check();
+  await page.getByRole('checkbox', { name: PRIVACY_BOX }).check();
+  await page.getByRole('button', { name: 'Aceptar y continuar' }).click();
+
+  await expect(page).toHaveURL(/\/distribuidora\/nueva$/);
+});
+
+// PLAN 2.11: an account that never verifies its e-mail no longer reaches the terms step, so
+// the way out of deleting it lives on the verification step.
+test('"No quiero continuar" deletes the account that has not verified its e-mail', async ({
+  page,
+}, testInfo) => {
+  const email = `registro-${uniqueTag(testInfo)}@example.com`;
+  await page.goto('/registro');
+  await register(page, email);
+  expect(await findAuthAccount(email)).not.toBeNull();
+
+  await page.getByRole('button', { name: 'No quiero continuar: eliminar mi cuenta' }).click();
+  const confirmation = page.getByRole('group', { name: '¿Eliminar tu cuenta?' });
+  await confirmation.getByRole('button', { name: 'Sí, eliminar mi cuenta' }).click();
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(heading(page)).toContainText('Pide tu gas');
+  expect(await findAuthAccount(email)).toBeNull();
+  await expectDeviceCleared(page);
+  expect(await page.evaluate(() => sessionStorage.getItem('hornilla.pendingProfile'))).toBeNull();
 });

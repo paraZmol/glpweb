@@ -33,7 +33,8 @@ function SessionPanel({ email }: { email: string | null }) {
         Cerrar sesión
       </Button>
       <p className="mt-3 text-sm text-muted-foreground">
-        Al cerrar sesión se borran de este dispositivo tu sesión y la copia de tus datos.
+        Al cerrar sesión se borran de este dispositivo tu sesión, la copia de tus datos y el último
+        punto desde el que buscaste.
       </p>
       <p className="mt-4 border-t pt-4 text-[0.9375rem]">
         <TextLink to={ROUTES.contact}>Contacto y reclamos</TextLink>

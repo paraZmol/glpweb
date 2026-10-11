@@ -9,9 +9,7 @@ import { describeAuthError } from './auth-messages';
 export type FormErrors<Field extends string> = Partial<Record<Field | 'form', string>>;
 
 export type SignInErrors = FormErrors<'email' | 'password'>;
-export type RegistrationErrors = FormErrors<
-  'displayName' | 'email' | 'password' | 'phone' | 'acceptTerms' | 'acceptPrivacy'
->;
+export type RegistrationErrors = FormErrors<'displayName' | 'email' | 'password' | 'phone'>;
 export type ProfileErrors = FormErrors<'displayName' | 'phone'>;
 
 export interface RegistrationForm {
@@ -19,10 +17,6 @@ export interface RegistrationForm {
   email: string;
   password: string;
   phone: string;
-  /** First box: terms and age. */
-  acceptTerms: boolean;
-  /** Second box: privacy policy and use of data (PLAN 2.9). A form without it does not pass. */
-  acceptPrivacy?: boolean;
 }
 
 const MISSING_NAME = 'Escribe tu nombre.';
@@ -64,7 +58,8 @@ export function validateProfile(form: { displayName: string; phone: string }): P
 }
 
 /**
- * The two boxes every account ticks (PLAN 2.9): terms and age; privacy policy and use of data.
+ * The two boxes every account ticks on the terms step (PLAN 2.9, 2.11): terms and age; privacy
+ * policy and use of data.
  * Anything but `true` is a missing consent.
  */
 export function validateConsents(boxes: {
@@ -78,9 +73,9 @@ export function validateConsents(boxes: {
 }
 
 /**
- * Every problem of the registration form at once, so the person fixes them in one go. The two
- * boxes (terms and age; privacy) are two more fields: without both nothing is sent (PLAN 2.7,
- * 2.9).
+ * Every problem of the registration form at once, so the person fixes them in one go. The form
+ * carries no consent (PLAN 2.11): the terms and the privacy policy are accepted on the terms
+ * step, once the e-mail is verified (`validateConsents`).
  */
 export function validateRegistration(form: RegistrationForm): RegistrationErrors {
   return withoutEmpty({
@@ -89,7 +84,6 @@ export function validateRegistration(form: RegistrationForm): RegistrationErrors
     password: isAcceptablePassword(form.password)
       ? undefined
       : describeAuthError(authErrorFor('weakPassword')),
-    ...validateConsents(form),
   });
 }
 

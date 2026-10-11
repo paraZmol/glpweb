@@ -10,6 +10,7 @@ import {
   readLastLocation,
   rememberLastLocation,
   type RememberedLocation,
+  roundedPoint,
 } from '../../lib/last-location';
 
 export type LocateState =
@@ -39,10 +40,12 @@ export interface DeliveryLocation {
  * itself and it never sends the point anywhere: the list is filtered in the browser.
  */
 export function useDeliveryLocation(): DeliveryLocation {
-  const [location, setLocation] = useState<RememberedLocation | null>(readLastLocation);
+  const [location, setLocation] = useState<RememberedLocation | null>(() => readLastLocation());
   const [locateState, setLocateState] = useState<LocateState>({ status: 'idle' });
 
-  const use = useCallback((next: RememberedLocation) => {
+  const use = useCallback((found: RememberedLocation) => {
+    // What is searched is what is kept: the point rounded to about a hundred metres (PLAN 2.11).
+    const next = { ...found, point: roundedPoint(found.point) };
     rememberLastLocation(next);
     setLocation(next);
     setLocateState({ status: 'idle' });

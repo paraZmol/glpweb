@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { APP_AREAS } from '@/domain/auth/access';
 import {
   AREA_HOME,
+  destinationOf,
+  destinationState,
   distributorPath,
+  platformListingPath,
+  registerPathFrom,
   ROUTES,
   safeReturnPath,
   signInPathFrom,
@@ -84,5 +88,59 @@ describe('transitionDirection', () => {
     ['/central', '/central', 'fade'],
   ])('%s → %s is %s', (from, to, expected) => {
     expect(transitionDirection(from, to)).toBe(expected);
+  });
+});
+
+// PLAN 2.11: where a visitor was going survives the registration and both pending steps.
+describe('registerPathFrom', () => {
+  it('keeps the destination of whoever was asked to sign in on the way somewhere', () => {
+    expect(registerPathFrom('/distribuidora/nueva')).toBe(
+      '/registro?desde=%2Fdistribuidora%2Fnueva',
+    );
+  });
+
+  it.each([null, undefined, '', '/', '//evil.example', 'https://evil.example', '/ingresar'])(
+    'is the plain registration for %j',
+    (from) => {
+      expect(registerPathFrom(from)).toBe('/registro');
+    },
+  );
+});
+
+describe('destination carried through the pending steps', () => {
+  it('travels as navigation state and is read back', () => {
+    const state = destinationState('/distribuidora/nueva');
+
+    expect(state).toEqual({ after: '/distribuidora/nueva' });
+    expect(destinationOf({ justRegistered: true, ...state })).toBe('/distribuidora/nueva');
+  });
+
+  it.each(['/verificar-correo', '/aceptar-terminos', '/app', '/', '/registro', null, undefined])(
+    'has nothing to carry for %j',
+    (from) => {
+      expect(destinationState(from)).toBeUndefined();
+    },
+  );
+
+  it.each([
+    null,
+    undefined,
+    'texto',
+    {},
+    { after: 7 },
+    { after: '//evil.example/x' },
+    { after: 'https://evil.example' },
+    { after: '/\\evil.example' },
+    { after: '/aceptar-terminos' },
+  ])('distrusts a state it did not write: %j', (state) => {
+    expect(destinationOf(state)).toBeNull();
+  });
+});
+
+describe('paths of the screens of PLAN 2.11', () => {
+  it('builds the review of a listing and treats it as a detail of the platform home', () => {
+    expect(platformListingPath('abc123')).toBe('/plataforma/altas/abc123');
+    expect(transitionDirection(ROUTES.platformHome, platformListingPath('abc123'))).toBe('forward');
+    expect(transitionDirection(ROUTES.officeProfile, ROUTES.officeHome)).toBe('back');
   });
 });

@@ -7,42 +7,34 @@ test.skip(
   'Needs the seeded emulators: run with E2E_EMULATORS=true',
 );
 
-const TERMS_BOX = /Acepto los Términos y condiciones/;
-const PRIVACY_BOX = /Leí la Política de privacidad/;
+const NEXT_STEP_NOTE =
+  /se aceptan en el paso siguiente, después de verificar tu correo\. Hasta entonces no guardamos tu nombre ni tu celular\./;
 
-// PLAN 2.1, 2.9: registration with the two consent boxes, up to the "verify your e-mail" step.
-test('a new person registers only after ticking both boxes', async ({ page }, testInfo) => {
+// PLAN 2.1, 2.11: registering creates the account and asks for no consent: the terms are
+// accepted after the e-mail is verified. Up to the "verify your e-mail" step.
+test('a new person registers without ticking anything and is told where the terms are accepted', async ({
+  page,
+}, testInfo) => {
   // Its own address on every run: the test leaves the seeded accounts alone.
   const email = `registro-${testInfo.project.name}-${Date.now()}@example.com`;
   await dismissStorageNotice(page);
   await page.goto('/registro');
 
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Crea tu cuenta en Hornilla.');
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
+  await expect(page.getByText(NEXT_STEP_NOTE)).toBeVisible();
+  const form = page.locator('form');
+  await expect(form.getByRole('link', { name: /Términos y condiciones/ })).toBeVisible();
+  await expect(form.getByRole('link', { name: /Política de privacidad/ })).toBeVisible();
+
+  // An incomplete form is not sent: each field says what is missing.
+  await page.getByRole('button', { name: 'Crear cuenta', exact: true }).click();
+  await expect(page.getByText('Escribe tu nombre.')).toBeVisible();
+  await expect(page).toHaveURL(/\/registro$/);
+
   await page.getByLabel('Nombre', { exact: true }).fill('N. Registro');
   await page.getByLabel('Correo', { exact: true }).fill(email);
   await page.getByLabel('Contraseña', { exact: true }).fill(SEED_PASSWORD);
-  await expect(page.getByRole('checkbox', { name: TERMS_BOX })).not.toBeChecked();
-  await expect(page.getByRole('checkbox', { name: PRIVACY_BOX })).not.toBeChecked();
-  await expect(page.getByText('Versión 0.1, preliminar y en revisión.')).toBeVisible();
-
-  // Without the boxes nothing is sent: each one says what is missing.
-  await page.getByRole('button', { name: 'Crear cuenta', exact: true }).click();
-  await expect(
-    page.getByText('Marca esta casilla para aceptar los términos y continuar.'),
-  ).toBeVisible();
-  await expect(
-    page.getByText('Marca esta casilla para autorizar el uso de tus datos y continuar.'),
-  ).toBeVisible();
-  await expect(page).toHaveURL(/\/registro$/);
-
-  // With only the first one, the second is still asked for.
-  await page.getByRole('checkbox', { name: TERMS_BOX }).check();
-  await page.getByRole('button', { name: 'Crear cuenta', exact: true }).click();
-  await expect(
-    page.getByText('Marca esta casilla para autorizar el uso de tus datos y continuar.'),
-  ).toBeVisible();
-  await expect(page).toHaveURL(/\/registro$/);
-
-  await page.getByRole('checkbox', { name: PRIVACY_BOX }).check();
   await page.getByRole('button', { name: 'Crear cuenta', exact: true }).click();
 
   await expect(page).toHaveURL(/\/verificar-correo$/);

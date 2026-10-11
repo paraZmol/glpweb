@@ -38,27 +38,60 @@ const inGate = (page: React.ReactElement, path: string, account = accountOf()) =
   renderStatic(page, { path, shell: <GateShell />, account });
 
 describe('pending steps of an account (PLAN 2.1, 2.7)', () => {
-  it('asks a new Google account for the terms, with the box unticked', () => {
-    const fresh = accountOf({
-      profile: { status: 'ready', data: { profile: null, needsTermsAcceptance: true }, reload },
-    });
-    const html = inGate(<AcceptTermsPage />, ROUTES.acceptTerms, fresh);
-    const boxes = tags(html, 'input');
+  const FRESH = accountOf({
+    profile: { status: 'ready', data: { profile: null, needsTermsAcceptance: true }, reload },
+  });
+  const named = (html: string, name: string) =>
+    tags(html, 'input').find((tag) => tag.includes(`name="${name}"`)) ?? '';
+
+  // PLAN 2.11: the profile is created here, so the name and the phone are confirmed here.
+  it('asks a new account to confirm its name and phone, with both boxes unticked', () => {
+    const html = inGate(<AcceptTermsPage />, ROUTES.acceptTerms, FRESH);
+    const inputs = tags(html, 'input');
+    const boxes = inputs.filter((tag) => tag.includes('type="checkbox"'));
 
     expect(textOf(html)).toContain('Un paso antes de empezar.');
-    expect(boxes.map((box) => /name="([^"]+)"/.exec(box)?.[1])).toEqual([
+    expect(inputs.map((tag) => /name="([^"]+)"/.exec(tag)?.[1])).toEqual([
+      'displayName',
+      'phone',
       'acceptTerms',
       'acceptPrivacy',
     ]);
-    expect(boxes.every((box) => box.includes('type="checkbox"'))).toBe(true);
+    // What the session knows (the name Google gave, or the one typed when registering).
+    expect(named(html, 'displayName')).toContain(`value="${SESSION.displayName}"`);
+    expect(named(html, 'phone')).toContain('value=""');
+    expect(boxes).toHaveLength(2);
     expect(boxes.some((box) => box.includes(' checked=""'))).toBe(false);
     expect(textOf(html)).toContain('Aceptar y continuar');
     expect(textOf(html)).toContain('Cerrar sesión');
   });
 
-  // PLAN 2.9
-  it('sums up the terms in four sentences and offers the way out of deleting the account', () => {
-    const text = textOf(inGate(<AcceptTermsPage />, ROUTES.acceptTerms));
+  it('asks an account that already has a profile only for the two boxes', () => {
+    const html = inGate(<AcceptTermsPage />, ROUTES.acceptTerms);
+
+    expect(tags(html, 'input').map((tag) => /name="([^"]+)"/.exec(tag)?.[1])).toEqual([
+      'acceptTerms',
+      'acceptPrivacy',
+    ]);
+  });
+
+  it('words the two boxes exactly as the legal review fixed them', () => {
+    const text = textOf(inGate(<AcceptTermsPage />, ROUTES.acceptTerms, FRESH)).replaceAll(
+      ' (se abre en otra pestaña)',
+      '',
+    );
+
+    expect(text).toContain(
+      'Acepto los Términos y condiciones de Hornilla y declaro que tengo 18 años o más.',
+    );
+    expect(text).toContain(
+      'Leí la Política de privacidad y autorizo a Hornilla a usar mis datos (nombre, correo, celular y, cuando pida, mis direcciones) para crear mi cuenta y gestionar mis pedidos con la distribuidora que elija. Sé que se guardan en servidores de Google fuera del Perú.',
+    );
+  });
+
+  // PLAN 2.9, 2.11
+  it('sums up the terms in four sentences and names the two versions', () => {
+    const text = textOf(inGate(<AcceptTermsPage />, ROUTES.acceptTerms, FRESH));
 
     expect(text).toContain(
       'Pagas directamente a la distribuidora al recibir. Hornilla no cobra tus pedidos ni guarda tu dinero.',
@@ -66,9 +99,30 @@ describe('pending steps of an account (PLAN 2.1, 2.7)', () => {
     expect(text).toContain(
       'Si una distribuidora no cumple un precio o una promoción, el reclamo se le hace a ella; Hornilla no responde por esa oferta. Esto no te quita los derechos que la ley te da como consumidor.',
     );
-    expect(text).toContain('Versión 0.1, preliminar y en revisión.');
-    expect(text).toContain('No acepto: eliminar mi cuenta');
-    expect(text).not.toContain('¿Eliminar tu cuenta?');
+    expect(text).toContain(
+      'Términos versión 0.1 y Política de privacidad versión 0.1, preliminares y en revisión.',
+    );
+  });
+
+  // PLAN 2.11: "No acepto" always has a real way out.
+  it('lets a new account delete itself, and sends an account with data to ask for it', () => {
+    const fresh = inGate(<AcceptTermsPage />, ROUTES.acceptTerms, FRESH);
+    const renewal = inGate(<AcceptTermsPage />, ROUTES.acceptTerms);
+    const contactLinks = (html: string) =>
+      tags(html, 'a').filter((tag) => tag.includes('href="/contacto"'));
+
+    expect(textOf(fresh)).toContain('No acepto: eliminar mi cuenta');
+    expect(textOf(fresh)).not.toContain('¿Eliminar tu cuenta?');
+    expect(contactLinks(fresh)).toHaveLength(0);
+    expect(textOf(renewal)).toContain('No acepto: pedir que eliminen mi cuenta');
+    expect(textOf(renewal)).not.toContain('No acepto: eliminar mi cuenta');
+    expect(contactLinks(renewal)).toHaveLength(1);
+  });
+
+  it('lets an account that has not verified its e-mail leave by deleting itself', () => {
+    const text = textOf(inGate(<VerifyEmailPage />, ROUTES.verifyEmail));
+
+    expect(text).toContain('No quiero continuar: eliminar mi cuenta');
   });
 
   it('says that only the privacy policy changed when the terms are already accepted', () => {
@@ -143,7 +197,7 @@ describe('my account (PLAN 2.1)', () => {
     const text = textOf(html);
 
     expect(text).toContain(
-      'Al cerrar sesión se borran de este dispositivo tu sesión y la copia de tus datos.',
+      'Al cerrar sesión se borran de este dispositivo tu sesión, la copia de tus datos y el último punto desde el que buscaste.',
     );
     expect(text).toContain(
       'Para eliminar tu cuenta o cambiar tu correo, escribe a Contacto y reclamos',

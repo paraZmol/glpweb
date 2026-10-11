@@ -19,11 +19,10 @@ const VALID: RegistrationForm = {
   email: 'persona@example.com',
   password: 'x'.repeat(MIN_PASSWORD_LENGTH),
   phone: '',
-  acceptTerms: true,
-  acceptPrivacy: true,
 };
 
-// PLAN 2.1 and 2.7: the registration form.
+// PLAN 2.1 and 2.11: the registration form. It carries no consent: nothing is stored before
+// the e-mail is verified, so the two boxes live on the terms step.
 describe('validateRegistration', () => {
   it('accepts a complete form, with or without a phone', () => {
     expect(validateRegistration(VALID)).toEqual({});
@@ -31,33 +30,28 @@ describe('validateRegistration', () => {
     expect(validateRegistration({ ...VALID, email: '  Persona@Example.com ' })).toEqual({});
   });
 
-  it('refuses to go on without the terms box, even when everything else is right', () => {
-    const errors = validateRegistration({ ...VALID, acceptTerms: false });
+  it('asks for no consent: registering records none (PLAN 2.11)', () => {
+    const errors = validateRegistration(VALID);
 
-    expect(errors).toEqual({
-      acceptTerms: 'Marca esta casilla para aceptar los términos y continuar.',
-    });
-    expect(hasErrors(errors)).toBe(true);
+    expect(errors).not.toHaveProperty('acceptTerms');
+    expect(errors).not.toHaveProperty('acceptPrivacy');
+    expect(hasErrors(errors)).toBe(false);
   });
 
-  // PLAN 2.9: the privacy policy has its own box.
-  it.each([
-    ['unticked', { acceptPrivacy: false }],
-    ['missing from the form', { acceptPrivacy: undefined }],
-  ])('refuses to go on with the privacy box %s', (_case, patch) => {
-    const errors = validateRegistration({ ...VALID, ...patch });
-
-    expect(Object.keys(errors)).toEqual(['acceptPrivacy']);
-    expect(errors.acceptPrivacy).toBe(
-      'Marca esta casilla para autorizar el uso de tus datos y continuar.',
-    );
-  });
-
-  // PLAN 2.9: the same two boxes on the pending step of an existing account.
+  // PLAN 2.9, 2.11: the two boxes of the terms step.
   it('checks the two boxes on their own', () => {
     expect(validateConsents({ acceptTerms: true, acceptPrivacy: true })).toEqual({});
-    expect(Object.keys(validateConsents({ acceptTerms: false, acceptPrivacy: false }))).toEqual([
-      'acceptTerms',
+    expect(validateConsents({ acceptTerms: false, acceptPrivacy: false })).toEqual({
+      acceptTerms: 'Marca esta casilla para aceptar los términos y continuar.',
+      acceptPrivacy: 'Marca esta casilla para autorizar el uso de tus datos y continuar.',
+    });
+  });
+
+  it.each([
+    ['unticked', { acceptPrivacy: false }],
+    ['missing', { acceptPrivacy: undefined }],
+  ])('refuses the privacy box %s even with the terms ticked', (_case, patch) => {
+    expect(Object.keys(validateConsents({ acceptTerms: true, ...patch }))).toEqual([
       'acceptPrivacy',
     ]);
   });
@@ -88,17 +82,9 @@ describe('validateRegistration', () => {
       email: '',
       password: '',
       phone: '',
-      acceptTerms: false,
-      acceptPrivacy: false,
     });
 
-    expect(Object.keys(errors).sort()).toEqual([
-      'acceptPrivacy',
-      'acceptTerms',
-      'displayName',
-      'email',
-      'password',
-    ]);
+    expect(Object.keys(errors).sort()).toEqual(['displayName', 'email', 'password']);
     expect(errors.displayName).toBe('Escribe tu nombre.');
   });
 });

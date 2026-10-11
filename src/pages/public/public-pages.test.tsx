@@ -92,7 +92,7 @@ describe('home with the finder (PLAN 2.6)', () => {
   });
 });
 
-describe('registration (PLAN 2.1, 2.7, 2.9)', () => {
+describe('registration (PLAN 2.1, 2.11)', () => {
   const html = inPublicShell(<RegisterPage />, '/registro');
   const inputs = tags(html, 'input');
   const named = (name: string) => inputs.find((tag) => tag.includes(`name="${name}"`)) ?? '';
@@ -103,32 +103,32 @@ describe('registration (PLAN 2.1, 2.7, 2.9)', () => {
       'email',
       'password',
       'phone',
-      'acceptTerms',
-      'acceptPrivacy',
     ]);
     expect(count(html, /<label\b/)).toBe(inputs.length);
     expect(textOf(html)).toContain('Celular (opcional)');
   });
 
-  it.each(['acceptTerms', 'acceptPrivacy'])('shows the %s box unticked', (name) => {
-    expect(named(name)).toContain('type="checkbox"');
-    expect(named(name)).not.toContain(' checked=""');
+  it('is titled without promising an order', () => {
+    const [h1 = ''] = html.match(/<h1\b.*?<\/h1>/s) ?? [];
+
+    expect(textOf(h1)).toBe('Crea tu cuenta en Hornilla.');
   });
 
-  it('words the two boxes exactly as the legal review fixed them', () => {
+  // PLAN 2.11: registering records no consent, so the form has no box to tick.
+  it('asks for no consent and says where the terms are accepted', () => {
     const text = textOf(html).replaceAll(' (se abre en otra pestaña)', '');
 
+    expect(inputs.some((tag) => tag.includes('type="checkbox"'))).toBe(false);
     expect(text).toContain(
-      'Acepto los Términos y condiciones de Hornilla y declaro que tengo 18 años o más.',
+      'Los Términos y condiciones y la Política de privacidad se aceptan en el paso siguiente, después de verificar tu correo.',
     );
-    expect(text).toContain(
-      'Leí la Política de privacidad y autorizo a Hornilla a usar mis datos (nombre, correo, celular y, cuando pida, mis direcciones) para crear mi cuenta y gestionar mis pedidos con la distribuidora que elija. Sé que se guardan en servidores de Google fuera del Perú.',
-    );
-    expect(text).toContain(`Versión ${TERMS_VERSION}, preliminar y en revisión.`);
+    expect(text).not.toMatch(/Acepto los|autorizo a Hornilla/);
   });
 
   it('says what Google hands over under its button, with the official mark as a file', () => {
-    expect(textOf(html)).toContain('Google nos dará tu nombre, tu correo y tu foto de perfil.');
+    expect(textOf(html)).toContain(
+      'Google nos entrega tu nombre, tu correo y tu foto de perfil. La foto no la mostramos ni la usamos: la quitamos del perfil de tu cuenta al terminar el ingreso.',
+    );
     expect(tags(html, 'img').some((tag) => tag.includes('src="/google-g.svg"'))).toBe(true);
   });
 

@@ -11,6 +11,7 @@ import { usePageTitle } from '@/lib/page-title';
 import { useAsyncAction } from '@/lib/use-async-action';
 import { formatCountdown, useCountdown } from '@/lib/use-countdown';
 import { useOnlineStatus } from '@/lib/use-online-status';
+import { DiscardAccount } from './discard-account';
 
 /** Wait between two verification e-mails, so a nervous thumb does not hit the provider's limit. */
 const RESEND_WAIT_SECONDS = 60;
@@ -36,7 +37,8 @@ function wasJustRegistered(state: unknown): boolean {
 
 /**
  * Pending step: the account exists but its e-mail is not verified. When the check succeeds the
- * session changes and the guard (`RequireAccess`) takes the person to their area by itself.
+ * session changes and the guard (`RequireAccess`) takes the person on by itself. Nothing is
+ * stored for the account yet (PLAN 2.11), so whoever does not want to go on deletes it here.
  */
 export function VerifyEmailPage() {
   usePageTitle('Verifica tu correo');
@@ -87,7 +89,14 @@ export function VerifyEmailPage() {
         </>
       }
       footer={
-        <p className="text-muted-foreground">¿No llega? Mira en la carpeta de correo no deseado.</p>
+        <div className="flex flex-col gap-3 text-muted-foreground">
+          <p>¿No llega? Mira en la carpeta de correo no deseado.</p>
+          <DiscardAccount
+            uid={session.uid}
+            disabled={!isOnline || checking.isRunning || resending.isRunning}
+            label="No quiero continuar: eliminar mi cuenta"
+          />
+        </div>
       }
     >
       <div className="flex flex-col gap-3">

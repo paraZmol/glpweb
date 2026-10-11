@@ -48,10 +48,11 @@ export function GoogleButton({ after, disabled, onError }: GoogleButtonProps) {
         <img src={GOOGLE_MARK} alt="" width={20} height={20} className="size-5 shrink-0" />
         Continuar con Google
       </Button>
-      {/* What Google hands over (privacy policy §5). The photo arrives with the account and is
-          neither shown nor used. */}
-      <p className="mt-2 text-center text-sm text-muted-foreground">
-        Google nos dará tu nombre, tu correo y tu foto de perfil. La foto no la usamos.
+      {/* What Google hands over (privacy policy §2 and §5). The photo arrives with the account:
+          the app removes it from the account profile after every sign-in (PLAN 2.11). */}
+      <p className="mt-2 text-center text-sm text-pretty text-muted-foreground">
+        Google nos entrega tu nombre, tu correo y tu foto de perfil. La foto no la mostramos ni la
+        usamos: la quitamos del perfil de tu cuenta al terminar el ingreso.
       </p>
     </div>
   );

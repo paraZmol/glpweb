@@ -3,7 +3,8 @@ import { TextField } from '@/components/common/text-field';
 import { MIN_PASSWORD_LENGTH } from '@/domain/auth/session';
 import { DISPLAY_NAME_MAX_LENGTH } from '@/domain/tenancy/constants';
 import type { RegistrationErrors, RegistrationForm } from '@/features/auth/auth-forms';
-import { LegalConsents, LegalVersionNote } from './legal-consents';
+import { TextLink } from '@/components/common/text-link';
+import { ROUTES } from '@/lib/routes';
 
 export type SetRegistrationField = <Field extends keyof RegistrationForm>(
   field: Field,
@@ -16,7 +17,11 @@ type RegistrationFieldsProps = {
   set: SetRegistrationField;
 };
 
-/** The fields of the registration form (PLAN 2.1) and its two consent boxes (PLAN 2.9). */
+/**
+ * The fields of the registration form (PLAN 2.1). It asks for no consent (PLAN 2.11): nothing is
+ * stored until the e-mail is verified, so the terms and the privacy policy are accepted on the
+ * step after that, and the form says so.
+ */
 export function RegistrationFields({ form, errors, set }: RegistrationFieldsProps) {
   return (
     <>
@@ -62,13 +67,18 @@ export function RegistrationFields({ form, errors, set }: RegistrationFieldsProp
         error={errors.phone}
         hint="9 dígitos. Lo ve la distribuidora a la que le pidas, para coordinar la entrega."
       />
-      <LegalConsents
-        acceptTerms={form.acceptTerms}
-        acceptPrivacy={form.acceptPrivacy === true}
-        onChange={set}
-        errors={errors}
-      />
-      <LegalVersionNote />
+      <p className="text-[0.9375rem] text-muted-foreground">
+        Los{' '}
+        <TextLink to={ROUTES.terms} newTab>
+          Términos y condiciones
+        </TextLink>{' '}
+        y la{' '}
+        <TextLink to={ROUTES.privacy} newTab>
+          Política de privacidad
+        </TextLink>{' '}
+        se aceptan en el paso siguiente, después de verificar tu correo. Hasta entonces no guardamos
+        tu nombre ni tu celular.
+      </p>
     </>
   );
 }

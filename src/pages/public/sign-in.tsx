@@ -19,7 +19,7 @@ import {
 } from '@/features/auth/auth-forms';
 import { useSession } from '@/features/auth/use-session';
 import { usePageTitle } from '@/lib/page-title';
-import { RETURN_PARAM, ROUTES, safeReturnPath } from '@/lib/routes';
+import { registerPathFrom, RETURN_PARAM, ROUTES, safeReturnPath } from '@/lib/routes';
 import { useAsyncAction } from '@/lib/use-async-action';
 import { useFocusFirstInvalid } from '@/lib/use-focus-first-invalid';
 import { useOnlineStatus } from '@/lib/use-online-status';
@@ -37,7 +37,8 @@ export function SignInPage() {
   const session = useSession();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const after = safeReturnPath(searchParams.get(RETURN_PARAM)) ?? ROUTES.appEntry;
+  const target = safeReturnPath(searchParams.get(RETURN_PARAM));
+  const after = target ?? ROUTES.appEntry;
 
   if (session.status === 'signedIn') return <Navigate to={after} replace />;
 
@@ -51,7 +52,7 @@ export function SignInPage() {
       lead="Tus pedidos, tus direcciones y tu distribuidora te esperan."
       footer={
         <p>
-          ¿Primera vez por aquí? <TextLink to={ROUTES.register}>Crear cuenta</TextLink>
+          ¿Primera vez por aquí? <TextLink to={registerPathFrom(target)}>Crear cuenta</TextLink>
         </p>
       }
     >

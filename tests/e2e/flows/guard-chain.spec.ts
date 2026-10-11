@@ -171,18 +171,24 @@ test('"No acepto" deletes the account that never accepted and returns to the hom
   await expect(page.getByText('El correo o la contraseña no coinciden.')).toBeVisible();
 });
 
-// An account that already accepted has data: it cannot be thrown away from this screen.
-test('"No acepto" refuses to delete an account that already has a profile', async ({
+// PLAN 2.11: an account that already accepted has data, so it cannot be thrown away from this
+// screen. It is not offered a button that would only refuse: "No acepto" leads to where the
+// deletion is asked for.
+test('"No acepto" sends an account that already has a profile to ask for its deletion', async ({
   page,
 }, testInfo) => {
   const account = await createTestAccount(uniqueTag(testInfo), { profile: 'outdated' });
   await signInWithPassword(page, account.email, '/aceptar-terminos');
 
-  await page.getByRole('button', { name: 'No acepto: eliminar mi cuenta' }).click();
-  await page.getByRole('button', { name: 'Sí, eliminar mi cuenta' }).click();
+  await expect(page.getByRole('button', { name: 'No acepto: eliminar mi cuenta' })).toHaveCount(0);
+  // A renewal does not ask for the name again: the profile already has one.
+  await expect(page.getByLabel('Nombre', { exact: true })).toHaveCount(0);
+  await page.getByRole('link', { name: 'No acepto: pedir que eliminen mi cuenta' }).click();
 
-  await expect(page.getByText(/Tu cuenta ya tiene datos guardados/)).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Contacto y reclamos' })).toBeVisible();
-  await expect(page).toHaveURL(/\/aceptar-terminos$/);
+  // Asking is not a way around the step: the contact page is public, the areas stay closed.
+  await expect(page).toHaveURL(/\/contacto$/);
+  await expect(heading(page)).toHaveText('Contacto y reclamos.');
   expect(await findAuthAccount(account.email)).not.toBeNull();
+  await page.goto('/inicio');
+  await expect(page).toHaveURL(/\/aceptar-terminos$/);
 });
