@@ -13,6 +13,21 @@ const BUSINESS_PHONE = '900000098';
  */
 export const FOUNDING_PLANT = { latitude: '-5.2', longitude: '-80.63', address: 'Av. Ensayo 700' };
 
+/**
+ * The business verification data the founding requires since PLAN 2.11, and the labels the
+ * wizard is expected to give its three new fields. UNTIL THE SCREEN HAS THEM the wizard cannot
+ * be completed: every flow that founds through the screen is `test.fixme` (dated 2026-10-11).
+ * The RUC is invented: prefix 20, zeros and the check digit that follows from them.
+ */
+export const FOUNDING_VERIFICATION = {
+  taxIdLabel: 'RUC',
+  taxId: '20000000001',
+  legalNameLabel: 'Razón social o nombre del titular',
+  legalName: 'Gas Ensayo S.A.C.',
+  registryLabel: 'Número de ficha del Registro de Hidrocarburos',
+  registry: '00000-074-000099',
+};
+
 export interface FoundingAnswers {
   name: string;
   slug: string;
@@ -31,6 +46,9 @@ export async function fillFoundingWizard(page: Page, { name, slug }: FoundingAns
   await page.getByLabel('Enlace de tu página').fill(slug);
   await expect(page.getByText('Está libre.')).toBeVisible();
   await page.getByLabel('Teléfono del negocio').fill(BUSINESS_PHONE);
+  await page.getByLabel(FOUNDING_VERIFICATION.taxIdLabel).fill(FOUNDING_VERIFICATION.taxId);
+  await page.getByLabel(FOUNDING_VERIFICATION.legalNameLabel).fill(FOUNDING_VERIFICATION.legalName);
+  await page.getByLabel(FOUNDING_VERIFICATION.registryLabel).fill(FOUNDING_VERIFICATION.registry);
   await next(page);
 
   await expect(stepHeading(page)).toContainText('tu planta.');

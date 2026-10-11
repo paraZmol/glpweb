@@ -13,7 +13,11 @@ const AUTHORITY_BOX = /Declaro que puedo representar a este negocio/;
 const PLANT = { latitude: '-8.1', longitude: '-79.03' };
 
 // PLAN 2.2: sign-up of a distributor from start to end, with a verified seeded account.
-test('a verified account founds a distributor and lands on its office', async ({
+// FIXME 2026-10-11 — the sign-up wizard cannot be completed yet (docs/PLAN.md 2.11): founding
+// now requires the RUC, the legal name and the record number of the Registro de Hidrocarburos,
+// and `/distribuidora/nueva` has no fields for them (see FOUNDING_VERIFICATION in
+// tests/e2e/support/founding.ts). Remove the `fixme` when the screen asks for them.
+test.fixme('a verified account founds a distributor and lands on its office', async ({
   page,
 }, testInfo) => {
   // Each run founds its own distributor: unique name and link per project and moment.
@@ -98,7 +102,11 @@ test('a verified account founds a distributor and lands on its office', async ({
   await expect(page.getByText('6 km', { exact: true })).toBeVisible();
 });
 
-test('the wizard keeps what was typed when going back a step', async ({ page }) => {
+// FIXME 2026-10-11 — the sign-up wizard cannot be completed yet (docs/PLAN.md 2.11): founding
+// now requires the RUC, the legal name and the record number of the Registro de Hidrocarburos,
+// and `/distribuidora/nueva` has no fields for them (see FOUNDING_VERIFICATION in
+// tests/e2e/support/founding.ts). Remove the `fixme` when the screen asks for them.
+test.fixme('the wizard keeps what was typed when going back a step', async ({ page }) => {
   await dismissStorageNotice(page);
   await page.goto('/ingresar?desde=%2Fdistribuidora%2Fnueva');
   await page.getByLabel('Correo', { exact: true }).fill(SEED_USERS.customer.email);

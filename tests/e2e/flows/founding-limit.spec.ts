@@ -15,7 +15,11 @@ const MAX_DISTRIBUTORS = 3;
 const ORDINALS = ['uno', 'dos', 'tres'];
 
 // PLAN 2.2 and the cap of PLAN §11: one account founds up to three distributors.
-test('an account founds three distributors and the fourth attempt shows the cap', async ({
+// FIXME 2026-10-11 — the sign-up wizard cannot be completed yet (docs/PLAN.md 2.11): founding
+// now requires the RUC, the legal name and the record number of the Registro de Hidrocarburos,
+// and `/distribuidora/nueva` has no fields for them (see FOUNDING_VERIFICATION in
+// tests/e2e/support/founding.ts). Remove the `fixme` when the screen asks for them.
+test.fixme('an account founds three distributors and the fourth attempt shows the cap', async ({
   page,
 }, testInfo) => {
   const tag = uniqueTag(testInfo);

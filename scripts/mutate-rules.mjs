@@ -23,7 +23,6 @@ const RULES = 'firebase/firestore.rules';
 const TESTS_DIR = 'firebase/tests';
 const DEFAULT_WORKERS = 3;
 
-const DOCS = '/databases/$(database)/documents';
 /** [id, what the broken rule would allow, text to find (exactly once), replacement]. */
 const MUTANTS = [
   ['H01', 'hasRole ignores active', 'member(d).active == true && ', ''],
@@ -31,7 +30,7 @@ const MUTANTS = [
   [
     'H03',
     'platform admin from a token claim',
-    `exists(${DOCS}/platformAdmins/$(request.auth.uid))`,
+    'exists(/databases/$(database)/documents/platformAdmins/$(request.auth.uid))',
     'request.auth.token.platformAdmin == true',
   ],
   ['H04', 'emailVerified always true', 'request.auth.token.email_verified == true', 'true'],
@@ -120,7 +119,102 @@ const MUTANTS = [
     " && value.matches('(?s).*[\\\\pL\\\\pN].*')",
     '',
   ],
-
+  [
+    'H35',
+    'isOpenData ignores the approval',
+    "control.get('listingApproved', false) == true && isWritableData(control)",
+    'isWritableData(control)',
+  ],
+  [
+    'H36',
+    'isOpenData ignores the plan state',
+    "control.get('listingApproved', false) == true && isWritableData(control)",
+    "control.get('listingApproved', false) == true",
+  ],
+  [
+    'H37',
+    'distributor id of any length',
+    "value.matches('^[A-Za-z0-9]{20}$')",
+    "value.matches('^[A-Za-z0-9]+$')",
+  ],
+  ['H38', 'RUC of any prefix', "'^(10|15|16|17|20)[0-9]{9}$'", "'^[0-9]{11}$'"],
+  ['H39', 'RUC of any length', "'^(10|15|16|17|20)[0-9]{9}$'", "'^(10|15|16|17|20)[0-9]*$'"],
+  [
+    'H40',
+    'record number of any characters',
+    "\n        && value.matches('^[A-Z0-9]([A-Z0-9 ./-]*[A-Z0-9])?$')",
+    '',
+  ],
+  [
+    'H41',
+    'record number without a lower bound',
+    'value.size() >= 4 && value.size() <= 40',
+    'value.size() <= 40',
+  ],
+  [
+    'H42',
+    'record number without an upper bound',
+    'value.size() >= 4 && value.size() <= 40',
+    'value.size() >= 4',
+  ],
+  [
+    'H43',
+    'link may carry the name of the platform',
+    "\n        && !value.matches('.*(hornilla|glpweb).*')",
+    '',
+  ],
+  ['H44', 'control approval of any type', '\n        && data.listingApproved is bool', ''],
+  [
+    'H45',
+    'control without the approval field',
+    "'ownerUid', 'status', 'trialEndsAt', 'listingApproved', 'createdAt', 'updatedAt'\n        ])\n        && data.keys().hasOnly",
+    "'ownerUid', 'status', 'trialEndsAt', 'createdAt', 'updatedAt'\n        ])\n        && data.keys().hasOnly",
+  ],
+  [
+    'H46',
+    'control accepts extra fields',
+    "'reviewNote', 'createdAt', 'updatedAt'\n        ])\n        && data.ownerUid is string",
+    "'reviewNote', 'createdAt', 'updatedAt', 'plan', 'note'\n        ])\n        && data.ownerUid is string",
+  ],
+  [
+    'H47',
+    'approval without its date',
+    'return data.approvedAt is timestamp\n        && data.approvedBy is string',
+    'return data.approvedBy is string',
+  ],
+  [
+    'H48',
+    'approval without its author',
+    '\n        && data.approvedBy is string\n        && !(',
+    '\n        && !(',
+  ],
+  ['H49', 'approval that keeps a note for the owner', "\n        && !('reviewNote' in data);", ';'],
+  [
+    'H50',
+    'pending listing that claims an approval date',
+    "return !('approvedAt' in data)\n        && !('approvedBy' in data)",
+    "return !('approvedBy' in data)",
+  ],
+  [
+    'H51',
+    'pending listing that claims an approver',
+    "\n        && !('approvedBy' in data)\n        && (!('reviewNote'",
+    "\n        && (!('reviewNote'",
+  ],
+  [
+    'H52',
+    'review note of any size or type',
+    "(!('reviewNote' in data) || isText(data.reviewNote, 1, 300))",
+    'true',
+  ],
+  ['H53', 'settings RUC unchecked', '\n        && isTaxId(data.taxId)', ''],
+  ['H54', 'settings legal name unchecked', '\n        && isText(data.legalName, 2, 120)', ''],
+  [
+    'H55',
+    'settings record number unchecked',
+    '\n        && isRegistryNumber(data.hydrocarbonsRegistry)',
+    '',
+  ],
   [
     'U01',
     'profile created with distributors',
@@ -181,8 +275,8 @@ const MUTANTS = [
   [
     'U13',
     'any account reads any profile',
-    'allow get: if isSelf(uid);\n\n      allow create: if isSelf(uid)\n        && isValidUserProfile',
-    'allow get: if signedIn();\n\n      allow create: if isSelf(uid)\n        && isValidUserProfile',
+    'allow get: if isSelf(uid);\n\n      // A profile carries the consents',
+    'allow get: if signedIn();\n\n      // A profile carries the consents',
   ],
   [
     'U14',
@@ -227,7 +321,30 @@ const MUTANTS = [
     '\n          && exists(/databases/$(database)/documents/users/$(uid))',
     '',
   ],
-
+  [
+    'U22',
+    'profile created by an unverified account',
+    'allow create: if isSelf(uid)\n        && emailVerified()\n        && isValidUserProfile',
+    'allow create: if isSelf(uid)\n        && isValidUserProfile',
+  ],
+  [
+    'U23',
+    'profile edited by an unverified account',
+    'allow update: if isSelf(uid)\n        && emailVerified()\n        && isValidUserProfile',
+    'allow update: if isSelf(uid)\n        && isValidUserProfile',
+  ],
+  [
+    'U24',
+    'address saved by an unverified account',
+    'allow create: if isSelf(uid)\n          && emailVerified()\n          && isSlot()',
+    'allow create: if isSelf(uid)\n          && isSlot()',
+  ],
+  [
+    'U25',
+    'address edited by an unverified account',
+    'allow update: if isSelf(uid)\n          && emailVerified()\n          && isValidAddress',
+    'allow update: if isSelf(uid)\n          && isValidAddress',
+  ],
   [
     'S01',
     'slug outside a founding',
@@ -259,8 +376,12 @@ const MUTANTS = [
     "hasExactly(request.resource.data, ['distributorId', 'createdAt'])",
     "request.resource.data.keys().hasAll(['distributorId', 'createdAt'])",
   ],
-
-  ['D01', 'search without limit', 'request.query.limit <= 50\n        && ', ''],
+  [
+    'D01',
+    'search without limit',
+    'allow list: if request.query.limit <= 50\n        && resource.data.acceptingOrders == true;',
+    'allow list: if resource.data.acceptingOrders == true;',
+  ],
   [
     'D02',
     'search lists closed distributors',
@@ -269,9 +390,9 @@ const MUTANTS = [
   ],
   [
     'D03',
-    'founding with any flag',
-    '\n        && request.resource.data.acceptingOrders == true',
-    '',
+    'founding already listed',
+    '\n        && request.resource.data.acceptingOrders == false\n        && stampedNow',
+    '\n        && stampedNow',
   ],
   ['D04', 'founding slug unchecked', '\n        && isSlug(request.resource.data.slug)', ''],
   ['D05', 'founding with brands', '\n        && request.resource.data.brands.size() == 0', ''],
@@ -279,7 +400,7 @@ const MUTANTS = [
   [
     'D07',
     'founding without slug document',
-    `\n        && getAfter(${DOCS}/slugs/$(request.resource.data.slug)).data.distributorId == d`,
+    '\n        && getAfter(/databases/$(database)/documents/slugs/$(request.resource.data.slug)).data.distributorId == d',
     '',
   ],
   [
@@ -290,15 +411,15 @@ const MUTANTS = [
   ],
   [
     'D09',
-    'distributor id unchecked',
+    'distributor id chosen by the client',
+    'allow create: if emailVerified()\n        && isDistributorId(d)',
     'allow create: if emailVerified()\n        && isDocId(d)',
-    'allow create: if emailVerified()',
   ],
   [
     'D10',
     'distributor by unverified account',
-    'allow create: if emailVerified()\n        && isDocId(d)',
-    'allow create: if signedIn()\n        && isDocId(d)',
+    'allow create: if emailVerified()\n        && isDistributorId(d)',
+    'allow create: if signedIn()\n        && isDistributorId(d)',
   ],
   [
     'D11',
@@ -321,7 +442,7 @@ const MUTANTS = [
   [
     'D14',
     'flag written freely by staff',
-    '\n            && request.resource.data.acceptingOrders == isWritableData(getAfter(controlPath(d)).data)',
+    '\n            && request.resource.data.acceptingOrders == isOpenData(getAfter(controlPath(d)).data)',
     '',
   ],
   [
@@ -332,15 +453,15 @@ const MUTANTS = [
   ],
   [
     'D16',
-    'owner whitelist includes the flag',
-    "'priceFromCents',\n              'updatedAt'\n            ])",
-    "'priceFromCents',\n              'updatedAt', 'acceptingOrders'\n            ])",
+    'owner unlists or lists without an edit of the identity',
+    "(changesIdentity() ? returnsToReview() : unchanged(['acceptingOrders']))",
+    '(changesIdentity() ? returnsToReview() : true)',
   ],
   [
     'D17',
     'owner whitelist includes the slug',
-    "'priceFromCents',\n              'updatedAt'\n            ])",
-    "'priceFromCents',\n              'updatedAt', 'slug'\n            ])",
+    "'brands', 'priceFromCents',\n              'acceptingOrders', 'updatedAt'\n            ])",
+    "'brands', 'priceFromCents',\n              'acceptingOrders', 'updatedAt', 'slug'\n            ])",
   ],
   [
     'D18',
@@ -357,16 +478,81 @@ const MUTANTS = [
   [
     'D20',
     'flag read from the control before the batch',
-    'isWritableData(getAfter(controlPath(d)).data)\n            && (isStaff',
-    'isWritableData(get(controlPath(d)).data)\n            && (isStaff',
+    'isOpenData(getAfter(controlPath(d)).data)\n            && (isStaff',
+    'isOpenData(get(controlPath(d)).data)\n            && (isStaff',
   ],
   [
     'D21',
     'owner whitelist includes createdAt',
-    "'priceFromCents',\n              'updatedAt'\n            ])",
-    "'priceFromCents',\n              'updatedAt', 'createdAt', 'currency'\n            ])",
+    "'brands', 'priceFromCents',\n              'acceptingOrders', 'updatedAt'\n            ])",
+    "'brands', 'priceFromCents',\n              'acceptingOrders', 'updatedAt', 'createdAt', 'currency'\n            ])",
   ],
-
+  [
+    'D22',
+    'public profile readable whatever its state',
+    'allow get: if resource == null\n        || resource.data.acceptingOrders == true',
+    'allow get: if true\n        || resource.data.acceptingOrders == true',
+  ],
+  [
+    'D23',
+    'unlisted profile readable by any account',
+    '\n        || isStaff(d)\n        || isPlatformAdmin();',
+    '\n        || signedIn();',
+  ],
+  [
+    'D24',
+    'unlisted profile closed to its own staff',
+    '\n        || isStaff(d)\n        || isPlatformAdmin();',
+    '\n        || isPlatformAdmin();',
+  ],
+  [
+    'D25',
+    'unlisted profile closed to platform admins',
+    '\n        || isStaff(d)\n        || isPlatformAdmin();',
+    '\n        || isStaff(d);',
+  ],
+  [
+    'D26',
+    'missing profile reads as a refusal',
+    'allow get: if resource == null\n        || resource',
+    'allow get: if resource',
+  ],
+  [
+    'D27',
+    'name or phone edited without returning to review',
+    "(changesIdentity() ? returnsToReview() : unchanged(['acceptingOrders']))",
+    "(changesIdentity() ? true : unchanged(['acceptingOrders']))",
+  ],
+  [
+    'D28',
+    'identity edit that stays listed',
+    'return request.resource.data.acceptingOrders == false\n          && getAfter(controlPath(d))',
+    'return getAfter(controlPath(d))',
+  ],
+  [
+    'D29',
+    'identity edit that keeps the approval',
+    "request.resource.data.acceptingOrders == false\n          && getAfter(controlPath(d)).data.get('listingApproved', false) == false;",
+    'request.resource.data.acceptingOrders == false;',
+  ],
+  [
+    'D30',
+    'a new name is not an identity edit',
+    ".hasAny(['name', 'contactPhone', 'whatsapp'])",
+    ".hasAny(['contactPhone', 'whatsapp'])",
+  ],
+  [
+    'D31',
+    'a new contact phone is not an identity edit',
+    ".hasAny(['name', 'contactPhone', 'whatsapp'])",
+    ".hasAny(['name', 'whatsapp'])",
+  ],
+  [
+    'D32',
+    'a new WhatsApp is not an identity edit',
+    ".hasAny(['name', 'contactPhone', 'whatsapp'])",
+    ".hasAny(['name', 'contactPhone'])",
+  ],
   [
     'C01',
     'control readable by any account',
@@ -406,50 +592,50 @@ const MUTANTS = [
   [
     'C07',
     'control without owner member',
-    `\n          && getAfter(${DOCS}/distributors/$(d)/members/$(request.auth.uid)).data.role == 'owner'`,
+    "\n          && getAfter(/databases/$(database)/documents/distributors/$(d)/members/$(request.auth.uid)).data.role == 'owner'",
     '',
   ],
   [
     'C08',
     'control without settings',
-    `\n          && getAfter(${DOCS}/distributors/$(d)/private/settings).data.ownerUid == request.auth.uid`,
+    '\n          && getAfter(/databases/$(database)/documents/distributors/$(d)/private/settings).data.ownerUid == request.auth.uid',
     '',
   ],
   [
     'C09',
     'control without the profile record',
-    `\n          && d in getAfter(${DOCS}/users/$(request.auth.uid)).data.ownedDistributorIds`,
-    '',
+    'return d in owned && isOperatingAt(owned, 0)',
+    'return isOperatingAt(owned, 0)',
   ],
   [
     'C10',
     'admin changes the trial end',
-    "onlyChanges(['status', 'updatedAt'])",
-    "onlyChanges(['status', 'trialEndsAt', 'updatedAt'])",
+    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote', 'updatedAt'\n              ])",
+    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote', 'trialEndsAt', 'updatedAt'\n              ])",
   ],
   [
     'C11',
     'admin changes the founder',
-    "onlyChanges(['status', 'updatedAt'])",
-    "onlyChanges(['status', 'ownerUid', 'updatedAt'])",
+    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote', 'updatedAt'\n              ])",
+    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote', 'ownerUid', 'updatedAt'\n              ])",
   ],
   [
     'C12',
-    'status and flag may disagree',
-    '\n          && getAfter(distributorPath(d)).data.acceptingOrders == isWritableData(request.resource.data)',
+    'control and public flag may disagree',
+    '\n          && getAfter(distributorPath(d)).data.acceptingOrders == isOpenData(request.resource.data)',
     '',
   ],
   [
     'C13',
-    'owner changes the status',
-    'allow update: if isPlatformAdmin()\n          && isValidControl',
-    "allow update: if (isPlatformAdmin() || hasRole(d, ['owner']))\n          && isValidControl",
+    'owner changes the status or approves',
+    '              isPlatformAdmin()\n              && onlyChanges([',
+    "              (isPlatformAdmin() || hasRole(d, ['owner']))\n              && onlyChanges([",
   ],
   [
     'C14',
     'control updatedAt free',
-    "&& onlyChanges(['status', 'updatedAt'])\n          && request.resource.data.updatedAt == request.time",
-    "&& onlyChanges(['status', 'updatedAt'])",
+    'allow update: if isValidControl(request.resource.data)\n          && request.resource.data.updatedAt == request.time',
+    'allow update: if isValidControl(request.resource.data)',
   ],
   [
     'C15',
@@ -475,12 +661,84 @@ const MUTANTS = [
     "data.status in ['trial', 'active', 'pastDue', 'suspended']",
     'data.status is string',
   ],
-
+  [
+    'C19',
+    'control founded already approved',
+    "\n          && request.resource.data.listingApproved == false\n          && !('reviewNote' in request.resource.data)",
+    "\n          && !('reviewNote' in request.resource.data)",
+  ],
+  [
+    'C20',
+    'control founded with a note',
+    "\n          && !('reviewNote' in request.resource.data)",
+    '',
+  ],
+  [
+    'C21',
+    'founding with the first owned distributor read-only',
+    'd in owned && isOperatingAt(owned, 0) && isOperatingAt(owned, 1)',
+    'd in owned && isOperatingAt(owned, 1)',
+  ],
+  [
+    'C22',
+    'founding with the second owned distributor read-only',
+    'd in owned && isOperatingAt(owned, 0) && isOperatingAt(owned, 1)',
+    'd in owned && isOperatingAt(owned, 0)',
+  ],
+  ['C23', 'approval not signed', '\n              && approvalIsSigned()', ''],
+  [
+    'C24',
+    'approval with any date',
+    'request.resource.data.approvedAt == request.time\n              && request',
+    'request',
+  ],
+  [
+    'C25',
+    'approval in the name of somebody else',
+    '\n              && request.resource.data.approvedBy == request.auth.uid',
+    '',
+  ],
+  [
+    'C26',
+    'an approval may be re-dated later',
+    "unchanged(['listingApproved', 'approvedAt', 'approvedBy'])",
+    "unchanged(['listingApproved'])",
+  ],
+  [
+    'C27',
+    'owner approves its own listing',
+    '\n              && request.resource.data.listingApproved == false\n              && hasRole',
+    '\n              && hasRole',
+  ],
+  [
+    'C28',
+    'any staff sends the listing back to review',
+    "&& request.resource.data.listingApproved == false\n              && hasRole(d, ['owner'])",
+    '&& request.resource.data.listingApproved == false\n              && isStaff(d)',
+  ],
+  [
+    'C29',
+    'any account sends a listing back to review',
+    "&& request.resource.data.listingApproved == false\n              && hasRole(d, ['owner'])",
+    '&& request.resource.data.listingApproved == false\n              && signedIn()',
+  ],
+  [
+    'C30',
+    'owner writes the review note',
+    "onlyChanges(['listingApproved', 'approvedAt', 'approvedBy', 'updatedAt'])",
+    "onlyChanges(['listingApproved', 'approvedAt', 'approvedBy', 'reviewNote', 'updatedAt'])",
+  ],
+  [
+    'C31',
+    'owner changes the status with the return to review',
+    "onlyChanges(['listingApproved', 'approvedAt', 'approvedBy', 'updatedAt'])",
+    "onlyChanges(['listingApproved', 'approvedAt', 'approvedBy', 'status', 'updatedAt'])",
+  ],
   [
     'P01',
-    'settings readable by any staff',
+    'settings readable by a co-owner',
+    '(resource.data.ownerUid == request.auth.uid || isPlatformAdmin());',
     "(resource.data.ownerUid == request.auth.uid || hasRole(d, ['owner']) || isPlatformAdmin());",
-    '(resource.data.ownerUid == request.auth.uid || isStaff(d) || isPlatformAdmin());',
   ],
   [
     'P02',
@@ -503,14 +761,14 @@ const MUTANTS = [
   [
     'P05',
     'settings outside a founding',
-    '\n          && stampedNow(request.resource.data)\n          && foundedNow(d);\n\n        // Reads added by rules: 1 (get control).',
-    '\n          && stampedNow(request.resource.data);\n\n        // Reads added by rules: 1 (get control).',
+    '\n          && stampedNow(request.resource.data)\n          && foundedNow(d);\n\n        // The verification data',
+    '\n          && stampedNow(request.resource.data);\n\n        // The verification data',
   ],
   [
     'P06',
     'settings edited while read-only',
-    '&& request.resource.data.updatedAt == request.time\n          && writable(d);',
-    '&& request.resource.data.updatedAt == request.time;',
+    'return isWritableData(control)\n            && (',
+    'return (',
   ],
   [
     'P07',
@@ -521,8 +779,8 @@ const MUTANTS = [
   [
     'P08',
     'settings plan editable',
-    "onlyChanges(['ownerName', 'ownerPhone', 'updatedAt'])",
-    "onlyChanges(['ownerName', 'ownerPhone', 'plan', 'ownerEmail', 'updatedAt'])",
+    "'ownerName', 'ownerPhone', 'taxId', 'legalName', 'hydrocarbonsRegistry', 'updatedAt'\n          ])",
+    "'ownerName', 'ownerPhone', 'taxId', 'legalName', 'hydrocarbonsRegistry', 'plan', 'ownerEmail', 'updatedAt'\n          ])",
   ],
   [
     'P09',
@@ -533,16 +791,27 @@ const MUTANTS = [
   [
     'P10',
     'settings updatedAt free',
-    "&& onlyChanges(['ownerName', 'ownerPhone', 'updatedAt'])\n          && request.resource.data.updatedAt == request.time",
-    "&& onlyChanges(['ownerName', 'ownerPhone', 'updatedAt'])",
+    '\n          && request.resource.data.updatedAt == request.time\n          && settingsEditAllowed',
+    '\n          && settingsEditAllowed',
   ],
   [
     'P11',
     'settings terms editable',
-    "onlyChanges(['ownerName', 'ownerPhone', 'updatedAt'])",
-    "onlyChanges(['ownerName', 'ownerPhone', 'terms', 'authorityDeclaredAt', 'updatedAt'])",
+    "'ownerName', 'ownerPhone', 'taxId', 'legalName', 'hydrocarbonsRegistry', 'updatedAt'\n          ])",
+    "'ownerName', 'ownerPhone', 'taxId', 'legalName', 'hydrocarbonsRegistry', 'terms', 'authorityDeclaredAt', 'updatedAt'\n          ])",
   ],
-
+  [
+    'P12',
+    'verification data edited after the approval',
+    "unchanged(['taxId', 'legalName', 'hydrocarbonsRegistry'])\n              || control.get('listingApproved', false) == false",
+    'true',
+  ],
+  [
+    'P13',
+    'settings readable by any signed-in account',
+    '(resource.data.ownerUid == request.auth.uid || isPlatformAdmin());',
+    '(signedIn() || isPlatformAdmin());',
+  ],
   [
     'M01',
     'drivers read the staff',
@@ -664,7 +933,6 @@ const MUTANTS = [
     '&& isValidMember(request.resource.data, d, memberUid)\n          && stampedNow(request.resource.data)',
     '&& isValidMember(request.resource.data, d, memberUid)',
   ],
-
   ['G01', 'memberships without limit', '\n        && request.query.limit <= 20', ''],
   ['G02', 'memberships of anyone', '\n        && resource.data.uid == request.auth.uid', ''],
   [
@@ -672,6 +940,24 @@ const MUTANTS = [
     'memberships for anonymous',
     'allow list: if signedIn()\n        && request.query.limit <= 20',
     'allow list: if request.query.limit <= 20',
+  ],
+  [
+    'G04',
+    'pending listings without limit',
+    'allow list: if request.query.limit <= 50\n        && resource.data.listingApproved == false',
+    'allow list: if resource.data.listingApproved == false',
+  ],
+  [
+    'G05',
+    'control documents of approved distributors listed',
+    '\n        && resource.data.listingApproved == false\n        && isPlatformAdmin();',
+    '\n        && isPlatformAdmin();',
+  ],
+  [
+    'G06',
+    'pending listings for any account',
+    '\n        && resource.data.listingApproved == false\n        && isPlatformAdmin();',
+    '\n        && resource.data.listingApproved == false\n        && signedIn();',
   ],
 ];
 
@@ -698,7 +984,6 @@ const EQUIVALENT = {
   S03: 'the slug id must equal the slug field of the new distributor, which is checked with isSlug() when it is created (pair of D04)',
   S04: VERIFIED_BY_CONTROL,
   D04: 'the slug document it names must exist after the request, and creating that one checks isSlug() on its id (pair of S03)',
-  D09: 'the slug document must carry this id as distributorId, and creating it checks isDocId()',
   D10: VERIFIED_BY_CONTROL,
   C02: 'every other piece needs foundedNow(d), which requires the caller as ownerUid of the control document (pair of H07)',
   C15: 'the distributor, created in the same request, requires a verified e-mail',

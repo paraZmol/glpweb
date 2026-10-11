@@ -13,7 +13,9 @@ test.skip(
 const OFFLINE_BANNER = 'Sin conexión. Mostrando lo último que se guardó.';
 const SAVE_NEEDS_INTERNET = 'Sin conexión: para guardar los cambios necesitas internet.';
 const UNSENT_WARNING = /Hay cambios que todavía no se enviaron porque no hay conexión/;
-const FIRESTORE_WRITES = '**/google.firestore.v1.Firestore/Write/**';
+// Plain writes travel on the Write stream; a transaction (how the profile is saved since PLAN
+// 2.11) reads with `:batchGet` and writes with `:commit`.
+const FIRESTORE_WRITES = /google\.firestore\.v1\.Firestore\/Write\/|documents:(batchGet|commit)/;
 const NEW_NAME = 'X. Cambiada';
 const { a, b } = SEED_DISTRIBUTORS;
 
@@ -93,16 +95,11 @@ test('the account screen says why it cannot save without a connection', async ({
   expect(await readDocument(`users/${account.uid}`)).toMatchObject({ displayName: NEW_NAME });
 });
 
-// PLAN 2.1 ("debe avisar, no quedarse pensando").
-// FIXME 2026-10-10 — defect of the app, reported by flow-tester, not fixed here:
-// when the connection drops AFTER pressing "Guardar cambios" (the device still said "online"
-// when the button was pressed) the button stays on "Guardando…" for as long as the connection
-// is away: `updateDoc` only settles when the server answers, and `saveProfile` has no deadline.
-// The offline banner and "Sin conexión: para guardar los cambios necesitas internet." do show,
-// but the form never says what became of the change (it is queued and is sent if the
-// connection returns while the tab is open). Expected: the button stops spinning and the form
-// says the change is waiting for the connection, or that it was not saved.
-test.fixme('a save cut by a lost connection tells the person instead of spinning for ever', async ({
+// PLAN 2.1 ("debe avisar, no quedarse pensando"). Defect reported by flow-tester on 2026-10-10
+// and fixed on 2026-10-11: the connection drops AFTER pressing "Guardar cambios" (the device
+// still said "online" when the button was pressed). `saveProfile` now has a deadline: the
+// button stops spinning, and nothing stays queued to be sent behind the person's back.
+test('a save cut by a lost connection tells the person instead of spinning for ever', async ({
   page,
   context,
 }, testInfo) => {
@@ -118,10 +115,25 @@ test.fixme('a save cut by a lost connection tells the person instead of spinning
   await expect(page.getByText(OFFLINE_BANNER)).toBeVisible();
   await expect(page.getByText(SAVE_NEEDS_INTERNET)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Guardando…' })).toHaveCount(0);
+  // The change was not saved, and it is not waiting to be sent either: with the connection
+  // back and the page still open, the server keeps the old name.
+  await context.unroute(FIRESTORE_WRITES);
+  await context.setOffline(false);
+  await expect(page.getByText(OFFLINE_BANNER)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+  await expect(page).toHaveURL(/\/$/);
+  expect(await readDocument(`users/${account.uid}`)).toMatchObject({
+    displayName: account.displayName,
+  });
 });
 
 // PLAN 2.9: signing out with a change that never reached the server warns before losing it.
-test('signing out with an unsent change warns first and offers to sign out anyway', async ({
+// FIXME 2026-10-11 — this flow can no longer be produced from a screen: it relied on the profile
+// form leaving its write queued when the connection dropped, and since PLAN 2.11 `saveProfile`
+// never queues (the test above). The warning itself is still there (`endSession` asks
+// `hasUnsentWrites`) for the writes that will be queued on purpose; bring this flow back with
+// the first screen that has one (addresses, PLAN 4.1) and remove the `fixme`.
+test.fixme('signing out with an unsent change warns first and offers to sign out anyway', async ({
   page,
   context,
 }, testInfo) => {

@@ -7,6 +7,7 @@ import {
   type TestProfile,
   uniqueTag,
 } from '../support/emulator-admin';
+import { expectDeviceCleared } from '../support/device-storage';
 import { signInWithPassword, submitSignIn } from '../support/sign-in';
 import { dismissStorageNotice } from '../support/storage-notice';
 
@@ -103,28 +104,38 @@ for (const [profile, title] of PENDING_ACCEPTANCES) {
   });
 }
 
-// The order of the guards (PLAN §11): terms first, then the verified e-mail, then the area.
-test('an account with nothing done goes through the terms, then the e-mail, then its home', async ({
+// The order of the guards (PLAN §11, 2.11): the verified e-mail first, then the terms, then the
+// area. Nothing is stored, and no consent is asked, for an address nobody proved is theirs.
+test('an account with nothing done goes through the e-mail, then the terms, then its home', async ({
   page,
 }, testInfo) => {
   const account = await createTestAccount(uniqueTag(testInfo), {
     emailVerified: false,
     profile: 'none',
   });
-  await signInWithPassword(page, account.email, '/aceptar-terminos');
-  await page.goto('/verificar-correo');
-  await expect(page).toHaveURL(/\/aceptar-terminos$/);
+  await signInWithPassword(page, account.email, '/verificar-correo');
+  for (const path of [...WAYS_AROUND, '/aceptar-terminos']) {
+    await page.goto(path);
+    await expect(page, `typing ${path}`).toHaveURL(/\/verificar-correo$/);
+  }
+  expect(await readDocument(`users/${account.uid}`)).toBeNull();
 
+  await markEmailVerified(account.uid);
+  await page.getByRole('button', { name: 'Ya lo verifiqué' }).click();
+
+  await expect(page).toHaveURL(/\/aceptar-terminos$/);
+  await page.goto('/inicio');
+  await expect(page).toHaveURL(/\/aceptar-terminos$/);
+  expect(await readDocument(`users/${account.uid}`)).toBeNull();
   await page.getByRole('checkbox', { name: TERMS_BOX }).check();
   await page.getByRole('checkbox', { name: PRIVACY_BOX }).check();
   await page.getByRole('button', { name: 'Aceptar y continuar' }).click();
 
-  await expect(page).toHaveURL(/\/verificar-correo$/);
-  await page.goto('/inicio');
-  await expect(page).toHaveURL(/\/verificar-correo$/);
-  await markEmailVerified(account.uid);
-  await page.getByRole('button', { name: 'Ya lo verifiqué' }).click();
   await expect(page).toHaveURL(/\/inicio$/);
+  expect(await readDocument(`users/${account.uid}`)).toMatchObject({
+    terms: { version: CURRENT_VERSION },
+    privacy: { version: CURRENT_VERSION },
+  });
 });
 
 // PLAN 2.9: whoever does not accept can leave, and the account goes with them.
@@ -151,6 +162,9 @@ test('"No acepto" deletes the account that never accepted and returns to the hom
   expect(await findAuthAccount(account.email)).toBeNull();
   expect(await readDocument(`users/${account.uid}`)).toBeNull();
   expect(errors).toEqual([]);
+  // The tab reloads itself once it has cleared what the account left on the device: wait for
+  // that before typing an address, or the two navigations cross.
+  await expectDeviceCleared(page);
   // The account is gone for real: its credentials no longer open anything.
   await page.goto('/ingresar');
   await submitSignIn(page, account.email);

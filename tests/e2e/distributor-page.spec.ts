@@ -7,7 +7,7 @@ test.skip(
   'Needs the seeded emulators: run with E2E_EMULATORS=true',
 );
 
-const { a, d } = SEED_DISTRIBUTORS;
+const { a } = SEED_DISTRIBUTORS;
 
 test.beforeEach(async ({ page }) => {
   await dismissStorageNotice(page);
@@ -55,17 +55,24 @@ test('shows the public profile of a seeded distributor to anybody', async ({ pag
   expect(errors).toEqual([]);
 });
 
-test('says a distributor is not taking orders, without saying why', async ({ page }) => {
-  await page.goto(`/d/${d.slug}`);
+// PLAN 2.11: a distributor that is not open to the public (waiting for its review, suspended,
+// trial over) hands a visitor neither its name nor its phones: its link answers "not found",
+// exactly like a link nobody has. Before, the page showed with "no está recibiendo pedidos".
+for (const hidden of [SEED_DISTRIBUTORS.c, SEED_DISTRIBUTORS.d, SEED_DISTRIBUTORS.e]) {
+  test(`shows nothing of ${hidden.name} to a visitor: not its name, not its phone, not why`, async ({
+    page,
+  }) => {
+    await page.goto(`/d/${hidden.slug}`);
 
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(d.name);
-  await expect(
-    page.getByText('Esta distribuidora no está recibiendo pedidos por ahora.'),
-  ).toBeVisible();
-  await expect(page.getByText(/Abierto ·|suspendid|prueba terminada|pago pendiente/i)).toHaveCount(
-    0,
-  );
-});
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Esta distribuidora no existe.',
+    );
+    const said = await page.locator('body').innerText();
+    expect(said).not.toContain(hidden.name);
+    expect(said).not.toContain(hidden.contactPhone);
+    expect(said).not.toMatch(/suspendid|prueba terminada|pago pendiente|en revisión|aprob/i);
+  });
+}
 
 test('has its own "not found" for a link of no distributor', async ({ page }) => {
   await page.goto('/d/esta-no-existe');

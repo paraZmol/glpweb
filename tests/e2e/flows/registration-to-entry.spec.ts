@@ -39,8 +39,9 @@ test.beforeEach(async ({ page }) => {
   await dismissStorageNotice(page);
 });
 
-// PLAN 2.1, 2.7, 2.9: from nothing to the home of a customer, with the verification in between.
-test('a new person registers, verifies the e-mail and lands on the customer home', async ({
+// PLAN 2.1, 2.7, 2.9, 2.11: from nothing to the home of a customer. The order is: register,
+// verify the e-mail, accept the terms. Nothing is stored before the e-mail is verified.
+test('a new person registers, verifies the e-mail, accepts the terms and lands on the customer home', async ({
   page,
 }, testInfo) => {
   const errors: string[] = [];
@@ -58,17 +59,27 @@ test('a new person registers, verifies the e-mail and lands on the customer home
   ).toHaveLength(1);
   const account = await findAuthAccount(email);
   expect(account?.emailVerified).toBe(false);
-  // Both acceptances are on record from the first moment, with their version.
+  // Nobody has proved yet that the address is theirs: no profile, no consent on record.
+  expect(await readDocument(`users/${account?.localId}`)).toBeNull();
+
+  await verifyAndComeBack(page, email);
+
+  // Verified: now the terms, and only then the profile with both acceptances.
+  await expect(page).toHaveURL(/\/aceptar-terminos$/);
+  expect(await readDocument(`users/${account?.localId}`)).toBeNull();
+  await page.getByRole('checkbox', { name: TERMS_BOX }).check();
+  await page.getByRole('checkbox', { name: PRIVACY_BOX }).check();
+  await page.getByRole('button', { name: 'Aceptar y continuar' }).click();
+
+  await expect(page).toHaveURL(/\/inicio$/);
+  // The name typed at registration was kept in the tab and is the one of the profile.
   expect(await readDocument(`users/${account?.localId}`)).toMatchObject({
     displayName: NEW_NAME,
     ownedDistributorIds: [],
     terms: { version: CURRENT_VERSION },
     privacy: { version: CURRENT_VERSION },
   });
-
-  await verifyAndComeBack(page, email);
-
-  await expect(page).toHaveURL(/\/inicio$/);
+  expect(await page.evaluate(() => sessionStorage.getItem('hornilla.pendingProfile'))).toBeNull();
   await expect(heading(page)).toContainText('Hola, Y.');
   // The session survives a reload and the account shows what was typed.
   await page.goto('/cuenta');

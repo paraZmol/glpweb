@@ -27,23 +27,32 @@ Titular de la plataforma: [razón social], RUC [número], [domicilio]. Contacto:
 - **Clientes**: personas de 18 años o más que piden gas.
 - **Distribuidoras**: negocios que publican su catálogo, reciben pedidos y gestionan su reparto.
   Quien registra una distribuidora declara que puede representarla y que el negocio cuenta con
-  las autorizaciones que la ley exige para comercializar GLP. Hornilla puede pedirle que lo
-  acredite y dejar de mostrar a la distribuidora mientras no lo haga.
+  las autorizaciones que la ley exige para comercializar GLP, e indica su RUC, su razón social o
+  el nombre de su titular y su número de ficha del Registro de Hidrocarburos. Hornilla puede
+  pedirle que lo acredite y dejar de mostrar a la distribuidora mientras no lo haga.
 - **Personal de la distribuidora**: repartidores y central, invitados por la distribuidora.
 
 Todas las personas que crean una cuenta declaran tener 18 años o más.
 
-Hoy una distribuidora aparece en el buscador en cuanto se registra, con los datos que ella misma
-escribe. **Que una distribuidora aparezca en Hornilla no significa que Hornilla haya comprobado
-su identidad, sus autorizaciones ni sus datos de contacto.** Si crees que una ficha suplanta a
-otro negocio o tiene datos falsos, avisa a Hornilla (sección 8).
+Una distribuidora no se muestra en cuanto se registra. Antes de que aparezca en el buscador y de
+que su página pueda verse, Hornilla revisa los datos que declaró: su nombre, sus datos de
+contacto, su RUC, su razón social o el nombre de su titular y su número de ficha del Registro de
+Hidrocarburos. Si después cambia su nombre, su teléfono o su WhatsApp, deja de mostrarse hasta
+una nueva revisión. **Esa revisión se hace sobre lo que la distribuidora declara: Hornilla no
+garantiza que esos datos sean ciertos ni que el negocio cuente con las autorizaciones que la ley
+exige, que siguen siendo responsabilidad de quien lo registra.** Si crees que una ficha suplanta
+a otro negocio o tiene datos falsos, avisa a Hornilla (sección 8).
 
 ## 3. Cuenta
 Cada persona es responsable de la veracidad de sus datos y de cuidar su contraseña. Hornilla puede
 suspender una cuenta que incumpla estos términos, suplante a otra persona o use la plataforma
 para fines distintos a pedir o vender gas.
 
-Una misma cuenta puede registrar hasta 3 distribuidoras.
+La cuenta se completa después de verificar el correo: hasta entonces Hornilla no guarda el
+nombre, el celular ni la aceptación de estos términos, que se registra en el paso siguiente.
+
+Una misma cuenta puede registrar hasta 3 distribuidoras, y no puede registrar otra mientras una
+de las suyas esté suspendida, con un pago pendiente o con el periodo de prueba terminado.
 
 ## 4. Precios, productos y promociones
 1. Los precios, productos, horarios, zonas de reparto, promociones y descuentos que se muestran
@@ -104,18 +113,19 @@ precio se informa antes de contratarlo. [Condiciones del plan por definir.]
 
 Al terminar el periodo de prueba sin un plan activo, o si Hornilla suspende a la distribuidora,
 su panel queda en solo lectura: no puede recibir pedidos ni cambiar sus datos hasta regularizar
-su situación. También deja de mostrarse en el buscador; cuando la causa es el fin de la prueba,
-eso ocurre en cuanto alguien de su personal abre el panel o Hornilla revisa la ficha, y hasta
-entonces puede seguir apareciendo aunque ya no reciba pedidos. Su página propia sigue visible
-para quien tenga el enlace, con sus datos de contacto y el aviso de que no está recibiendo
-pedidos, sin indicar el motivo.
+su situación. También deja de mostrarse en el buscador y su página propia deja de poder verse:
+quien abra su enlace no encuentra la página ni sus datos de contacto, y solo la ven su personal y
+Hornilla. Cuando Hornilla la suspende, eso ocurre en el momento. Cuando la causa es el fin de la
+prueba, ocurre en cuanto alguien de su personal abre el panel o Hornilla revisa la ficha, y hasta
+entonces puede seguir apareciendo aunque ya no reciba pedidos.
 
-La ficha de la distribuidora es pública: cualquiera puede ver su nombre, su enlace, el teléfono y
-el WhatsApp del negocio, su dirección y la ubicación de su planta, su zona de reparto, su horario,
-sus marcas y precios, su tope de balones por pedido, si atiende pedidos en este momento y las
+Mientras la distribuidora está aprobada y puede operar, su ficha es pública: cualquiera puede ver
+su nombre, su enlace, el teléfono y el WhatsApp del negocio, su dirección y la ubicación de su
+planta, su zona de reparto, su horario, sus marcas y precios, su tope de balones por pedido y las
 fechas en que se registró y en que cambió su ficha por última vez. El registro avisa de los
-principales antes de crear la distribuidora. Su situación con Hornilla (prueba, plan, pagos o
-suspensión) no es pública. El detalle está en la Política de privacidad.
+principales antes de crear la distribuidora. Su situación con Hornilla (revisión, prueba, plan,
+pagos o suspensión), su RUC, su razón social y su número de ficha del Registro de Hidrocarburos
+no son públicos. El detalle está en la Política de privacidad.
 
 ## 11. Cambios
 Hornilla puede actualizar estos términos. Los cambios importantes se avisan en la aplicación y
@@ -125,6 +135,12 @@ requieren aceptación para seguir usándola.
 Estos términos se rigen por las leyes de la República del Perú.
 
 ## Historial de cambios
+- 0.1, quinta redacción (2026-10-11): una distribuidora ya no aparece en cuanto se registra:
+  Hornilla revisa antes los datos que declara, sin garantizar que sean ciertos ni sus
+  autorizaciones, y vuelve a revisarla si cambia su nombre o sus teléfonos; el registro pide RUC,
+  razón social y número de ficha del Registro de Hidrocarburos, que no son públicos; la página de
+  una distribuidora que no recibe pedidos deja de poder verse; la cuenta se completa después de
+  verificar el correo; quien tiene una distribuidora en solo lectura no puede registrar otra.
 - 0.1, cuarta redacción (2026-10-10): segunda revisión de cumplimiento. La nota inicial dice qué
   funciona hoy; se aclara que aparecer en Hornilla no significa haber sido verificada y que
   Hornilla puede pedir a la distribuidora que acredite lo que declara; la sección de ubicación
