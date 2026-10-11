@@ -23,6 +23,28 @@ export const SEED_HOME_PATH: Record<SeedUserKey, string> = {
   founder: '/inicio',
 };
 
+/** Fills the sign-in form on the screen and sends it. The caller says where it must land. */
+export async function submitSignIn(page: Page, email: string): Promise<void> {
+  await page.getByLabel('Correo', { exact: true }).fill(email);
+  await page.getByLabel('Contraseña', { exact: true }).fill(SEED_PASSWORD);
+  await page.getByRole('button', { name: 'Ingresar', exact: true }).click();
+}
+
+/**
+ * Signs in through the real form with any account that uses the password of the seed (the
+ * seeded ones and the ones a test creates for itself) and waits until the app has taken it to
+ * `landsOn`, a path.
+ */
+export async function signInWithPassword(
+  page: Page,
+  email: string,
+  landsOn: string,
+): Promise<void> {
+  await page.goto(SIGN_IN_PATH);
+  await submitSignIn(page, email);
+  await expect(page).toHaveURL(new RegExp(`${landsOn}$`));
+}
+
 /**
  * Signs in through the real form with one of the accounts of the seed (tests/seed/data.ts) and
  * waits until the app has taken it to its own area. Needs `E2E_EMULATORS=true`: the build then
@@ -31,10 +53,6 @@ export const SEED_HOME_PATH: Record<SeedUserKey, string> = {
  */
 export async function signInAsSeedUser(page: Page, key: SeedUserKey): Promise<SeedUser> {
   const user: SeedUser = SEED_USERS[key];
-  await page.goto(SIGN_IN_PATH);
-  await page.getByLabel('Correo', { exact: true }).fill(user.email);
-  await page.getByLabel('Contraseña', { exact: true }).fill(SEED_PASSWORD);
-  await page.getByRole('button', { name: 'Ingresar', exact: true }).click();
-  await expect(page).toHaveURL(new RegExp(`${SEED_HOME_PATH[key]}$`));
+  await signInWithPassword(page, user.email, SEED_HOME_PATH[key]);
   return user;
 }
