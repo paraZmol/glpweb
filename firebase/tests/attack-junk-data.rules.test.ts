@@ -229,4 +229,14 @@ describe('staff and owner data — junk an owner writes about others', () => {
       foundDistributor(verified(env, FOUNDER), { ...NEW, settings: privateDoc(FOUNDER, change) }),
     );
   });
+
+  it('blocks the founder from editing the private settings without the server time', async () => {
+    const settings = doc(verified(env, 'owner-a'), `distributors/${WORLD.a.d}/private/settings`);
+    const FUTURE = Timestamp.fromDate(new Date('2099-01-01T00:00:00Z'));
+
+    await assertFails(updateDoc(settings, { ownerName: 'A. Nueva' }));
+    await assertFails(updateDoc(settings, { ownerName: 'A. Nueva', updatedAt: PAST }));
+    await assertFails(updateDoc(settings, { ownerName: 'A. Nueva', updatedAt: FUTURE }));
+    await assertSucceeds(updateDoc(settings, { ownerName: 'A. Nueva', ...stamp }));
+  });
 });

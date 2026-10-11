@@ -681,8 +681,12 @@ const MUTANTS = [
  */
 const WHOLE_STRING =
   'matches() of the rules always compares the whole string: the anchor is redundant';
+// The pieces of the founding batch vouch for one another, so some checks are written twice on
+// purpose: breaking one copy changes nothing while the other stands.
+const VERIFIED_BY_CONTROL =
+  'the piece needs foundedNow(d), so the control document is created in the same request, and that requires a verified e-mail';
 const EQUIVALENT = {
-  H07: 'a control document stamped with request.time was created by this request, and creating it already requires the caller as ownerUid',
+  H07: 'a control document stamped with request.time was created by this request, and creating it already requires the caller as ownerUid (pair of C02)',
   H09: WHOLE_STRING,
   H12: WHOLE_STRING,
   H21: WHOLE_STRING,
@@ -690,6 +694,18 @@ const EQUIVALENT = {
   H32: WHOLE_STRING,
   H33: WHOLE_STRING,
   H24: 'creating the settings requires plan == "trial" and no update may change it: the list in the validator is a second lock',
+  U12: 'the id is then passed to foundedNow(), which only holds for a distributor created in this request, whose id is checked there and in the slug',
+  S03: 'the slug id must equal the slug field of the new distributor, which is checked with isSlug() when it is created (pair of D04)',
+  S04: VERIFIED_BY_CONTROL,
+  D04: 'the slug document it names must exist after the request, and creating that one checks isSlug() on its id (pair of S03)',
+  D09: 'the slug document must carry this id as distributorId, and creating it checks isDocId()',
+  D10: VERIFIED_BY_CONTROL,
+  C02: 'every other piece needs foundedNow(d), which requires the caller as ownerUid of the control document (pair of H07)',
+  C15: 'the distributor, created in the same request, requires a verified e-mail',
+  P09: 'the control document requires the settings to carry the caller as ownerUid',
+  M04: 'the control document requires the member of the caller to have role owner',
+  M08: VERIFIED_BY_CONTROL,
+  G03: 'without a session request.auth is null, so comparing resource.data.uid with request.auth.uid fails',
 };
 
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');

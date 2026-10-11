@@ -9,6 +9,7 @@ import {
   doc,
   getDoc,
   serverTimestamp,
+  setDoc,
   Timestamp,
   type WriteBatch,
   writeBatch,
@@ -283,6 +284,41 @@ describe('founding — hostile ids and slugs', () => {
     ['a slash-free path trick', 'gas-nuevo%2Fotro'],
   ])('blocks a slug with %s', async (_case, slug) => {
     await assertFails(foundDistributor(verified(env, FOUNDER), { ...NEW, slug }));
+  });
+});
+
+// Each piece of the batch vouches for the others, so a missing check in one is usually covered
+// by another. These are the cases where it is not: data a script left half-written.
+describe('founding — over data that was left half-written', () => {
+  const ORPHAN = 'dist-orphan';
+  const ORPHAN_SLUG = 'gas-huerfano';
+
+  it('blocks creating, on its own, the distributor an orphan slug points at', async () => {
+    await seedDoc(env, `slugs/${ORPHAN_SLUG}`, { distributorId: ORPHAN, createdAt: PAST });
+    const db = verified(env, FOUNDER);
+
+    await assertFails(setDoc(doc(db, `distributors/${ORPHAN}`), distributorDoc(ORPHAN_SLUG)));
+  });
+
+  it('blocks taking over a distributor that has no control document', async () => {
+    await seedDoc(env, `distributors/${ORPHAN}`, distributorDoc(ORPHAN_SLUG, old));
+    await seedDoc(env, `slugs/${ORPHAN_SLUG}`, { distributorId: ORPHAN, createdAt: PAST });
+    const db = verified(env, FOUNDER);
+
+    // Every piece of a founding except the distributor, which is already there.
+    const batch = writeBatch(db);
+    batch.set(doc(db, `distributors/${ORPHAN}/private/control`), controlDoc(FOUNDER));
+    batch.set(
+      doc(db, `distributors/${ORPHAN}/members/${FOUNDER}`),
+      memberDoc(ORPHAN, FOUNDER, 'owner'),
+    );
+    batch.set(doc(db, `distributors/${ORPHAN}/private/settings`), privateDoc(FOUNDER));
+    batch.update(doc(db, `users/${FOUNDER}`), { ownedDistributorIds: [ORPHAN], ...stamp });
+    await assertFails(batch.commit());
+
+    await assertFails(
+      setDoc(doc(db, `distributors/${ORPHAN}/private/control`), controlDoc(FOUNDER)),
+    );
   });
 });
 
