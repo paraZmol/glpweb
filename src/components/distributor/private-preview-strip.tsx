@@ -13,7 +13,7 @@ export function PrivatePreviewStrip() {
     <div role="status" className="bg-foreground text-background">
       <p className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-[0.9375rem] font-semibold lg:px-8">
         <EyeOff aria-hidden="true" className="size-5 shrink-0" strokeWidth={ICON_STROKE} />
-        <span>Solo tú ves esta página: todavía no es pública.</span>
+        <span>Solo el personal de tu distribuidora ve esta página: ahora no es pública.</span>
         <Link to={ROUTES.officeHome} className="rounded-sm underline underline-offset-4">
           Ir a mi central
         </Link>

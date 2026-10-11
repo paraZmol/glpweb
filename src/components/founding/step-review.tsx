@@ -26,11 +26,11 @@ function summaryOf(form: FoundingForm): [term: string, value: string][] {
 // Reviewed by `legal-compliance` (PLAN 2.11): change them together with docs/legal. The summary
 // above them holds public data only, which is what makes the first sentence true.
 export const PUBLIC_NOTICE =
-  'Todo lo de este resumen será público, también el teléfono, el WhatsApp, la dirección y la ubicación de la planta. Tu celular personal, tu RUC y tu registro no.';
+  'Todo lo de este resumen será público, también el teléfono, el WhatsApp, la dirección y la ubicación de la planta. Tu celular personal, tu RUC, tu razón social y tu número de ficha no.';
 export const WHAT_COMES_NEXT =
-  'Tu distribuidora se crea ahora y puedes configurarla de inmediato. Aparecerá en el buscador cuando Hornilla revise sus datos.';
+  'Tu distribuidora se crea ahora y puedes configurarla de inmediato. Aparecerá en el buscador cuando Hornilla revise sus datos. Los 30 días de prueba corren desde hoy, también durante la revisión. Revisar no es certificar: lo que declaras sigue siendo tu responsabilidad.';
 export const TRIAL_NOTE =
-  '30 días de prueba gratis. No pedimos tarjeta. Los planes y sus precios se publicarán antes de que termine tu prueba; si no eliges uno, tu panel queda en solo lectura.';
+  '30 días de prueba gratis desde hoy. No pedimos tarjeta y no hay ningún cobro al terminar. El precio de cada plan se informa antes de contratarlo; si al terminar la prueba no tienes un plan, tu panel queda en solo lectura y tu página deja de verse.';
 
 /**
  * Step 4 (PLAN 2.2, 2.9, 2.11): what is about to be created, what of it will be public, what

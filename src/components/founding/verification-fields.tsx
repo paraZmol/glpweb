@@ -1,17 +1,21 @@
 import { LockKeyhole } from 'lucide-react';
 import { TextField } from '@/components/common/text-field';
+import { TextLink } from '@/components/common/text-link';
 import {
   HYDROCARBONS_REGISTRY_MAX_LENGTH,
   LEGAL_NAME_MAX_LENGTH,
 } from '@/domain/tenancy/constants';
 import type { BusinessVerificationInput } from '@/domain/tenancy/verification-input';
 import { ICON_STROKE } from '@/lib/icons';
+import { ROUTES } from '@/lib/routes';
 
 /** Eleven digits, with room for the spaces or hyphens people type between them. */
 const TAX_ID_INPUT_MAX_LENGTH = 14;
 
+// Reviewed by `legal-compliance` (PLAN 2.11): change it together with docs/legal. The sentence
+// ends with the link to the privacy policy, which is why the full stop is not in the constant.
 export const VERIFICATION_NOTE =
-  'Estos tres datos no se publican. Hornilla los usa para revisar tu distribuidora antes de mostrarla.';
+  'Estos tres datos no se publican. Hornilla los usa para revisar tu distribuidora antes de mostrarla; solo los ven tú y la administración de Hornilla. El detalle está en la';
 
 type VerificationFieldsProps = {
   values: BusinessVerificationInput;
@@ -35,7 +39,13 @@ export function VerificationFields({ values, errors, onChange }: VerificationFie
           className="mt-0.5 size-5 shrink-0 text-flame-text"
           strokeWidth={ICON_STROKE}
         />
-        {VERIFICATION_NOTE}
+        <span>
+          {VERIFICATION_NOTE}{' '}
+          <TextLink to={ROUTES.privacy} newTab>
+            Política de privacidad
+          </TextLink>
+          .
+        </span>
       </p>
       <TextField
         label="RUC"

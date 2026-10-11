@@ -10,6 +10,7 @@ import { usePageTitle } from '@/lib/page-title';
 import { isJustFounded } from '@/lib/routes';
 import { ListingStatus } from './listing-status';
 import { PlanChip } from './plan-chip';
+import { isSuspended, SuspendedNotice } from './read-only-notice';
 import { SetupChecklist } from './setup-checklist';
 
 const PUBLIC_LINK_PREFIX = '/d/';
@@ -27,7 +28,7 @@ function DistributorFacts({ distributor, role }: { distributor: Distributor; rol
       <dl className="mt-3 flex flex-col divide-y">
         {facts.map(([term, value]) => (
           <div key={term} className="flex items-baseline justify-between gap-4 py-2.5">
-            <dt className="text-muted-foreground">{term}</dt>
+            <dt className="shrink-0 text-muted-foreground">{term}</dt>
             <dd className="min-w-0 truncate font-semibold tabular-nums">{value}</dd>
           </div>
         ))}
@@ -60,6 +61,9 @@ export function OfficeHomePage() {
   if (current.status !== 'ready') return <OfficeHomeSkeleton />;
   const { distributor, membership, isWritable, listing } = current;
   const isOwner = membership.role === 'owner';
+  const isHeldByPlatform = isSuspended(distributor.status);
+  // An approved listing that was suspended says so in its own panel, right below: not twice.
+  const showsReadOnly = !isWritable && !(isHeldByPlatform && listing === 'notOperating');
 
   return (
     <div className="flex flex-col gap-6">
@@ -75,10 +79,13 @@ export function OfficeHomePage() {
           configurarla desde ahora, y aparecerá en el buscador cuando Hornilla revise sus datos.
         </InlineAlert>
       )}
-      {!isWritable && (
+      {showsReadOnly && (
         <InlineAlert tone="info">
-          Tu distribuidora está en solo lectura: puedes ver todo, pero no registrar cambios hasta
-          regularizar el plan.
+          {isHeldByPlatform ? (
+            <SuspendedNotice />
+          ) : (
+            'Tu distribuidora está en solo lectura: puedes ver todo, pero no registrar cambios hasta regularizar el plan.'
+          )}
         </InlineAlert>
       )}
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">

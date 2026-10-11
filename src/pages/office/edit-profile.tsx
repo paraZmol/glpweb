@@ -13,6 +13,7 @@ import { ICON_STROKE } from '@/lib/icons';
 import { usePageTitle } from '@/lib/page-title';
 import { ROUTES } from '@/lib/routes';
 import { ProfileEditFormPanel } from './profile-edit-form';
+import { isSuspended, SuspendedNotice } from './read-only-notice';
 
 const SAVED = 'Guardamos los cambios de tu ficha.';
 const SAVED_AND_IN_REVIEW =
@@ -78,8 +79,11 @@ export function EditProfilePage() {
       />
       {!isWritable && (
         <InlineAlert tone="info">
-          Tu distribuidora está en solo lectura: no se pueden guardar cambios hasta regularizar el
-          plan.
+          {isSuspended(distributor.status) ? (
+            <SuspendedNotice />
+          ) : (
+            'Tu distribuidora está en solo lectura: no se pueden guardar cambios hasta regularizar el plan.'
+          )}
         </InlineAlert>
       )}
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,36rem)_minmax(0,1fr)] lg:gap-8">

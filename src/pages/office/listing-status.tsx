@@ -10,6 +10,7 @@ import type { ListingState } from '@/domain/tenancy/listing';
 import type { Distributor } from '@/domain/tenancy/types';
 import { ICON_STROKE } from '@/lib/icons';
 import { distributorPath, ROUTES } from '@/lib/routes';
+import { isSuspended, SuspendedNotice } from './read-only-notice';
 import { VerificationCorrection } from './verification-correction';
 
 // PLAN 2.11. The platform looks at what was declared: no state here says "verificada".
@@ -41,6 +42,7 @@ const STATES: Record<ListingState, { chip: string; state: SystemState; text: str
   },
 };
 
+/** What is copied: the whole address, wherever the app is served from. */
 function publicUrlOf(slug: string): string {
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
   return `${origin}${distributorPath(slug)}`;
@@ -62,7 +64,8 @@ function PublicLink({ slug }: { slug: string }) {
         className="inline-flex min-w-0 items-center gap-1.5 rounded-md font-semibold wrap-anywhere text-primary-text underline underline-offset-4"
       >
         <ExternalLink aria-hidden="true" className="size-4 shrink-0" strokeWidth={ICON_STROKE} />
-        {url}
+        {/* Shown short: the host says nothing to its owner and breaks the line on a phone. */}
+        {distributorPath(slug)}
       </Link>
       <Button type="button" variant="line" size="sm" onClick={copy}>
         <Copy aria-hidden="true" strokeWidth={ICON_STROKE} />
@@ -116,6 +119,7 @@ function actionsOf(props: ListingStatusProps): ReactNode {
 export function ListingStatus(props: ListingStatusProps) {
   const { distributor, listing } = props;
   const { chip, state, text } = STATES[listing];
+  const isHeldByPlatform = listing === 'notOperating' && isSuspended(distributor.status);
   const actions = actionsOf(props);
   return (
     <Panel dense>
@@ -123,7 +127,9 @@ export function ListingStatus(props: ListingStatusProps) {
         <h2 className="text-lg font-bold">Tu ficha en Hornilla</h2>
         <StateChip state={state}>{chip}</StateChip>
       </div>
-      <p className="mt-2 max-w-prose text-muted-foreground">{text}</p>
+      <p className="mt-2 max-w-prose text-muted-foreground">
+        {isHeldByPlatform ? <SuspendedNotice /> : text}
+      </p>
       {hasNote(listing) && distributor.reviewNote && (
         <figure className="mt-3 rounded-lg bg-muted p-3.5">
           <figcaption className="text-[0.8125rem] font-bold text-muted-foreground">

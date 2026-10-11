@@ -91,7 +91,9 @@ describe('public page of a distributor (PLAN 2.5)', () => {
     const html = page({ acceptingOrders: false });
     const text = textOf(html);
 
-    expect(text).toContain('Solo tú ves esta página: todavía no es pública.');
+    expect(text).toContain(
+      'Solo el personal de tu distribuidora ve esta página: ahora no es pública.',
+    );
     expect(hrefs(html)).toContain('/central');
     expect(text).not.toMatch(/Abierto|suspendid|prueba|pago|verificad/i);
     // The rest is the page visitors will get: the contact actions are there.
@@ -99,7 +101,7 @@ describe('public page of a distributor (PLAN 2.5)', () => {
   });
 
   it('shows no such strip on a page that is public', () => {
-    expect(textOf(page())).not.toContain('Solo tú ves esta página');
+    expect(textOf(page())).not.toContain('ve esta página: ahora no es pública');
   });
 
   // PLAN 2.11: anybody can report a page to the platform.

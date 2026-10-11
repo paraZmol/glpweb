@@ -89,8 +89,10 @@ export function ContactPage() {
         </Way>
         <Way icon={Mail} when="Por el funcionamiento de la plataforma" title="Ante Hornilla.">
           <p>
-            Si la aplicación falla, si viste un precio o una promoción engañosos, o si quieres
-            eliminar tu cuenta, cambiar tu correo o pedir una copia de tus datos.
+            Si la aplicación falla, si viste un precio o una promoción engañosos, si una
+            distribuidora suplanta a otro negocio o publica datos falsos, o si quieres eliminar tu
+            cuenta, cambiar tu correo o pedir una copia de tus datos. Para reportar una
+            distribuidora, indica su nombre y su enlace.
           </p>
           <PlatformChannel email={email} />
           <p className="text-[0.9375rem]">

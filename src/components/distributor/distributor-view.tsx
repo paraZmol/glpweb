@@ -16,7 +16,7 @@ const EMPTY_CYLINDER_PX = 72;
 const FOOT_LOGO_PX = 20;
 
 function statusOf(distributor: PublicDistributor, now: Date) {
-  if (!distributor.acceptingOrders) return { isOpen: false, text: 'Todavía no es pública' };
+  if (!distributor.acceptingOrders) return { isOpen: false, text: 'Ahora no es pública' };
   const open = openStatusAt(distributor.schedule, now, DEFAULT_TIMEZONE);
   return { isOpen: open.isOpen, text: describeOpenStatus(open) };
 }

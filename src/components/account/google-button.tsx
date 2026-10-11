@@ -52,7 +52,8 @@ export function GoogleButton({ after, disabled, onError }: GoogleButtonProps) {
           the app removes it from the account profile after every sign-in (PLAN 2.11). */}
       <p className="mt-2 text-center text-sm text-pretty text-muted-foreground">
         Google nos entrega tu nombre, tu correo y tu foto de perfil. La foto no la mostramos ni la
-        usamos: la quitamos del perfil de tu cuenta al terminar el ingreso.
+        usamos: la quitamos del perfil de tu cuenta al terminar el ingreso, aunque el servicio de
+        ingreso conserva la copia que Google le entrega.
       </p>
     </div>
   );

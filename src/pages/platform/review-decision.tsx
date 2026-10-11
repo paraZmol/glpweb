@@ -67,9 +67,12 @@ export function ReviewDecision({
       <p className="mt-1 text-muted-foreground">{copy.body}</p>
       {needsNote && (
         <div className="mt-3">
-          <label htmlFor={`${id}-note`} className="mb-1.5 block font-semibold">
-            Nota para su titular
+          <label htmlFor={`${id}-note`} className="mb-1 block font-semibold">
+            Nota para la distribuidora
           </label>
+          <p id={`${id}-help`} className="mb-1.5 text-[0.8125rem] text-muted-foreground">
+            No escribas el RUC ni datos personales: la nota la lee todo su personal.
+          </p>
           <textarea
             id={`${id}-note`}
             name="reviewNote"
@@ -78,7 +81,7 @@ export function ReviewDecision({
             value={note}
             onChange={(event) => setNote(event.target.value)}
             aria-invalid={noteProblem ? true : undefined}
-            aria-describedby={noteProblem ? `${id}-problem` : `${id}-count`}
+            aria-describedby={`${id}-help ${noteProblem ? `${id}-problem` : `${id}-count`}`}
             className="w-full rounded-lg border-[1.5px] border-input bg-card px-3 py-2.5 text-base text-foreground aria-invalid:border-destructive"
           />
           {noteProblem && <FieldError id={`${id}-problem`}>{noteProblem}</FieldError>}

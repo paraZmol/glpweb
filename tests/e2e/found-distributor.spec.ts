@@ -52,7 +52,7 @@ test('a verified account founds a distributor and lands on its office', async ({
   // RUC whose check digit does not match is refused before anything is sent.
   await expect(
     page.getByText(
-      'Estos tres datos no se publican. Hornilla los usa para revisar tu distribuidora antes de mostrarla.',
+      'Estos tres datos no se publican. Hornilla los usa para revisar tu distribuidora antes de mostrarla; solo los ven tú y la administración de Hornilla. El detalle está en la Política de privacidad',
     ),
   ).toBeVisible();
   await expect(page.getByText('Escribe el RUC del negocio.')).toBeVisible();
@@ -90,18 +90,18 @@ test('a verified account founds a distributor and lands on its office', async ({
   await expect(page.getByRole('heading', { level: 1 })).toContainText('crea tu distribuidora.');
   await expect(
     page.getByText(
-      'Todo lo de este resumen será público, también el teléfono, el WhatsApp, la dirección y la ubicación de la planta. Tu celular personal, tu RUC y tu registro no.',
+      'Todo lo de este resumen será público, también el teléfono, el WhatsApp, la dirección y la ubicación de la planta. Tu celular personal, tu RUC, tu razón social y tu número de ficha no.',
     ),
   ).toBeVisible();
   await expect(page.getByText(FOUNDING_VERIFICATION.taxId)).toHaveCount(0);
   await expect(
     page.getByText(
-      'Tu distribuidora se crea ahora y puedes configurarla de inmediato. Aparecerá en el buscador cuando Hornilla revise sus datos.',
+      'Tu distribuidora se crea ahora y puedes configurarla de inmediato. Aparecerá en el buscador cuando Hornilla revise sus datos. Los 30 días de prueba corren desde hoy, también durante la revisión. Revisar no es certificar: lo que declaras sigue siendo tu responsabilidad.',
     ),
   ).toBeVisible();
   await expect(
     page.getByText(
-      '30 días de prueba gratis. No pedimos tarjeta. Los planes y sus precios se publicarán antes de que termine tu prueba; si no eliges uno, tu panel queda en solo lectura.',
+      '30 días de prueba gratis desde hoy. No pedimos tarjeta y no hay ningún cobro al terminar. El precio de cada plan se informa antes de contratarlo; si al terminar la prueba no tienes un plan, tu panel queda en solo lectura y tu página deja de verse.',
     ),
   ).toBeVisible();
   await expect(page.getByRole('checkbox', { name: TERMS_BOX })).not.toBeChecked();
@@ -128,7 +128,9 @@ test('a verified account founds a distributor and lands on its office', async ({
   await page.getByRole('link', { name: 'Ver mi página' }).click();
   await expect(page).toHaveURL(new RegExp(`/d/${slug}$`));
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);
-  await expect(page.getByText('Solo tú ves esta página: todavía no es pública.')).toBeVisible();
+  await expect(
+    page.getByText('Solo el personal de tu distribuidora ve esta página: ahora no es pública.'),
+  ).toBeVisible();
   await expect(page.getByText('6 km', { exact: true })).toBeVisible();
 });
 

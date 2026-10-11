@@ -173,7 +173,7 @@ test('a new distributor is in review and hidden; the admin approves it and visit
   expect(await readDocument(`distributors/${id}`)).toMatchObject({ acceptingOrders: true });
   // Now anybody opens its page and finds it from the door of the plant.
   await expectPage(visitor.page, listing, true);
-  await expect(visitor.page.getByText('Solo tú ves esta página')).toHaveCount(0);
+  await expect(visitor.page.getByText(/ve esta página: ahora no es pública/)).toHaveCount(0);
   await expectInFinder(visitor.page, name, true);
   // And its owner is told, with the link to share.
   await owner.page.reload();
@@ -250,7 +250,7 @@ test('the admin asks for changes with a note, the founder corrects the data, and
   await expect(
     admin.page.getByText('Escribe qué debe corregir: es lo que su titular va a leer en su panel.'),
   ).toBeVisible();
-  await admin.page.getByLabel('Nota para su titular').fill(NOTE);
+  await admin.page.getByLabel('Nota para la distribuidora').fill(NOTE);
   await admin.page.getByRole('button', { name: 'Enviar nota' }).click();
   await expect(admin.page.getByText('Nota enviada. La ficha queda sin mostrar.')).toBeVisible();
   await expect(chip(admin.page, 'Con cambios pedidos').last()).toBeVisible();
@@ -302,7 +302,9 @@ test('the admin asks for changes with a note, the founder corrects the data, and
   await expectInFinder(visitor.page, listing.name, false);
   await owner.page.reload();
   await expect(chip(owner.page, 'Sin operar')).toBeVisible();
-  await expect(owner.page.getByText(/Tu distribuidora está en solo lectura/)).toBeVisible();
+  await expect(
+    owner.page.getByText(/Hornilla suspendió tu distribuidora: está en solo lectura/),
+  ).toBeVisible();
   expect(await readDocument(`distributors/${id}/private/control`)).toMatchObject({
     status: 'suspended',
     listingApproved: true,

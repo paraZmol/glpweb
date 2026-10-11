@@ -27,7 +27,7 @@ export const DECISION_COPY: Record<ReviewAction, Copy> = {
     label: 'Pedir cambios',
     variant: 'line',
     title: 'Pedir cambios',
-    body: 'La ficha no se muestra al público y su titular lee esta nota en su panel.',
+    body: 'La ficha no se muestra al público. Todo el personal de la distribuidora puede leer esta nota en su panel.',
     confirm: 'Enviar nota',
     loading: 'Enviando la nota…',
     done: 'Nota enviada. La ficha queda sin mostrar.',

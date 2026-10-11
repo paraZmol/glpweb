@@ -8,7 +8,7 @@ test.skip(
 );
 
 const NEXT_STEP_NOTE =
-  /se aceptan en el paso siguiente, después de verificar tu correo\. Hasta entonces no guardamos tu nombre ni tu celular\./;
+  /se aceptan en el paso siguiente, después de verificar tu correo\. Al crear la cuenta guardamos solo tu correo y tu contraseña cifrada; tu nombre y tu celular esperan en esta pestaña hasta que aceptes\./;
 
 // PLAN 2.1, 2.11: registering creates the account and asks for no consent: the terms are
 // accepted after the e-mail is verified. Up to the "verify your e-mail" step.

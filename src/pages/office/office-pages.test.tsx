@@ -86,11 +86,26 @@ describe('listing status of the office', () => {
   });
 
   it('says that an approved distributor that cannot operate is not shown', () => {
-    const text = textOf(status('notOperating', { status: 'suspended' }));
+    const text = textOf(status('notOperating', { status: 'pastDue' }));
 
     expect(text).toContain('Sin operar');
-    expect(text).toContain('no aparece en el buscador');
+    expect(text).toContain(
+      'Hornilla ya revisó tus datos, pero tu distribuidora está en solo lectura: no aparece en el buscador ni en tu enlace hasta regularizar el plan.',
+    );
     expect(text).not.toContain('Copiar enlace');
+  });
+
+  // A suspension is not fixed by paying: it says who decided it and where to ask.
+  it('tells a suspended distributor that Hornilla suspended it and where to write', () => {
+    const html = status('notOperating', { status: 'suspended' });
+    const text = textOf(html);
+
+    expect(text).toContain('Sin operar');
+    expect(text).toContain(
+      'Hornilla suspendió tu distribuidora: está en solo lectura y no aparece en el buscador ni en tu enlace. Para conocer el motivo o pedir que se revise, escribe a Contacto y reclamos',
+    );
+    expect(text).not.toContain('regularizar el plan');
+    expect(hrefs(html)).toContain(ROUTES.contact);
   });
 
   // PLAN 2.11: after correcting, the owner no longer reads "changes requested".
@@ -201,15 +216,36 @@ describe('edit the public profile (PLAN 2.11)', () => {
     expect(names(dispatcher)).toEqual([]);
   });
 
-  it('warns that nothing can be saved while the distributor is read-only', () => {
-    const working = workingAs([memberOf('owner')], { status: 'suspended' });
-    const readOnly = accountOf({
-      current: working.status === 'ready' ? { ...working, isWritable: false } : working,
-    });
+  it('warns that nothing can be saved while the distributor is read-only, by its cause', () => {
+    const readOnlyAs = (planStatus: Distributor['status']) => {
+      const working = workingAs([memberOf('owner')], { status: planStatus });
+      const account = accountOf({
+        current: working.status === 'ready' ? { ...working, isWritable: false } : working,
+      });
+      return inOffice(<EditProfilePage />, account, ROUTES.officeProfile);
+    };
 
-    expect(textOf(inOffice(<EditProfilePage />, readOnly, ROUTES.officeProfile))).toContain(
-      'no se pueden guardar cambios',
+    expect(textOf(readOnlyAs('pastDue'))).toContain(
+      'Tu distribuidora está en solo lectura: no se pueden guardar cambios hasta regularizar el plan.',
     );
+    const suspended = readOnlyAs('suspended');
+    expect(textOf(suspended)).toContain('Hornilla suspendió tu distribuidora');
+    expect(textOf(suspended)).not.toContain('regularizar el plan');
+    expect(hrefs(suspended)).toContain(ROUTES.contact);
+  });
+
+  it('says once that a suspended, approved distributor is held by Hornilla', () => {
+    const working = workingAs([memberOf('owner')], { status: 'suspended' });
+    const account = accountOf({
+      current:
+        working.status === 'ready'
+          ? { ...working, isWritable: false, listing: 'notOperating' }
+          : working,
+    });
+    const said = textOf(inOffice(<OfficeHomePage />, account));
+
+    expect(said.split('Hornilla suspendió tu distribuidora')).toHaveLength(2);
+    expect(said).not.toContain('regularizar el plan');
   });
 
   it('belongs to the account that is signed in', () => {

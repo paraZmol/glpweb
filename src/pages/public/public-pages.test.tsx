@@ -127,7 +127,7 @@ describe('registration (PLAN 2.1, 2.11)', () => {
 
   it('says what Google hands over under its button, with the official mark as a file', () => {
     expect(textOf(html)).toContain(
-      'Google nos entrega tu nombre, tu correo y tu foto de perfil. La foto no la mostramos ni la usamos: la quitamos del perfil de tu cuenta al terminar el ingreso.',
+      'Google nos entrega tu nombre, tu correo y tu foto de perfil. La foto no la mostramos ni la usamos: la quitamos del perfil de tu cuenta al terminar el ingreso, aunque el servicio de ingreso conserva la copia que Google le entrega.',
     );
     expect(tags(html, 'img').some((tag) => tag.includes('src="/google-g.svg"'))).toBe(true);
   });

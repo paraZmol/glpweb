@@ -16,6 +16,9 @@ test.slow();
 const NOT_FOUND = 'Esta distribuidora no existe.';
 const READ_ONLY =
   'Tu distribuidora está en solo lectura: puedes ver todo, pero no registrar cambios hasta regularizar el plan.';
+/** A suspension is told apart: the plan does not fix it, and it says where to ask. */
+const SUSPENDED =
+  'Hornilla suspendió tu distribuidora: está en solo lectura y no aparece en el buscador ni en tu enlace.';
 /** Words that would tell a visitor why: the plan of a distributor is nobody else's business. */
 const REASONS =
   /suspendid|prueba (terminada|gratis|vencida)|pago pendiente|plan activo|solo lectura/i;
@@ -35,11 +38,16 @@ async function expectHiddenFrom(page: Page, distributor: { name: string; contact
 // PLAN 2.3, 2.5, 2.6, 2.9, 2.11: a distributor that may not operate, seen by a customer and by
 // its owner at the same time. The customer does not even learn that it exists.
 const STOPPED = [
-  { owner: 'ownerC', distributor: SEED_DISTRIBUTORS.c, chip: 'Suspendida' },
-  { owner: 'ownerD', distributor: SEED_DISTRIBUTORS.d, chip: 'Prueba terminada' },
+  { owner: 'ownerC', distributor: SEED_DISTRIBUTORS.c, chip: 'Suspendida', notice: SUSPENDED },
+  {
+    owner: 'ownerD',
+    distributor: SEED_DISTRIBUTORS.d,
+    chip: 'Prueba terminada',
+    notice: READ_ONLY,
+  },
 ] as const;
 
-for (const { owner, distributor, chip } of STOPPED) {
+for (const { owner, distributor, chip, notice } of STOPPED) {
   test(`${distributor.name}: closed to customers without a reason, read-only for its owner`, async ({
     actors,
   }) => {
@@ -61,7 +69,7 @@ for (const { owner, distributor, chip } of STOPPED) {
     await expect(office.page.getByRole('heading', { level: 1 })).toHaveText(
       `Hoy en ${distributor.name}.`,
     );
-    await expect(office.page.getByText(READ_ONLY)).toBeVisible();
+    await expect(office.page.getByText(notice)).toBeVisible();
     await expect(office.page.getByText(chip, { exact: true })).toBeVisible();
 
     // The owner coming in changed nothing for the customer, on the page or in the finder.

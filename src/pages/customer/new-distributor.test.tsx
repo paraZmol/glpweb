@@ -73,7 +73,7 @@ describe('sign-up wizard of a distributor (PLAN 2.2)', () => {
       ]),
     );
     expect(text).toContain(
-      'Estos tres datos no se publican. Hornilla los usa para revisar tu distribuidora antes de mostrarla.',
+      'Estos tres datos no se publican. Hornilla los usa para revisar tu distribuidora antes de mostrarla; solo los ven tú y la administración de Hornilla. El detalle está en la Política de privacidad',
     );
     expect(text).toContain('Es el registro de Osinergmin del local de venta');
     // The note comes before the fields it talks about.
@@ -185,7 +185,7 @@ describe('review step', () => {
   // PLAN 2.11
   it('warns that everything in the summary will be public, and what will not', () => {
     expect(text).toContain(
-      'Todo lo de este resumen será público, también el teléfono, el WhatsApp, la dirección y la ubicación de la planta. Tu celular personal, tu RUC y tu registro no.',
+      'Todo lo de este resumen será público, también el teléfono, el WhatsApp, la dirección y la ubicación de la planta. Tu celular personal, tu RUC, tu razón social y tu número de ficha no.',
     );
   });
 
@@ -198,7 +198,7 @@ describe('review step', () => {
 
   it('says what happens after creating it, without calling it verified', () => {
     expect(text).toContain(
-      'Tu distribuidora se crea ahora y puedes configurarla de inmediato. Aparecerá en el buscador cuando Hornilla revise sus datos.',
+      'Tu distribuidora se crea ahora y puedes configurarla de inmediato. Aparecerá en el buscador cuando Hornilla revise sus datos. Los 30 días de prueba corren desde hoy, también durante la revisión. Revisar no es certificar: lo que declaras sigue siendo tu responsabilidad.',
     );
     expect(text).not.toMatch(/verificad|autorizad[ao]\b/i);
   });
@@ -218,7 +218,7 @@ describe('review step', () => {
 
   it('announces the free trial without a price', () => {
     expect(text).toContain(
-      '30 días de prueba gratis. No pedimos tarjeta. Los planes y sus precios se publicarán antes de que termine tu prueba; si no eliges uno, tu panel queda en solo lectura.',
+      '30 días de prueba gratis desde hoy. No pedimos tarjeta y no hay ningún cobro al terminar. El precio de cada plan se informa antes de contratarlo; si al terminar la prueba no tienes un plan, tu panel queda en solo lectura y tu página deja de verse.',
     );
     expect(text).not.toMatch(/S\/ \d/);
   });

@@ -76,8 +76,9 @@ export function RegistrationFields({ form, errors, set }: RegistrationFieldsProp
         <TextLink to={ROUTES.privacy} newTab>
           Política de privacidad
         </TextLink>{' '}
-        se aceptan en el paso siguiente, después de verificar tu correo. Hasta entonces no guardamos
-        tu nombre ni tu celular.
+        se aceptan en el paso siguiente, después de verificar tu correo. Al crear la cuenta
+        guardamos solo tu correo y tu contraseña cifrada; tu nombre y tu celular esperan en esta
+        pestaña hasta que aceptes.
       </p>
     </>
   );

@@ -33,7 +33,7 @@ test('shows the public profile of a seeded distributor to anybody', async ({ pag
     page.getByRole('heading', { name: 'Esta distribuidora todavía no publicó su catálogo.' }),
   ).toBeVisible();
   await expect(page.getByText('Página en')).toBeVisible();
-  await expect(page.getByText('Solo tú ves esta página')).toHaveCount(0);
+  await expect(page.getByText(/ve esta página: ahora no es pública/)).toHaveCount(0);
   // PLAN 2.11: anybody can report a page to the platform.
   await expect(page.getByRole('link', { name: 'Reportar esta distribuidora' })).toHaveAttribute(
     'href',

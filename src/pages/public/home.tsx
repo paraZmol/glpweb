@@ -50,8 +50,8 @@ export function HomePage() {
             Pide tu gas a <Highlight>quien llega a tu puerta.</Highlight>
           </h1>
           <p className="mt-4 max-w-120 text-lg text-pretty text-muted-foreground lg:mt-5 lg:text-xl">
-            Hornilla reúne a las distribuidoras de gas de tu barrio. Dinos dónde estás, mira quién
-            llega hasta ahí y llámala o escríbele. Pedir desde aquí llega pronto.
+            Hornilla reúne distribuidoras de gas que reparten en tu zona. Dinos dónde estás, mira
+            quién llega hasta ahí y llámala o escríbele. Pedir desde aquí llega pronto.
           </p>
         </header>
         <HeroPhoto />
