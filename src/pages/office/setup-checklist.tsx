@@ -4,7 +4,7 @@ import { ButtonLink } from '@/components/common/button';
 import { Panel } from '@/components/layout/page-header';
 import type { PublicDistributor } from '@/domain/tenancy/types';
 import { GLYPH_STROKE, ICON_STROKE } from '@/lib/icons';
-import { distributorPath } from '@/lib/routes';
+import { distributorPath, ROUTES } from '@/lib/routes';
 import { cn } from '@/lib/utils';
 
 const COMING_SOON = 'Llega pronto';
@@ -48,19 +48,38 @@ function Task({ title, detail, isDone = false, action }: TaskProps) {
   );
 }
 
+type SetupChecklistProps = {
+  distributor: PublicDistributor;
+  /** Whether visitors can open its page already (PLAN 2.11). */
+  isListed: boolean;
+};
+
 /**
  * "Completa tu distribuidora" (PLAN 2.2): what the owner has done and what comes next. The
  * catalogue and the staff arrive with phase 3: they are listed, and said to be on their way.
  */
-export function SetupChecklist({ distributor }: { distributor: PublicDistributor }) {
+export function SetupChecklist({ distributor, isListed }: SetupChecklistProps) {
   return (
     <Panel dense>
       <h2 className="text-lg font-bold">Completa tu distribuidora</h2>
       <ul className="mt-1 flex flex-col divide-y">
-        <Task title="Datos, enlace y color" detail="Lo que escribiste al registrarla." isDone />
+        <Task
+          title="Datos, enlace y color"
+          detail="Lo que escribiste al registrarla. Puedes cambiarlo, salvo el enlace."
+          isDone
+          action={
+            <ButtonLink to={ROUTES.officeProfile} variant="line" size="sm" className="shrink-0">
+              Editar ficha
+            </ButtonLink>
+          }
+        />
         <Task
           title="Mira tu página pública"
-          detail="Así la ven tus clientes. Comparte el enlace."
+          detail={
+            isListed
+              ? 'Así la ven tus clientes. Comparte el enlace.'
+              : 'Por ahora solo la ve tu personal: será pública cuando Hornilla revise tus datos.'
+          }
           action={
             <ButtonLink
               to={distributorPath(distributor.slug)}

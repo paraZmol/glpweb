@@ -1,3 +1,4 @@
+import { SearchCheck } from 'lucide-react';
 import { CheckboxField } from '@/components/common/checkbox-field';
 import { InlineAlert } from '@/components/common/inline-alert';
 import { TextLink } from '@/components/common/text-link';
@@ -5,6 +6,7 @@ import { formatCoordinates } from '@/domain/geo/coordinates';
 import { formatPhone } from '@/domain/tenancy/contact-links';
 import { normalizeSlug } from '@/domain/tenancy/slug';
 import { type FoundingForm, plantOf } from '@/features/tenancy/founding-form';
+import { ICON_STROKE } from '@/lib/icons';
 import { distributorPath, ROUTES } from '@/lib/routes';
 import type { StepProps } from './step-business';
 
@@ -21,9 +23,19 @@ function summaryOf(form: FoundingForm): [term: string, value: string][] {
   ];
 }
 
+// Reviewed by `legal-compliance` (PLAN 2.11): change them together with docs/legal. The summary
+// above them holds public data only, which is what makes the first sentence true.
+export const PUBLIC_NOTICE =
+  'Todo lo de este resumen será público, también el teléfono, el WhatsApp, la dirección y la ubicación de la planta. Tu celular personal, tu RUC y tu registro no.';
+export const WHAT_COMES_NEXT =
+  'Tu distribuidora se crea ahora y puedes configurarla de inmediato. Aparecerá en el buscador cuando Hornilla revise sus datos.';
+export const TRIAL_NOTE =
+  '30 días de prueba gratis. No pedimos tarjeta. Los planes y sus precios se publicarán antes de que termine tu prueba; si no eliges uno, tu panel queda en solo lectura.';
+
 /**
- * Step 4 (PLAN 2.2, 2.9): what is about to be created, what of it will be public, and the two
- * declarations the founder makes. Both boxes start unticked; nothing is created without them.
+ * Step 4 (PLAN 2.2, 2.9, 2.11): what is about to be created, what of it will be public, what
+ * happens after (the review of the platform) and the two declarations the founder makes. Both
+ * boxes start unticked; nothing is created without them.
  */
 export function StepReview({ form, errors, set }: StepProps) {
   return (
@@ -47,10 +59,15 @@ export function StepReview({ form, errors, set }: StepProps) {
           </dd>
         </div>
       </dl>
-      <InlineAlert tone="info">
-        El nombre, el teléfono, el WhatsApp, la dirección y la ubicación de la planta serán
-        públicos.
-      </InlineAlert>
+      <InlineAlert tone="info">{PUBLIC_NOTICE}</InlineAlert>
+      <p className="flex items-start gap-2.5 text-[0.9375rem] text-muted-foreground">
+        <SearchCheck
+          aria-hidden="true"
+          className="mt-0.5 size-5 shrink-0 text-flame-text"
+          strokeWidth={ICON_STROKE}
+        />
+        {WHAT_COMES_NEXT}
+      </p>
       <CheckboxField
         name="acceptTerms"
         checked={form.acceptTerms}
@@ -73,8 +90,8 @@ export function StepReview({ form, errors, set }: StepProps) {
         Declaro que puedo representar a este negocio y que cuenta con las autorizaciones que la ley
         exige para comercializar GLP.
       </CheckboxField>
-      <p className="rounded-lg bg-primary-soft p-4 font-semibold text-primary-text">
-        30 días de prueba gratis. Después eliges un plan.
+      <p className="rounded-lg bg-primary-soft p-4 text-[0.9375rem] font-semibold text-primary-text">
+        {TRIAL_NOTE}
       </p>
     </>
   );

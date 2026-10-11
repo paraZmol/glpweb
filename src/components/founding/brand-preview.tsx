@@ -24,6 +24,8 @@ type BrandPreviewProps = {
   /** The colour as typed; an unreadable value shows Hornilla's own. */
   color: string;
   name: string;
+  /** One sample under the other, for a narrow column. */
+  stacked?: boolean;
   className?: string;
 };
 
@@ -31,12 +33,12 @@ type BrandPreviewProps = {
  * Live sample of a distributor's brand (PLAN 2.2): its monogram and a button, in light and in
  * dark at once, drawn by the same `BrandTheme` the real page uses.
  */
-export function BrandPreview({ color, name, className }: BrandPreviewProps) {
+export function BrandPreview({ color, name, stacked = false, className }: BrandPreviewProps) {
   const shownName = name.trim() || UNNAMED;
 
   return (
     <div className={className}>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className={cn('grid gap-3', !stacked && 'sm:grid-cols-2')}>
         {SAMPLES.map(({ scope, label }) => (
           <figure key={scope} className={scope}>
             <BrandTheme color={color}>

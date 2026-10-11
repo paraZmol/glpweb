@@ -99,13 +99,19 @@ const accountRoutes: RouteObject = {
       'office',
       (m) => m.OfficeGate,
       (m) => m.OfficeShell,
-      [{ path: ROUTES.officeHome, lazy: from('office', (m) => m.OfficeHomePage) }],
+      [
+        { path: ROUTES.officeHome, lazy: from('office', (m) => m.OfficeHomePage) },
+        { path: ROUTES.officeProfile, lazy: from('office', (m) => m.EditProfilePage) },
+      ],
     ),
     guarded(
       'platform',
       (m) => m.PlatformGate,
       (m) => m.PlatformShell,
-      [{ path: ROUTES.platformHome, lazy: from('platform', (m) => m.PlatformHomePage) }],
+      [
+        { path: ROUTES.platformHome, lazy: from('platform', (m) => m.PlatformHomePage) },
+        { path: ROUTES.platformListing, lazy: from('platform', (m) => m.PlatformHomePage) },
+      ],
     ),
   ],
 };

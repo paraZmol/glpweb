@@ -1,23 +1,22 @@
 import { BrandTheme } from '@/components/brand/brand-theme';
 import { GasCylinder } from '@/components/brand/gas-cylinder';
 import { HornillaLogo } from '@/components/brand/hornilla-logo';
-import { InlineAlert } from '@/components/common/inline-alert';
 import { EmptyState } from '@/components/common/state-views';
+import { TextLink } from '@/components/common/text-link';
 import { DEFAULT_TIMEZONE } from '@/domain/tenancy/constants';
 import { describeOpenStatus, openStatusAt } from '@/domain/tenancy/schedule';
 import type { PublicDistributor } from '@/domain/tenancy/types';
+import { ROUTES } from '@/lib/routes';
 import { ContactActions } from './contact-actions';
 import { CoverageCard, ScheduleCard } from './distributor-details';
 import { DistributorHero } from './distributor-hero';
+import { PrivatePreviewStrip } from './private-preview-strip';
 
 const EMPTY_CYLINDER_PX = 72;
 const FOOT_LOGO_PX = 20;
-// The page never says why (suspended, payment pending, trial over): it cannot know, and it is
-// nobody else's business (PLAN 2.9).
-const NOT_TAKING_ORDERS = 'Esta distribuidora no está recibiendo pedidos por ahora.';
 
 function statusOf(distributor: PublicDistributor, now: Date) {
-  if (!distributor.acceptingOrders) return { isOpen: false, text: 'No recibe pedidos por ahora' };
+  if (!distributor.acceptingOrders) return { isOpen: false, text: 'Todavía no es pública' };
   const open = openStatusAt(distributor.schedule, now, DEFAULT_TIMEZONE);
   return { isOpen: open.isOpen, text: describeOpenStatus(open) };
 }
@@ -74,28 +73,32 @@ type DistributorViewProps = {
 
 /**
  * Public page of one distributor (PLAN 2.5), wearing its colour. It shows only the public
- * profile: nothing about its plan, its trial or who founded it.
+ * profile: nothing about its plan, its trial or who founded it. A profile that does not take
+ * orders reaches this page only for its own staff (the rules hand it to nobody else, PLAN
+ * 2.11): they see it exactly as visitors will, under a strip that says nobody else does.
  */
 export function DistributorView({ distributor, now }: DistributorViewProps) {
-  const isTakingOrders = distributor.acceptingOrders;
   return (
     <BrandTheme color={distributor.brandColor} className="flex flex-1 flex-col pb-24 lg:pb-0">
+      {!distributor.acceptingOrders && <PrivatePreviewStrip />}
       <DistributorHero distributor={distributor} status={statusOf(distributor, now)} />
       <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 pt-7 lg:grid-cols-[minmax(0,1fr)_22.75rem] lg:px-8 lg:pt-6 lg:pb-20">
         <div className="flex min-w-0 flex-col gap-8">
-          {!isTakingOrders && <InlineAlert tone="info">{NOT_TAKING_ORDERS}</InlineAlert>}
           <Catalog />
           <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
             <CoverageCard distributor={distributor} />
-            <ScheduleCard distributor={distributor} withContact={!isTakingOrders} />
+            <ScheduleCard distributor={distributor} />
           </div>
-          <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground lg:justify-start">
-            Pedidos y seguimiento con <HornillaLogo size={FOOT_LOGO_PX} />
-          </p>
+          <div className="flex flex-col items-center gap-3 text-sm text-muted-foreground lg:flex-row lg:justify-between">
+            <p className="flex items-center gap-2">
+              Página en <HornillaLogo size={FOOT_LOGO_PX} />
+            </p>
+            <TextLink to={ROUTES.contact}>Reportar esta distribuidora</TextLink>
+          </div>
         </div>
-        {isTakingOrders && <ContactAside distributor={distributor} />}
+        <ContactAside distributor={distributor} />
       </div>
-      {isTakingOrders && <ContactBar distributor={distributor} />}
+      <ContactBar distributor={distributor} />
     </BrandTheme>
   );
 }

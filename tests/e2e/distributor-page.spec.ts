@@ -32,7 +32,13 @@ test('shows the public profile of a seeded distributor to anybody', async ({ pag
   await expect(
     page.getByRole('heading', { name: 'Esta distribuidora todavía no publicó su catálogo.' }),
   ).toBeVisible();
-  await expect(page.getByText('Pedidos y seguimiento con')).toBeVisible();
+  await expect(page.getByText('Página en')).toBeVisible();
+  await expect(page.getByText('Solo tú ves esta página')).toHaveCount(0);
+  // PLAN 2.11: anybody can report a page to the platform.
+  await expect(page.getByRole('link', { name: 'Reportar esta distribuidora' })).toHaveAttribute(
+    'href',
+    '/contacto',
+  );
 
   // Links built from the stored numbers, with the message encoded.
   await expect(page.getByRole('link', { name: /WhatsApp/ }).first()).toHaveAttribute(

@@ -11,7 +11,7 @@ ni de seguimiento, ni herramientas de analítica de terceros.**
 |---|---|---|
 | Sesión iniciada | No pedirte la contraseña cada vez | Hasta que cierres sesión |
 | Copia local de tus datos recientes (tu perfil, las distribuidoras que consultaste y, cuando existan, tus direcciones) | Abrir rápido, funcionar con mala señal y gastar menos datos | Hasta que cierres sesión: al cerrarla se borra de este dispositivo. Si el navegador no deja borrarla en ese momento, se borra la próxima vez que abras Hornilla, antes de usarla. Si usas Hornilla sin cuenta, la copia solo contiene fichas públicas de distribuidoras y dura hasta que borres los datos del sitio |
-| Último punto desde el que buscaste distribuidoras: sus coordenadas (con precisión de alrededor de un metro) y si las dio tu dispositivo o las escribiste. Se guarda aunque no tengas cuenta | Mostrarte otra vez quién llega hasta ahí sin volver a preguntártelo | Hasta que toques "Olvidar esta ubicación", busques desde otro punto o cierres sesión. Sin cuenta, hasta que la olvides o borres los datos del sitio |
+| Último punto desde el que buscaste distribuidoras: sus coordenadas, redondeadas a tres decimales (unos cien metros), la fecha en que se guardó y si las dio tu dispositivo o las escribiste. Se guarda aunque no tengas cuenta | Mostrarte otra vez quién llega hasta ahí sin volver a preguntártelo | Hasta que toques "Olvidar esta ubicación", busques desde otro punto o cierres sesión. Con cuenta o sin ella, se descarta solo a los 30 días de la última búsqueda desde ese punto |
 | Nombre y celular que escribiste al crear tu cuenta, junto con el identificador interno de esa cuenta. Se guardan solo en la pestaña en la que te registraste | No pedírtelos otra vez cuando, ya verificado tu correo, aceptas los términos: hasta entonces Hornilla no los guarda en tu cuenta | Hasta que aceptas los términos, eliminas la cuenta sin aceptarlos, cierras sesión o cierras esa pestaña. Otras pestañas no los ven |
 | Distribuidora elegida, junto con el identificador interno de tu cuenta (solo si trabajas en una distribuidora) | Abrir tu panel en la última distribuidora que elegiste | Hasta que elijas otra o cierres sesión |
 | Marca interna de la sesión en este dispositivo (un código al azar, que no te identifica) | Saber qué copia local hay que borrar al cerrar sesión y terminar de borrarla si quedó pendiente | Hasta que se borra la copia local |
@@ -68,6 +68,9 @@ con enlace a esta página, y no un panel de consentimiento. **Si en el futuro se
 publicidad, antes se pedirá tu consentimiento expreso** y esta página se actualizará.
 
 ## Historial de cambios
+- 0.1, sexta redacción (2026-10-11): el último punto de búsqueda se guarda redondeado a unos
+  cien metros, con su fecha, y se descarta solo a los 30 días; el destino al que ibas antes de
+  registrarte viaja en el historial de la pestaña, no en el almacenamiento.
 - 0.1, quinta redacción (2026-10-11): se añade el nombre y el celular del registro, que quedan en
   la pestaña hasta que se verifica el correo y se aceptan los términos; cerrar sesión los borra;
   si el navegador se cierra al cerrar sesión, el borrado termina al abrir Hornilla de nuevo.

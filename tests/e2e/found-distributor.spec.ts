@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { SEED_DISTRIBUTORS, SEED_PASSWORD, SEED_USERS } from '../seed/data';
+import { FOUNDING_VERIFICATION } from './support/founding';
 import { dismissStorageNotice } from './support/storage-notice';
 
 test.skip(
@@ -11,13 +12,11 @@ const TERMS_BOX = /en nombre de esta distribuidora/;
 const AUTHORITY_BOX = /Declaro que puedo representar a este negocio/;
 /** Another city: what this test founds never shows up in the searches of other tests. */
 const PLANT = { latitude: '-8.1', longitude: '-79.03' };
+/** Eleven digits and a known prefix, but the check digit of another number. */
+const MISTYPED_TAX_ID = '20000000002';
 
-// PLAN 2.2: sign-up of a distributor from start to end, with a verified seeded account.
-// FIXME 2026-10-11 — the sign-up wizard cannot be completed yet (docs/PLAN.md 2.11): founding
-// now requires the RUC, the legal name and the record number of the Registro de Hidrocarburos,
-// and `/distribuidora/nueva` has no fields for them (see FOUNDING_VERIFICATION in
-// tests/e2e/support/founding.ts). Remove the `fixme` when the screen asks for them.
-test.fixme('a verified account founds a distributor and lands on its office', async ({
+// PLAN 2.2, 2.11: sign-up of a distributor from start to end, with a verified seeded account.
+test('a verified account founds a distributor and lands on its office', async ({
   page,
 }, testInfo) => {
   // Each run founds its own distributor: unique name and link per project and moment.
@@ -48,6 +47,22 @@ test.fixme('a verified account founds a distributor and lands on its office', as
   await expect(page.getByText('Ese enlace ya lo usa otra distribuidora.')).toBeVisible();
   await page.getByLabel('Enlace de tu página').fill(slug);
   await expect(page.getByText('Está libre.')).toBeVisible();
+
+  // PLAN 2.11: the three data Hornilla reviews. They are private and the screen says so; a
+  // RUC whose check digit does not match is refused before anything is sent.
+  await expect(
+    page.getByText(
+      'Estos tres datos no se publican. Hornilla los usa para revisar tu distribuidora antes de mostrarla.',
+    ),
+  ).toBeVisible();
+  await expect(page.getByText('Escribe el RUC del negocio.')).toBeVisible();
+  await page.getByLabel(FOUNDING_VERIFICATION.taxIdLabel).fill(MISTYPED_TAX_ID);
+  await page.getByLabel(FOUNDING_VERIFICATION.legalNameLabel).fill(FOUNDING_VERIFICATION.legalName);
+  await page.getByLabel(FOUNDING_VERIFICATION.registryLabel).fill(FOUNDING_VERIFICATION.registry);
+  await page.getByRole('button', { name: 'Continuar' }).click();
+  await expect(page.getByText('Revisa el RUC: son 11 dígitos y alguno no coincide.')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('tu negocio.');
+  await page.getByLabel(FOUNDING_VERIFICATION.taxIdLabel).fill(FOUNDING_VERIFICATION.taxId);
   await page.getByRole('button', { name: 'Continuar' }).click();
 
   // Step 2: plant and coverage. Without a point it does not go on.
@@ -70,14 +85,25 @@ test.fixme('a verified account founds a distributor and lands on its office', as
   await page.getByRole('radio', { name: 'Rojo rocoto' }).click();
   await page.getByRole('button', { name: 'Continuar' }).click();
 
-  // Step 4: review. What becomes public is said, and both boxes start unticked.
+  // Step 4: review. What becomes public is said (the private data is not in the summary), so
+  // is what happens next, and both boxes start unticked.
   await expect(page.getByRole('heading', { level: 1 })).toContainText('crea tu distribuidora.');
   await expect(
     page.getByText(
-      'El nombre, el teléfono, el WhatsApp, la dirección y la ubicación de la planta serán públicos.',
+      'Todo lo de este resumen será público, también el teléfono, el WhatsApp, la dirección y la ubicación de la planta. Tu celular personal, tu RUC y tu registro no.',
     ),
   ).toBeVisible();
-  await expect(page.getByText('30 días de prueba gratis. Después eliges un plan.')).toBeVisible();
+  await expect(page.getByText(FOUNDING_VERIFICATION.taxId)).toHaveCount(0);
+  await expect(
+    page.getByText(
+      'Tu distribuidora se crea ahora y puedes configurarla de inmediato. Aparecerá en el buscador cuando Hornilla revise sus datos.',
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      '30 días de prueba gratis. No pedimos tarjeta. Los planes y sus precios se publicarán antes de que termine tu prueba; si no eliges uno, tu panel queda en solo lectura.',
+    ),
+  ).toBeVisible();
   await expect(page.getByRole('checkbox', { name: TERMS_BOX })).not.toBeChecked();
   await expect(page.getByRole('checkbox', { name: AUTHORITY_BOX })).not.toBeChecked();
   await page.getByRole('button', { name: 'Crear mi distribuidora' }).click();
@@ -94,19 +120,19 @@ test.fixme('a verified account founds a distributor and lands on its office', as
   await expect(page.getByRole('heading', { name: 'Completa tu distribuidora' })).toBeVisible();
   await expect(page.getByText('Llega pronto')).toHaveCount(2);
   await expect(page.getByText(/Prueba gratis · quedan 30 días/)).toBeVisible();
+  // PLAN 2.11: it waits for the review of the platform, and the office says so.
+  await expect(page.getByText('En revisión', { exact: true })).toBeVisible();
+  await expect(page.getByText(/tus clientes todavía no te ven\./)).toBeVisible();
 
-  // And its public page exists, with what was typed.
+  // Its page exists with what was typed, and for now only its own staff opens it.
   await page.getByRole('link', { name: 'Ver mi página' }).click();
   await expect(page).toHaveURL(new RegExp(`/d/${slug}$`));
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);
+  await expect(page.getByText('Solo tú ves esta página: todavía no es pública.')).toBeVisible();
   await expect(page.getByText('6 km', { exact: true })).toBeVisible();
 });
 
-// FIXME 2026-10-11 — the sign-up wizard cannot be completed yet (docs/PLAN.md 2.11): founding
-// now requires the RUC, the legal name and the record number of the Registro de Hidrocarburos,
-// and `/distribuidora/nueva` has no fields for them (see FOUNDING_VERIFICATION in
-// tests/e2e/support/founding.ts). Remove the `fixme` when the screen asks for them.
-test.fixme('the wizard keeps what was typed when going back a step', async ({ page }) => {
+test('the wizard keeps what was typed when going back a step', async ({ page }) => {
   await dismissStorageNotice(page);
   await page.goto('/ingresar?desde=%2Fdistribuidora%2Fnueva');
   await page.getByLabel('Correo', { exact: true }).fill(SEED_USERS.customer.email);
@@ -116,6 +142,9 @@ test.fixme('the wizard keeps what was typed when going back a step', async ({ pa
 
   await page.getByLabel('Nombre de la distribuidora').fill('Gas Ida y Vuelta');
   await page.getByLabel('Teléfono del negocio').fill('900000092');
+  await page.getByLabel(FOUNDING_VERIFICATION.taxIdLabel).fill(FOUNDING_VERIFICATION.taxId);
+  await page.getByLabel(FOUNDING_VERIFICATION.legalNameLabel).fill(FOUNDING_VERIFICATION.legalName);
+  await page.getByLabel(FOUNDING_VERIFICATION.registryLabel).fill(FOUNDING_VERIFICATION.registry);
   await page.getByRole('button', { name: 'Continuar' }).click();
   await expect(page.getByRole('heading', { level: 1 })).toContainText('tu planta.');
 
@@ -123,4 +152,10 @@ test.fixme('the wizard keeps what was typed when going back a step', async ({ pa
 
   await expect(page.getByLabel('Nombre de la distribuidora')).toHaveValue('Gas Ida y Vuelta');
   await expect(page.getByLabel('Enlace de tu página')).toHaveValue('gas-ida-y-vuelta');
+  await expect(page.getByLabel(FOUNDING_VERIFICATION.taxIdLabel)).toHaveValue(
+    FOUNDING_VERIFICATION.taxId,
+  );
+  await expect(page.getByLabel(FOUNDING_VERIFICATION.registryLabel)).toHaveValue(
+    FOUNDING_VERIFICATION.registry,
+  );
 });

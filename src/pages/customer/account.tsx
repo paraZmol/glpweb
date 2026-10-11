@@ -1,5 +1,5 @@
-import { ArrowRight, LogOut } from 'lucide-react';
-import { Button, ButtonLink } from '@/components/common/button';
+import { LogOut } from 'lucide-react';
+import { Button } from '@/components/common/button';
 import { EmptyState } from '@/components/common/state-views';
 import { TextLink } from '@/components/common/text-link';
 import { workAreasOf } from '@/components/layout/nav-items';
@@ -7,9 +7,11 @@ import { PageHeader, Panel } from '@/components/layout/page-header';
 import { Stagger } from '@/components/motion/stagger';
 import { useAccount } from '@/features/account/account-context';
 import { useSignOut } from '@/features/account/use-sign-out';
+import { foundingAvailabilityOf } from '@/features/tenancy/founding-availability';
 import { ICON_STROKE } from '@/lib/icons';
 import { usePageTitle } from '@/lib/page-title';
 import { ROUTES } from '@/lib/routes';
+import { OwnersPanel } from './owners-panel';
 import { ProfileForm } from './profile-form';
 import { WorkAreas } from './work-areas';
 
@@ -43,28 +45,16 @@ function SessionPanel({ email }: { email: string | null }) {
   );
 }
 
-/** The way from the account to the sign-up of a distributor (PLAN 2.2). */
-function OwnersPanel() {
-  return (
-    <Panel>
-      <h2 className="text-xl font-bold">¿Tienes una distribuidora de gas?</h2>
-      <p className="mt-1.5 text-muted-foreground">
-        Regístrala con esta misma cuenta: tu página, tu color y tu enlace, con 30 días de prueba
-        gratis.
-      </p>
-      <ButtonLink to={ROUTES.newDistributor} variant="soft" className="mt-5">
-        Registrar mi distribuidora
-        <ArrowRight aria-hidden="true" strokeWidth={ICON_STROKE} />
-      </ButtonLink>
-    </Panel>
-  );
-}
-
 /** "Mi cuenta" (PLAN 2.1): see and edit name and phone, reach the work areas, sign out. */
 export function AccountPage() {
   usePageTitle('Tu cuenta');
   const account = useAccount();
   const { session, profile } = account;
+  const availability = foundingAvailabilityOf({
+    uid: session.uid,
+    profile,
+    current: account.current,
+  });
 
   return (
     <div className="flex flex-col gap-8">
@@ -97,7 +87,7 @@ export function AccountPage() {
           {workAreasOf(account).length > 0 && (
             <WorkAreas role={account.role} isPlatformAdmin={account.isPlatformAdmin} />
           )}
-          <OwnersPanel />
+          <OwnersPanel availability={availability} />
           <SessionPanel email={session.email} />
         </Stagger>
       </div>

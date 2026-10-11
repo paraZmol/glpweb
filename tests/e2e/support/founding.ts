@@ -15,9 +15,8 @@ export const FOUNDING_PLANT = { latitude: '-5.2', longitude: '-80.63', address: 
 
 /**
  * The business verification data the founding requires since PLAN 2.11, and the labels the
- * wizard is expected to give its three new fields. UNTIL THE SCREEN HAS THEM the wizard cannot
- * be completed: every flow that founds through the screen is `test.fixme` (dated 2026-10-11).
- * The RUC is invented: prefix 20, zeros and the check digit that follows from them.
+ * wizard gives its three fields (step "Negocio"). The RUC is invented: prefix 20, zeros and
+ * the check digit that follows from them.
  */
 export const FOUNDING_VERIFICATION = {
   taxIdLabel: 'RUC',

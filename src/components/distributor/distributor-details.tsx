@@ -3,7 +3,6 @@ import { MapGap } from '@/components/common/map-gap';
 import { describeDays, formatTimeOfDay } from '@/domain/tenancy/schedule';
 import type { PublicDistributor } from '@/domain/tenancy/types';
 import { ICON_STROKE } from '@/lib/icons';
-import { ContactActions } from './contact-actions';
 
 const ICON_CLASS = 'size-5 shrink-0 text-primary-text';
 
@@ -29,14 +28,8 @@ export function CoverageCard({ distributor }: { distributor: PublicDistributor }
   );
 }
 
-type ScheduleCardProps = {
-  distributor: PublicDistributor;
-  /** Phone and WhatsApp here too, when the page has no contact bar of its own. */
-  withContact: boolean;
-};
-
-/** Opening hours and, when asked, the two ways of reaching the business. */
-export function ScheduleCard({ distributor, withContact }: ScheduleCardProps) {
+/** Opening hours: the same window on every day it attends. */
+export function ScheduleCard({ distributor }: { distributor: PublicDistributor }) {
   const { schedule } = distributor;
   return (
     <section
@@ -55,7 +48,6 @@ export function ScheduleCard({ distributor, withContact }: ScheduleCardProps) {
           </dd>
         </dl>
       </div>
-      {withContact && <ContactActions distributor={distributor} className="mt-auto" />}
     </section>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accountOf, PROFILE } from '../../../tests/support/account-fixtures';
+import { accountOf, memberOf, PROFILE, workingAs } from '../../../tests/support/account-fixtures';
 import { count, renderStatic, tags, textOf } from '../../../tests/support/render-static';
 import { BrandPreview } from '../../components/founding/brand-preview';
 import { StepBrand } from '../../components/founding/step-brand';
@@ -18,6 +18,9 @@ const FORM: FoundingForm = {
   name: 'Gas Demo Centro',
   slug: 'gas-demo-centro',
   contactPhone: '900000061',
+  taxId: '20000000001',
+  legalName: 'Gas Demo Centro S.A.C.',
+  hydrocarbonsRegistry: '00000-074-000061',
   latitude: '-8.1',
   longitude: '-79.03',
 };
@@ -40,9 +43,43 @@ describe('sign-up wizard of a distributor (PLAN 2.2)', () => {
     expect(count(html, /<h1\b/)).toBe(1);
     expect(textOf(html)).toContain('Paso 1 de 4');
     expect(html).toContain('aria-valuetext="Paso 1 de 4: Negocio"');
-    expect(names(html)).toEqual(['name', 'slug', 'contactPhone', 'whatsapp', 'ownerPhone']);
+    expect(names(html)).toEqual([
+      'name',
+      'slug',
+      'contactPhone',
+      'whatsapp',
+      'ownerPhone',
+      'taxId',
+      'legalName',
+      'hydrocarbonsRegistry',
+    ]);
     expect(textOf(html)).toContain('Continuar');
     expect(textOf(html)).not.toContain('Atrás');
+  });
+
+  // PLAN 2.11: the three data the platform reviews, with the labels the E2E look for.
+  it('asks for the RUC, the legal name and the record number, saying they stay private', () => {
+    const html = wizard();
+    const text = textOf(html);
+    const labels = [...html.matchAll(/<label\b[^>]*>(.*?)<\/label>/gs)].map(([, label = '']) =>
+      textOf(label),
+    );
+
+    expect(labels).toEqual(
+      expect.arrayContaining([
+        'RUC',
+        'Razón social o nombre del titular',
+        'Número de ficha del Registro de Hidrocarburos',
+      ]),
+    );
+    expect(text).toContain(
+      'Estos tres datos no se publican. Hornilla los usa para revisar tu distribuidora antes de mostrarla.',
+    );
+    expect(text).toContain('Es el registro de Osinergmin del local de venta');
+    // The note comes before the fields it talks about.
+    expect(text.indexOf('Estos tres datos no se publican')).toBeLessThan(
+      text.indexOf('Razón social o nombre del titular'),
+    );
   });
 
   it('has a way out and no navigation to wander off', () => {
@@ -60,6 +97,21 @@ describe('sign-up wizard of a distributor (PLAN 2.2)', () => {
 
     expect(textOf(wizard(full))).toContain('Ya registraste 3 distribuidoras.');
     expect(names(wizard(full))).toEqual([]);
+  });
+
+  // PLAN 2.11: `FoundingBlockedError` has a state of its own, known before filling anything.
+  it('stops the founder of a read-only distributor, saying why and where to ask', () => {
+    const working = workingAs([memberOf('owner')], { status: 'suspended' });
+    const blocked = accountOf({
+      current: working.status === 'ready' ? { ...working, isWritable: false } : working,
+    });
+    const html = wizard(blocked);
+
+    expect(textOf(html)).toContain('Por ahora no puedes registrar otra distribuidora.');
+    expect(textOf(html)).toContain('está en solo lectura');
+    expect(names(html)).toEqual([]);
+    expect(tags(html, 'a').some((tag) => tag.includes('href="/contacto"'))).toBe(true);
+    expect(tags(html, 'a').some((tag) => tag.includes('href="/central"'))).toBe(true);
   });
 });
 
@@ -130,10 +182,25 @@ describe('review step', () => {
     expect(text).toContain('5 km desde la planta');
   });
 
-  it('warns which data will be public', () => {
+  // PLAN 2.11
+  it('warns that everything in the summary will be public, and what will not', () => {
     expect(text).toContain(
-      'El nombre, el teléfono, el WhatsApp, la dirección y la ubicación de la planta serán públicos.',
+      'Todo lo de este resumen será público, también el teléfono, el WhatsApp, la dirección y la ubicación de la planta. Tu celular personal, tu RUC y tu registro no.',
     );
+  });
+
+  it('keeps the private data out of the summary it calls public', () => {
+    expect(text).not.toContain(FORM.taxId);
+    expect(text).not.toContain(FORM.legalName);
+    expect(text).not.toContain(FORM.hydrocarbonsRegistry);
+    expect(text).not.toContain('900 000 051');
+  });
+
+  it('says what happens after creating it, without calling it verified', () => {
+    expect(text).toContain(
+      'Tu distribuidora se crea ahora y puedes configurarla de inmediato. Aparecerá en el buscador cuando Hornilla revise sus datos.',
+    );
+    expect(text).not.toMatch(/verificad|autorizad[ao]\b/i);
   });
 
   it('asks for the two declarations, unticked, with the reviewed wording', () => {
@@ -150,7 +217,9 @@ describe('review step', () => {
   });
 
   it('announces the free trial without a price', () => {
-    expect(text).toContain('30 días de prueba gratis. Después eliges un plan.');
+    expect(text).toContain(
+      '30 días de prueba gratis. No pedimos tarjeta. Los planes y sus precios se publicarán antes de que termine tu prueba; si no eliges uno, tu panel queda en solo lectura.',
+    );
     expect(text).not.toMatch(/S\/ \d/);
   });
 });

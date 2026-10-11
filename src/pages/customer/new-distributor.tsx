@@ -6,8 +6,8 @@ import { FormStatus } from '@/components/account/form-parts';
 import { Button } from '@/components/common/button';
 import { BrandPreview } from '@/components/founding/brand-preview';
 import { WizardProgress } from '@/components/founding/wizard-progress';
-import { MAX_DISTRIBUTORS_PER_ACCOUNT } from '@/domain/tenancy/constants';
 import { useAccount } from '@/features/account/account-context';
+import { foundingAvailabilityOf } from '@/features/tenancy/founding-availability';
 import { FOUNDING_STEPS } from '@/features/tenancy/founding-form';
 import { rememberDistributor } from '@/features/tenancy/selection-storage';
 import { useFoundingWizard } from '@/features/tenancy/use-founding-wizard';
@@ -16,7 +16,8 @@ import { usePageTitle } from '@/lib/page-title';
 import { JUST_FOUNDED_STATE, ROUTES } from '@/lib/routes';
 import { useFocusFirstInvalid } from '@/lib/use-focus-first-invalid';
 import { useOnlineStatus } from '@/lib/use-online-status';
-import { FoundingLimit, STEP_COPY, StepFields, StepHeading } from './new-distributor-parts';
+import { FoundingBlocked, FoundingLimit } from './founding-stops';
+import { STEP_COPY, StepFields, StepHeading } from './new-distributor-parts';
 
 const OFFLINE_TEXT = 'Sin conexión: para crear tu distribuidora necesitas internet.';
 
@@ -46,8 +47,10 @@ export function NewDistributorPage() {
   const wizard = useFoundingWizard({ session, owner, onFounded: enter });
   useFocusFirstInvalid(formRef, wizard.errors);
 
-  const ownedCount = profile?.ownedDistributorIds.length ?? 0;
-  if (ownedCount >= MAX_DISTRIBUTORS_PER_ACCOUNT && !wizard.isSubmitting) return <FoundingLimit />;
+  // Judged with what is already loaded; the founding itself has the last word (`isBlocked`).
+  const availability = foundingAvailabilityOf({ uid: session.uid, profile, current });
+  if (wizard.isBlocked || availability === 'blocked') return <FoundingBlocked />;
+  if (availability === 'limitReached' && !wizard.isSubmitting) return <FoundingLimit />;
 
   const { step, position, errors, form } = wizard;
   const isLast = position.index === FOUNDING_STEPS.length - 1;

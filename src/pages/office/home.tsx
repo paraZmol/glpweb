@@ -8,6 +8,7 @@ import type { Distributor } from '@/domain/tenancy/types';
 import { useAccount } from '@/features/account/account-context';
 import { usePageTitle } from '@/lib/page-title';
 import { isJustFounded } from '@/lib/routes';
+import { ListingStatus } from './listing-status';
 import { PlanChip } from './plan-chip';
 import { SetupChecklist } from './setup-checklist';
 
@@ -49,15 +50,15 @@ function OfficeHomeSkeleton() {
 
 /**
  * Home of the office (owner and dispatcher). The live monitor arrives with phase 6; for now it
- * shows where the distributor stands, what its owner has left to set up (PLAN 2.2) and that no
- * order has come in, in the dense office ambient.
+ * shows where the distributor stands with the review of the platform (PLAN 2.11), what its
+ * owner has left to set up (PLAN 2.2) and that no order has come in, in the dense office ambient.
  */
 export function OfficeHomePage() {
   usePageTitle('Monitor');
-  const { current } = useAccount();
+  const { current, session } = useAccount();
   const location = useLocation();
   if (current.status !== 'ready') return <OfficeHomeSkeleton />;
-  const { distributor, membership, isWritable } = current;
+  const { distributor, membership, isWritable, listing } = current;
   const isOwner = membership.role === 'owner';
 
   return (
@@ -70,8 +71,8 @@ export function OfficeHomePage() {
       />
       {isJustFounded(location.state) && (
         <InlineAlert tone="success">
-          {distributor.name} ya está en Hornilla. Empezaron tus 30 días de prueba gratis: lo que
-          sigue está en "Completa tu distribuidora".
+          {distributor.name} ya está en Hornilla. Empezaron tus 30 días de prueba gratis: puedes
+          configurarla desde ahora, y aparecerá en el buscador cuando Hornilla revise sus datos.
         </InlineAlert>
       )}
       {!isWritable && (
@@ -82,7 +83,13 @@ export function OfficeHomePage() {
       )}
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-4">
-          {isOwner && <SetupChecklist distributor={distributor} />}
+          <ListingStatus
+            distributor={distributor}
+            listing={listing}
+            isOwner={isOwner}
+            isFounder={distributor.ownerUid === session.uid}
+          />
+          {isOwner && <SetupChecklist distributor={distributor} isListed={listing === 'listed'} />}
           <Panel dense>
             <EmptyState
               title="Todavía no entra ningún pedido."

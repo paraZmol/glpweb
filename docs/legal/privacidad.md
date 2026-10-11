@@ -24,7 +24,7 @@
 | Nombre y celular (el celular es opcional) | Todos | Identificarte y, cuando existan los pedidos, coordinar la entrega. Se guardan en Hornilla solo después de que verificas tu correo y aceptas los términos y esta política; hasta entonces quedan en la pestaña de tu navegador (ver Cookies y almacenamiento) | Hoy nadie más. Cuando pidas: la distribuidora a la que pides y su repartidor asignado |
 | Versión de los términos y versión de esta política que aceptaste, con la fecha y hora de cada aceptación | Todos, una vez verificado su correo | Dejar constancia de tu aceptación | Nadie más |
 | Fechas de creación y de último cambio de tu cuenta | Todos | Operar el servicio y resolver fallos | Nadie más |
-| Punto desde el que buscas distribuidoras: la ubicación de tu dispositivo, si tocas "Usar mi ubicación", o las coordenadas que escribas | Quien usa el buscador, con o sin cuenta | Calcular, en tu propio dispositivo, qué distribuidoras llegan hasta ahí y a qué distancia están | Nadie. No se envía a Hornilla ni se guarda en tu cuenta: queda solo en tu dispositivo hasta que la olvides o cierres sesión (ver Cookies y almacenamiento) |
+| Punto desde el que buscas distribuidoras: la ubicación de tu dispositivo, si tocas "Usar mi ubicación", o las coordenadas que escribas | Quien usa el buscador, con o sin cuenta | Calcular, en tu propio dispositivo, qué distribuidoras llegan hasta ahí y a qué distancia están | Nadie. No se envía a Hornilla ni se guarda en tu cuenta: queda solo en tu dispositivo, redondeado a unos cien metros, hasta que lo olvides, cierres sesión o pasen 30 días (ver Cookies y almacenamiento) |
 | Ubicación del dispositivo de quien registra una distribuidora, si toca "Usar mi ubicación" en el registro | Quien registra una distribuidora | Llenar los campos de ubicación de la planta, que puede corregir antes de crearla | Nadie mientras no cree la distribuidora. Al crearla, el punto que confirme pasa a ser la ubicación pública de la planta |
 | Ficha pública de la distribuidora: nombre, enlace, teléfono y WhatsApp del negocio, dirección, ubicación de la planta, zona de reparto, horario, color, marcas y precio desde, tope de balones por pedido, si atiende pedidos en este momento y fechas en que se registró en Hornilla y en que cambió su ficha por última vez | Distribuidoras | Que los clientes las encuentren y las contacten | **Cualquier persona, con o sin cuenta, mientras Hornilla haya aprobado la ficha y la distribuidora pueda operar.** Antes de esa aprobación, o si está suspendida, con un pago pendiente o con la prueba terminada: solo su personal y la administración de Hornilla |
 | Estado de la distribuidora en Hornilla (en prueba, activa, con pago pendiente o suspendida), fecha de fin de la prueba, si su ficha fue aprobada, cuándo y por qué cuenta de la administración, la nota que la administración deja al devolver una ficha, e identificador interno de la cuenta que la registró (un código, no su nombre ni su correo) | Distribuidoras y quien las registra | Que el sistema sepa si la distribuidora puede operar y mostrarse, y quién es titular | El personal de esa distribuidora y la administración de Hornilla. No es parte de la ficha pública |
@@ -105,9 +105,11 @@ hasta que lo olvides o cierres sesión.
 Acceso, rectificación, cancelación y oposición.
 - Tu nombre y tu celular los corriges tú en "Tu cuenta".
 - El punto desde el que buscas lo borras tú con "Olvidar esta ubicación".
-- Si todavía no aceptaste los términos y esta política (por ejemplo, la primera vez que ingresas
-  con Google), puedes eliminar tu cuenta tú, en esa misma pantalla, con "No acepto: eliminar mi
-  cuenta".
+- Si todavía no verificaste tu correo, puedes eliminar tu cuenta tú, en esa pantalla, con "No
+  quiero continuar: eliminar mi cuenta". Si ya lo verificaste pero todavía no aceptaste los
+  términos y esta política (por ejemplo, la primera vez que ingresas con Google), con "No acepto:
+  eliminar mi cuenta". Si ya tenías perfil y no aceptas una versión nueva, "No acepto: pedir que
+  eliminen mi cuenta" te lleva a "Contacto y reclamos".
 - Para eliminar una cuenta que ya los aceptó, cambiar tu correo, pedir una copia de tus datos u
   oponerte a un uso, escribe a [correo de contacto]. Hoy la aplicación no tiene un botón para eso:
   se atiende a mano a partir de tu solicitud. La página "Contacto y reclamos" mostrará ese correo

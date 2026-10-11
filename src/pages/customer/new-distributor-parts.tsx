@@ -1,15 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { Highlight } from '@/components/brand/highlight';
-import { ButtonLink } from '@/components/common/button';
-import { EmptyState } from '@/components/common/state-views';
 import { StepBrand } from '@/components/founding/step-brand';
 import { StepBusiness, type StepProps } from '@/components/founding/step-business';
 import { StepLocation } from '@/components/founding/step-location';
 import { StepReview } from '@/components/founding/step-review';
-import { MAX_DISTRIBUTORS_PER_ACCOUNT } from '@/domain/tenancy/constants';
 import type { FoundingStep } from '@/features/tenancy/founding-form';
 import type { SlugAvailability } from '@/features/tenancy/use-slug-check';
-import { ROUTES } from '@/lib/routes';
 
 export const STEP_COPY: Record<
   FoundingStep,
@@ -78,22 +74,4 @@ export function StepFields({
   if (step === 'business') return <StepBusiness {...props} slugAvailability={slugAvailability} />;
   if (step === 'location') return <StepLocation {...props} />;
   return step === 'brand' ? <StepBrand {...props} /> : <StepReview {...props} />;
-}
-
-/** The account already founded as many distributors as one account may (terms §3). */
-export function FoundingLimit() {
-  return (
-    <div className="mx-auto w-full max-w-xl flex-1 px-4 py-10">
-      <EmptyState
-        className="rounded-xl bg-card p-6 shadow-card"
-        title={`Ya registraste ${MAX_DISTRIBUTORS_PER_ACCOUNT} distribuidoras.`}
-        description="Es el máximo por cuenta. Puedes seguir trabajando con las que ya tienes desde tu central."
-        action={
-          <ButtonLink to={ROUTES.officeHome} variant="ink">
-            Ir a mi central
-          </ButtonLink>
-        }
-      />
-    </div>
-  );
 }

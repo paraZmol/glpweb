@@ -45,11 +45,7 @@ function winnerAndLoser<Racer>(racers: [Racer, Racer], outcomes: [Outcome, Outco
 }
 
 // PLAN 2.2: the link is unique. Two accounts ask for the same one at the same moment.
-// FIXME 2026-10-11 — the sign-up wizard cannot be completed yet (docs/PLAN.md 2.11): founding
-// now requires the RUC, the legal name and the record number of the Registro de Hidrocarburos,
-// and `/distribuidora/nueva` has no fields for them (see FOUNDING_VERIFICATION in
-// tests/e2e/support/founding.ts). Remove the `fixme` when the screen asks for them.
-test.fixme('two accounts send the same link at once: one founds, the other keeps its form', async ({
+test('two accounts send the same link at once: one founds, the other keeps its form', async ({
   actors,
 }, testInfo) => {
   // Two whole sign-ups side by side, and a third one after the race.
@@ -134,11 +130,7 @@ async function twoTabsOneSlotLeft(actors: Actors, tag: string) {
 }
 
 // The cap of PLAN §11 under a race: the same account, two tabs, the third and a fourth at once.
-// FIXME 2026-10-11 — the sign-up wizard cannot be completed yet (docs/PLAN.md 2.11): founding
-// now requires the RUC, the legal name and the record number of the Registro de Hidrocarburos,
-// and `/distribuidora/nueva` has no fields for them (see FOUNDING_VERIFICATION in
-// tests/e2e/support/founding.ts). Remove the `fixme` when the screen asks for them.
-test.fixme('an account with two distributors sends two more at once: only one is founded', async ({
+test('an account with two distributors sends two more at once: only one is founded', async ({
   actors,
 }, testInfo) => {
   test.slow();
@@ -178,10 +170,7 @@ test.fixme('an account with two distributors sends two more at once: only one is
 // hacer esto…") is FIXED in the data layer on 2026-10-11: `createDistributor` now recognises
 // that the account reached the cap meanwhile and throws `DistributorLimitError`
 // ("tells the loser of a race for the last slot…" in src/data/distributors-repo.emu.test.ts).
-// FIXME 2026-10-11 — this flow stays `fixme` for another reason: the sign-up wizard cannot be
-// completed until it asks for the business verification data (docs/PLAN.md 2.11, see
-// FOUNDING_VERIFICATION in tests/e2e/support/founding.ts). Remove the `fixme` then.
-test.fixme('the tab that loses the race for the last slot is told about the cap', async ({
+test('the tab that loses the race for the last slot is told about the cap', async ({
   actors,
 }, testInfo) => {
   test.slow();

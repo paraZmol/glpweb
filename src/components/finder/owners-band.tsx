@@ -20,8 +20,9 @@ export function OwnersBand() {
           ¿Tienes una distribuidora de gas?
         </h2>
         <p className="mt-2 max-w-136 text-band-foreground/80 lg:text-lg">
-          Regístrala hoy y ten tu propia página en Hornilla, con tu color y tu enlace. Los primeros
-          30 días son de prueba, gratis.
+          Regístrala y prepara tu página en Hornilla, con tu color y tu enlace. Aparece en el
+          buscador cuando revisamos sus datos. Los primeros 30 días son de prueba, gratis y sin
+          tarjeta.
         </p>
       </div>
       <ButtonLink

@@ -40,7 +40,8 @@ describe('public page of a distributor (PLAN 2.5)', () => {
     expect(count(html, /<h1\b/)).toBe(1);
     expect(textOf(h1)).toBe('Gas Demo Norte');
     expect(textOf(html)).toContain('Gas Demo Norte vende y reparte el gas');
-    expect(textOf(html)).toContain('Pedidos y seguimiento con');
+    expect(textOf(html)).toContain('Página en Hornilla');
+    expect(textOf(html)).not.toContain('Pedidos y seguimiento');
   });
 
   it('wears the colour of the distributor through BrandTheme', () => {
@@ -84,11 +85,29 @@ describe('public page of a distributor (PLAN 2.5)', () => {
     expect(html).not.toContain('role="radiogroup"');
   });
 
-  it('says it is not taking orders, without saying why', () => {
-    const text = textOf(page({ acceptingOrders: false }));
+  // PLAN 2.11: a profile that does not take orders reaches this page only for its own staff
+  // (the rules hand it to nobody else). They see it as visitors will, and are told so.
+  it('tells the staff of an unlisted distributor that only they see the page, without why', () => {
+    const html = page({ acceptingOrders: false });
+    const text = textOf(html);
 
-    expect(text).toContain('Esta distribuidora no está recibiendo pedidos por ahora.');
-    expect(text).not.toMatch(/Abierto|suspendid|prueba|pago|bplanb/i);
+    expect(text).toContain('Solo tú ves esta página: todavía no es pública.');
+    expect(hrefs(html)).toContain('/central');
+    expect(text).not.toMatch(/Abierto|suspendid|prueba|pago|verificad/i);
+    // The rest is the page visitors will get: the contact actions are there.
+    expect(hrefs(html)).toContain('tel:+51900000011');
+  });
+
+  it('shows no such strip on a page that is public', () => {
+    expect(textOf(page())).not.toContain('Solo tú ves esta página');
+  });
+
+  // PLAN 2.11: anybody can report a page to the platform.
+  it('links the way to report the distributor', () => {
+    const html = page();
+
+    expect(textOf(html)).toContain('Reportar esta distribuidora');
+    expect(tags(html, 'a').filter((tag) => tag.includes('href="/contacto"'))).toHaveLength(2);
   });
 
   // PLAN 2.9: nothing about the plan, the trial or the founder reaches this page.

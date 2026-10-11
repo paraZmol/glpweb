@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { Session } from '../../domain/auth/session';
+import { FoundingBlockedError } from '../../domain/tenancy/errors';
 import { slugFromName } from '../../domain/tenancy/slug';
 import { useAsyncAction } from '../../lib/use-async-action';
 import {
@@ -40,6 +41,9 @@ export function useFoundingWizard({ session, owner, onFounded }: WizardOptions) 
   const [isSlugOwn, setSlugOwn] = useState(false);
   const [position, setPosition] = useState({ index: 0, isForward: true, moves: 0 });
   const [errors, setErrors] = useState<FoundingErrors>({});
+  // The founding was refused because the account owns a read-only distributor (PLAN 2.11):
+  // nothing in the form can fix that, so the screen shows a state of its own.
+  const [isBlocked, setBlocked] = useState(false);
   const { isRunning, run } = useAsyncAction();
   const slugAvailability = useSlugCheck(form.slug);
   const isSlugTaken = slugAvailability.status === 'taken';
@@ -104,6 +108,7 @@ export function useFoundingWizard({ session, owner, onFounded }: WizardOptions) 
           }),
         );
       } catch (error) {
+        if (error instanceof FoundingBlockedError) return setBlocked(true);
         const problems = foundingErrorsOf(error);
         fail(problems, stepOfErrors(problems));
       }
@@ -121,5 +126,6 @@ export function useFoundingWizard({ session, owner, onFounded }: WizardOptions) 
     back,
     submit,
     isSubmitting: isRunning,
+    isBlocked,
   };
 }

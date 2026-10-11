@@ -210,7 +210,33 @@ describe('my account (PLAN 2.1)', () => {
     const html = inArea('customer', <AccountPage />, accountOf(), ROUTES.account);
 
     expect(textOf(html)).toContain('¿Tienes una distribuidora de gas?');
+    expect(textOf(html)).toContain('Aparece en el buscador cuando Hornilla revisa sus datos.');
     expect(tags(html, 'a').some((tag) => tag.includes('href="/distribuidora/nueva"'))).toBe(true);
+  });
+
+  // PLAN 2.11: a sign-up that would be refused is not offered.
+  it('does not offer the sign-up to an account that reached the cap', () => {
+    const profile = { ...PROFILE, ownedDistributorIds: ['a', 'b', 'c'] };
+    const full = accountOf({
+      profile: { status: 'ready', data: { profile, needsTermsAcceptance: false }, reload },
+    });
+    const html = inArea('customer', <AccountPage />, full, ROUTES.account);
+
+    expect(textOf(html)).toContain('Ya registraste 3 distribuidoras.');
+    expect(textOf(html)).not.toContain('Registrar mi distribuidora');
+    expect(tags(html, 'a').some((tag) => tag.includes('href="/distribuidora/nueva"'))).toBe(false);
+  });
+
+  it('does not offer the sign-up to the founder of a read-only distributor', () => {
+    const working = workingAs([memberOf('owner')], { status: 'suspended' });
+    const blocked = accountOf({
+      current: working.status === 'ready' ? { ...working, isWritable: false } : working,
+    });
+    const html = inArea('customer', <AccountPage />, blocked, ROUTES.account);
+
+    expect(textOf(html)).toContain('Por ahora no puedes registrar otra distribuidora.');
+    expect(textOf(html)).not.toContain('Registrar mi distribuidora');
+    expect(tags(html, 'a').some((tag) => tag.includes('href="/distribuidora/nueva"'))).toBe(false);
   });
 
   it('offers the work areas only to an account that has one', () => {
@@ -228,7 +254,8 @@ describe('home of each area: an empty state that says what is going on', () => {
     ['customer', <CustomerHomePage key="c" />, accountOf(), 'Dinos dónde y vemos quién llega.'],
     ['driver', <DriverHomePage key="d" />, DRIVER, 'Sin jornada abierta.'],
     ['office', <OfficeHomePage key="o" />, OWNER, 'Todavía no entra ningún pedido.'],
-    ['platform', <PlatformHomePage key="p" />, accountOf(), 'Todavía no hay nada que revisar.'],
+    // Its list needs the database: the first HTML holds its place (platform-pages.test.tsx).
+    ['platform', <PlatformHomePage key="p" />, accountOf(), 'Cargando las altas pendientes'],
   ] as const)('%s', (area, page, account, sentence) => {
     const html = inArea(area, page, account);
 

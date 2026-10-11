@@ -4,6 +4,7 @@ import type { FoundingErrors, FoundingForm } from '@/features/tenancy/founding-f
 import type { SetFoundingField } from '@/features/tenancy/use-founding-wizard';
 import type { SlugAvailability } from '@/features/tenancy/use-slug-check';
 import { SlugField } from './slug-field';
+import { VerificationFields } from './verification-fields';
 
 export type StepProps = {
   form: FoundingForm;
@@ -13,7 +14,10 @@ export type StepProps = {
 
 const PHONE_FIELD = { type: 'tel', inputMode: 'numeric', autoComplete: 'off' } as const;
 
-/** Step 1 (PLAN 2.2): how the business is called, its link and how customers reach it. */
+/**
+ * Step 1 (PLAN 2.2, 2.11): how the business is called, its link, how customers reach it and
+ * the three private data Hornilla reviews before listing it.
+ */
 export function StepBusiness({
   form,
   errors,
@@ -65,6 +69,11 @@ export function StepBusiness({
         onChange={(event) => set('ownerPhone', event.target.value)}
         error={errors.ownerPhone}
         hint="Para que Hornilla te contacte por el servicio. No es público."
+      />
+      <VerificationFields
+        values={form}
+        errors={errors}
+        onChange={(field, value) => set(field, value)}
       />
     </>
   );
