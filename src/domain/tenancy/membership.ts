@@ -30,6 +30,18 @@ export function sortMemberships(memberships: readonly Member[]): Member[] {
   );
 }
 
+/**
+ * Whether what the account may do in a distributor changed under an open session: `held` is the
+ * membership the panels work with, `current` its member document as it stands now (null if it is
+ * gone). The copy of the name of the distributor does not count.
+ */
+export function hasStandingChanged(
+  held: Pick<Member, 'role' | 'active'>,
+  current: Pick<Member, 'role' | 'active'> | null,
+): boolean {
+  return current === null || current.role !== held.role || current.active !== held.active;
+}
+
 export function hasAnyRole(member: Member | null, roles: readonly MemberRole[]): boolean {
   return member !== null && member.active && roles.includes(member.role);
 }

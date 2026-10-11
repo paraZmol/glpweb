@@ -1,17 +1,13 @@
-import { useCallback, useState } from 'react';
-import {
-  getStaffDistributor,
-  syncAcceptingOrders,
-  syncMemberDistributorName,
-} from '../../data/distributors-repo';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { syncAcceptingOrders, syncMemberDistributorName } from '../../data/distributors-repo';
 import { isOpenToPublic, type ListingState, listingStateOf } from '../../domain/tenancy/listing';
-import { pickCurrentMembership } from '../../domain/tenancy/membership';
+import { hasStandingChanged, pickCurrentMembership } from '../../domain/tenancy/membership';
 import { isWritable } from '../../domain/tenancy/status';
 import type { Distributor, Member } from '../../domain/tenancy/types';
-import { useAsyncResource } from '../../lib/use-async-resource';
 import { useSignedInSession } from '../auth/use-session';
 import { readRememberedDistributor, rememberDistributor } from './selection-storage';
 import { useMyMemberships } from './use-my-memberships';
+import { type StaffDistributorView, useStaffDistributor } from './use-staff-distributor';
 import { forgetVisibleDistributors } from './visible-distributors';
 
 export type CurrentDistributor =
@@ -62,17 +58,42 @@ function repairCopies(distributor: Distributor, membership: Member, isOpen: bool
   }
 }
 
-/** Writability is judged when the distributor is loaded, not on every render. */
-async function loadSelected(membership: Member) {
-  const distributor = await getStaffDistributor(membership.distributorId);
-  if (!distributor) return null;
+/** Writability is judged when the distributor arrives (or changes), not on every render. */
+function judge(distributor: Distributor) {
   const now = new Date();
-  repairCopies(distributor, membership, isOpenToPublic(distributor, now));
   return {
-    distributor,
+    isOpen: isOpenToPublic(distributor, now),
     isWritable: isWritable(distributor, now),
     listing: listingStateOf(distributor, now),
   };
+}
+
+/** Puts the two copies right once per distributor shown, not on every change that arrives. */
+function useRepairedCopies(view: StaffDistributorView | null, membership: Member | null): void {
+  const repairedId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!view || !membership || repairedId.current === view.distributor.id) return;
+    repairedId.current = view.distributor.id;
+    repairCopies(view.distributor, membership, judge(view.distributor).isOpen);
+  }, [view, membership]);
+}
+
+/**
+ * While the distributor is followed live, the member document of the account comes with it: if
+ * its role changed or it was deactivated under the open session, the memberships are read again
+ * and the guards act on what they say now. Once per change that arrives.
+ */
+function useStandingWatch(
+  membership: Member | null,
+  current: Member | null | undefined,
+  reloadMemberships: () => void,
+): void {
+  const judged = useRef<Member | null | undefined>(undefined);
+  useEffect(() => {
+    if (membership === null || current === undefined || judged.current === current) return;
+    judged.current = current;
+    if (hasStandingChanged(membership, current)) reloadMemberships();
+  }, [membership, current, reloadMemberships]);
 }
 
 /** The choice made in this visit, falling back to the one remembered on this device. */
@@ -96,8 +117,12 @@ function useSelection(uid: string | null) {
  * account is still an active member there, otherwise its first active membership. `select()`
  * switches and remembers; while the newly chosen distributor loads, the state is `loading`
  * WITH the chosen membership.
+ * It runs once for the whole app. By itself it reads once; while a screen that called
+ * `useLiveDistributor()` is mounted it follows the public profile, the control document and the
+ * member document of the account live, so a decision of the platform, a suspension or a change
+ * of role show without reloading (PLAN 2.11).
  * Cost: the memberships query, then two reads (public profile and control document) plus one
- * by the rules unless the account is the founder.
+ * by the rules unless the account is the founder; live, see `useLiveDistributor`.
  */
 export function useCurrentDistributor(): CurrentDistributor {
   const uid = useSignedInSession()?.uid ?? null;
@@ -106,12 +131,13 @@ export function useCurrentDistributor(): CurrentDistributor {
 
   const list = memberships.status === 'ready' ? memberships.data : [];
   const membership = pickCurrentMembership(list, rememberedId);
-  const distributorId = membership?.distributorId ?? null;
-  const distributor = useAsyncResource(distributorId, () =>
-    membership ? loadSelected(membership) : Promise.resolve(null),
-  );
+  const distributor = useStaffDistributor(membership);
+  const view = distributor.status === 'ready' ? distributor.data : null;
+  const judged = useMemo(() => (view ? judge(view.distributor) : null), [view]);
 
   const reloadMemberships = memberships.reload;
+  useRepairedCopies(view, membership);
+  useStandingWatch(membership, view?.member, reloadMemberships);
   const reloadDistributor = distributor.reload;
   const reload = useCallback(() => {
     reloadMemberships();
@@ -124,7 +150,7 @@ export function useCurrentDistributor(): CurrentDistributor {
   if (membership === null) return { status: 'none', memberships: list, reload };
   if (distributor.status === 'error') return { status: 'error', error: distributor.error, reload };
   if (distributor.status !== 'ready') return { status: 'loading', membership, memberships: list };
-  if (distributor.data === null) {
+  if (view === null || judged === null) {
     return {
       status: 'error',
       error: new Error('The selected distributor no longer exists'),
@@ -135,9 +161,9 @@ export function useCurrentDistributor(): CurrentDistributor {
     status: 'ready',
     memberships: list,
     membership,
-    distributor: distributor.data.distributor,
-    isWritable: distributor.data.isWritable,
-    listing: distributor.data.listing,
+    distributor: view.distributor,
+    isWritable: judged.isWritable,
+    listing: judged.listing,
     select,
     reload,
   };

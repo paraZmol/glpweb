@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   activeMemberships,
   hasAnyRole,
+  hasStandingChanged,
   pickCurrentMembership,
   sortMemberships,
 } from './membership';
@@ -78,5 +79,28 @@ describe('hasAnyRole', () => {
 
   it('is false without a membership', () => {
     expect(hasAnyRole(null, OFFICE_ROLES)).toBe(false);
+  });
+});
+
+// PLAN 2.11: a role withdrawn under an open session.
+describe('hasStandingChanged', () => {
+  const held = member('a', 'dispatcher');
+
+  it('is false while the member document says what the panels work with', () => {
+    expect(hasStandingChanged(held, member('a', 'dispatcher'))).toBe(false);
+  });
+
+  it('ignores a new copy of the name of the distributor', () => {
+    const renamed = { ...member('a', 'dispatcher'), distributorName: 'Gas Demo Renombrada' };
+
+    expect(hasStandingChanged(held, renamed)).toBe(false);
+  });
+
+  it.each([
+    ['the role changed', member('a', 'driver')],
+    ['the member was deactivated', member('a', 'dispatcher', false)],
+    ['the member document is gone', null],
+  ])('is true when %s', (_case, current) => {
+    expect(hasStandingChanged(held, current)).toBe(true);
   });
 });
