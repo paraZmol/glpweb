@@ -150,6 +150,37 @@ verificar. Sustituye el orden anterior (sesión → términos → correo).
   `distributorName`, fijado por reglas igual al nombre de la distribuidora.
 - **Consentimientos.** `users/{uid}` guarda `terms` y `privacy` (`{ version, acceptedAt }`), con
   versión permitida y `acceptedAt == request.time`; no se pueden borrar.
+- **Historial de aceptaciones.** Cada versión aceptada deja una línea en
+  `users/{uid}/acceptances/{texto}-{versión}` (`document`, `version`, `acceptedAt`). El id es
+  **determinista** (`terms-0.2`), no automático: así las reglas la encuentran sin consulta y una
+  versión no puede aceptarse (fecharse) dos veces, porque la segunda sería un `update` y nadie
+  puede. Las dos mitades se atan con `getAfter` en el mismo lote: el perfil solo acepta un texto
+  si queda su línea sellada con `request.time` (`logsAcceptance`), y la línea solo se crea si el
+  perfil lleva esa aceptación sellada ahora (`profileAccepts`). Solo la crea su titular con correo
+  verificado; sin `update` ni `delete` desde la app; la leen su titular y el super admin
+  (`list` con tope de 50). Coste: 1 `getAfter` por texto aceptado en el perfil y 1 por línea
+  creada. Excepción deliberada a "nunca datos como id" del §2: el id no lleva nada personal.
+- **Aprobación atada a lo visto.** Una aprobación no dice solo quién y cuándo, también **de
+  qué**: `private/control` guarda `reviewedProfileAt` y `reviewedSettingsAt`, la marca
+  `updatedAt` que tenían la ficha pública y `private/settings` cuando el super admin las miró, y
+  `approvalIsSigned()` exige que sean iguales a las guardadas (`approvesWhatWasReviewed`, con
+  `get` y no `getAfter`: la propia aprobación mueve la marca de la ficha). Funciona porque
+  **toda** escritura de esos dos documentos debe dejar `updatedAt == request.time`: no hay forma
+  de editar sin cambiar de versión. Se quitan al volver a revisión, no se reescriben sin volver a
+  firmar y son opcionales solo en documentos aprobados antes. En el cliente la versión viaja
+  como texto opaco (`ReviewVersion`, segundos.nanosegundos: un `Date` pierde los microsegundos),
+  `approveListing` la compara dentro de la transacción y lanza `StaleReviewError`. Coste: +2
+  lecturas en la transacción y +2 `get` de reglas al aprobar. Patrón general: **cuando alguien
+  decide sobre datos de otro, la decisión nombra la versión que vio y la regla la compara**.
+- **Oyentes.** Solo sobre documentos sueltos y solo con la pantalla abierta
+  (`watchDocuments` en `src/data/live.ts`, `useLiveResource`): la ficha de revisión (ficha,
+  control, settings; solo datos del servidor) y las áreas de central y repartidor
+  (`useLiveDistributor()`: ficha, control y el `members` propio). Nunca una colección ni una
+  consulta. Se descartan las instantáneas con escrituras locales sin confirmar (sus
+  `serverTimestamp` son estimaciones). Las reglas de un oyente no se vuelven a evaluar cuando
+  cambia un documento que leen con `get` (el rol): por eso se escucha también el `members`
+  propio. Mostrar un dato en vivo **no** es haberlo revisado: la pantalla separa "lo que se
+  muestra" de "lo que se vio" (`useReviewAttention`).
 - **Datos locales.** Cerrar sesión borra la caché de Firestore y las claves `hornilla.*` salvo
   `storageNoticeSeen` (`src/data/local-wipe.ts`, `src/features/account/end-session.ts`).
 - **Emuladores.** Solo a través de `scripts/emulators.mjs` (carril con `E2E_LANE=N`); nunca

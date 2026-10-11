@@ -89,13 +89,14 @@ siempre a `/verificar-correo` y ST a `/aceptar-terminos` antes que a cualquier �
 | Cambiar el correo en `/cuenta` | — | — | — | no ve | no ve | no ve | no ve | no ve | no ve | no ve |
 | Cerrar sesión (borra lo guardado en el dispositivo) | — | puede | puede | puede | puede | puede | puede | puede | puede | puede |
 | Registrar una distribuidora (4 pasos; Atrás y Adelante del navegador recorren los pasos) | — | — | — | puede | puede | puede | puede (tope 3) | puede (tope 3) | no ve (bloqueado) | puede |
-| Ver el estado de la ficha y la nota de la plataforma en `/central` | — | — | — | — | — | ve | ve | ve lo suyo | ve | — |
+| Ver el estado de la ficha y la nota de la plataforma en `/central` (en vivo: cambia sin recargar) | — | — | — | — | — | ve | ve | ve lo suyo | ve | — |
 | Copiar el enlace público | — | — | — | — | — | puede | puede | puede lo suyo | no ve | — |
 | Editar la ficha pública (`/central/ficha`) | — | — | — | — | — | no ve | puede | puede la suya; rechaza la de A | rechaza (solo lectura) | — |
 | Cambiar nombre, teléfono o WhatsApp de una aprobada | — | — | — | — | — | no ve | puede, y vuelve a revisión | — | rechaza | — |
 | Corregir RUC, razón social o registro tras una nota | — | — | — | — | — | no ve | puede (quien fundó) | — | rechaza | — |
 | Abrir las listas y la ficha de revisión | — | — | — | no ve | no ve | no ve | no ve | no ve | no ve | puede |
 | Aprobar · Pedir cambios (nota) · Suspender · Reactivar | — | — | — | no ve | no ve | no ve | no ve | no ve | no ve | puede |
+| Aprobar una ficha que su titular editó con la revisión abierta | — | — | — | — | — | — | — | — | — | rechaza, con aviso; puede tras "Ya revisé los datos nuevos" |
 | Abrir Reparto / Central / Plataforma desde `/cuenta` | — | — | — | no ve | ve Reparto | ve Central | ve Central | ve Central | ve Central | ve Plataforma |
 | Leer el aviso de almacenamiento de la primera visita (franja arriba; no tapa ningún control) | ve | ve | ve | ve | ve | ve | ve | ve | ve | ve |
 | Cambiar de tema claro/oscuro | sigue al dispositivo | igual | igual | igual | igual | igual | igual | igual | igual | igual |
@@ -117,6 +118,8 @@ Lo que cada rol consigue llamando a la base con su propia sesión, sin pasar por
 | Listar `slugs` · consultas de grupo (`members`, `private`) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 | Escribir la ficha de A sin pasar por la app | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza (forma inválida) | rechaza | rechaza | rechaza |
 | Poner `acceptingOrders` o `listingApproved` a mano | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza (solo con la decisión completa) |
+| Aprobar sin decir qué versión se revisó, o para una versión que ya no es la guardada | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
+| Editar la ficha o `private/settings` sin mover su `updatedAt` | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 | Cambiar el estado (`status`) de una distribuidora a mano | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza (solo con la decisión completa) |
 | Darse un rol en `members` · cambiar el rol de otro · borrar un miembro | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 | Darse super admin (`platformAdmins/{yo}`) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
@@ -137,6 +140,9 @@ Se anotan aquí con el motivo; una celda no recorrida no se da por buena.
 - **Cuenta con varias distribuidoras** (selector): no hay cuenta de semilla con dos membresías.
 - **Repartidor y central de una distribuidora suspendida o en revisión**: la semilla solo tiene
   titular en C, D y E.
+- **Rol retirado o cambiado con la sesión abierta**: todavía no hay pantalla que cambie el rol
+  de un miembro (fase 3). La reacción de `/central` y `/reparto` está construida y su decisión
+  tiene test unitario (`hasStandingChanged`), pero no se ha recorrido en el navegador.
 - **Sin conexión** y **app instalada**: son del agente `field-tester`.
 - **Recargar la pestaña a mitad del alta de distribuidora**: sigue vaciando lo escrito (el
   borrador vive solo en memoria); su test queda con `test.fail` en `role-walker.spec.ts`.
