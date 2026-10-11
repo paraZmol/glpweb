@@ -1,6 +1,6 @@
 # Hornilla (glpWEB) — Plan maestro
 
-> **Estado: APROBADO por el usuario el 2026-10-10.** Fases 0 y 1 cerradas; sigue la fase 2.
+> **Estado: APROBADO por el usuario el 2026-10-10.** Fases 0 y 1 cerradas. Fase 2 construida y probada en la rama `fase-2/cuentas-y-distribuidoras`; falta la tanda de correcciones 2.11 antes de cerrarla.
 
 ## Cómo usar este plan
 - Es la única fuente de verdad. Lo que no está aquí va a "Ideas para después".
@@ -277,6 +277,16 @@ Estimación: una persona con Claude, ~25 h/semana.
   - [ ] cabecera Content-Security-Policy en Hosting (con `security-auditor`)
   - [x] (2026-10-10) pedidos por quien construyó las pantallas: el nombre de la distribuidora viaja en cada membresía (`members.distributorName`, sin lecturas extra en el selector) y `useCurrentDistributor` expone la membresía elegida mientras carga la distribuidora
 - [~] 2.10 **Requisitos antes de registrar a una sola persona real** (piloto incluido): titular identificado y correo de contacto que funcione en `docs/legal/`; script local para eliminar o anonimizar una cuenta y otro para exportar sus datos; registro de solicitudes. Mientras no se cumpla, la app solo se usa con emuladores y datos de prueba — (2026-10-10) scripts listos y probados contra el emulador: `scripts/delete-account.mjs` y `scripts/export-account.mjs` (exigen `--project` y `--yes-real-project` para un proyecto real). **Falta**: titular y correo de contacto en `docs/legal/`, el registro de solicitudes (fuera del repo) y probar los scripts con credenciales reales el día que haga falta
+- [ ] 2.11 **Tanda de correcciones antes de cerrar la fase** (sale de `rules-breaker`, `security-auditor`, `legal-compliance` y `flow-tester`, 2026-10-10):
+  - **Aprobación previa de distribuidoras**: nacen sin listar (`listingApproved` en `private/control`, `acceptingOrders: false` en el alta); solo el super admin las aprueba; sin aprobar, `/d/{slug}` no entrega teléfono ni WhatsApp a quien no sea su personal; cambiar nombre, teléfono o WhatsApp devuelve la ficha a revisión; el alta pide RUC, razón social y número del Registro de Hidrocarburos (privados); pantalla mínima de altas pendientes en `/plataforma` y script de suspensión; suspender oculta los contactos. Nunca escribir "verificada" en pantalla. Pendiente de confirmación del usuario: pedir RUC y registro
+  - **Correo verificado antes de guardar** perfil, consentimientos y direcciones (reglas), con el orden de guardas sesión → correo → términos
+  - **Compilación de pruebas aparte** (`dist-e2e`) y comprobación previa al despliegue que rechace una compilación que apunte a emuladores
+  - **App Check** como requisito previo al piloto (confirmar que funciona en el plan gratis sin tarjeta); alertas de uso
+  - Defectos de `flow-tester` (hoy `test.fixme`): el registro pierde el destino "registrar mi distribuidora"; el reenvío de verificación sale habilitado justo tras registrar; mensaje equivocado al perder la carrera por el tercer cupo; guardar el perfil se queda en "Guardando…" si la conexión cae después de pulsar
+  - Seguridad, menores: marca de borrado local antes de cerrar la sesión de Auth y barrido al arrancar sin sesión; `grant-platform-admin.mjs` con el patrón de `admin-common.mjs` y validación de `--uid`; `private/settings` legible solo por el fundador y el super admin; el punto de búsqueda con caducidad y menos decimales; reservar enlaces que contengan "hornilla"; cabecera Content-Security-Policy (probarla en un canal de vista previa con Google); acciones del CI fijadas por SHA; dejar de recibir la foto de Google
+  - Textos: descripción de la página y titulares que prometen pedir y seguir el pedido; "30 días de prueba gratis" con lo que pasa después (pendiente de confirmación del usuario: sin cobro automático); aviso de almacenamiento que nombre el punto de búsqueda; "No acepto" con salida real cuando la cuenta ya tiene perfil; aviso de datos públicos del alta
+  - Huecos de producto: un titular suspendido o con la prueba vencida puede fundar otra distribuidora con 30 días nuevos; `/cuenta` ofrece registrar una distribuidora a quien ya llegó al tope
+  - Después: `visual-designer` y `ux-reviewer` sobre las pantallas nuevas, `legal-compliance`, `regression-guard`, `publish-guard`, subir la rama y unir a `main`
 - *Criterio*: tests de reglas prueban que A no toca nada de B; nadie puede darse un rol.
 
 ### Fase 3 — Catálogo, personal, vehículos, stock
@@ -422,6 +432,8 @@ escritorio · agentes aplicables sin hallazgos CRÍTICO/ALTO · `regression-guar
 | 2026-10-10 | Los documentos legales siguen en 0.1 (segunda redacción): dicen lo que la app hace hoy, no lo que hará | Primera revisión de `legal-compliance`; subir el número exige un cambio coordinado de código y reglas |
 | 2026-10-10 | No se registra a ninguna persona real hasta cumplir el paso 2.10 | Sin responsable identificado ni forma de eliminar una cuenta no se pueden atender los derechos que promete la política de privacidad |
 | 2026-10-10 | Las pruebas con emuladores y navegador no se corren en el equipo del usuario mientras él lo esté usando; se verifican en el CI | Los emuladores de Firebase abrían ventanas que le quitaban el foco; arreglo en `scripts/emulators.mjs` pendiente de probar en Windows |
+| 2026-10-10 | Las distribuidoras nuevas pasarán a requerir aprobación antes de aparecer en el buscador (paso 2.11); cambia la promesa de "alta sin intervención" de §1 | `security-auditor` y `legal-compliance`: hoy cualquiera puede suplantar a un negocio real y ocupar el buscador entero. El usuario fue avisado y no objetó; falta su confirmación sobre pedir RUC y registro |
+| 2026-10-10 | Los recorridos de varios actores corren con 4 trabajadores | Con 8 la máquina se satura y aparecen tiempos de espera que no son fallos de la app |
 | 2026-10-10 | `npm audit` informativo en CI | Único hallazgo: `@grpc/grpc-js` vía `firebase` (solo build de Node, no llega al navegador) |
 | 2026-10-10 | Fase 2 (datos): el documento `/distributors/{d}` es **público entero** y lo privado (datos del dueño, plan) va en `/distributors/{d}/private/settings` | Las reglas no filtran campos; el buscador y `/d/{slug}` necesitan leer sin sesión |
 | 2026-10-10 | Fase 2 (datos): direcciones del cliente en 10 casillas fijas (`a0`…`a9`) en vez de ids automáticos | Única forma de que las reglas impongan un tope sin servidor |
