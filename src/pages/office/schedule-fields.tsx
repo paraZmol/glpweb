@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import { FieldError, TextField } from '@/components/common/text-field';
+import { formatTimeOfDay } from '@/domain/tenancy/schedule';
 
 // Monday first, as a week is read in Peru; the stored numbers are 0 = Sunday … 6 = Saturday.
 const DAYS = [
@@ -11,6 +12,17 @@ const DAYS = [
   { day: 6, short: 'Sáb', name: 'Sábado' },
   { day: 0, short: 'Dom', name: 'Domingo' },
 ] as const;
+
+const TIME_OF_DAY = /^\d{2}:\d{2}$/;
+
+/**
+ * The window as customers will read it. The native time control follows the clock of the device
+ * (24 h on many), so the hours are repeated in the format of the app (ui-system §4).
+ */
+function windowOf(opensAt: string, closesAt: string): string | null {
+  if (!TIME_OF_DAY.test(opensAt) || !TIME_OF_DAY.test(closesAt)) return null;
+  return `Tus clientes verán: ${formatTimeOfDay(opensAt)}–${formatTimeOfDay(closesAt)}`;
+}
 
 type ScheduleFieldsProps = {
   days: readonly number[];
@@ -36,6 +48,7 @@ export function ScheduleFields({
   const id = useId();
   const labelId = `${id}-label`;
   const errorId = `${id}-error`;
+  const shownWindow = windowOf(opensAt, closesAt);
   return (
     <div className="flex flex-col gap-4">
       <div role="group" aria-labelledby={labelId} aria-describedby={error ? errorId : undefined}>
@@ -75,6 +88,11 @@ export function ScheduleFields({
           onChange={(event) => onChangeTime('closesAt', event.target.value)}
           aria-invalid={error ? true : undefined}
         />
+        {shownWindow && (
+          <p className="col-span-2 -mt-1.5 text-sm text-muted-foreground tabular-nums">
+            {shownWindow}
+          </p>
+        )}
       </div>
     </div>
   );

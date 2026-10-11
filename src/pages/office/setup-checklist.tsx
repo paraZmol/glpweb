@@ -19,7 +19,8 @@ type TaskProps = {
 
 function Task({ title, detail, isDone = false, action }: TaskProps) {
   return (
-    <li className="flex items-center gap-3 py-3">
+    // Phone: the action goes under the words, which keep the whole width of the row.
+    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 py-3">
       <span
         aria-hidden="true"
         className={cn(
@@ -31,19 +32,22 @@ function Task({ title, detail, isDone = false, action }: TaskProps) {
       >
         {isDone && <Check className="size-4" strokeWidth={GLYPH_STROKE} />}
       </span>
-      <p className="min-w-0 flex-1 text-muted-foreground">
+      <p className={cn('min-w-0 text-muted-foreground', action && 'max-sm:col-span-2')}>
         <strong className="block font-heading text-base text-foreground">
           {title}
           {isDone && <span className="sr-only"> (hecho)</span>}
         </strong>
         {detail}
       </p>
-      {action ??
-        (!isDone && (
+      {action ? (
+        <div className="max-sm:col-span-2 max-sm:col-start-2">{action}</div>
+      ) : (
+        !isDone && (
           <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[0.8125rem] font-bold text-muted-foreground">
             {COMING_SOON}
           </span>
-        ))}
+        )
+      )}
     </li>
   );
 }

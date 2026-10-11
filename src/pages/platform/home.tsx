@@ -110,11 +110,17 @@ export function PlatformHomePage() {
           )
         }
       />
-      <div className="grid items-start gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
         {showsList && (
-          <Panel dense className="lg:max-h-[calc(100dvh-11rem)] lg:overflow-y-auto lg:p-4">
+          // Desktop: the list stays beside the review and scrolls inside its own panel.
+          <Panel
+            dense
+            className="lg:sticky lg:top-[calc(var(--top-inset)+1.5rem)] lg:flex lg:max-h-[calc(100dvh-11rem)] lg:flex-col lg:p-4"
+          >
             <ListFilter current={filter} />
-            <DistributorList filter={filter} list={list} />
+            <div className="lg:-mx-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:px-2 lg:py-1">
+              <DistributorList filter={filter} list={list} />
+            </div>
           </Panel>
         )}
         {showsReview && (

@@ -29,26 +29,32 @@ function DistributorRow({ listed, filter, now }: RowProps) {
     <li>
       <NavLink
         to={{ pathname: platformListingPath(distributorId), search: searchOf(filter) }}
-        className="flex items-center gap-3 rounded-lg px-3 py-3 transition-colors motion-fast hover:bg-muted aria-[current=page]:bg-muted"
+        className="flex items-center gap-3 rounded-lg px-3 py-3 transition-colors motion-fast hover:bg-muted aria-[current=page]:bg-muted aria-[current=page]:inset-ring-[1.5px] aria-[current=page]:inset-ring-border"
       >
         <div className="min-w-0 flex-1">
-          {/* A control document older than the copy of the name shows when it was founded. */}
-          <p className="truncate font-heading font-bold">{control.distributorName ?? founded}</p>
-          <p className="truncate text-[0.8125rem] text-muted-foreground tabular-nums">
-            {control.slug ? `${distributorPath(control.slug)} · ` : ''}
+          {/* The name leads. A control document older than its copy shows when it was founded. */}
+          <p className="line-clamp-2 font-heading text-[1.0625rem] leading-snug font-bold wrap-anywhere">
+            {control.distributorName ?? founded}
+          </p>
+          {control.slug && (
+            <p className="mt-0.5 truncate font-semibold text-muted-foreground">
+              {distributorPath(control.slug)}
+            </p>
+          )}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <StateChip state={listing.state}>{listing.text}</StateChip>
+            {isStopped && (
+              <span className="rounded-full px-2.5 py-1 text-[0.8125rem] font-bold text-muted-foreground inset-ring-[1.5px] inset-ring-border">
+                {PLAN_LABELS[control.status]}
+              </span>
+            )}
+          </div>
+          <p className="mt-2 truncate text-[0.8125rem] text-muted-foreground tabular-nums">
             {control.distributorName ? founded : 'Sin nombre en la lista'}
           </p>
           <p className="truncate text-[0.8125rem] text-muted-foreground">
             Identificador {distributorId}
           </p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <StateChip state={listing.state}>{listing.text}</StateChip>
-            {isStopped && (
-              <span className="text-[0.8125rem] font-bold text-muted-foreground">
-                {PLAN_LABELS[control.status]}
-              </span>
-            )}
-          </div>
         </div>
         <ChevronRight
           aria-hidden="true"
@@ -85,7 +91,7 @@ export function DistributorList({ filter, list }: ListProps) {
     return (
       <LoadingRegion label="Cargando la lista" className="flex flex-col gap-2">
         {Array.from({ length: SKELETON_ROWS }, (_unused, index) => (
-          <Bone key={index} className="h-24 rounded-lg" />
+          <Bone key={index} className="h-36 rounded-lg" />
         ))}
       </LoadingRegion>
     );

@@ -43,10 +43,6 @@ function verdictOf(availability: SlugAvailability): Verdict | null {
   }
 }
 
-function siteHost(): string {
-  return typeof window === 'undefined' ? 'hornilla' : window.location.host;
-}
-
 type SlugFieldProps = {
   value: string;
   onChange: (value: string) => void;
@@ -96,11 +92,9 @@ export function SlugField({ value, onChange, error, availability }: SlugFieldPro
             className="size-5 shrink-0 text-muted-foreground"
             strokeWidth={ICON_STROKE}
           />
-          <span className="sr-only">Tu página quedará en </span>
-          <span className="min-w-0 wrap-anywhere text-muted-foreground">
-            {siteHost()}
-            <strong className="text-foreground">{distributorPath(slug)}</strong>
-          </span>
+          {/* Only the path: the host is where the app happens to be served from. */}
+          <span className="shrink-0 text-muted-foreground">Tu enlace</span>
+          <strong className="min-w-0 wrap-anywhere tabular-nums">{distributorPath(slug)}</strong>
         </p>
       )}
     </div>

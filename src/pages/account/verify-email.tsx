@@ -84,8 +84,10 @@ export function VerifyEmailPage() {
       lead={
         <>
           Enviamos un enlace a{' '}
-          <strong className="wrap-anywhere text-foreground">{session.email}</strong>. Ábrelo y
-          vuelve aquí: así sabemos que la cuenta es tuya.
+          <strong className="inline-block max-w-full align-bottom wrap-anywhere text-foreground">
+            {session.email}
+          </strong>
+          . Ábrelo y vuelve aquí: así sabemos que la cuenta es tuya.
         </>
       }
       footer={

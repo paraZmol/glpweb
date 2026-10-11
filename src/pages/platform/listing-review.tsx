@@ -1,3 +1,4 @@
+import { CornerDownRight } from 'lucide-react';
 import { useState } from 'react';
 import { BrandTheme } from '@/components/brand/brand-theme';
 import { Monogram } from '@/components/brand/monogram';
@@ -11,6 +12,7 @@ import { listingStateOf } from '@/domain/tenancy/listing';
 import type { ListingReview } from '@/features/platform/platform-actions';
 import { type ReviewAction, reviewActionsOf } from '@/features/platform/review-actions';
 import { formatDateTime } from '@/lib/format-date';
+import { GLYPH_STROKE } from '@/lib/icons';
 import { distributorPath } from '@/lib/routes';
 import { DECISION_COPY } from './decision-copy';
 import { LISTING_LABELS, PLAN_LABELS } from './listing-labels';
@@ -73,9 +75,16 @@ export function ListingReviewView({ review, admin, onDecided }: ListingReviewVie
           </blockquote>
           {/* The note stays after a correction: it says what to look at again. */}
           {control.correctedAt && (
-            <p className="mt-2 text-[0.8125rem] font-bold tabular-nums">
-              Su titular envió correcciones el{' '}
-              {formatDateTime(control.correctedAt, DEFAULT_TIMEZONE)}. Compara de nuevo los datos.
+            <p className="mt-3 flex items-start gap-2 border-t pt-3 text-[0.8125rem] font-bold">
+              <CornerDownRight
+                aria-hidden="true"
+                className="mt-0.5 size-4 shrink-0 text-flame-text"
+                strokeWidth={GLYPH_STROKE}
+              />
+              <span className="tabular-nums">
+                Su titular envió correcciones el{' '}
+                {formatDateTime(control.correctedAt, DEFAULT_TIMEZONE)}: compara de nuevo los datos.
+              </span>
             </p>
           )}
         </figure>
@@ -100,7 +109,11 @@ export function ListingReviewView({ review, admin, onDecided }: ListingReviewVie
           </ReviewSection>
         </div>
       </div>
-      <section aria-label="Decisión" className="border-t pt-5">
+      {/* Desktop: the decision stays in reach while the data above is compared. */}
+      <section
+        aria-label="Decisión"
+        className="border-t pt-5 lg:sticky lg:bottom-0 lg:z-10 lg:-mx-7 lg:-mb-7 lg:rounded-b-lg lg:bg-card lg:px-7 lg:pb-7"
+      >
         {open ? (
           <ReviewDecision
             key={open}
