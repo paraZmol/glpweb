@@ -69,8 +69,8 @@ siempre a `/verificar-correo` y ST a `/aceptar-terminos` antes que a cualquier �
 | `/central` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | → su área | ve (la de A) | ve (la de A) | ve (la de B, nada de A) | ve, con aviso de solo lectura | → su área |
 | `/central/ficha` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | → su área | ve "la edita quien es titular" | ve | ve (la de B) | ve, solo lectura | → su área |
 | `/plataforma` y sus tres listas (`?estado=`) | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | → su área | → su área | → su área | → su área | → su área | ve |
-| `/plataforma/altas/{id}` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | → su área | → su área | → su área | → su área | → su área | ve (y "no existe" si el id no existe) |
-| Cualquier otra ruta | ve "no existe" | ve "no existe" | ve "no existe" | ve "no existe" | ve "no existe" | ve "no existe" | ve "no existe" | ve "no existe" | ve "no existe" | ve "no existe" |
+| `/plataforma/altas/{id}` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | → su área | → su área | → su área | → su área | → su área | ve, bajo la lista a la que pertenece (y "no existe" si el id no existe) |
+| Cualquier otra ruta | ve "no existe" con "Ingresar" | ve "no existe" con "Ir a mi inicio" | igual | igual | igual | igual | igual | igual | igual | igual |
 
 ## 2. Acciones en pantalla
 
@@ -81,14 +81,14 @@ siempre a `/verificar-correo` y ST a `/aceptar-terminos` antes que a cualquier �
 | Llamar o escribir por WhatsApp a una distribuidora | puede | puede | puede | puede | puede | puede | puede | puede | puede | puede |
 | Crear cuenta | puede | — | — | — | — | — | — | — | — | — |
 | Ingresar con correo | puede | — | — | — | — | — | — | — | — | — |
-| Pedir enlace para restablecer la contraseña | puede | puede | puede | puede | puede | puede | puede | puede | puede | puede |
+| Pedir enlace para restablecer la contraseña (misma respuesta haya o no cuenta) | puede | puede | puede | puede | puede | puede | puede | puede | puede | puede |
 | Reenviar verificación / "Ya lo verifiqué" | — | puede | — | — | — | — | — | — | — | — |
 | Eliminar la cuenta antes de aceptar ("No quiero continuar", "No acepto") | — | puede | puede (sin perfil) · → `/contacto` (con perfil) | — | — | — | — | — | — | — |
 | Aceptar términos y privacidad (crea el perfil) | — | — | puede | — | — | — | — | — | — | — |
 | Editar nombre y celular en `/cuenta` | — | — | — | puede | puede | puede | puede | puede | puede | puede |
 | Cambiar el correo en `/cuenta` | — | — | — | no ve | no ve | no ve | no ve | no ve | no ve | no ve |
 | Cerrar sesión (borra lo guardado en el dispositivo) | — | puede | puede | puede | puede | puede | puede | puede | puede | puede |
-| Registrar una distribuidora (4 pasos) | — | — | — | puede | puede | puede | puede (tope 3) | puede (tope 3) | no ve (bloqueado) | puede |
+| Registrar una distribuidora (4 pasos; Atrás y Adelante del navegador recorren los pasos) | — | — | — | puede | puede | puede | puede (tope 3) | puede (tope 3) | no ve (bloqueado) | puede |
 | Ver el estado de la ficha y la nota de la plataforma en `/central` | — | — | — | — | — | ve | ve | ve lo suyo | ve | — |
 | Copiar el enlace público | — | — | — | — | — | puede | puede | puede lo suyo | no ve | — |
 | Editar la ficha pública (`/central/ficha`) | — | — | — | — | — | no ve | puede | puede la suya; rechaza la de A | rechaza (solo lectura) | — |
@@ -97,6 +97,7 @@ siempre a `/verificar-correo` y ST a `/aceptar-terminos` antes que a cualquier �
 | Abrir las listas y la ficha de revisión | — | — | — | no ve | no ve | no ve | no ve | no ve | no ve | puede |
 | Aprobar · Pedir cambios (nota) · Suspender · Reactivar | — | — | — | no ve | no ve | no ve | no ve | no ve | no ve | puede |
 | Abrir Reparto / Central / Plataforma desde `/cuenta` | — | — | — | no ve | ve Reparto | ve Central | ve Central | ve Central | ve Central | ve Plataforma |
+| Leer el aviso de almacenamiento de la primera visita (franja arriba; no tapa ningún control) | ve | ve | ve | ve | ve | ve | ve | ve | ve | ve |
 | Cambiar de tema claro/oscuro | sigue al dispositivo | igual | igual | igual | igual | igual | igual | igual | igual | igual |
 
 ## 3. Intento directo contra las reglas (cliente modificado)
@@ -137,9 +138,12 @@ Se anotan aquí con el motivo; una celda no recorrida no se da por buena.
 - **Repartidor y central de una distribuidora suspendida o en revisión**: la semilla solo tiene
   titular en C, D y E.
 - **Sin conexión** y **app instalada**: son del agente `field-tester`.
+- **Recargar la pestaña a mitad del alta de distribuidora**: sigue vaciando lo escrito (el
+  borrador vive solo en memoria); su test queda con `test.fail` en `role-walker.spec.ts`.
 
 ## 5. Historial
 
 | Fecha | Qué cubrió la pasada | Rama |
 |---|---|---|
 | 2026-10-11 | Primera pasada: todo lo construido en las fases 0 a 2 (incluido 2.11) | `fase-2/cuentas-y-distribuidoras` |
+| 2026-10-11 | Arreglos de la primera pasada (no es una pasada nueva): historial del alta, aviso de almacenamiento, `/restablecer`, página "no existe", contraseña en blanco, título de las listas de plataforma, coordenadas con coma. Quedan con `test.fail`: recargar a mitad del alta, aprobar datos que la plataforma no vio, panel del titular que no se entera de la decisión | `fase-2/cuentas-y-distribuidoras` |
