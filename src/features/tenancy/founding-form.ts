@@ -1,4 +1,5 @@
 import { HORNILLA_BRAND_COLOR } from '../../domain/brand/derive-brand';
+import { parseCoordinate } from '../../domain/geo/coordinates';
 import type { GeoPoint } from '../../domain/geo/distance';
 import { DEFAULT_COVERAGE_RADIUS_KM } from '../../domain/tenancy/constants';
 import {
@@ -87,15 +88,9 @@ export function emptyFoundingForm(owner: {
   };
 }
 
-/** A coordinate as typed: a decimal comma is accepted, an empty field is not a zero. */
-function coordinateOf(text: string): number {
-  const trimmed = text.trim().replace(',', '.');
-  return trimmed === '' ? Number.NaN : Number(trimmed);
-}
-
 /** The plant as typed. Not validated here: `prepareNewDistributor` refuses a bad point. */
 export function plantOf(form: Pick<FoundingForm, 'latitude' | 'longitude'>): GeoPoint {
-  return { lat: coordinateOf(form.latitude), lng: coordinateOf(form.longitude) };
+  return { lat: parseCoordinate(form.latitude), lng: parseCoordinate(form.longitude) };
 }
 
 export function toFoundingInput(form: FoundingForm): NewDistributorInput {

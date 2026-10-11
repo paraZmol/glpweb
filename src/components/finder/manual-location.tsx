@@ -2,7 +2,8 @@ import { type FormEvent, useId, useState } from 'react';
 import { Button } from '@/components/common/button';
 import { TextField } from '@/components/common/text-field';
 
-const NOT_RECOGNISED = 'No reconocimos esas coordenadas. Deben verse así: -12.0464, -77.0428';
+const NOT_RECOGNISED =
+  'No reconocimos esas coordenadas. Deben verse así: -12.0464, -77.0428 (con sus decimales).';
 
 type ManualLocationProps = {
   /** Returns false when the text holds no coordinates. */

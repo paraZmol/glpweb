@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { formatCoordinates, formatDistanceKm, parseCoordinates } from './coordinates';
+import {
+  formatCoordinates,
+  formatDistanceKm,
+  parseCoordinate,
+  parseCoordinates,
+} from './coordinates';
 
 // PLAN 2.6: the manual alternative to "Usar mi ubicación".
 describe('parseCoordinates', () => {
@@ -8,6 +13,12 @@ describe('parseCoordinates', () => {
     ['-12.0464,-77.0428', { lat: -12.0464, lng: -77.0428 }],
     ['  -12.05   -77.04 ', { lat: -12.05, lng: -77.04 }],
     ['-12.05; -77.04', { lat: -12.05, lng: -77.04 }],
+    // role-walker 2026-10-11: the decimal comma the sign-up of a distributor already accepted.
+    ['-12,05; -77,04', { lat: -12.05, lng: -77.04 }],
+    ['-12,0464, -77,0428', { lat: -12.0464, lng: -77.0428 }],
+    ['-12,0464,-77,0428', { lat: -12.0464, lng: -77.0428 }],
+    ['-12,05 -77,04', { lat: -12.05, lng: -77.04 }],
+    ['A 1,5 km de -12.05, -77.04', { lat: -12.05, lng: -77.04 }],
     ['https://maps.example.com/@-12.0464,-77.0428,17z', { lat: -12.0464, lng: -77.0428 }],
     ['Mi casa: -9.5278, -77.5278 (frente al parque)', { lat: -9.5278, lng: -77.5278 }],
     ['40.4168, -3.7038', { lat: 40.4168, lng: -3.7038 }],
@@ -20,12 +31,28 @@ describe('parseCoordinates', () => {
     'Jr. Los Cedros 245',
     'Av. Ejemplo 12, 77',
     '-12, -77',
+    '-12,-77',
+    'Mz. 12, lote 5,5',
     '-12.05',
     '-95.5, -77.04',
     '-12.05, -181.5',
     'lat -12.05 lng',
   ])('finds no point in %j', (text) => {
     expect(parseCoordinates(text)).toBeNull();
+  });
+});
+
+describe('parseCoordinate', () => {
+  it.each([
+    ['-12.0464', -12.0464],
+    [' -12,05 ', -12.05],
+    ['-77', -77],
+  ])('reads %j', (text, expected) => {
+    expect(parseCoordinate(text)).toBe(expected);
+  });
+
+  it.each(['', '   ', 'doce', '-12.0.5'])('never reads %j as a number', (text) => {
+    expect(parseCoordinate(text)).toBeNaN();
   });
 });
 
