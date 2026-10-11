@@ -6,6 +6,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import {
   arrayUnion,
+  deleteField,
   doc,
   serverTimestamp,
   setDoc,
@@ -99,7 +100,17 @@ export function addressDoc(change: Record<string, unknown> = {}) {
 
 export const DISTRIBUTOR_NAME = 'Gas Demo';
 
-/** The public document: what anyone can read. */
+const DISTRIBUTOR_ID_LENGTH = 20;
+
+/**
+ * An id with the shape of the ones Firestore generates (20 letters and digits), readable in a
+ * failure message: `newDistributorId('New')` is `distNew0000000000000`.
+ */
+export function newDistributorId(label: string): string {
+  return `dist${label}`.padEnd(DISTRIBUTOR_ID_LENGTH, '0');
+}
+
+/** The public document as the founding batch writes it: unlisted until it is approved. */
 export function distributorDoc(slug: string, change: Record<string, unknown> = {}) {
   return {
     name: DISTRIBUTOR_NAME,
@@ -110,7 +121,7 @@ export function distributorDoc(slug: string, change: Record<string, unknown> = {
     plant: { lat: -12.0464, lng: -77.0428 },
     coverageRadiusKm: 5,
     brandColor: '#d9480f',
-    acceptingOrders: true,
+    acceptingOrders: false,
     schedule: { ...DEFAULT_SCHEDULE, days: [...DEFAULT_SCHEDULE.days] },
     maxCylindersPerOrder: 3,
     brands: [],
@@ -122,12 +133,16 @@ export function distributorDoc(slug: string, change: Record<string, unknown> = {
   };
 }
 
-/** The control document: plan state and founder, private to the staff. */
+/**
+ * The control document as the founding batch writes it: plan state, founder and a listing that
+ * waits for its review.
+ */
 export function controlDoc(ownerUid: string, change: Record<string, unknown> = {}) {
   return {
     ownerUid,
     status: 'trial',
     trialEndsAt: daysFromNow(TRIAL_DAYS),
+    listingApproved: false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     ...change,
@@ -164,6 +179,9 @@ export function privateDoc(ownerUid: string, change: Record<string, unknown> = {
     ownerPhone: '900000002',
     ownerEmail: emailOf(ownerUid),
     plan: 'trial',
+    taxId: '20000000001',
+    legalName: 'Gas Demo S.A.C.',
+    hydrocarbonsRegistry: '00000-074-000000',
     terms: termsDoc(),
     authorityDeclaredAt: serverTimestamp(),
     createdAt: serverTimestamp(),
@@ -229,6 +247,31 @@ export function foundDistributor(db: Db, options: FoundingOptions): Promise<void
   return batch.commit();
 }
 
+/** What a control document carries when its listing goes back to review. */
+export function backToReview(): Record<string, unknown> {
+  return {
+    listingApproved: false,
+    approvedAt: deleteField(),
+    approvedBy: deleteField(),
+    updatedAt: serverTimestamp(),
+  };
+}
+
+/**
+ * What a well-behaved client sends when an owner changes the name or a phone (PLAN 2.11): the
+ * edit, which also unlists the distributor, and the listing back to review, in one batch.
+ */
+export function editIdentity(db: Db, d: string, change: Record<string, unknown>): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(doc(db, `distributors/${d}`), {
+    ...change,
+    acceptingOrders: false,
+    updatedAt: serverTimestamp(),
+  });
+  batch.update(doc(db, `distributors/${d}/private/control`), backToReview());
+  return batch.commit();
+}
+
 // ---------------------------------------------------------------------------------------------
 // Seeded world, written with the rules disabled.
 // ---------------------------------------------------------------------------------------------
@@ -238,6 +281,8 @@ export interface SeededDistributor {
   slug: string;
   status: DistributorStatus;
   trialEndsAt: Timestamp;
+  /** False for a listing that still waits for its review; approved when left out. */
+  listingApproved?: boolean;
   /** uid → role. The first owner listed is the founder. */
   members: Record<string, MemberRole>;
 }
@@ -245,7 +290,8 @@ export interface SeededDistributor {
 const PAST = Timestamp.fromDate(new Date('2026-01-01T00:00:00Z'));
 
 /**
- * A and B are healthy; the others are read-only for a different reason each.
+ * A and B are healthy and so is `trial`; `pending` may operate but waits for its review, so it
+ * is not listed; the others are approved and read-only for a different reason each.
  * `customer` has a profile and no membership; `admin` is a platform admin.
  */
 export const WORLD = {
@@ -291,6 +337,14 @@ export const WORLD = {
     trialEndsAt: PAST,
     members: { 'owner-past-due': 'owner' },
   },
+  pending: {
+    d: 'dist-pending',
+    slug: 'gas-demo-pending',
+    status: 'trial',
+    trialEndsAt: daysFromNow(20),
+    listingApproved: false,
+    members: { 'owner-pending': 'owner', 'driver-pending': 'driver' },
+  },
 } satisfies Record<string, SeededDistributor>;
 
 export const ADMIN_UID = 'admin';
@@ -298,9 +352,29 @@ export const CUSTOMER_UID = 'customer';
 
 const founderOf = (seeded: SeededDistributor) => Object.keys(seeded.members)[0] ?? '';
 
-/** Same condition as the domain `isWritable`, at the moment of seeding. */
-const takesOrders = ({ status, trialEndsAt }: SeededDistributor) =>
-  status === 'active' || (status === 'trial' && trialEndsAt.toMillis() > Date.now());
+const isApproved = (seeded: SeededDistributor) => seeded.listingApproved !== false;
+
+/** Same condition as the domain `isOpenToPublic`, at the moment of seeding. */
+const takesOrders = (seeded: SeededDistributor) =>
+  isApproved(seeded) &&
+  (seeded.status === 'active' ||
+    (seeded.status === 'trial' && seeded.trialEndsAt.toMillis() > Date.now()));
+
+/** The control document of a seeded distributor: approved by the admin unless it says otherwise. */
+export function seededControlDoc(
+  ownerUid: string,
+  change: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const at = Timestamp.fromDate(new Date('2026-02-01T12:00:00Z'));
+  return controlDoc(ownerUid, {
+    listingApproved: true,
+    approvedAt: at,
+    approvedBy: ADMIN_UID,
+    createdAt: at,
+    updatedAt: at,
+    ...change,
+  });
+}
 
 export async function seedWorld(env: RulesTestEnvironment): Promise<void> {
   const at = Timestamp.fromDate(new Date('2026-02-01T12:00:00Z'));
@@ -317,7 +391,9 @@ export async function seedWorld(env: RulesTestEnvironment): Promise<void> {
       );
       batch.set(
         doc(db, `distributors/${d}/private/control`),
-        controlDoc(founder, { status, trialEndsAt, ...stamps }),
+        isApproved(seeded)
+          ? seededControlDoc(founder, { status, trialEndsAt })
+          : controlDoc(founder, { status, trialEndsAt, ...stamps }),
       );
       batch.set(doc(db, `slugs/${slug}`), { distributorId: d, createdAt: at });
       batch.set(doc(db, `distributors/${d}/private/settings`), privateDoc(founder, stamps));

@@ -28,23 +28,28 @@ import {
   TRIAL_DAYS,
 } from '../../src/domain/tenancy/constants';
 import { EDITABLE_PROFILE_FIELDS } from '../../src/domain/tenancy/distributor-input';
+import { IDENTITY_FIELDS } from '../../src/domain/tenancy/listing';
 import { RESERVED_SLUGS } from '../../src/domain/tenancy/slug';
 import { isWritable } from '../../src/domain/tenancy/status';
 import { DISTRIBUTOR_STATUSES, type DistributorStatus } from '../../src/domain/tenancy/types';
 import {
   ADMIN_UID,
   anonymous,
+  backToReview,
   controlDoc,
   createEnv,
   CUSTOMER_UID,
   daysFromNow,
   type Db,
   distributorDoc,
+  editIdentity,
   foundDistributor,
   type FoundingOptions,
   memberDoc,
+  newDistributorId,
   privateDoc,
   seedDoc,
+  seededControlDoc,
   seedProfile,
   seedWorld,
   slugDoc,
@@ -57,7 +62,11 @@ import {
 
 let env: RulesTestEnvironment;
 const FOUNDER = 'founder';
-const NEW = { d: 'dist-new', uid: FOUNDER, slug: 'gas-nuevo' } satisfies FoundingOptions;
+const NEW = {
+  d: newDistributorId('New'),
+  uid: FOUNDER,
+  slug: 'gas-nuevo',
+} satisfies FoundingOptions;
 const PAST = Timestamp.fromDate(new Date('2020-01-01T00:00:00Z'));
 const stamp = { updatedAt: serverTimestamp() };
 
@@ -89,7 +98,9 @@ describe('founding a distributor (PLAN 2.2)', () => {
     const member = (await getDoc(doc(db, `distributors/${NEW.d}/members/${FOUNDER}`))).data();
     const slug = (await getDoc(doc(db, `slugs/${NEW.slug}`))).data();
     const profile = (await getDoc(doc(db, `users/${FOUNDER}`))).data();
-    expect(distributor?.acceptingOrders).toBe(true);
+    // PLAN 2.11: it is born unlisted and waiting for its review.
+    expect(distributor?.acceptingOrders).toBe(false);
+    expect(control?.listingApproved).toBe(false);
     expect(control?.status).toBe('trial');
     expect(control?.ownerUid).toBe(FOUNDER);
     expect(member?.role).toBe('owner');
@@ -136,7 +147,7 @@ describe('founding a distributor (PLAN 2.2)', () => {
     await seedProfile(env, 'second');
     await foundDistributor(verified(env, FOUNDER), NEW);
 
-    const duplicate = { d: 'dist-copy', uid: 'second', slug: NEW.slug };
+    const duplicate = { d: newDistributorId('Copy'), uid: 'second', slug: NEW.slug };
     await assertFails(foundDistributor(verified(env, 'second'), duplicate));
   });
 
@@ -173,13 +184,26 @@ describe('founding a distributor (PLAN 2.2)', () => {
     ['with a made-up createdAt', { createdAt: PAST }],
     ['with a made-up updatedAt', { updatedAt: PAST }],
     ['with an extra field', { plan: 'pro' }],
+    // PLAN 2.11: nobody approves its own listing.
+    ['already approved', { listingApproved: true }],
+    [
+      'approved and signed by itself',
+      { listingApproved: true, approvedAt: serverTimestamp(), approvedBy: FOUNDER },
+    ],
+    [
+      'approved in the name of the admin',
+      { listingApproved: true, approvedAt: serverTimestamp(), approvedBy: ADMIN_UID },
+    ],
+    ['with the approval as text', { listingApproved: 'true' }],
+    ['with an approval date while not approved', { approvedAt: serverTimestamp() }],
+    ['with a note written by itself', { reviewNote: 'Todo en orden.' }],
   ])('blocks founding one whose control document is %s', async (_case, change) => {
     const control = controlDoc(FOUNDER, change);
     await assertFails(foundDistributor(verified(env, FOUNDER), { ...NEW, control }));
   });
 
   it.each([
-    ['that does not take orders', { acceptingOrders: false }],
+    ['that lists itself without waiting for the review', { acceptingOrders: true }],
     ['with acceptingOrders as text', { acceptingOrders: 'yes' }],
     ['with a made-up createdAt', { createdAt: PAST }],
     ['with a made-up updatedAt', { updatedAt: PAST }],
@@ -218,7 +242,7 @@ describe('founding a distributor (PLAN 2.2)', () => {
     await assertFails(foundDistributor(verified(env, FOUNDER), { ...NEW, distributor }));
   });
 
-  it.each(['ownerUid', 'status', 'trialEndsAt', 'createdAt', 'updatedAt'])(
+  it.each(['ownerUid', 'status', 'trialEndsAt', 'listingApproved', 'createdAt', 'updatedAt'])(
     'blocks founding one whose control document lacks %s',
     async (field) => {
       const control = without(controlDoc(FOUNDER), field);
@@ -292,6 +316,44 @@ describe('founding a distributor (PLAN 2.2)', () => {
     ],
     ['settings with an extra field', { settings: privateDoc(FOUNDER, { discount: 100 }) }],
     ['settings with an invalid phone', { settings: privateDoc(FOUNDER, { ownerPhone: '123' }) }],
+    // PLAN 2.11: the verification data is required and bounded.
+    ['settings without the RUC', { settings: without(privateDoc(FOUNDER), 'taxId') }],
+    ['settings with a ten-digit RUC', { settings: privateDoc(FOUNDER, { taxId: '2000000000' }) }],
+    [
+      'settings with a twelve-digit RUC',
+      { settings: privateDoc(FOUNDER, { taxId: '200000000010' }) },
+    ],
+    [
+      'settings with a RUC of an unknown kind',
+      { settings: privateDoc(FOUNDER, { taxId: '30000000007' }) },
+    ],
+    ['settings with a numeric RUC', { settings: privateDoc(FOUNDER, { taxId: 20000000001 }) }],
+    ['settings without the legal name', { settings: without(privateDoc(FOUNDER), 'legalName') }],
+    ['settings with a blank legal name', { settings: privateDoc(FOUNDER, { legalName: '  ' }) }],
+    [
+      'settings with an oversized legal name',
+      { settings: privateDoc(FOUNDER, { legalName: 'G'.repeat(121) }) },
+    ],
+    [
+      'settings without the record number',
+      { settings: without(privateDoc(FOUNDER), 'hydrocarbonsRegistry') },
+    ],
+    [
+      'settings with a record number too short',
+      { settings: privateDoc(FOUNDER, { hydrocarbonsRegistry: '12' }) },
+    ],
+    [
+      'settings with an oversized record number',
+      { settings: privateDoc(FOUNDER, { hydrocarbonsRegistry: '1'.repeat(41) }) },
+    ],
+    [
+      'settings with markup in the record number',
+      { settings: privateDoc(FOUNDER, { hydrocarbonsRegistry: '<b>0001</b>' }) },
+    ],
+    [
+      'settings with a lowercase record number',
+      { settings: privateDoc(FOUNDER, { hydrocarbonsRegistry: 'abc-0001' }) },
+    ],
     ['slug with an extra field', { slugData: slugDoc(NEW.d, { premium: true }) }],
     ['slug with a made-up createdAt', { slugData: slugDoc(NEW.d, { createdAt: PAST }) }],
     [
@@ -306,20 +368,51 @@ describe('founding a distributor (PLAN 2.2)', () => {
     await assertFails(foundDistributor(verified(env, FOUNDER), { ...NEW, ...change }));
   });
 
-  it('blocks founding under an id that is not a plain document id', async () => {
-    const db = verified(env, FOUNDER);
-    await assertFails(foundDistributor(db, { ...NEW, d: 'dist new' }));
-    await assertFails(foundDistributor(db, { ...NEW, d: 'd'.repeat(65) }));
+  // PLAN 2.11: the search returns "the first 50" in id order, so the id is the one Firestore
+  // generates (20 letters and digits), not one the client picks to sort first.
+  it.each([
+    ['with a space', 'dist new'],
+    ['far too long', 'd'.repeat(65)],
+    ['short, to sort first', '0'],
+    ['readable', 'dist-new'],
+    ['of 19 characters', 'a'.repeat(19)],
+    ['of 21 characters', 'a'.repeat(21)],
+    ['of 20 characters with a hyphen', `${'a'.repeat(19)}-`],
+    ['of 20 characters with an underscore', `${'a'.repeat(19)}_`],
+    ['of 20 characters with an accent', `${'a'.repeat(19)}á`],
+  ])('blocks founding under an id %s', async (_case, d) => {
+    await assertFails(foundDistributor(verified(env, FOUNDER), { ...NEW, d }));
   });
+
+  it('lets a distributor be founded under an id made by the SDK', async () => {
+    const db = verified(env, FOUNDER);
+    const d = doc(collection(db, 'distributors')).id;
+
+    await assertSucceeds(foundDistributor(db, { ...NEW, d }));
+  });
+
+  // PLAN 2.11: no link may carry the name of the platform.
+  it.each(['hornilla-oficial', 'gas-hornilla', 'mihornilla2', 'soporte-glpweb', 'glpweb1'])(
+    'blocks the slug "%s", which carries the name of the platform',
+    async (slug) => {
+      await assertFails(foundDistributor(verified(env, FOUNDER), { ...NEW, slug }));
+    },
+  );
 
   it('caps how many distributors one account can found', async () => {
     const db = verified(env, FOUNDER);
     for (let index = 0; index < MAX_DISTRIBUTORS_PER_ACCOUNT; index += 1) {
       await assertSucceeds(
-        foundDistributor(db, { d: `dist-n${index}`, uid: FOUNDER, slug: `gas-n${index}` }),
+        foundDistributor(db, {
+          d: newDistributorId(`N${index}`),
+          uid: FOUNDER,
+          slug: `gas-n${index}`,
+        }),
       );
     }
-    await assertFails(foundDistributor(db, { d: 'dist-extra', uid: FOUNDER, slug: 'gas-extra' }));
+    await assertFails(
+      foundDistributor(db, { d: newDistributorId('Extra'), uid: FOUNDER, slug: 'gas-extra' }),
+    );
   });
 
   it('blocks overwriting an existing distributor through the founding batch', async () => {
@@ -406,14 +499,68 @@ describe('/distributors/{d} — public read', () => {
   const listed = where('acceptingOrders', '==', true);
   const PUBLIC_FIELDS = Object.keys(distributorDoc('x')).sort();
 
-  it.each([
+  const OUTSIDERS: [string, () => Db][] = [
     ['an anonymous visitor', () => anonymous(env)],
+    ['an unverified stranger', () => unverified(env, 'stranger')],
     ['a customer', () => verified(env, CUSTOMER_UID)],
+    ['the owner of another distributor', () => verified(env, 'owner-b')],
     ['a member of another distributor', () => verified(env, 'driver-b')],
-  ])('lets %s read one distributor, whatever its state', async (_who, connect) => {
-    const db = connect();
-    await assertSucceeds(getDoc(doc(db, `distributors/${WORLD.a.d}`)));
-    await assertSucceeds(getDoc(doc(db, `distributors/${WORLD.suspended.d}`)));
+  ];
+  const TAKING_ORDERS = [WORLD.a, WORLD.trial];
+  const NOT_TAKING_ORDERS = [WORLD.suspended, WORLD.pastDue, WORLD.expired, WORLD.pending];
+
+  it.each(OUTSIDERS)('lets %s read a distributor that takes orders', async (_who, connect) => {
+    for (const seeded of TAKING_ORDERS) {
+      await assertSucceeds(getDoc(doc(connect(), `distributors/${seeded.d}`)));
+    }
+  });
+
+  // PLAN 2.11: waiting for its review, suspended, past due or with the trial over, it hands its
+  // name and phones to nobody outside.
+  it.each(OUTSIDERS)(
+    'blocks %s from reading a distributor that does not take orders',
+    async (_who, connect) => {
+      for (const seeded of NOT_TAKING_ORDERS) {
+        await assertFails(getDoc(doc(connect(), `distributors/${seeded.d}`)));
+      }
+    },
+  );
+
+  it.each(NOT_TAKING_ORDERS)(
+    'lets the staff of $d and a platform admin read it although it takes no orders',
+    async (seeded) => {
+      for (const uid of [...Object.keys(seeded.members), ADMIN_UID]) {
+        await assertSucceeds(getDoc(doc(verified(env, uid), `distributors/${seeded.d}`)));
+      }
+    },
+  );
+
+  it('blocks a member who was deactivated from reading its unlisted distributor', async () => {
+    const path = `distributors/${WORLD.pending.d}/members/driver-pending`;
+    const deactivated = memberDoc(WORLD.pending.d, 'driver-pending', 'driver', {
+      active: false,
+      createdAt: PAST,
+      updatedAt: PAST,
+    });
+    await seedDoc(env, path, deactivated);
+
+    await assertFails(
+      getDoc(doc(verified(env, 'driver-pending'), `distributors/${WORLD.pending.d}`)),
+    );
+  });
+
+  it('answers "not found", not a refusal, for a distributor that does not exist', async () => {
+    const snapshot = await assertSucceeds(getDoc(doc(anonymous(env), 'distributors/dist-ghost')));
+
+    expect(snapshot.exists()).toBe(false);
+  });
+
+  it('keeps the link of an unlisted distributor resolvable, and only the link', async () => {
+    const db = anonymous(env);
+    const link = await assertSucceeds(getDoc(doc(db, `slugs/${WORLD.pending.slug}`)));
+
+    expect(link.data()?.distributorId).toBe(WORLD.pending.d);
+    await assertFails(getDoc(doc(db, `distributors/${WORLD.pending.d}`)));
   });
 
   it('lets anyone list the distributors that take orders, with a bounded query', async () => {
@@ -423,6 +570,7 @@ describe('/distributors/{d} — public read', () => {
     );
     const ids = result.docs.map((snapshot) => snapshot.id).sort();
     expect(ids).toEqual([WORLD.a.d, WORLD.b.d, WORLD.trial.d].sort());
+    expect(ids).not.toContain(WORLD.pending.d);
   });
 
   it.each([
@@ -446,26 +594,25 @@ describe('/distributors/{d} — public read', () => {
 
   // PLAN 2.9: a visitor cannot find out the billing state, the trial end or the founder.
   it.each(Object.values(WORLD))(
-    'shows a visitor only the public fields of $d, whatever its plan state',
+    'keeps the plan state of $d out of its public document',
     async (seeded) => {
-      const snapshot = await getDoc(doc(anonymous(env), `distributors/${seeded.d}`));
+      const reader = verified(env, Object.keys(seeded.members)[0] ?? '');
+      const snapshot = await getDoc(doc(reader, `distributors/${seeded.d}`));
 
       expect(Object.keys(snapshot.data() ?? {}).sort()).toEqual(PUBLIC_FIELDS);
       expect(PUBLIC_FIELDS).not.toEqual(
-        expect.arrayContaining(['status', 'trialEndsAt', 'ownerUid', 'plan', 'ownerEmail']),
+        expect.arrayContaining([
+          'status',
+          'trialEndsAt',
+          'ownerUid',
+          'plan',
+          'ownerEmail',
+          'listingApproved',
+          'taxId',
+        ]),
       );
     },
   );
-
-  it.each([
-    ['suspended', WORLD.suspended],
-    ['past due', WORLD.pastDue],
-    ['on an expired trial', WORLD.expired],
-  ])('shows a distributor that is %s only as "not taking orders"', async (_case, seeded) => {
-    const snapshot = await getDoc(doc(anonymous(env), `distributors/${seeded.d}`));
-
-    expect(snapshot.data()?.acceptingOrders).toBe(false);
-  });
 });
 
 describe('/distributors/{d}/private/control — who learns the plan state (PLAN 2.9)', () => {
@@ -552,12 +699,16 @@ describe('/distributors/{d} — owner edit', () => {
     priceFromCents: 3800,
   };
 
-  it.each(EDITABLE_PROFILE_FIELDS)('lets the owner edit %s', async (field) => {
+  const isIdentity = (field: string) => (IDENTITY_FIELDS as readonly string[]).includes(field);
+  const PLAIN_FIELDS = EDITABLE_PROFILE_FIELDS.filter((field) => !isIdentity(field));
+  const PLAIN_EDIT = Object.fromEntries(PLAIN_FIELDS.map((field) => [field, EDIT[field]]));
+
+  it.each(PLAIN_FIELDS)('lets the owner edit %s', async (field) => {
     await assertSucceeds(updateDoc(target('owner-a'), { [field]: EDIT[field], ...stamp }));
   });
 
-  it('lets the owner edit the whole profile at once and clear the price', async () => {
-    await assertSucceeds(updateDoc(target('owner-a'), { ...EDIT, ...stamp }));
+  it('lets the owner edit everything but name and phones at once, and clear the price', async () => {
+    await assertSucceeds(updateDoc(target('owner-a'), { ...PLAIN_EDIT, ...stamp }));
     await assertSucceeds(
       updateDoc(target('owner-a'), { priceFromCents: null, brands: [], ...stamp }),
     );
@@ -565,7 +716,98 @@ describe('/distributors/{d} — owner edit', () => {
 
   it('lets the owner of a running trial edit', async () => {
     const trialOwner = target('owner-trial', WORLD.trial.d);
-    await assertSucceeds(updateDoc(trialOwner, { name: 'Gas Demo En Prueba', ...stamp }));
+    await assertSucceeds(updateDoc(trialOwner, { addressLine: 'Jr. En Prueba 1', ...stamp }));
+  });
+
+  // PLAN 2.11: what identifies the business cannot change under an approval.
+  describe('name and phones — the edit sends the listing back to review', () => {
+    const control = (db: Db, d = WORLD.a.d) => doc(db, `distributors/${d}/private/control`);
+
+    it.each(IDENTITY_FIELDS)('blocks a plain edit of %s on an approved listing', async (field) => {
+      await assertFails(updateDoc(target('owner-a'), { [field]: EDIT[field], ...stamp }));
+    });
+
+    it.each(IDENTITY_FIELDS)(
+      'lets the owner edit %s together with the return to review',
+      async (field) => {
+        const db = verified(env, 'owner-a');
+        await assertSucceeds(editIdentity(db, WORLD.a.d, { [field]: EDIT[field] }));
+
+        const after = (await getDoc(control(db))).data();
+        expect(after?.listingApproved).toBe(false);
+        expect(after).not.toHaveProperty('approvedAt');
+        expect(after).not.toHaveProperty('approvedBy');
+        await assertFails(getDoc(doc(anonymous(env), `distributors/${WORLD.a.d}`)));
+      },
+    );
+
+    it('lets the owner edit the whole profile at once, eight brands included', async () => {
+      const brands = Array.from({ length: MAX_BRANDS }, (_, index) => `Marca ${index + 1}`);
+
+      await assertSucceeds(editIdentity(verified(env, 'owner-a'), WORLD.a.d, { ...EDIT, brands }));
+    });
+
+    it.each([
+      ['keeps the distributor listed', { acceptingOrders: true }, backToReview()],
+      ['leaves the listing approved', { acceptingOrders: false }, null],
+      [
+        'only refreshes the control document',
+        { acceptingOrders: false },
+        { updatedAt: serverTimestamp() },
+      ],
+    ])('blocks a new name in a batch that %s', async (_case, flag, controlChange) => {
+      const db = verified(env, 'owner-a');
+      const batch = writeBatch(db);
+      batch.update(doc(db, `distributors/${WORLD.a.d}`), { name: 'Gas Otro', ...flag, ...stamp });
+      if (controlChange) batch.update(control(db), controlChange);
+
+      await assertFails(batch.commit());
+    });
+
+    it('lets the owner of a listing that waits for its review edit them plainly', async () => {
+      const pending = target('owner-pending', WORLD.pending.d);
+
+      await assertSucceeds(updateDoc(pending, { name: 'Gas Demo Corregido', ...stamp }));
+      await assertSucceeds(updateDoc(pending, { contactPhone: '900000023', ...stamp }));
+    });
+
+    it('blocks the owner from using the return to review to unlist without an edit', async () => {
+      await assertFails(updateDoc(target('owner-a'), { acceptingOrders: false, ...stamp }));
+    });
+
+    it('lets a plain edit leave the listing approved and public', async () => {
+      await assertSucceeds(
+        updateDoc(target('owner-a'), { addressLine: 'Jr. Nuevo 200', ...stamp }),
+      );
+
+      const snapshot = await getDoc(doc(anonymous(env), `distributors/${WORLD.a.d}`));
+      expect(snapshot.data()?.acceptingOrders).toBe(true);
+    });
+
+    it.each([
+      ['its dispatcher', 'dispatcher-a'],
+      ['its driver', 'driver-a'],
+      ['the owner of another distributor', 'owner-b'],
+      ['a customer', CUSTOMER_UID],
+    ])('blocks %s from sending the listing back to review', async (_who, uid) => {
+      const db = verified(env, uid);
+
+      await assertFails(updateDoc(control(db), backToReview()));
+      await assertFails(editIdentity(db, WORLD.a.d, { name: 'Gas Otro' }));
+    });
+
+    it('lets the owner send its own listing back to review, which unlists it', async () => {
+      const db = verified(env, 'owner-a');
+      const batch = writeBatch(db);
+      batch.update(control(db), backToReview());
+      batch.update(doc(db, `distributors/${WORLD.a.d}`), { acceptingOrders: false, ...stamp });
+
+      await assertSucceeds(batch.commit());
+    });
+
+    it('blocks the owner from sending it back to review while it stays listed', async () => {
+      await assertFails(updateDoc(control(verified(env, 'owner-a')), backToReview()));
+    });
   });
 
   it.each([
@@ -573,7 +815,10 @@ describe('/distributors/{d} — owner edit', () => {
     ['its public profile to carry a trial end', { trialEndsAt: daysFromNow(3650) }],
     ['its public profile to carry a founder', { ownerUid: 'dispatcher-a' }],
     ['its slug', { slug: 'gas-otro' }],
-    ['acceptingOrders together with the profile', { name: 'Gas Demo Dos', acceptingOrders: false }],
+    [
+      'acceptingOrders together with a plain edit',
+      { addressLine: 'Jr. Nuevo 200', acceptingOrders: false },
+    ],
     ['acceptingOrders to false while it takes orders', { acceptingOrders: false }],
     ['its createdAt', { createdAt: serverTimestamp() }],
     ['its currency', { currency: 'USD' }],
@@ -583,8 +828,10 @@ describe('/distributors/{d} — owner edit', () => {
   });
 
   it('blocks an edit without a fresh updatedAt', async () => {
-    await assertFails(updateDoc(target('owner-a'), { name: 'Gas Demo Dos' }));
-    await assertFails(updateDoc(target('owner-a'), { name: 'Gas Demo Dos', updatedAt: PAST }));
+    await assertFails(updateDoc(target('owner-a'), { addressLine: 'Jr. Nuevo 200' }));
+    await assertFails(
+      updateDoc(target('owner-a'), { addressLine: 'Jr. Nuevo 200', updatedAt: PAST }),
+    );
   });
 
   it('blocks replacing the document with one that drops required fields', async () => {
@@ -603,8 +850,9 @@ describe('/distributors/{d} — owner edit', () => {
   ])('blocks %s from editing the profile', async (_who, connect) => {
     const db = connect();
     await assertFails(
-      updateDoc(doc(db, `distributors/${WORLD.a.d}`), { name: 'Hackeado', ...stamp }),
+      updateDoc(doc(db, `distributors/${WORLD.a.d}`), { addressLine: 'Hackeado', ...stamp }),
     );
+    await assertFails(editIdentity(db, WORLD.a.d, { name: 'Hackeado' }));
   });
 
   it('blocks an owner who was deactivated', async () => {
@@ -614,7 +862,7 @@ describe('/distributors/{d} — owner edit', () => {
       path,
       memberDoc(WORLD.a.d, 'owner-a', 'owner', { active: false, createdAt: PAST, updatedAt: PAST }),
     );
-    await assertFails(updateDoc(target('owner-a'), { name: 'Gas Demo Dos', ...stamp }));
+    await assertFails(updateDoc(target('owner-a'), { addressLine: 'Jr. Nuevo 200', ...stamp }));
   });
 
   it.each([
@@ -622,7 +870,9 @@ describe('/distributors/{d} — owner edit', () => {
     ['on an expired trial', WORLD.expired, 'owner-expired'],
     ['past due', WORLD.pastDue, 'owner-past-due'],
   ] as const)('blocks the owner of a distributor that is %s', async (_case, seeded, owner) => {
-    await assertFails(updateDoc(target(owner, seeded.d), { name: 'Gas Demo Dos', ...stamp }));
+    const edit = { addressLine: 'Jr. Nuevo 200', ...stamp };
+    await assertFails(updateDoc(target(owner, seeded.d), edit));
+    await assertFails(editIdentity(verified(env, owner), seeded.d, { name: 'Gas Demo Dos' }));
   });
 
   it.each(Object.values(WORLD))('agrees with the domain isWritable for $d', async (seeded) => {
@@ -632,7 +882,7 @@ describe('/distributors/{d} — owner edit', () => {
       new Date(),
     );
 
-    const attempt = updateDoc(target(owner, seeded.d), { name: 'Gas Demo Dos', ...stamp });
+    const attempt = updateDoc(target(owner, seeded.d), { addressLine: 'Jr. Dos 2', ...stamp });
     const passed = await attempt.then(
       () => true,
       () => false,
@@ -675,10 +925,28 @@ describe('distributor status — platform admin (PLAN 2.9)', () => {
   );
 
   it('lets the admin lift a suspension, which lists the distributor again', async () => {
+    await assertFails(getDoc(doc(anonymous(env), `distributors/${WORLD.suspended.d}`)));
+
     await assertSucceeds(setStatus(admin(), WORLD.suspended.d, 'active', true));
 
     const listed = await getDoc(doc(anonymous(env), `distributors/${WORLD.suspended.d}`));
     expect(listed.data()?.acceptingOrders).toBe(true);
+  });
+
+  // PLAN 2.11: suspending takes the name and the phones away from visitors.
+  it('lets the admin suspend, which closes the public document to visitors', async () => {
+    await assertSucceeds(getDoc(doc(anonymous(env), `distributors/${WORLD.a.d}`)));
+
+    await assertSucceeds(setStatus(admin(), WORLD.a.d, 'suspended', false));
+
+    await assertFails(getDoc(doc(anonymous(env), `distributors/${WORLD.a.d}`)));
+    await assertFails(getDoc(doc(verified(env, CUSTOMER_UID), `distributors/${WORLD.a.d}`)));
+    await assertSucceeds(getDoc(doc(verified(env, 'driver-a'), `distributors/${WORLD.a.d}`)));
+  });
+
+  it('blocks the admin from listing, through its status, one that is not approved', async () => {
+    await assertFails(setStatus(admin(), WORLD.pending.d, 'active', true));
+    await assertSucceeds(setStatus(admin(), WORLD.pending.d, 'active'));
   });
 
   it('lets the admin change the status alone when the public flag already agrees', async () => {
@@ -808,7 +1076,7 @@ describe('acceptingOrders — keeping the public flag true to the control docume
     await seedDoc(
       env,
       `distributors/${STALE.d}/private/control`,
-      controlDoc('owner-expired', { status: 'active', createdAt: PAST, updatedAt: PAST }),
+      seededControlDoc('owner-expired', { status: 'active' }),
     );
     await seedDoc(
       env,
@@ -860,7 +1128,7 @@ describe('/slugs/{slug}', () => {
     await seedDoc(
       env,
       'distributors/dist-orphan/private/control',
-      controlDoc('owner-a', { status: 'active', createdAt: PAST, updatedAt: PAST }),
+      seededControlDoc('owner-a', { status: 'active' }),
     );
 
     for (const uid of [CUSTOMER_UID, 'owner-b', 'owner-a']) {
@@ -879,14 +1147,66 @@ describe('/distributors/{d}/private/settings', () => {
     await assertSucceeds(getDoc(settings(verified(env, ADMIN_UID))));
   });
 
-  it('lets a co-owner read it', async () => {
+  // PLAN 2.11: it holds the founder's own e-mail and phone and the tax number of the business.
+  it('blocks a co-owner from reading or editing it', async () => {
     const path = `distributors/${WORLD.a.d}/members/co-owner`;
     await seedDoc(
       env,
       path,
       memberDoc(WORLD.a.d, 'co-owner', 'owner', { createdAt: PAST, updatedAt: PAST }),
     );
-    await assertSucceeds(getDoc(settings(verified(env, 'co-owner'))));
+    const db = verified(env, 'co-owner');
+
+    await assertFails(getDoc(settings(db)));
+    await assertFails(updateDoc(settings(db), { ownerName: 'X', ...stamp }));
+  });
+
+  const VERIFICATION_EDIT = {
+    taxId: '20000000010',
+    legalName: 'Gas Demo Corregido S.A.C.',
+    hydrocarbonsRegistry: '11111-074-111111',
+  };
+
+  it('lets the founder correct the verification data while the listing waits for its review', async () => {
+    const own = settings(verified(env, 'owner-pending'), WORLD.pending.d);
+
+    await assertSucceeds(updateDoc(own, { ...VERIFICATION_EDIT, ...stamp }));
+  });
+
+  it.each(Object.keys(VERIFICATION_EDIT) as (keyof typeof VERIFICATION_EDIT)[])(
+    'blocks the founder from changing %s once the listing is approved',
+    async (field) => {
+      const own = settings(verified(env, 'owner-a'));
+
+      await assertFails(updateDoc(own, { [field]: VERIFICATION_EDIT[field], ...stamp }));
+    },
+  );
+
+  it.each([
+    ['a RUC of ten digits', { taxId: '2000000000' }],
+    ['a RUC of an unknown kind', { taxId: '30000000007' }],
+    ['a blank legal name', { legalName: ' ' }],
+    ['an oversized legal name', { legalName: 'G'.repeat(121) }],
+    ['a record number with markup', { hydrocarbonsRegistry: '<i>1</i>' }],
+    ['a record number removed', { hydrocarbonsRegistry: deleteField() }],
+  ])('blocks the founder from correcting the verification data with %s', async (_case, change) => {
+    const own = settings(verified(env, 'owner-pending'), WORLD.pending.d);
+
+    await assertFails(updateDoc(own, { ...change, ...stamp }));
+  });
+
+  it('lets a platform admin read the verification data of a listing that waits for review', async () => {
+    const snapshot = await assertSucceeds(
+      getDoc(settings(verified(env, ADMIN_UID), WORLD.pending.d)),
+    );
+
+    expect(snapshot.data()).toMatchObject({ taxId: '20000000001', legalName: 'Gas Demo S.A.C.' });
+  });
+
+  it('blocks a platform admin from editing it', async () => {
+    const own = settings(verified(env, ADMIN_UID), WORLD.pending.d);
+
+    await assertFails(updateDoc(own, { ...VERIFICATION_EDIT, ...stamp }));
   });
 
   it.each([

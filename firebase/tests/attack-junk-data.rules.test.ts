@@ -31,6 +31,7 @@ import {
   foundDistributor,
   type FoundingOptions,
   memberDoc,
+  newDistributorId,
   privateDoc,
   seedDoc,
   seedProfile,
@@ -39,11 +40,16 @@ import {
   userDoc,
   verified,
   WORLD,
+  editIdentity,
 } from './helpers';
 
 let env: RulesTestEnvironment;
 const FOUNDER = 'founder';
-const NEW = { d: 'dist-new', uid: FOUNDER, slug: 'gas-nuevo' } satisfies FoundingOptions;
+const NEW = {
+  d: newDistributorId('New'),
+  uid: FOUNDER,
+  slug: 'gas-nuevo',
+} satisfies FoundingOptions;
 const PAST = Timestamp.fromDate(new Date('2020-01-01T00:00:00Z'));
 const stamp = { updatedAt: serverTimestamp() };
 const old = { createdAt: PAST, updatedAt: PAST };
@@ -63,8 +69,14 @@ afterAll(async () => {
   await env.cleanup();
 });
 
+// A new name sends the listing back to review (PLAN 2.11), so it travels in that batch.
 const ownerEdit = (change: Record<string, unknown>) =>
-  updateDoc(doc(verified(env, 'owner-a'), `distributors/${WORLD.a.d}`), { ...change, ...stamp });
+  'name' in change
+    ? editIdentity(verified(env, 'owner-a'), WORLD.a.d, change)
+    : updateDoc(doc(verified(env, 'owner-a'), `distributors/${WORLD.a.d}`), {
+        ...change,
+        ...stamp,
+      });
 
 describe('public profile — text that shows as nothing', () => {
   it.each([

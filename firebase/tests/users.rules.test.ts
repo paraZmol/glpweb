@@ -66,11 +66,40 @@ afterAll(async () => {
 });
 
 describe('/users/{uid} — create', () => {
-  it('lets a signed-in account create its own profile, verified or not', async () => {
-    await assertSucceeds(setDoc(doc(unverified(env, NEWCOMER), `users/${NEWCOMER}`), userDoc()));
+  it('lets an account with a verified e-mail create its own profile', async () => {
+    await assertSucceeds(setDoc(doc(verified(env, NEWCOMER), `users/${NEWCOMER}`), userDoc()));
     await assertSucceeds(
       setDoc(doc(verified(env, 'second'), 'users/second'), userDoc({ phone: '900000010' })),
     );
+  });
+
+  // PLAN 2.11: nothing is stored, consents included, for an address nobody proved is theirs.
+  it('blocks an account whose e-mail is not verified from creating its profile', async () => {
+    await assertFails(setDoc(doc(unverified(env, NEWCOMER), `users/${NEWCOMER}`), userDoc()));
+  });
+
+  it('blocks an account without an e-mail claim at all', async () => {
+    const db = env.authenticatedContext(NEWCOMER).firestore();
+    await assertFails(setDoc(doc(db, `users/${NEWCOMER}`), userDoc()));
+  });
+
+  it('blocks an unverified account from editing a profile, renewing consents or saving addresses', async () => {
+    const at = Timestamp.fromDate(new Date('2026-02-01T12:00:00Z'));
+    const stamps = { createdAt: at, updatedAt: at };
+    await seedDoc(env, `users/${NEWCOMER}`, userDoc(stamps));
+    await seedDoc(env, `users/${NEWCOMER}/addresses/a0`, addressDoc(stamps));
+    const db = unverified(env, NEWCOMER);
+    const now = { updatedAt: serverTimestamp() };
+
+    await assertFails(updateDoc(doc(db, `users/${NEWCOMER}`), { displayName: 'Otra', ...now }));
+    await assertFails(updateDoc(doc(db, `users/${NEWCOMER}`), { terms: termsDoc(), ...now }));
+    await assertFails(setDoc(doc(db, `users/${NEWCOMER}/addresses/a1`), addressDoc()));
+    await assertFails(
+      updateDoc(doc(db, `users/${NEWCOMER}/addresses/a0`), { label: 'Trabajo', ...now }),
+    );
+    // Reading and deleting what is already there stays possible.
+    await assertSucceeds(getDoc(doc(db, `users/${NEWCOMER}`)));
+    await assertSucceeds(deleteDoc(doc(db, `users/${NEWCOMER}/addresses/a0`)));
   });
 
   it('blocks anonymous visitors', async () => {

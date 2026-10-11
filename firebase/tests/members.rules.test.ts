@@ -36,6 +36,7 @@ import {
   unverified,
   verified,
   WORLD,
+  backToReview,
 } from './helpers';
 
 let env: RulesTestEnvironment;
@@ -351,10 +352,21 @@ describe('members — the copy of the distributor name', () => {
   it('lets the owner rename the distributor and every copy in one batch', async () => {
     const db = verified(env, 'owner-a');
     const batch = writeBatch(db);
-    batch.update(doc(db, `distributors/${A}`), { name: RENAMED, ...stamp });
+    // PLAN 2.11: a new name sends the listing back to review in the same batch.
+    batch.update(doc(db, `distributors/${A}`), { name: RENAMED, acceptingOrders: false, ...stamp });
+    batch.update(doc(db, `distributors/${A}/private/control`), backToReview());
     for (const uid of Object.keys(WORLD.a.members)) batch.update(memberOf(db, A, uid), rename);
 
     await assertSucceeds(batch.commit());
+  });
+
+  it('blocks the rename batch when it leaves the listing approved', async () => {
+    const db = verified(env, 'owner-a');
+    const batch = writeBatch(db);
+    batch.update(doc(db, `distributors/${A}`), { name: RENAMED, ...stamp });
+    for (const uid of Object.keys(WORLD.a.members)) batch.update(memberOf(db, A, uid), rename);
+
+    await assertFails(batch.commit());
   });
 
   it.each([

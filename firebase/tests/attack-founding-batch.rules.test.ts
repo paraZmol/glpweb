@@ -25,6 +25,7 @@ import {
   foundDistributor,
   type FoundingOptions,
   memberDoc,
+  newDistributorId,
   privateDoc,
   seedDoc,
   seedProfile,
@@ -33,11 +34,16 @@ import {
   userDoc,
   verified,
   WORLD,
+  seededControlDoc,
 } from './helpers';
 
 let env: RulesTestEnvironment;
 const FOUNDER = 'founder';
-const NEW = { d: 'dist-new', uid: FOUNDER, slug: 'gas-nuevo' } satisfies FoundingOptions;
+const NEW = {
+  d: newDistributorId('New'),
+  uid: FOUNDER,
+  slug: 'gas-nuevo',
+} satisfies FoundingOptions;
 const PAST = Timestamp.fromDate(new Date('2020-01-01T00:00:00Z'));
 const stamp = { updatedAt: serverTimestamp() };
 const old = { createdAt: PAST, updatedAt: PAST };
@@ -78,14 +84,14 @@ function foundingWith(db: Db, extra: (batch: WriteBatch) => void): Promise<void>
 
 describe('founding — two distributors in one request', () => {
   it.each([
-    ['recording both', ['dist-new', 'dist-two']],
-    ['recording only the first', ['dist-new']],
-    ['recording only the second', ['dist-two']],
+    ['recording both', [newDistributorId('New'), newDistributorId('Two')]],
+    ['recording only the first', [newDistributorId('New')]],
+    ['recording only the second', [newDistributorId('Two')]],
   ])('blocks a batch that founds two, %s', async (_case, ownedDistributorIds) => {
     const db = verified(env, FOUNDER);
     const batch = writeBatch(db);
-    addFounding(batch, db, 'dist-new', 'gas-nuevo');
-    addFounding(batch, db, 'dist-two', 'gas-dos');
+    addFounding(batch, db, newDistributorId('New'), 'gas-nuevo');
+    addFounding(batch, db, newDistributorId('Two'), 'gas-dos');
     batch.update(doc(db, `users/${FOUNDER}`), { ownedDistributorIds, ...stamp });
 
     await assertFails(batch.commit());
@@ -327,6 +333,12 @@ describe('founding — the list of founded distributors in the profile', () => {
 
   beforeEach(async () => {
     await seedDoc(env, `users/${FOUNDER}`, userDoc({ ownedDistributorIds: [OWNED], ...old }));
+    // The one it already owns may operate: only then can the account found another (PLAN 2.11).
+    await seedDoc(
+      env,
+      `distributors/${OWNED}/private/control`,
+      seededControlDoc(FOUNDER, { status: 'active' }),
+    );
   });
 
   const found = (ownedDistributorIds: unknown) =>

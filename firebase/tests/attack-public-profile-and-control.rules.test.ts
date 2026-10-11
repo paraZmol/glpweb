@@ -40,6 +40,7 @@ import {
   seedWorld,
   verified,
   WORLD,
+  seededControlDoc,
 } from './helpers';
 
 let env: RulesTestEnvironment;
@@ -277,7 +278,7 @@ describe('trial at its edge — the clock decides, not the client', () => {
     await seedDoc(
       env,
       `distributors/${EDGE}/private/control`,
-      controlDoc('owner-edge', { trialEndsAt, ...old }),
+      seededControlDoc('owner-edge', { trialEndsAt, ...old }),
     );
     await seedDoc(env, `distributors/${EDGE}/private/settings`, privateDoc('owner-edge', old));
     await seedDoc(
@@ -303,7 +304,7 @@ describe('trial at its edge — the clock decides, not the client', () => {
     await seedEdge(60 * SECOND, true);
     const db = verified(env, 'owner-edge');
 
-    await assertSucceeds(updateDoc(profile(db, EDGE), { name: 'Gas Demo Dos', ...stamp }));
+    await assertSucceeds(updateDoc(profile(db, EDGE), { addressLine: 'Jr. Borde 1', ...stamp }));
     await assertFails(updateDoc(profile(db, EDGE), { acceptingOrders: false, ...stamp }));
   });
 
