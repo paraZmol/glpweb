@@ -45,6 +45,8 @@ export const ADDRESS_REFERENCE_MAX_LENGTH = 160;
 export const DISTRIBUTOR_SEARCH_LIMIT = 50;
 /** Upper bound of the platform's list of listings waiting for review; the rules enforce it. */
 export const PENDING_LISTINGS_LIMIT = 50;
+/** Rows per page of the platform's list of distributors (the query asks for one more). */
+export const PLATFORM_LIST_PAGE_SIZE = 20;
 export const MEMBERSHIPS_QUERY_LIMIT = 20;
 export const MEMBERS_QUERY_LIMIT = 100;
 

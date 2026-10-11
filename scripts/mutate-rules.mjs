@@ -173,8 +173,8 @@ const MUTANTS = [
   [
     'H46',
     'control accepts extra fields',
-    "'reviewNote', 'createdAt', 'updatedAt'\n        ])\n        && data.ownerUid is string",
-    "'reviewNote', 'createdAt', 'updatedAt', 'plan', 'note'\n        ])\n        && data.ownerUid is string",
+    "'slug', 'createdAt', 'updatedAt'\n        ])\n        && data.ownerUid is string",
+    "'slug', 'createdAt', 'updatedAt', 'plan', 'note'\n        ])\n        && data.ownerUid is string",
   ],
   [
     'H47',
@@ -188,7 +188,12 @@ const MUTANTS = [
     '\n        && data.approvedBy is string\n        && !(',
     '\n        && !(',
   ],
-  ['H49', 'approval that keeps a note for the owner', "\n        && !('reviewNote' in data);", ';'],
+  [
+    'H49',
+    'approval that keeps a note for the owner',
+    "\n        && !('reviewNote' in data)\n        && !('correctedAt' in data);",
+    "\n        && !('correctedAt' in data);",
+  ],
   [
     'H50',
     'pending listing that claims an approval date',
@@ -526,14 +531,14 @@ const MUTANTS = [
   [
     'D28',
     'identity edit that stays listed',
-    'return request.resource.data.acceptingOrders == false\n          && getAfter(controlPath(d))',
-    'return getAfter(controlPath(d))',
+    "return request.resource.data.acceptingOrders == false\n          && control.get('listingApproved'",
+    "return control.get('listingApproved'",
   ],
   [
     'D29',
     'identity edit that keeps the approval',
-    "request.resource.data.acceptingOrders == false\n          && getAfter(controlPath(d)).data.get('listingApproved', false) == false;",
-    'request.resource.data.acceptingOrders == false;',
+    "request.resource.data.acceptingOrders == false\n          && control.get('listingApproved', false) == false\n",
+    'request.resource.data.acceptingOrders == false\n',
   ],
   [
     'D30',
@@ -610,14 +615,14 @@ const MUTANTS = [
   [
     'C10',
     'admin changes the trial end',
-    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote', 'updatedAt'\n              ])",
-    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote', 'trialEndsAt', 'updatedAt'\n              ])",
+    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote',\n                'correctedAt', 'distributorName', 'slug', 'updatedAt'\n              ])",
+    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote',\n                'correctedAt', 'distributorName', 'slug', 'trialEndsAt', 'updatedAt'\n              ])",
   ],
   [
     'C11',
     'admin changes the founder',
-    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote', 'updatedAt'\n              ])",
-    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote', 'ownerUid', 'updatedAt'\n              ])",
+    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote',\n                'correctedAt', 'distributorName', 'slug', 'updatedAt'\n              ])",
+    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote',\n                'correctedAt', 'distributorName', 'slug', 'ownerUid', 'updatedAt'\n              ])",
   ],
   [
     'C12',
@@ -725,14 +730,14 @@ const MUTANTS = [
   [
     'C30',
     'owner writes the review note',
-    "onlyChanges(['listingApproved', 'approvedAt', 'approvedBy', 'updatedAt'])",
-    "onlyChanges(['listingApproved', 'approvedAt', 'approvedBy', 'reviewNote', 'updatedAt'])",
+    "'listingApproved', 'approvedAt', 'approvedBy', 'correctedAt', 'distributorName',\n                'slug', 'updatedAt'\n              ])",
+    "'listingApproved', 'approvedAt', 'approvedBy', 'correctedAt', 'distributorName',\n                'slug', 'reviewNote', 'updatedAt'\n              ])",
   ],
   [
     'C31',
     'owner changes the status with the return to review',
-    "onlyChanges(['listingApproved', 'approvedAt', 'approvedBy', 'updatedAt'])",
-    "onlyChanges(['listingApproved', 'approvedAt', 'approvedBy', 'status', 'updatedAt'])",
+    "'listingApproved', 'approvedAt', 'approvedBy', 'correctedAt', 'distributorName',\n                'slug', 'updatedAt'\n              ])",
+    "'listingApproved', 'approvedAt', 'approvedBy', 'correctedAt', 'distributorName',\n                'slug', 'status', 'updatedAt'\n              ])",
   ],
   [
     'P01',
@@ -943,21 +948,129 @@ const MUTANTS = [
   ],
   [
     'G04',
-    'pending listings without limit',
-    'allow list: if request.query.limit <= 50\n        && resource.data.listingApproved == false',
-    'allow list: if resource.data.listingApproved == false',
+    'platform lists without limit',
+    'allow list: if request.query.limit <= 50\n        && (\n          resource.data.listingApproved',
+    'allow list: if (\n          resource.data.listingApproved',
   ],
   [
     'G05',
-    'control documents of approved distributors listed',
-    '\n        && resource.data.listingApproved == false\n        && isPlatformAdmin();',
-    '\n        && isPlatformAdmin();',
+    'control documents listed without one of the filters',
+    "resource.data.listingApproved == false\n          || resource.data.listingApproved == true\n          || resource.data.status == 'suspended'",
+    'true',
   ],
   [
     'G06',
-    'pending listings for any account',
-    '\n        && resource.data.listingApproved == false\n        && isPlatformAdmin();',
-    '\n        && resource.data.listingApproved == false\n        && signedIn();',
+    'platform lists for any account',
+    "\n          || resource.data.status == 'suspended'\n        )\n        && isPlatformAdmin();",
+    "\n          || resource.data.status == 'suspended'\n        )\n        && signedIn();",
+  ],
+  [
+    'G07',
+    'distributors listed by any status',
+    "|| resource.data.status == 'suspended'",
+    '|| resource.data.status is string',
+  ],
+  [
+    'X01',
+    'rename that leaves the old name in the control document',
+    "\n          && (\n            unchanged(['name'])\n            || control.get('distributorName', null) == request.resource.data.name\n          );",
+    ';',
+  ],
+  [
+    'X02',
+    'founding with a made-up copy of the name',
+    '\n          && request.resource.data.distributorName == getAfter(distributorPath(d)).data.name',
+    '',
+  ],
+  [
+    'X03',
+    'founding with a made-up copy of the link',
+    '\n          && request.resource.data.slug == getAfter(distributorPath(d)).data.slug',
+    '',
+  ],
+  [
+    'X04',
+    'copy of the name written freely',
+    "\n          && copyHolds('distributorName', getAfter(distributorPath(d)).data.name)",
+    '',
+  ],
+  [
+    'X05',
+    'copy of the link written freely',
+    "\n          && copyHolds('slug', getAfter(distributorPath(d)).data.slug);",
+    ';',
+  ],
+  [
+    'X06',
+    'a copy of the public profile can be removed',
+    '            : !(field in resource.data);',
+    '            : true;',
+  ],
+  [
+    'X07',
+    'approved listing that keeps a correction mark',
+    "\n        && !('reviewNote' in data)\n        && !('correctedAt' in data);",
+    "\n        && !('reviewNote' in data);",
+  ],
+  [
+    'X08',
+    'correction mark without a note beside it',
+    "('reviewNote' in data && data.correctedAt is timestamp)",
+    'data.correctedAt is timestamp',
+  ],
+  [
+    'X09',
+    'correction mark of any type',
+    "('reviewNote' in data && data.correctedAt is timestamp)",
+    "'reviewNote' in data",
+  ],
+  [
+    'X10',
+    'admin writes or keeps a correction mark at will',
+    '\n              && leavesCorrectionMarkAlone()',
+    '',
+  ],
+  [
+    'X11',
+    'admin changes the note and keeps the mark',
+    "unchanged(['correctedAt', 'reviewNote'])",
+    "unchanged(['correctedAt'])",
+  ],
+  [
+    'X12',
+    'admin re-dates the correction mark',
+    "unchanged(['correctedAt', 'reviewNote'])",
+    "unchanged(['reviewNote'])",
+  ],
+  [
+    'X13',
+    'owner writes or removes the correction mark at will',
+    "\n              && (unchanged(['correctedAt']) || marksCorrection())",
+    '',
+  ],
+  [
+    'X14',
+    'correction mark with a made-up date',
+    'return request.resource.data.correctedAt == request.time\n            && (',
+    'return (',
+  ],
+  [
+    'X15',
+    'correction mark without a correction',
+    '\n            && (\n              getAfter(distributorPath(d)).data.updatedAt == request.time\n              || getAfter(/databases/$(database)/documents/distributors/$(d)/private/settings).data.updatedAt == request.time\n            );',
+    ';',
+  ],
+  [
+    'X16',
+    'an edit of the public profile does not count as a correction',
+    'getAfter(distributorPath(d)).data.updatedAt == request.time\n              || getAfter(/databases',
+    'getAfter(/databases',
+  ],
+  [
+    'X17',
+    'an edit of the private settings does not count as a correction',
+    '\n              || getAfter(/databases/$(database)/documents/distributors/$(d)/private/settings).data.updatedAt == request.time',
+    '',
   ],
 ];
 
@@ -995,6 +1108,8 @@ const EQUIVALENT = {
   M04: 'the control document requires the member of the caller to have role owner',
   M08: VERIFIED_BY_CONTROL,
   G03: 'without a session request.auth is null, so comparing resource.data.uid with request.auth.uid fails',
+  X07: 'an approval removes the note (H49), and leavesCorrectionMarkAlone() lets a mark survive only while the note is untouched: the shape is a second lock',
+  X09: 'only an owner writes the mark, through marksCorrection(), which demands correctedAt == request.time: it is always a timestamp',
 };
 
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');

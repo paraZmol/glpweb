@@ -18,18 +18,37 @@ export function isOpenToPublic(control: ListingInput, now: Date): boolean {
  * Where a distributor stands with the review of its listing, for its own panel:
  * - `inReview`: waiting for a platform admin (a new one, or one that changed its name or phones);
  * - `changesRequested`: sent back with a note the owner should read;
+ * - `correctionsSent`: the owner answered that note with a correction and waits again; the note
+ *   stays until a platform admin decides;
  * - `listed`: approved and operating, so visitors see it;
  * - `notOperating`: approved, but suspended, past due or with the trial over.
  */
-export type ListingState = 'inReview' | 'changesRequested' | 'listed' | 'notOperating';
+export type ListingState =
+  'inReview' | 'changesRequested' | 'correctionsSent' | 'listed' | 'notOperating';
 
-export function listingStateOf(
-  control: ListingInput & Pick<DistributorControl, 'reviewNote'>,
-  now: Date,
-): ListingState {
-  if (!control.listingApproved) return control.reviewNote ? 'changesRequested' : 'inReview';
-  return isWritable(control, now) ? 'listed' : 'notOperating';
+type ReviewTrail = Pick<DistributorControl, 'listingApproved' | 'reviewNote' | 'correctedAt'>;
+
+export function listingStateOf(control: ListingInput & ReviewTrail, now: Date): ListingState {
+  if (control.listingApproved) return isWritable(control, now) ? 'listed' : 'notOperating';
+  if (!control.reviewNote) return 'inReview';
+  return control.correctedAt ? 'correctionsSent' : 'changesRequested';
 }
+
+/**
+ * Whether an edit by the owner answers a note of the platform: the listing waits with a note.
+ * The edit then carries the correction mark (`correctedAt`) in the same request. The rules hold
+ * the same condition (the mark is refused anywhere else).
+ */
+export function answersReviewNote(control: Omit<ReviewTrail, 'correctedAt'>): boolean {
+  return !control.listingApproved && Boolean(control.reviewNote);
+}
+
+/**
+ * The filters of the platform's list of distributors. `approved` includes the approved ones
+ * that are suspended; `suspended` includes the suspended ones that were never approved.
+ */
+export const PLATFORM_LIST_FILTERS = ['inReview', 'approved', 'suspended'] as const;
+export type PlatformListFilter = (typeof PLATFORM_LIST_FILTERS)[number];
 
 /**
  * What a customer uses to recognise and reach the business. Changing any of them after the

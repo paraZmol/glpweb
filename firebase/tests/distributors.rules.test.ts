@@ -765,11 +765,39 @@ describe('/distributors/{d} — owner edit', () => {
       await assertFails(batch.commit());
     });
 
-    it('lets the owner of a listing that waits for its review edit them plainly', async () => {
+    // A phone has no copy in the control document: only the return to review stands in the way.
+    it.each([
+      ['keeps the distributor listed', { acceptingOrders: true }, backToReview()],
+      ['leaves the listing approved', { acceptingOrders: false }, null],
+      [
+        'only refreshes the control document',
+        { acceptingOrders: false },
+        { updatedAt: serverTimestamp() },
+      ],
+    ])('blocks a new phone in a batch that %s', async (_case, flag, controlChange) => {
+      const db = verified(env, 'owner-a');
+      const batch = writeBatch(db);
+      const phone = { contactPhone: '900000025', ...flag, ...stamp };
+      batch.update(doc(db, `distributors/${WORLD.a.d}`), phone);
+      if (controlChange) batch.update(control(db), controlChange);
+
+      await assertFails(batch.commit());
+    });
+
+    it('lets the owner of a listing that waits for its review edit a phone plainly', async () => {
       const pending = target('owner-pending', WORLD.pending.d);
 
-      await assertSucceeds(updateDoc(pending, { name: 'Gas Demo Corregido', ...stamp }));
       await assertSucceeds(updateDoc(pending, { contactPhone: '900000023', ...stamp }));
+      await assertSucceeds(updateDoc(pending, { whatsapp: '900000024', ...stamp }));
+    });
+
+    // The control document keeps a copy of the name for the platform lists: a rename reaches it.
+    it('asks a rename of a listing that waits to carry the copy of the name', async () => {
+      const db = verified(env, 'owner-pending');
+      const pending = target('owner-pending', WORLD.pending.d);
+
+      await assertFails(updateDoc(pending, { name: 'Gas Demo Corregido', ...stamp }));
+      await assertSucceeds(editIdentity(db, WORLD.pending.d, { name: 'Gas Demo Corregido' }));
     });
 
     it('blocks the owner of a listing that waits from listing it with an edit of the name', async () => {
@@ -779,6 +807,14 @@ describe('/distributors/{d} — owner edit', () => {
         updateDoc(pending, { name: 'Gas Demo Corregido', acceptingOrders: true, ...stamp }),
       );
       await assertFails(updateDoc(pending, { acceptingOrders: true, ...stamp }));
+    });
+
+    it('blocks the owner of a listing that waits from listing it with an edit of a phone', async () => {
+      const pending = target('owner-pending', WORLD.pending.d);
+
+      await assertFails(
+        updateDoc(pending, { contactPhone: '900000023', acceptingOrders: true, ...stamp }),
+      );
     });
 
     it('blocks the owner from using the return to review to unlist without an edit', async () => {

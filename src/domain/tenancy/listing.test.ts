@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { REVIEW_NOTE_MAX_LENGTH } from './constants';
 import {
+  answersReviewNote,
   hasReadOnlyDistributor,
   isOpenToPublic,
   listingStateOf,
@@ -19,6 +20,7 @@ const control = (status: DistributorStatus, trialEndsAt: Date, listingApproved: 
   trialEndsAt,
   listingApproved,
   reviewNote: null as string | null,
+  correctedAt: null as Date | null,
 });
 
 describe('isOpenToPublic', () => {
@@ -51,6 +53,27 @@ describe('listingStateOf', () => {
     expect(listingStateOf(sentBack, NOW)).toBe('changesRequested');
   });
 
+  // PLAN 2.11: after correcting, the owner no longer reads "changes requested".
+  it('says the corrections were sent once the owner answered the note', () => {
+    const answered = {
+      ...control('trial', LATER, false),
+      reviewNote: 'El RUC no coincide.',
+      correctedAt: BEFORE,
+    };
+    expect(listingStateOf(answered, NOW)).toBe('correctionsSent');
+  });
+
+  it('ignores a correction mark that has no note beside it', () => {
+    const stray = { ...control('trial', LATER, false), correctedAt: BEFORE };
+    expect(listingStateOf(stray, NOW)).toBe('inReview');
+  });
+
+  it('never reads a correction as an approval', () => {
+    const answered = { ...control('active', LATER, false), reviewNote: 'x', correctedAt: BEFORE };
+    expect(listingStateOf(answered, NOW)).not.toBe('listed');
+    expect(isOpenToPublic(answered, NOW)).toBe(false);
+  });
+
   it('is listed once approved and operating', () => {
     expect(listingStateOf(control('active', BEFORE, true), NOW)).toBe('listed');
   });
@@ -61,6 +84,17 @@ describe('listingStateOf', () => {
 
   it('is not operating when the trial is over', () => {
     expect(listingStateOf(control('trial', BEFORE, true), NOW)).toBe('notOperating');
+  });
+});
+
+describe('answersReviewNote', () => {
+  it.each([
+    ['a listing that waits with a note', false, 'Revisa el RUC.', true],
+    ['a listing that waits without a note', false, null, false],
+    ['an approved listing', true, null, false],
+    ['an approved listing that kept a note by mistake', true, 'Revisa.', false],
+  ])('%s → %s', (_case, listingApproved, reviewNote, expected) => {
+    expect(answersReviewNote({ listingApproved, reviewNote })).toBe(expected);
   });
 });
 

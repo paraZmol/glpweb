@@ -134,8 +134,9 @@ export function distributorDoc(slug: string, change: Record<string, unknown> = {
 }
 
 /**
- * The control document as the founding batch writes it: plan state, founder and a listing that
- * waits for its review.
+ * The control document as the founding batch writes it: plan state, founder, a listing that
+ * waits for its review and the copy of the public name. The copy of the link depends on the
+ * distributor: pass `{ slug }` (`foundDistributor` adds it by itself).
  */
 export function controlDoc(ownerUid: string, change: Record<string, unknown> = {}) {
   return {
@@ -143,6 +144,7 @@ export function controlDoc(ownerUid: string, change: Record<string, unknown> = {
     status: 'trial',
     trialEndsAt: daysFromNow(TRIAL_DAYS),
     listingApproved: false,
+    distributorName: DISTRIBUTOR_NAME,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     ...change,
@@ -208,8 +210,16 @@ export interface FoundingOptions {
   slugData?: Piece;
   member?: Piece;
   settings?: Piece;
+  /** A control document without `slug` gets the one of the distributor; `false` leaves it out. */
+  copiesSlug?: boolean;
   /** `false` leaves the founder's profile untouched. */
   userUpdate?: Record<string, unknown> | false;
+}
+
+function foundingControl({ uid, slug, control, copiesSlug }: FoundingOptions): Piece {
+  if (control === null) return null;
+  const written = control ?? controlDoc(uid);
+  return copiesSlug === false ? written : { slug, ...written };
 }
 
 export function foundDistributor(db: Db, options: FoundingOptions): Promise<void> {
@@ -219,10 +229,7 @@ export function foundDistributor(db: Db, options: FoundingOptions): Promise<void
       `distributors/${d}`,
       options.distributor === undefined ? distributorDoc(slug) : options.distributor,
     ],
-    [
-      `distributors/${d}/private/control`,
-      options.control === undefined ? controlDoc(uid) : options.control,
-    ],
+    [`distributors/${d}/private/control`, foundingControl(options)],
     [
       `slugs/${options.slugId ?? slug}`,
       options.slugData === undefined ? slugDoc(d) : options.slugData,
@@ -259,16 +266,26 @@ export function backToReview(): Record<string, unknown> {
 
 /**
  * What a well-behaved client sends when an owner changes the name or a phone (PLAN 2.11): the
- * edit, which also unlists the distributor, and the listing back to review, in one batch.
+ * edit, which also unlists the distributor, and the listing back to review — with the copy of a
+ * new name — in one batch. `control` adds to, or replaces, what the control document receives.
  */
-export function editIdentity(db: Db, d: string, change: Record<string, unknown>): Promise<void> {
+export function editIdentity(
+  db: Db,
+  d: string,
+  change: Record<string, unknown>,
+  control: Record<string, unknown> = {},
+): Promise<void> {
   const batch = writeBatch(db);
   batch.update(doc(db, `distributors/${d}`), {
     ...change,
     acceptingOrders: false,
     updatedAt: serverTimestamp(),
   });
-  batch.update(doc(db, `distributors/${d}/private/control`), backToReview());
+  batch.update(doc(db, `distributors/${d}/private/control`), {
+    ...backToReview(),
+    ...('name' in change ? { distributorName: change.name } : {}),
+    ...control,
+  });
   return batch.commit();
 }
 
@@ -392,8 +409,8 @@ export async function seedWorld(env: RulesTestEnvironment): Promise<void> {
       batch.set(
         doc(db, `distributors/${d}/private/control`),
         isApproved(seeded)
-          ? seededControlDoc(founder, { status, trialEndsAt })
-          : controlDoc(founder, { status, trialEndsAt, ...stamps }),
+          ? seededControlDoc(founder, { status, trialEndsAt, slug })
+          : controlDoc(founder, { status, trialEndsAt, slug, ...stamps }),
       );
       batch.set(doc(db, `slugs/${slug}`), { distributorId: d, createdAt: at });
       batch.set(doc(db, `distributors/${d}/private/settings`), privateDoc(founder, stamps));

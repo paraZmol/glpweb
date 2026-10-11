@@ -135,9 +135,35 @@ describe('parseControl', () => {
       approvedAt: null,
       approvedBy: null,
       reviewNote: null,
+      correctedAt: null,
+      distributorName: null,
+      slug: null,
       createdAt: AT,
       updatedAt: AT,
     });
+  });
+
+  // PLAN 2.11
+  it('reads the copies of the public name and link, and the correction mark', () => {
+    const full = {
+      ...CONTROL,
+      reviewNote: 'Falta el registro.',
+      correctedAt: stamp,
+      distributorName: 'Gas Demo',
+      slug: 'gas-demo',
+    };
+
+    expect(parseControl('control', path, full)).toMatchObject({
+      correctedAt: AT,
+      distributorName: 'Gas Demo',
+      slug: 'gas-demo',
+    });
+  });
+
+  it('reads a correction mark that is not a timestamp as none', () => {
+    const forged = { ...CONTROL, reviewNote: 'x', correctedAt: '2026-10-11' };
+
+    expect(parseControl('control', path, forged).correctedAt).toBeNull();
   });
 
   // PLAN 2.11

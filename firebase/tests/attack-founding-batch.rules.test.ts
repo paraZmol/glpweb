@@ -67,7 +67,7 @@ afterAll(async () => {
 /** The five documents of a founding, without the founder's profile. */
 function addFounding(batch: WriteBatch, db: Db, d: string, slug: string, uid = FOUNDER) {
   batch.set(doc(db, `distributors/${d}`), distributorDoc(slug));
-  batch.set(doc(db, `distributors/${d}/private/control`), controlDoc(uid));
+  batch.set(doc(db, `distributors/${d}/private/control`), controlDoc(uid, { slug }));
   batch.set(doc(db, `slugs/${slug}`), slugDoc(d));
   batch.set(doc(db, `distributors/${d}/members/${uid}`), memberDoc(d, uid, 'owner'));
   batch.set(doc(db, `distributors/${d}/private/settings`), privateDoc(uid));
@@ -313,7 +313,8 @@ describe('founding — over data that was left half-written', () => {
 
     // Every piece of a founding except the distributor, which is already there.
     const batch = writeBatch(db);
-    batch.set(doc(db, `distributors/${ORPHAN}/private/control`), controlDoc(FOUNDER));
+    const orphanControl = controlDoc(FOUNDER, { slug: ORPHAN_SLUG });
+    batch.set(doc(db, `distributors/${ORPHAN}/private/control`), orphanControl);
     batch.set(
       doc(db, `distributors/${ORPHAN}/members/${FOUNDER}`),
       memberDoc(ORPHAN, FOUNDER, 'owner'),
@@ -322,9 +323,7 @@ describe('founding — over data that was left half-written', () => {
     batch.update(doc(db, `users/${FOUNDER}`), { ownedDistributorIds: [ORPHAN], ...stamp });
     await assertFails(batch.commit());
 
-    await assertFails(
-      setDoc(doc(db, `distributors/${ORPHAN}/private/control`), controlDoc(FOUNDER)),
-    );
+    await assertFails(setDoc(doc(db, `distributors/${ORPHAN}/private/control`), orphanControl));
   });
 });
 

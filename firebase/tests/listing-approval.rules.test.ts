@@ -358,16 +358,26 @@ describe('listings that wait for review — the platform list', () => {
     ['without a limit', () => [notApproved]],
     ['with a limit above the cap', () => [notApproved, limit(PENDING_LISTINGS_LIMIT + 1)]],
     ['without a filter', () => [limit(10)]],
-    ['filtered to the approved ones', () => [where('listingApproved', '==', true), limit(10)]],
-    [
-      'with a filter that includes both',
-      () => [where('listingApproved', 'in', [true, false]), limit(10)],
-    ],
     ['"different from true"', () => [where('listingApproved', '!=', true), limit(10)]],
     ['filtered by founder', () => [where('ownerUid', '==', 'owner-a'), limit(10)]],
     ['filtered by RUC', () => [where('taxId', '==', '20000000001'), limit(10)]],
   ])('blocks the admin from a list %s', async (_case, constraints) => {
     await assertFails(getDocs(waiting(admin(), ...constraints())));
+  });
+
+  // The approved ones are a list of their own (platform-lists-and-corrections.rules.test.ts),
+  // so a filter that names both values is two lists the admin may already read, in one query.
+  // It stays bounded and never returns a settings document.
+  it('gives the admin nothing new with a filter that names approved and not approved', async () => {
+    const both = where('listingApproved', 'in', [true, false]);
+
+    const found = await assertSucceeds(
+      getDocs(waiting(admin(), both, limit(PENDING_LISTINGS_LIMIT))),
+    );
+
+    expect(found.docs.filter((snapshot) => snapshot.id !== 'control')).toEqual([]);
+    await assertFails(getDocs(waiting(admin(), both, limit(PENDING_LISTINGS_LIMIT + 1))));
+    await assertFails(getDocs(waiting(admin(), both)));
   });
 
   it.each([

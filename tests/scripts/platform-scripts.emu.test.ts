@@ -106,16 +106,17 @@ describe('set-distributor-status.mjs — approve', () => {
     expect(await visitorCanRead(PENDING.id)).toBe(true);
   });
 
-  it('removes the note that was left for the owner', async () => {
+  it('removes the note that was left for the owner, and the mark of its correction', async () => {
     await env.withSecurityRulesDisabled(async (context) => {
-      const { updateDoc } = await import('firebase/firestore');
+      const { Timestamp, updateDoc } = await import('firebase/firestore');
       const control = doc(context.firestore(), `distributors/${PENDING.id}/private/control`);
-      await updateDoc(control, { reviewNote: 'Falta el registro.' });
+      await updateDoc(control, { reviewNote: 'Falta el registro.', correctedAt: Timestamp.now() });
     });
 
     await act(PENDING.id, 'approve', '--by', ADMIN);
 
     expect(await controlOf(PENDING.id)).not.toHaveProperty('reviewNote');
+    expect(await controlOf(PENDING.id)).not.toHaveProperty('correctedAt');
   });
 
   it.each([

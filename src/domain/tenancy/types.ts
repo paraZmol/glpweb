@@ -73,6 +73,18 @@ export interface DistributorControl {
   approvedBy: string | null;
   /** What the platform admin asks the owner to correct; null when there is no note. */
   reviewNote: string | null;
+  /**
+   * When the owner last answered that note with a correction (of the verification data or of
+   * the public profile). Only exists next to a note; the rules stamp it with server time and
+   * remove it when a platform admin decides again. Null otherwise.
+   */
+  correctedAt: Date | null;
+  /**
+   * Copies of the public name and link, so the platform lists read one document per distributor.
+   * The rules only accept them equal to the public profile. Null in documents older than them.
+   */
+  distributorName: string | null;
+  slug: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -84,6 +96,7 @@ export interface Distributor extends PublicDistributor {
   trialEndsAt: Date;
   listingApproved: boolean;
   reviewNote: string | null;
+  correctedAt: Date | null;
 }
 
 export const DISTRIBUTOR_PLANS = ['trial'] as const;

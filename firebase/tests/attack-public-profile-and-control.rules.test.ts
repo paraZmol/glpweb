@@ -69,7 +69,6 @@ describe('control document — reading it through a side door', () => {
     ['an anonymous visitor', () => anonymous(env)],
     ['a customer', () => verified(env, CUSTOMER_UID)],
     ['the founder of one of them', () => verified(env, 'owner-a')],
-    ['a platform admin', () => verified(env, ADMIN_UID)],
   ])('blocks %s from sweeping every control document with a group query', async (_who, connect) => {
     const db = connect();
     await assertFails(getDocs(query(collectionGroup(db, 'private'), limit(5))));
@@ -78,6 +77,19 @@ describe('control document — reading it through a side door', () => {
     );
     await assertFails(
       getDocs(query(collectionGroup(db, 'private'), where('status', '==', 'suspended'), limit(5))),
+    );
+  });
+
+  // The platform panel lists by standing (PLAN 2.11; firebase/tests/platform-lists-and-
+  // corrections.rules.test.ts): a platform admin still gets nothing without one of its filters.
+  it('blocks a platform admin from a group query without one of the filters of its panel', async () => {
+    const db = verified(env, ADMIN_UID);
+    await assertFails(getDocs(query(collectionGroup(db, 'private'), limit(5))));
+    await assertFails(
+      getDocs(query(collectionGroup(db, 'private'), where('ownerUid', '==', 'owner-a'), limit(5))),
+    );
+    await assertFails(
+      getDocs(query(collectionGroup(db, 'private'), where('status', '==', 'active'), limit(5))),
     );
   });
 
@@ -175,7 +187,7 @@ describe('control document — an owner slips a change in next to a legitimate w
     const db = verified(env, 'owner-expired');
     const d = WORLD.expired.d;
     const batch = writeBatch(db);
-    batch.set(control(db, d), controlDoc('owner-expired'));
+    batch.set(control(db, d), controlDoc('owner-expired', { slug: WORLD.expired.slug }));
     batch.set(profile(db, d), distributorDoc(WORLD.expired.slug));
     batch.set(
       doc(db, `distributors/${d}/members/owner-expired`),

@@ -101,6 +101,9 @@ function controlDocument(distributor: SeedDistributor) {
     ...(distributor.listingApproved
       ? { approvedAt: createdAt, approvedBy: SEED_USERS.admin.uid }
       : {}),
+    // Copies of the public name and link, for the lists of the platform panel (PLAN 2.11).
+    distributorName: distributor.name,
+    slug: distributor.slug,
     ...stamps,
   };
 }

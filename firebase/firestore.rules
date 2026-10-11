@@ -53,6 +53,15 @@ rules_version = '2';
 //     approvedAt (= request.time) and approvedBy (= its uid) are required; an owner may only set
 //     it back to false. While false, approvedAt and approvedBy are absent.
 //   reviewNote: optional string 1..300, only while listingApproved is false; platform admin only
+//   correctedAt: optional timestamp, only next to a reviewNote — "the owner answered the note".
+//     Only an owner writes it, always = request.time and only in a request that also edits the
+//     public profile or the private settings. A platform admin can only remove it, and must do
+//     so whenever it changes the note. It approves nothing: no rule reads it to grant anything.
+//   distributorName, slug: copies of the public name and link, so the platform lists need one
+//     read per distributor. Required at founding; whoever may update this document can only
+//     write them equal to the public profile, and nobody removes them. A rename of the public
+//     profile must leave distributorName equal to the new name in the same request. Optional
+//     only for documents older than the fields.
 //   createdAt (immutable; = request.time only in the founding batch), updatedAt
 //
 // /distributors/{d}/private/settings   the founder and platform admins only
@@ -336,7 +345,7 @@ service cloud.firestore {
         ])
         && data.keys().hasOnly([
           'ownerUid', 'status', 'trialEndsAt', 'listingApproved', 'approvedAt', 'approvedBy',
-          'reviewNote', 'createdAt', 'updatedAt'
+          'reviewNote', 'correctedAt', 'distributorName', 'slug', 'createdAt', 'updatedAt'
         ])
         && data.ownerUid is string
         && data.status in ['trial', 'active', 'pastDue', 'suspended']
@@ -347,18 +356,21 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
-    // Approved: says when and by whom, and carries no note for the owner.
+    // Approved: says when and by whom, and carries no note for the owner nor an answer to one.
     function isApprovedShape(data) {
       return data.approvedAt is timestamp
         && data.approvedBy is string
-        && !('reviewNote' in data);
+        && !('reviewNote' in data)
+        && !('correctedAt' in data);
     }
 
-    // Not approved: nothing claims an approval; a note for the owner is optional.
+    // Not approved: nothing claims an approval; a note for the owner is optional, and the mark
+    // of its correction exists only next to a note.
     function isPendingShape(data) {
       return !('approvedAt' in data)
         && !('approvedBy' in data)
-        && (!('reviewNote' in data) || isText(data.reviewNote, 1, 300));
+        && (!('reviewNote' in data) || isText(data.reviewNote, 1, 300))
+        && (!('correctedAt' in data) || ('reviewNote' in data && data.correctedAt is timestamp));
     }
 
     function isValidPrivateSettings(data) {
@@ -530,6 +542,7 @@ service cloud.firestore {
       // request must leave it unlisted here and not approved in the control document.
       // Staff or platform admin: bring `acceptingOrders` in line with the control document, in
       // either direction. It can only ever be written as the truth, so it needs no more trust.
+      // A new name must also reach the copy the control document keeps of it.
       // Reads added by rules: 2 (owner: get member, get control · staff: getAfter control, get
       // member), 3 lookups for an owner edit of name or phones (the third is a getAfter of the
       // same control document) and 3 for a platform admin (the member lookup fails first).
@@ -563,8 +576,13 @@ service cloud.firestore {
       }
 
       function returnsToReview() {
+        let control = getAfter(controlPath(d)).data;
         return request.resource.data.acceptingOrders == false
-          && getAfter(controlPath(d)).data.get('listingApproved', false) == false;
+          && control.get('listingApproved', false) == false
+          && (
+            unchanged(['name'])
+            || control.get('distributorName', null) == request.resource.data.name
+          );
       }
 
       // ----------------------------------------------------------------- private/control ----
@@ -593,6 +611,8 @@ service cloud.firestore {
           && request.resource.data.trialEndsAt <= request.time + duration.value(721, 'h')
           && stampedNow(request.resource.data)
           && getAfter(distributorPath(d)).data.createdAt == request.time
+          && request.resource.data.distributorName == getAfter(distributorPath(d)).data.name
+          && request.resource.data.slug == getAfter(distributorPath(d)).data.slug
           && getAfter(/databases/$(database)/documents/distributors/$(d)/members/$(request.auth.uid)).data.role == 'owner'
           && getAfter(/databases/$(database)/documents/distributors/$(d)/private/settings).data.ownerUid == request.auth.uid
           && ownsNoReadOnlyDistributor(
@@ -611,30 +631,68 @@ service cloud.firestore {
         }
 
         // Platform admin: status and the review of the listing (approve, or send back with a
-        // note). An approval is signed: by the admin doing it, at request.time.
+        // note). An approval is signed: by the admin doing it, at request.time. It never writes
+        // the correction mark of the owner: it keeps it untouched or removes it, and a new note
+        // removes it.
         // Owner of the distributor: may only send its own listing back to review (it does so
-        // when it edits the name or a phone).
+        // when it edits the name or a phone) and mark that it answered a note with a correction.
+        // The mark approves nothing and the note stays where the admin left it.
         // In both cases the public flag must agree once the request is applied, so a change
-        // that opens or closes the distributor carries both documents.
+        // that opens or closes the distributor carries both documents; and the copies of the
+        // public name and link can only be written as they stand in the public profile.
         // Reads added by rules: 2 for a platform admin (exists platformAdmins, getAfter
-        // distributor), 3 for an owner (exists platformAdmins, get member, getAfter distributor).
+        // distributor), 3 for an owner (exists platformAdmins, get member, getAfter distributor),
+        // 4 when the owner marks a correction of the private settings (getAfter settings).
         allow update: if isValidControl(request.resource.data)
           && request.resource.data.updatedAt == request.time
           && (
             (
               isPlatformAdmin()
               && onlyChanges([
-                'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote', 'updatedAt'
+                'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote',
+                'correctedAt', 'distributorName', 'slug', 'updatedAt'
               ])
               && approvalIsSigned()
+              && leavesCorrectionMarkAlone()
             )
             || (
-              onlyChanges(['listingApproved', 'approvedAt', 'approvedBy', 'updatedAt'])
+              onlyChanges([
+                'listingApproved', 'approvedAt', 'approvedBy', 'correctedAt', 'distributorName',
+                'slug', 'updatedAt'
+              ])
               && request.resource.data.listingApproved == false
               && hasRole(d, ['owner'])
+              && (unchanged(['correctedAt']) || marksCorrection())
             )
           )
-          && getAfter(distributorPath(d)).data.acceptingOrders == isOpenData(request.resource.data);
+          && getAfter(distributorPath(d)).data.acceptingOrders == isOpenData(request.resource.data)
+          && copyHolds('distributorName', getAfter(distributorPath(d)).data.name)
+          && copyHolds('slug', getAfter(distributorPath(d)).data.slug);
+
+        // The mark of a correction survives a write of the admin only if neither it nor the note
+        // it answers changed: a new note is a new question.
+        function leavesCorrectionMarkAlone() {
+          return !('correctedAt' in request.resource.data)
+            || unchanged(['correctedAt', 'reviewNote']);
+        }
+
+        // "Corrected now", and only together with an edit of what the platform reviews: the
+        // public profile or the private settings, written in this same request. (The shape
+        // already demands a note beside it and a listing that is not approved.)
+        function marksCorrection() {
+          return request.resource.data.correctedAt == request.time
+            && (
+              getAfter(distributorPath(d)).data.updatedAt == request.time
+              || getAfter(/databases/$(database)/documents/distributors/$(d)/private/settings).data.updatedAt == request.time
+            );
+        }
+
+        // A copy of the public profile: when present it is the truth; once there, it stays.
+        function copyHolds(field, truth) {
+          return field in request.resource.data
+            ? request.resource.data[field] == truth
+            : !(field in resource.data);
+        }
 
         function approvalIsSigned() {
           return request.resource.data.listingApproved == false
@@ -757,13 +815,20 @@ service cloud.firestore {
         && resource.data.uid == request.auth.uid;
     }
 
-    // "Listings waiting for review" (platform panel): a collection-group query over the control
-    // documents that must filter by `listingApproved == false` and carry a limit. Only control
-    // documents have that field, so the settings documents never match.
+    // The lists of the platform panel: collection-group queries over the control documents.
+    // Each must carry a limit and one of three filters: `listingApproved == false` (waiting for
+    // review), `listingApproved == true` (approved) or `status == 'suspended'`. Only control
+    // documents have those fields, so the settings documents never match. A query without a
+    // filter on one of them is refused (a filter that names both values of `listingApproved`
+    // is accepted: it is two of these lists in one bounded query).
     // Reads added by rules: 1 per query (exists platformAdmins).
     match /{path=**}/private/{document} {
       allow list: if request.query.limit <= 50
-        && resource.data.listingApproved == false
+        && (
+          resource.data.listingApproved == false
+          || resource.data.listingApproved == true
+          || resource.data.status == 'suspended'
+        )
         && isPlatformAdmin();
     }
 

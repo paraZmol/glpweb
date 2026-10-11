@@ -354,7 +354,10 @@ describe('members — the copy of the distributor name', () => {
     const batch = writeBatch(db);
     // PLAN 2.11: a new name sends the listing back to review in the same batch.
     batch.update(doc(db, `distributors/${A}`), { name: RENAMED, acceptingOrders: false, ...stamp });
-    batch.update(doc(db, `distributors/${A}/private/control`), backToReview());
+    batch.update(doc(db, `distributors/${A}/private/control`), {
+      ...backToReview(),
+      distributorName: RENAMED,
+    });
     for (const uid of Object.keys(WORLD.a.members)) batch.update(memberOf(db, A, uid), rename);
 
     await assertSucceeds(batch.commit());

@@ -201,6 +201,9 @@ export const parseControl: Parser<DistributorControl> = (_id, path, data) => {
     approvedAt: read.dateOrNull('approvedAt'),
     approvedBy: read.textOrNull('approvedBy'),
     reviewNote: read.textOrNull('reviewNote'),
+    correctedAt: read.dateOrNull('correctedAt'),
+    distributorName: read.textOrNull('distributorName'),
+    slug: read.textOrNull('slug'),
     createdAt,
     updatedAt: read.date('updatedAt', createdAt),
   };

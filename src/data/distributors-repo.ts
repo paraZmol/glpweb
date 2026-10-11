@@ -34,7 +34,11 @@ import {
   ProfileRequiredError,
   SlugTakenError,
 } from '../domain/tenancy/errors';
-import { hasReadOnlyDistributor, touchesIdentity } from '../domain/tenancy/listing';
+import {
+  answersReviewNote,
+  hasReadOnlyDistributor,
+  touchesIdentity,
+} from '../domain/tenancy/listing';
 import { trialEndFrom } from '../domain/tenancy/status';
 import type { BusinessVerification } from '../domain/tenancy/verification-input';
 import type {
@@ -136,6 +140,9 @@ async function foundInTransaction(tx: Transaction, id: string, request: Founding
     status: 'trial',
     trialEndsAt: Timestamp.fromDate(trialEndFrom(request.now, TRIAL_DAYS)),
     listingApproved: false,
+    // Copies for the platform lists; the rules compare them with the public profile.
+    distributorName: distributor.name,
+    slug: distributor.slug,
     ...stamps,
   });
   tx.set(slugRef(distributor.slug), { distributorId: id, createdAt: serverTimestamp() });
@@ -245,8 +252,28 @@ export function getDistributorControl(d: string): Promise<DistributorControl | n
 export async function getStaffDistributor(d: string): Promise<Distributor | null> {
   const [profile, control] = await Promise.all([getDistributor(d), getDistributorControl(d)]);
   if (!profile || !control) return null;
-  const { ownerUid, status, trialEndsAt, listingApproved, reviewNote } = control;
-  return { ...profile, ownerUid, status, trialEndsAt, listingApproved, reviewNote };
+  const { ownerUid, status, trialEndsAt, listingApproved, reviewNote, correctedAt } = control;
+  return { ...profile, ownerUid, status, trialEndsAt, listingApproved, reviewNote, correctedAt };
+}
+
+/**
+ * The control document of each distributor an account founded, in the same order, to know
+ * whether it may found another one (PLAN 2.11). Null for one that cannot be read (it lost its
+ * control document): the founding is refused for it too. Only the founder may ask for its own.
+ * Cost: one read per id, none by the rules.
+ */
+export function getOwnedControls(
+  ownedIds: readonly string[],
+): Promise<(DistributorControl | null)[]> {
+  const read = async (d: string) => {
+    try {
+      return (await getDoc(controlRef(d).withConverter(controlConverter))).data() ?? null;
+    } catch (error) {
+      if (toDataError(error) instanceof PermissionDeniedError) return null;
+      throw error;
+    }
+  };
+  return guarded(() => Promise.all(ownedIds.map(read)));
 }
 
 /**
@@ -295,23 +322,54 @@ function profileDocument(patch: DistributorProfilePatch): Record<string, unknown
   return document;
 }
 
-/**
- * An edit of the name or of a phone (PLAN 2.11) is one batch: the edit itself, which also
- * unlists the distributor; the listing back to review in the control document; and, for a new
- * name, the copy every member keeps of it (up to the cap of the staff list; anyone beyond it
- * corrects its own copy the next time it opens the panel).
- * Cost: 2 writes, plus one read and one write per member when the name changes. The rules add 3
- * lookups for the profile, 3 for the control document and 2 per member.
- */
-async function editIdentity(d: string, document: Record<string, unknown>): Promise<void> {
-  const batch = writeBatch(db);
-  batch.update(distributorRef(d), { ...document, acceptingOrders: false });
-  batch.update(controlRef(d), {
+/** What an owner writes in the control document when its edit answers a note (PLAN 2.11). */
+const correctionMark = () => ({ correctedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+
+interface ProfileEdit {
+  d: string;
+  /** The public document to write, already built. */
+  document: Record<string, unknown>;
+  /** The edit touches the name or a phone. */
+  isBackInReview: boolean;
+  /** The listing waits with a note of the platform: the edit is an answer to it. */
+  answersNote: boolean;
+}
+
+/** The part of an edit that lands in the control document; null when nothing does. */
+function controlChangeOf({ document, isBackInReview, answersNote }: ProfileEdit) {
+  if (!isBackInReview && !answersNote) return null;
+  const backToReview = {
     listingApproved: false,
     approvedAt: deleteField(),
     approvedBy: deleteField(),
+  };
+  return {
+    ...(isBackInReview ? backToReview : {}),
+    // The control document keeps a copy of the name for the platform lists.
+    ...(document.name === undefined ? {} : { distributorName: document.name }),
+    ...(answersNote ? correctionMark() : {}),
     updatedAt: serverTimestamp(),
-  });
+  };
+}
+
+/**
+ * An edit that reaches more than the public document is one batch (PLAN 2.11). A new name or
+ * phone: the edit itself, which also unlists the distributor; the listing back to review in the
+ * control document, with its copy of the name; and, for a new name, the copy every member keeps
+ * of it (up to the cap of the staff list; anyone beyond it corrects its own copy the next time
+ * it opens the panel). An edit that answers a note of the platform: the edit and the correction
+ * mark in the control document.
+ * Cost: 2 writes, plus one read and one write per member when the name changes. The rules add 3
+ * lookups for the profile, 3 for the control document and 2 per member.
+ */
+async function editWithControl(edit: ProfileEdit, controlChange: Record<string, unknown>) {
+  const { d, document, isBackInReview } = edit;
+  const batch = writeBatch(db);
+  batch.update(
+    distributorRef(d),
+    isBackInReview ? { ...document, acceptingOrders: false } : document,
+  );
+  batch.update(controlRef(d), controlChange);
   if (document.name !== undefined) {
     const staff = query(collection(db, paths.members(d)), limit(MEMBERS_QUERY_LIMIT));
     for (const member of (await getDocs(staff)).docs) {
@@ -326,6 +384,10 @@ async function editIdentity(d: string, document: Record<string, unknown>): Promi
  * the fields that changed: a patch with `name`, `contactPhone` or `whatsapp` sends the listing
  * back to review and takes the distributor out of the search until a platform admin approves it
  * again. Resolves to true in that case.
+ * While the listing waits with a note of the platform, any edit is an answer to it: the control
+ * document is marked as corrected in the same batch (`listing` becomes `correctionsSent`).
+ * Cost: 1 read (the control document, to know whether a note waits; one more by the rules
+ * unless the caller is the founder), then one write, or the batch described above.
  */
 export async function updateDistributorProfile(
   d: string,
@@ -333,9 +395,14 @@ export async function updateDistributorProfile(
 ): Promise<boolean> {
   const document = { ...profileDocument(patch), updatedAt: serverTimestamp() };
   const isBackInReview = touchesIdentity(patch);
-  await guarded(() =>
-    isBackInReview ? editIdentity(d, document) : updateDoc(distributorRef(d), document),
-  );
+  await guarded(async () => {
+    const control = (await getDoc(controlRef(d).withConverter(controlConverter))).data();
+    const answersNote = control !== undefined && answersReviewNote(control);
+    const edit = { d, document, isBackInReview, answersNote };
+    const controlChange = controlChangeOf(edit);
+    if (controlChange === null) return updateDoc(distributorRef(d), document);
+    return editWithControl(edit, controlChange);
+  });
   return isBackInReview;
 }
 
@@ -374,14 +441,28 @@ export function getDistributorPrivateSettings(
 /**
  * Founder only, and only while the listing is not approved: corrects the verification data a
  * platform admin sent back. `verification` must come from `prepareBusinessVerification`.
+ * When the listing waits with a note, the control document is marked as corrected in the same
+ * transaction (server time; the note itself stays for the admin). Resolves to true in that case.
+ * It approves nothing: only a platform admin does.
+ * Cost: 1 read + 1 or 2 writes, plus 1 lookup by the rules for the settings and 4 for the mark.
+ * Not queued without a connection (`OfflineError`).
  */
-export function updateVerificationData(d: string, verification: BusinessVerification) {
+export function updateVerificationData(
+  d: string,
+  verification: BusinessVerification,
+): Promise<boolean> {
   return guarded(() =>
-    updateDoc(doc(db, paths.distributorPrivateSettings(d)), {
-      taxId: verification.taxId,
-      legalName: verification.legalName,
-      hydrocarbonsRegistry: verification.hydrocarbonsRegistry,
-      updatedAt: serverTimestamp(),
+    runTransaction(db, async (tx) => {
+      const control = (await tx.get(controlRef(d).withConverter(controlConverter))).data();
+      const answersNote = control !== undefined && answersReviewNote(control);
+      tx.update(doc(db, paths.distributorPrivateSettings(d)), {
+        taxId: verification.taxId,
+        legalName: verification.legalName,
+        hydrocarbonsRegistry: verification.hydrocarbonsRegistry,
+        updatedAt: serverTimestamp(),
+      });
+      if (answersNote) tx.update(controlRef(d), correctionMark());
+      return answersNote;
     }),
   );
 }

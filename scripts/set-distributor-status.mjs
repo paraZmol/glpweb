@@ -21,7 +21,8 @@
 //
 // What each action writes, always in ONE transaction over the control document and the public
 // one, so the two never disagree (the security rules demand the same from the app):
-//   approve     control: listingApproved true, approvedAt now, approvedBy <--by>, no reviewNote.
+//   approve     control: listingApproved true, approvedAt now, approvedBy <--by>, no reviewNote
+//               and no correctedAt (the mark the owner leaves when it answers a note).
 //               `--by` must be a platform admin: an approval always says who looked at it.
 //   suspend     control: status 'suspended'. The approval is kept.
 //   reactivate  control: status back to 'trial' while the trial still runs, else 'active'.
@@ -68,6 +69,7 @@ function controlChange(sdk, action, after) {
     approvedAt: now,
     approvedBy: after.approvedBy,
     reviewNote: sdk.FieldValue.delete(),
+    correctedAt: sdk.FieldValue.delete(),
     updatedAt: now,
   };
 }
