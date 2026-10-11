@@ -53,6 +53,18 @@ describe('storage notice', () => {
     expect(html).not.toContain('role="dialog"');
   });
 
+  // role-walker 2026-10-11: floating over the bottom edge it covered "Guardar cambios", "Usar mi
+  // ubicación", "Cerrar sesión" and the decision bar. It is part of the page, before its frame.
+  it('is a strip in the flow of the page, above the screen, never a floating layer', () => {
+    vi.stubGlobal('localStorage', fakeStorage());
+    const html = page();
+    const [section = ''] = tags(html.slice(html.indexOf('<section')), 'section');
+
+    expect(section).toContain(NOTICE);
+    expect(section).not.toMatch(/(fixed|absolute|sticky)/);
+    expect(html.indexOf(NOTICE)).toBeLessThan(html.indexOf('pantalla'));
+  });
+
   it('does not come back once it was read on this device', () => {
     vi.stubGlobal('localStorage', fakeStorage());
 

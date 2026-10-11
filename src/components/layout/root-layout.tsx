@@ -45,7 +45,8 @@ function RouteAnnouncer() {
 
 /**
  * The one frame around every screen: motion settings, skip link, offline banner, navigation
- * bar, toasts, storage notice and scroll position kept when going back.
+ * bar, the storage notice (a strip in the flow, above the frame of the area), toasts and scroll
+ * position kept when going back.
  */
 export function RootLayout() {
   useFinishGoogleRedirectOnce();
@@ -61,10 +62,10 @@ export function RootLayout() {
         <div className="flex min-h-dvh flex-col">
           <OfflineBanner />
           <NavigationProgress />
+          <StorageNotice />
           <Outlet />
         </div>
         <RouteAnnouncer />
-        <StorageNotice />
         <AppToaster />
         <ScrollRestoration />
       </MotionConfig>
