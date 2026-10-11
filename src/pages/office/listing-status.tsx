@@ -42,7 +42,6 @@ const STATES: Record<ListingState, { chip: string; state: SystemState; text: str
   },
 };
 
-/** What is copied: the whole address, wherever the app is served from. */
 function publicUrlOf(slug: string): string {
   const origin = typeof window === 'undefined' ? '' : window.location.origin;
   return `${origin}${distributorPath(slug)}`;
@@ -64,8 +63,7 @@ function PublicLink({ slug }: { slug: string }) {
         className="inline-flex min-w-0 items-center gap-1.5 rounded-md font-semibold wrap-anywhere text-primary-text underline underline-offset-4"
       >
         <ExternalLink aria-hidden="true" className="size-4 shrink-0" strokeWidth={ICON_STROKE} />
-        {/* Shown short: the host says nothing to its owner and breaks the line on a phone. */}
-        {distributorPath(slug)}
+        {url}
       </Link>
       <Button type="button" variant="line" size="sm" onClick={copy}>
         <Copy aria-hidden="true" strokeWidth={ICON_STROKE} />
