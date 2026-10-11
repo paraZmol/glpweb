@@ -21,12 +21,17 @@ export type Db = ReturnType<RulesTestContext['firestore']>;
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+// The mutation run (scripts/mutate-rules.mjs) points these at a deliberately broken copy of the
+// rules and at emulator projects of its own, so several copies can be tested side by side.
+const RULES_FILE = process.env.RULES_FILE ?? 'firebase/firestore.rules';
+const PROJECT_PREFIX = process.env.RULES_PROJECT_PREFIX ?? 'demo-glpweb';
+
 /** Each test file gets its own emulator project so files never see each other's data. */
 export function createEnv(suffix: string): Promise<RulesTestEnvironment> {
   return initializeTestEnvironment({
-    projectId: `demo-glpweb-${suffix}`,
+    projectId: `${PROJECT_PREFIX}-${suffix}`,
     firestore: {
-      rules: readFileSync('firebase/firestore.rules', 'utf8'),
+      rules: readFileSync(RULES_FILE, 'utf8'),
       host: EMULATOR_HOST,
       port: emulatorPorts().firestore,
     },

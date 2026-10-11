@@ -5,7 +5,8 @@ rules_version = '2';
 // Deny by default; each collection is opened operation by operation and has tests in
 // firebase/tests. Limits mirror src/domain/tenancy/constants.ts (the tests read those constants).
 //
-// Data model (every listed field is required unless marked optional; no other field is accepted)
+// Data model (every listed field is required unless marked optional; no other field is accepted).
+// Every text is stored trimmed: white space at either end is refused.
 //
 // /users/{uid}                     private to the account
 //   displayName: string 1..80 · phone: null | '9' + 8 digits
@@ -15,7 +16,8 @@ rules_version = '2';
 //   privacy: the same shape for the privacy policy, with its own list of allowed versions
 //   createdAt, updatedAt: timestamp (= request.time when written; createdAt immutable)
 //
-// /users/{uid}/addresses/{slot}    private to the account; slot is a0..a9 (caps addresses at 10)
+// /users/{uid}/addresses/{slot}    private to the account; slot is a0..a9 (caps addresses at 10);
+//                                  created only once the profile (and its consents) exists
 //   label: string 1..40 · addressLine: string 1..160 · reference: string 0..160
 //   location: { lat: -90..90, lng: -180..180 } · createdAt, updatedAt
 //
@@ -26,14 +28,14 @@ rules_version = '2';
 //
 // /distributors/{d}                PUBLIC: every field can be read by anyone, so it holds only
 //                                  what a customer needs. No plan, no trial date, no account id.
-//   name: string 2..60 · slug (immutable)
+//   name: string 2..60 with at least one letter or digit · slug (immutable)
 //   contactPhone, whatsapp: '9' + 8 digits · addressLine: string 0..160
 //   plant: { lat, lng } · coverageRadiusKm: number 1..50 · brandColor: '#rrggbb' lowercase
 //   acceptingOrders: bool — derived: whoever writes it must write exactly "the control document
 //     says this distributor is writable right now". It is what the search filters by. Nobody
 //     flips it when a trial runs out, so it can stay true after the trial ended until the staff
 //     or a platform admin corrects it; no rule trusts it (they all read the control document).
-//   schedule: { days: list 1..7 of 0..6, opensAt: 'HH:MM', closesAt: 'HH:MM' }
+//   schedule: { days: list 1..7 of 0..6 without repeats, opensAt: 'HH:MM', closesAt: 'HH:MM' }
 //   maxCylindersPerOrder: int 1..20 · brands: list ≤ 8 of string 1..30
 //   priceFromCents: null | int 1..99900 · currency: 'PEN' · createdAt (immutable), updatedAt
 //
@@ -135,8 +137,21 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------------- field validators ----
+    // Stored text is always trimmed (the forms trim before validating): a value made of white
+    // space, or padded with it, is refused, so a "required" text cannot be blank. The class is
+    // what String.prototype.trim() removes in JavaScript; trim() of the rules leaves non-breaking
+    // and other Unicode spaces in place.
     function isText(value, min, max) {
-      return value is string && value.size() >= min && value.size() <= max;
+      return value is string && value.size() >= min && value.size() <= max
+        && !value.matches('(?s)^[\\s\\x0b\\pZ\\x{feff}].*')
+        && !value.matches('(?s).*[\\s\\x0b\\pZ\\x{feff}]$');
+    }
+
+    // The public name of a distributor carries at least one letter or digit: punctuation, emoji
+    // or invisible characters alone are not a name (same check as checkName in
+    // src/domain/tenancy/distributor-input.ts).
+    function isBusinessName(value) {
+      return isText(value, 2, 60) && value.matches('(?s).*[\\pL\\pN].*');
     }
 
     function isPhone(value) {
@@ -178,6 +193,8 @@ service cloud.firestore {
         && schedule.days is list
         && schedule.days.size() >= 1 && schedule.days.size() <= 7
         && schedule.days.hasOnly([0, 1, 2, 3, 4, 5, 6])
+        // No day twice (same check as checkSchedule in src/domain/tenancy/distributor-input.ts).
+        && schedule.days.toSet().size() == schedule.days.size()
         && isTimeOfDay(schedule.opensAt)
         && isTimeOfDay(schedule.closesAt);
     }
@@ -251,7 +268,7 @@ service cloud.firestore {
           'coverageRadiusKm', 'brandColor', 'acceptingOrders', 'schedule',
           'maxCylindersPerOrder', 'brands', 'priceFromCents', 'currency', 'createdAt', 'updatedAt'
         ])
-        && isText(data.name, 2, 60)
+        && isBusinessName(data.name)
         && data.slug is string
         && isPhone(data.contactPhone)
         && isPhone(data.whatsapp)
@@ -358,10 +375,14 @@ service cloud.firestore {
         allow get: if isSelf(uid);
         allow list: if isSelf(uid) && request.query.limit <= 10;
 
+        // An address is personal data: it is stored only for an account that has a profile,
+        // which cannot exist without the accepted terms and privacy policy.
+        // Reads added by rules: 1 (exists profile) on create, 0 otherwise.
         allow create: if isSelf(uid)
           && isSlot()
           && isValidAddress(request.resource.data)
-          && stampedNow(request.resource.data);
+          && stampedNow(request.resource.data)
+          && exists(/databases/$(database)/documents/users/$(uid));
 
         allow update: if isSelf(uid)
           && isValidAddress(request.resource.data)

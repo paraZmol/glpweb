@@ -71,6 +71,18 @@ export type DistributorProfilePatch = Partial<
   Pick<PublicDistributor, (typeof EDITABLE_PROFILE_FIELDS)[number]>
 >;
 
+/**
+ * A business name carries at least one letter or digit: punctuation, emoji or invisible
+ * characters alone are not a name. firebase/firestore.rules repeats the check (isBusinessName).
+ */
+const LETTER_OR_DIGIT = /[\p{L}\p{N}]/u;
+
+function checkName(name: string): Check {
+  const length = checkText(name, DISTRIBUTOR_NAME_MIN_LENGTH, DISTRIBUTOR_NAME_MAX_LENGTH);
+  if (length) return length;
+  return LETTER_OR_DIGIT.test(name) ? null : 'invalid';
+}
+
 function checkSchedule(schedule: Schedule): Check {
   const days = schedule.days;
   const knownDays = days.every((day) => (WEEK_DAYS as readonly number[]).includes(day));
@@ -95,7 +107,7 @@ const PROFILE_CHECKS: {
     value: NonNullable<PublicDistributor[K]> | null,
   ) => Check;
 } = {
-  name: (v) => checkText(v ?? '', DISTRIBUTOR_NAME_MIN_LENGTH, DISTRIBUTOR_NAME_MAX_LENGTH),
+  name: (v) => checkName(v ?? ''),
   contactPhone: (v) => checkPhone(v ?? ''),
   whatsapp: (v) => checkPhone(v ?? ''),
   addressLine: (v) => checkText(v ?? '', 0, ADDRESS_LINE_MAX_LENGTH),
