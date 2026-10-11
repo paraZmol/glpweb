@@ -9,6 +9,14 @@ export const DISTRIBUTOR_NAME_MIN_LENGTH = 2;
 export const DISTRIBUTOR_NAME_MAX_LENGTH = 60;
 export const ADDRESS_LINE_MAX_LENGTH = 160;
 
+/** Business verification data (PLAN 2.11), kept in `private/settings`. */
+export const LEGAL_NAME_MIN_LENGTH = 2;
+export const LEGAL_NAME_MAX_LENGTH = 120;
+export const HYDROCARBONS_REGISTRY_MIN_LENGTH = 4;
+export const HYDROCARBONS_REGISTRY_MAX_LENGTH = 40;
+/** Note a platform admin leaves when it sends a listing back to its owner. */
+export const REVIEW_NOTE_MAX_LENGTH = 300;
+
 export const DEFAULT_COVERAGE_RADIUS_KM = 5;
 export const MIN_COVERAGE_RADIUS_KM = 1;
 export const MAX_COVERAGE_RADIUS_KM = 50;
@@ -35,6 +43,8 @@ export const ADDRESS_REFERENCE_MAX_LENGTH = 160;
 
 /** Upper bound of the public search query; the rules reject a larger `limit`. */
 export const DISTRIBUTOR_SEARCH_LIMIT = 50;
+/** Upper bound of the platform's list of listings waiting for review; the rules enforce it. */
+export const PENDING_LISTINGS_LIMIT = 50;
 export const MEMBERSHIPS_QUERY_LIMIT = 20;
 export const MEMBERS_QUERY_LIMIT = 100;
 

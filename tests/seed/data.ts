@@ -25,8 +25,14 @@ export interface SeedDistributor {
   name: string;
   slug: string;
   status: SeedStatus;
-  /** ISO date. Fixed, so the seed is the same on every run. */
-  trialEndsAt: string;
+  /** ISO date; `null` means "thirty days after the seed runs" (a trial that is still on). */
+  trialEndsAt: string | null;
+  /** Whether a platform admin approved its listing (PLAN 2.11). */
+  listingApproved: boolean;
+  /** Invented verification data; see `SEED_TAX_IDS` for how the RUC was made up. */
+  taxId: string;
+  legalName: string;
+  hydrocarbonsRegistry: string;
   contactPhone: string;
   addressLine: string;
   plant: { lat: number; lng: number };
@@ -60,6 +66,8 @@ export const SEED_USERS = {
   driverB: user('repartidor-b', 'F. Repartidora', '23'),
   ownerC: user('owner-c', 'G. Dueña', '31'),
   ownerD: user('owner-d', 'H. Dueño', '41'),
+  /** Founder of E, the distributor that is still waiting for its review. */
+  ownerE: user('owner-e', 'N. Dueña', '95'),
   /** Has a profile and no membership anywhere. */
   customer: user('cliente', 'I. Cliente', '51'),
   /** Platform admin: listed in /platformAdmins. */
@@ -78,8 +86,27 @@ export const SEED_USERS = {
 export const SEED_CREATED_AT = '2025-12-01T15:00:00Z';
 const TRIAL_LONG_OVER = '2026-01-01T15:00:00Z';
 
-/** Where a seeded customer "is": inside the coverage of A and B, outside C and D. */
+/** Where a seeded customer "is": inside the coverage of A and B, outside C, D and E. */
 export const SEED_CUSTOMER_LOCATION = { lat: -12.05, lng: -77.04 };
+
+/**
+ * Invented RUCs with a valid check digit, so the forms and the domain accept them. How they
+ * were made: prefix `20` (company), seven zeros, one counting digit, and then the check digit
+ * SUNAT's algorithm gives for those ten digits (weights 5 4 3 2 7 6 5 4 3 2, modulus 11, eleven
+ * minus the remainder; 10 → 0, 11 → 1). `2000000000` → 1, `2000000001` → 0, `2000000002` → 8,
+ * `2000000003` → 6, `2000000004` → 4. They are plainly test numbers: no real taxpayer number
+ * has seven zeros in its identity part. `src/domain/tenancy/tax-id.test.ts` checks them.
+ */
+export const SEED_TAX_IDS = {
+  a: '20000000001',
+  b: '20000000010',
+  c: '20000000028',
+  d: '20000000036',
+  e: '20000000044',
+} as const;
+
+/** Invented record numbers: only their shape resembles a record of the registry. */
+const registryNumber = (counter: number) => `00000-074-00000${counter}`;
 
 export const SEED_DISTRIBUTORS = {
   /** Healthy, paying. */
@@ -89,6 +116,10 @@ export const SEED_DISTRIBUTORS = {
     slug: 'gas-demo-norte',
     status: 'active',
     trialEndsAt: TRIAL_LONG_OVER,
+    listingApproved: true,
+    taxId: SEED_TAX_IDS.a,
+    legalName: 'Gas Demo Norte S.A.C.',
+    hydrocarbonsRegistry: registryNumber(1),
     contactPhone: '900000011',
     addressLine: 'Av. Ejemplo 100',
     plant: { lat: -12.04, lng: -77.04 },
@@ -109,6 +140,10 @@ export const SEED_DISTRIBUTORS = {
     slug: 'gas-demo-sur',
     status: 'active',
     trialEndsAt: TRIAL_LONG_OVER,
+    listingApproved: true,
+    taxId: SEED_TAX_IDS.b,
+    legalName: 'Gas Demo Sur E.I.R.L.',
+    hydrocarbonsRegistry: registryNumber(2),
     contactPhone: '900000021',
     addressLine: 'Jr. Muestra 200',
     plant: { lat: -12.07, lng: -77.03 },
@@ -122,13 +157,17 @@ export const SEED_DISTRIBUTORS = {
       { user: SEED_USERS.driverB, role: 'driver' },
     ],
   },
-  /** Suspended by the platform: read-only. */
+  /** Suspended by the platform: read-only, and no longer readable by visitors. */
   c: {
     id: 'seed-dist-c',
     name: 'Gas Demo Suspendida',
     slug: 'gas-demo-suspendida',
     status: 'suspended',
     trialEndsAt: TRIAL_LONG_OVER,
+    listingApproved: true,
+    taxId: SEED_TAX_IDS.c,
+    legalName: 'Gas Demo Suspendida S.A.C.',
+    hydrocarbonsRegistry: registryNumber(3),
     contactPhone: '900000031',
     addressLine: 'Calle Prueba 300',
     plant: { lat: -12.2, lng: -76.9 },
@@ -148,6 +187,10 @@ export const SEED_DISTRIBUTORS = {
     slug: 'gas-demo-prueba-vencida',
     status: 'trial',
     trialEndsAt: '2026-01-15T15:00:00Z',
+    listingApproved: true,
+    taxId: SEED_TAX_IDS.d,
+    legalName: 'Gas Demo Prueba Vencida S.A.C.',
+    hydrocarbonsRegistry: registryNumber(4),
     contactPhone: '900000041',
     addressLine: 'Pasaje Demo 400',
     plant: { lat: -11.9, lng: -77.1 },
@@ -156,5 +199,28 @@ export const SEED_DISTRIBUTORS = {
     brands: [],
     priceFromCents: null,
     members: [{ user: SEED_USERS.ownerD, role: 'owner' }],
+  },
+  /**
+   * Just founded and waiting for its review (PLAN 2.11): on a running trial, not approved, so
+   * it takes no orders and visitors cannot read it. Its plant is far from every other one.
+   */
+  e: {
+    id: 'seed-dist-e',
+    name: 'Gas Demo En Revisión',
+    slug: 'gas-demo-en-revision',
+    status: 'trial',
+    trialEndsAt: null,
+    listingApproved: false,
+    taxId: SEED_TAX_IDS.e,
+    legalName: 'Gas Demo En Revisión S.A.C.',
+    hydrocarbonsRegistry: registryNumber(5),
+    contactPhone: '900000095',
+    addressLine: 'Av. Ensayo 500',
+    plant: { lat: -13.5, lng: -72 },
+    coverageRadiusKm: 3,
+    brandColor: '#7048e8',
+    brands: [],
+    priceFromCents: null,
+    members: [{ user: SEED_USERS.ownerE, role: 'owner' }],
   },
 } as const satisfies Record<string, SeedDistributor>;

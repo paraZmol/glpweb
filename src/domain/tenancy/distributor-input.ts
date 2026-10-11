@@ -34,9 +34,13 @@ import {
 } from './field-checks';
 import { normalizeSlug, validateSlug } from './slug';
 import type { PublicDistributor, Schedule } from './types';
+import { type BusinessVerificationInput, prepareBusinessVerification } from './verification-input';
 
-/** What the sign-up form collects. Everything else gets a default the owner can edit later. */
-export interface NewDistributorInput {
+/**
+ * What the sign-up form collects, the business verification data included (PLAN 2.11).
+ * Everything else gets a default the owner can edit later.
+ */
+export interface NewDistributorInput extends BusinessVerificationInput {
   name: string;
   slug: string;
   contactPhone: string;
@@ -173,7 +177,9 @@ export function prepareProfilePatch(
 /** Normalises and validates the sign-up form, filling the optional fields with defaults. */
 export function prepareNewDistributor(input: NewDistributorInput): Validated<NewDistributor> {
   const contactPhone = normalizePeruvianMobile(input.contactPhone);
+  const verification = prepareBusinessVerification(input);
   const value: NewDistributor = {
+    ...(verification.ok ? verification.value : input),
     name: input.name.trim(),
     slug: normalizeSlug(input.slug),
     contactPhone,
@@ -196,6 +202,7 @@ export function prepareNewDistributor(input: NewDistributorInput): Validated<New
     brandColor: value.brandColor,
   });
   const issues: FieldIssue[] = profile.ok ? [] : [...profile.issues];
+  if (!verification.ok) issues.push(...verification.issues);
   issues.push(
     ...collectIssues([
       ['slug', validateSlug(value.slug)],

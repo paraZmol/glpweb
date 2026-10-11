@@ -17,7 +17,10 @@ export type Loadable<T> =
 export interface AccessInput {
   gate: AccessGate;
   session: SessionState;
-  /** True when the account has no profile or accepted an older version of the terms. */
+  /**
+   * True when the account has no profile or accepted an older version of the terms. Only looked
+   * at once the e-mail is verified: before that the account cannot have a profile at all.
+   */
   termsPending: Loadable<boolean>;
   /** Role in the distributor the panels show; null for an account that is only a customer. */
   role: Loadable<MemberRole | null>;
@@ -75,22 +78,27 @@ function decideArea(input: AccessInput): AccessDecision {
 }
 
 /**
- * The steps go in order and nobody skips one: session → terms accepted → e-mail verified →
- * role for the area. The two pending-step screens are only reachable while their step is pending.
+ * The steps go in order and nobody skips one: session → e-mail verified → terms accepted →
+ * role for the area (PLAN 2.11). The e-mail comes first because nothing is stored for an
+ * account that has not proved its address: the rules refuse its profile and its consents, so
+ * the terms step could not be completed before it. The two pending-step screens are only
+ * reachable while their step is the pending one.
  */
 export function decideAccess(input: AccessInput): AccessDecision {
   const { gate, session, termsPending } = input;
   if (session.status === 'loading') return WAIT;
   if (session.status === 'signedOut') return { kind: 'redirect', to: 'signIn' };
+
+  // An unverified account has one place to be, whatever the state of its profile.
+  if (!session.session.emailVerified) {
+    return gate === 'verifyEmail' ? ALLOW : { kind: 'redirect', to: 'verifyEmail' };
+  }
+
   if (termsPending.status === 'loading') return WAIT;
   if (termsPending.status === 'error') return { kind: 'error', source: 'profile' };
-
   if (gate === 'acceptTerms') return termsPending.value ? ALLOW : sendHome(input, false);
   if (termsPending.value) return { kind: 'redirect', to: 'acceptTerms' };
-
-  const isVerified = session.session.emailVerified;
-  if (gate === 'verifyEmail') return isVerified ? sendHome(input, false) : ALLOW;
-  if (!isVerified) return { kind: 'redirect', to: 'verifyEmail' };
+  if (gate === 'verifyEmail') return sendHome(input, false);
 
   return decideArea(input);
 }

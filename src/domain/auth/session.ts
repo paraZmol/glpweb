@@ -21,6 +21,21 @@ export function hasSessionEnded(previousUid: string | null, nextUid: string | nu
   return previousUid !== null && previousUid !== nextUid;
 }
 
+/**
+ * True when the app starts with nobody signed in while the device still holds the mark of a
+ * session's local data: that session ended without its clean-up (the tab was closed between
+ * the two steps, or the account was signed out from elsewhere while no tab was open). The data
+ * must go now (PLAN 2.11). Only the first state of a page load counts: later sign-outs have
+ * their own path.
+ */
+export function leftDataBehind(start: {
+  isFirstState: boolean;
+  isSignedIn: boolean;
+  hasLocalSessionData: boolean;
+}): boolean {
+  return start.isFirstState && !start.isSignedIn && start.hasLocalSessionData;
+}
+
 export const MIN_PASSWORD_LENGTH = 8;
 /** Firebase Auth rejects longer passwords. */
 export const MAX_PASSWORD_LENGTH = 4096;

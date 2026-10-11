@@ -18,9 +18,11 @@ export interface Schedule {
 }
 
 /**
- * Public document `/distributors/{d}`: anyone can read every field, signed in or not, so it
- * holds only what a customer needs to find the business and order from it. Nothing about the
- * plan, the trial or the founder lives here (PLAN 2.9): see `DistributorControl`.
+ * Public document `/distributors/{d}`: while it takes orders anyone can read every field,
+ * signed in or not, so it holds only what a customer needs to find the business and order from
+ * it. Nothing about the plan, the trial or the founder lives here (PLAN 2.9): see
+ * `DistributorControl`. While it does not take orders (not approved yet, suspended, trial over)
+ * only its staff and platform admins can read it (PLAN 2.11).
  */
 export interface PublicDistributor {
   id: string;
@@ -33,8 +35,9 @@ export interface PublicDistributor {
   coverageRadiusKm: number;
   brandColor: string;
   /**
-   * Whether the distributor takes orders. Derived from the control document by whoever changes
-   * it; it can lag behind an expired trial until the staff or a platform admin opens the panel.
+   * Whether the distributor takes orders: it may operate and its listing was approved (see
+   * `isOpenToPublic`). Derived from the control document by whoever changes it; it can lag
+   * behind an expired trial until the staff or a platform admin opens the panel.
    * The security rules never trust it: they read the control document.
    */
   acceptingOrders: boolean;
@@ -59,6 +62,17 @@ export interface DistributorControl {
   ownerUid: string;
   status: DistributorStatus;
   trialEndsAt: Date;
+  /**
+   * Whether a platform admin approved showing this distributor to the public (PLAN 2.11). False
+   * from the founding until the approval, and again whenever the owner changes the name or a
+   * phone. Only a platform admin sets it to true. False in documents older than the field.
+   */
+  listingApproved: boolean;
+  /** When and by which platform admin it was approved; null while it is not. */
+  approvedAt: Date | null;
+  approvedBy: string | null;
+  /** What the platform admin asks the owner to correct; null when there is no note. */
+  reviewNote: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -68,18 +82,30 @@ export interface Distributor extends PublicDistributor {
   ownerUid: string;
   status: DistributorStatus;
   trialEndsAt: Date;
+  listingApproved: boolean;
+  reviewNote: string | null;
 }
 
 export const DISTRIBUTOR_PLANS = ['trial'] as const;
 export type DistributorPlan = (typeof DISTRIBUTOR_PLANS)[number];
 
-/** Private document `/distributors/{d}/private/settings`: founder, owners and platform admins. */
+/**
+ * Private document `/distributors/{d}/private/settings`: the founder and platform admins only
+ * (not even a co-owner: it holds the founder's own contact data and the tax number).
+ */
 export interface DistributorPrivateSettings {
   ownerUid: string;
   ownerName: string;
   ownerPhone: string;
   ownerEmail: string;
   plan: DistributorPlan;
+  /**
+   * Business verification data declared at founding (PLAN 2.11): RUC, registered name and record
+   * number in the Registro de Hidrocarburos. Empty in documents older than the fields.
+   */
+  taxId: string;
+  legalName: string;
+  hydrocarbonsRegistry: string;
   /** The founder accepted the terms when founding. Null only in documents older than the field. */
   terms: LegalAcceptance | null;
   /** When the founder declared it may represent the business and that it may sell GLP. */

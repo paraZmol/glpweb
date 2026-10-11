@@ -248,6 +248,9 @@ describe('founding form — hostile text', () => {
     plant: { lat: -12.0464, lng: -77.0428 },
     ownerName: 'A. Persona',
     ownerPhone: '900000002',
+    taxId: '20000000001',
+    legalName: 'Gas Demo S.A.C.',
+    hydrocarbonsRegistry: '00000-074-000000',
   };
   const fieldsRefused = (change: Partial<NewDistributorInput>) => {
     const prepared = prepareNewDistributor({ ...VALID, ...change });

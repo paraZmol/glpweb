@@ -52,10 +52,23 @@ function founderOf(distributor: SeedDistributor): SeedUser {
   return founder.user;
 }
 
-/** Same condition as `isWritable` in src/domain/tenancy/status.ts (this file imports no app code). */
+const SEED_TRIAL_DAYS = 30;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** A trial "still on" ends thirty days after the seed runs: it never goes stale in the repo. */
+function trialEndOf(distributor: SeedDistributor): Date {
+  if (distributor.trialEndsAt !== null) return new Date(distributor.trialEndsAt);
+  return new Date(Date.now() + SEED_TRIAL_DAYS * MS_PER_DAY);
+}
+
+/**
+ * Same condition as `isOpenToPublic` in src/domain/tenancy/listing.ts (this file imports no app
+ * code): it may operate and its listing was approved.
+ */
 function takesOrders(distributor: SeedDistributor): boolean {
+  if (!distributor.listingApproved) return false;
   if (distributor.status === 'active') return true;
-  return distributor.status === 'trial' && new Date(distributor.trialEndsAt) > new Date();
+  return distributor.status === 'trial' && trialEndOf(distributor) > new Date();
 }
 
 /** What anyone can read: no plan, no trial date, no account id (PLAN 2.9). */
@@ -83,7 +96,11 @@ function controlDocument(distributor: SeedDistributor) {
   return {
     ownerUid: founderOf(distributor).uid,
     status: distributor.status,
-    trialEndsAt: Timestamp.fromDate(new Date(distributor.trialEndsAt)),
+    trialEndsAt: Timestamp.fromDate(trialEndOf(distributor)),
+    listingApproved: distributor.listingApproved,
+    ...(distributor.listingApproved
+      ? { approvedAt: createdAt, approvedBy: SEED_USERS.admin.uid }
+      : {}),
     ...stamps,
   };
 }
@@ -96,6 +113,9 @@ function privateDocument(distributor: SeedDistributor) {
     ownerPhone: founder.phone,
     ownerEmail: founder.email,
     plan: 'trial',
+    taxId: distributor.taxId,
+    legalName: distributor.legalName,
+    hydrocarbonsRegistry: distributor.hydrocarbonsRegistry,
     terms,
     authorityDeclaredAt: createdAt,
     ...stamps,

@@ -21,6 +21,9 @@ const VALID: NewDistributorInput = {
   plant: { lat: -12.0464, lng: -77.0428 },
   ownerName: ' A. Dueña ',
   ownerPhone: '900000002',
+  taxId: '20000000001',
+  legalName: 'Gas Demo A S.A.C.',
+  hydrocarbonsRegistry: '00000-074-000000',
 };
 
 function issuesOf(input: NewDistributorInput) {
@@ -45,8 +48,20 @@ describe('prepareNewDistributor', () => {
         brandColor: DEFAULT_BRAND_COLOR,
         ownerName: 'A. Dueña',
         ownerPhone: '900000002',
+        taxId: '20000000001',
+        legalName: 'Gas Demo A S.A.C.',
+        hydrocarbonsRegistry: '00000-074-000000',
       },
     });
+  });
+
+  // PLAN 2.11: no founding without the data the platform reviews.
+  it.each([
+    ['a RUC that fails its check digit', { taxId: '20000000002' }, 'taxId:invalid'],
+    ['no legal name', { legalName: ' ' }, 'legalName:required'],
+    ['no record number', { hydrocarbonsRegistry: '' }, 'hydrocarbonsRegistry:required'],
+  ])('rejects %s', (_case, change, issue) => {
+    expect(issuesOf({ ...VALID, ...change })).toEqual([issue]);
   });
 
   it('keeps an explicit WhatsApp number, radius and colour', () => {

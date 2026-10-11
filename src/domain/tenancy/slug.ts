@@ -45,6 +45,12 @@ export const RESERVED_SLUGS = [
   'undefined',
 ] as const;
 
+/**
+ * No link may carry the name of the platform, wherever it sits in it: `hornilla-oficial` or
+ * `soporte-glpweb` would pass for the platform itself. The rules repeat the check.
+ */
+export const RESERVED_SLUG_FRAGMENTS = ['hornilla', 'glpweb'] as const;
+
 /** Lowercase letters and digits in groups joined by single hyphens; never a hyphen at an edge. */
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const COMBINING_MARKS = /[̀-ͯ]/g;
@@ -76,6 +82,7 @@ export function validateSlug(slug: string): SlugIssue | null {
   if (slug.length > SLUG_MAX_LENGTH) return 'tooLong';
   if (!SLUG_PATTERN.test(slug)) return 'invalidCharacters';
   if ((RESERVED_SLUGS as readonly string[]).includes(slug)) return 'reserved';
+  if (RESERVED_SLUG_FRAGMENTS.some((fragment) => slug.includes(fragment))) return 'reserved';
   return null;
 }
 

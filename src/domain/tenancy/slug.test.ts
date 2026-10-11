@@ -61,6 +61,12 @@ describe('validateSlug', () => {
     ['plataforma', 'reserved'],
     ['ingresar', 'reserved'],
     ['registro', 'reserved'],
+    // PLAN 2.11: the name of the platform is reserved anywhere in the link.
+    ['hornilla-oficial', 'reserved'],
+    ['gas-hornilla', 'reserved'],
+    ['mihornilla2', 'reserved'],
+    ['soporte-glpweb', 'reserved'],
+    ['glpweb1', 'reserved'],
   ])('rejects "%s" as %s', (slug, issue) => {
     expect(validateSlug(slug)).toBe(issue);
     expect(isValidSlug(slug)).toBe(false);
@@ -85,6 +91,9 @@ describe('slugFromName', () => {
     ['Al', 'al-gas'],
     ['Admin', 'admin-gas'],
     ['Plataforma', 'plataforma-gas'],
+    // Nothing built on the name of the platform is suggested.
+    ['Hornilla', ''],
+    ['Gas Hornilla Sur', ''],
     ['', ''],
     ['!!!', ''],
   ])('%s → %s', (name, expected) => {

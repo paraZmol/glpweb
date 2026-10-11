@@ -29,6 +29,16 @@ export class DistributorLimitError extends DomainError {
   }
 }
 
+/**
+ * The account owns a distributor that is read-only (suspended, past due or with its trial
+ * over): it cannot found another one until that is settled (PLAN 2.11).
+ */
+export class FoundingBlockedError extends DomainError {
+  constructor() {
+    super('The account owns a distributor that is read-only and cannot found another one');
+  }
+}
+
 /** The action needs a verified e-mail address. */
 export class EmailNotVerifiedError extends DomainError {
   constructor() {

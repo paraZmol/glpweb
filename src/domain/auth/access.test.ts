@@ -51,6 +51,7 @@ describe('decideAccess: the steps before any area (PLAN 2.4)', () => {
     expect(decision).toEqual({ kind: 'redirect', to: 'signIn' });
   });
 
+  // PLAN 2.11: session → e-mail verified → terms → role.
   it.each(ALL_GATES)('waits on %s while the profile loads', (gate) => {
     expect(decideAccess(input(gate, { termsPending: LOADING }))).toEqual({ kind: 'wait' });
   });
@@ -76,13 +77,31 @@ describe('decideAccess: the steps before any area (PLAN 2.4)', () => {
     },
   );
 
-  it('asks for the terms before the e-mail verification', () => {
-    const decision = decideAccess(
-      input('customer', { termsPending: ready(true), session: signedIn({ emailVerified: false }) }),
-    );
+  it.each([...APP_AREAS, 'acceptTerms', 'home'] as AccessGate[])(
+    'asks to verify the e-mail before the terms on %s',
+    (gate) => {
+      const decision = decideAccess(
+        input(gate, { termsPending: ready(true), session: signedIn({ emailVerified: false }) }),
+      );
 
-    expect(decision).toEqual({ kind: 'redirect', to: 'acceptTerms' });
-  });
+      expect(decision).toEqual({ kind: 'redirect', to: 'verifyEmail' });
+    },
+  );
+
+  it.each([LOADING, FAILED, ready(true)])(
+    'keeps an unverified account on the verification step whatever its profile (%o)',
+    (termsPending) => {
+      const unverified = signedIn({ emailVerified: false });
+
+      expect(decideAccess(input('verifyEmail', { session: unverified, termsPending }))).toEqual({
+        kind: 'allow',
+      });
+      expect(decideAccess(input('customer', { session: unverified, termsPending }))).toEqual({
+        kind: 'redirect',
+        to: 'verifyEmail',
+      });
+    },
+  );
 
   it.each([...APP_AREAS, 'home'] as AccessGate[])('asks to verify the e-mail before %s', (gate) => {
     const decision = decideAccess(

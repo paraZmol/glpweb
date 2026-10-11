@@ -4,10 +4,27 @@ import {
   hasSessionEnded,
   isAcceptablePassword,
   isValidEmail,
+  leftDataBehind,
   MIN_PASSWORD_LENGTH,
   normalizeEmail,
   type Session,
 } from './session';
+
+describe('leftDataBehind (PLAN 2.11)', () => {
+  const START = { isFirstState: true, isSignedIn: false, hasLocalSessionData: true };
+
+  it('is true when the app starts signed out over the data of a session', () => {
+    expect(leftDataBehind(START)).toBe(true);
+  });
+
+  it.each([
+    ['somebody is signed in', { isSignedIn: true }],
+    ['the device holds no session data', { hasLocalSessionData: false }],
+    ['it is not the first state of the page load', { isFirstState: false }],
+  ])('is false when %s', (_case, change) => {
+    expect(leftDataBehind({ ...START, ...change })).toBe(false);
+  });
+});
 
 describe('normalizeEmail', () => {
   it('trims and lowercases', () => {
