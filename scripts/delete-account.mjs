@@ -17,7 +17,10 @@
 //     node scripts/delete-account.mjs --project demo-glpweb --uid seed-cliente
 //
 // What it does, in this order:
-//   1. /users/{uid} and its addresses: deleted.
+//   1. /users/{uid}, its addresses and its history of acceptances (/acceptances): deleted.
+//      The history is the proof that the person accepted each version of the terms and of the
+//      privacy policy; it goes with the account. If a claim is open, export it first
+//      (scripts/export-account.mjs) and keep that copy with the register of requests.
 //   2. /platformAdmins/{uid}: deleted.
 //   3. Every /distributors/{d}/members/{uid}: kept (orders and shifts will point at it), with the
 //      name replaced by "Cuenta eliminada" and `active: false`.
@@ -102,9 +105,10 @@ async function deleteAuthAccount(sdk, uid) {
 export async function deleteAccount(sdk, uid, { dryRun = false } = {}) {
   const db = sdk.getFirestore();
   const profileRef = db.doc(`users/${uid}`);
-  const [profile, addresses, memberships, adminGrant] = await Promise.all([
+  const [profile, addresses, acceptances, memberships, adminGrant] = await Promise.all([
     profileRef.get(),
     profileRef.collection('addresses').get(),
+    profileRef.collection('acceptances').get(),
     db.collectionGroup('members').where('uid', '==', uid).get(),
     db.doc(`platformAdmins/${uid}`).get(),
   ]);
@@ -130,6 +134,7 @@ export async function deleteAccount(sdk, uid, { dryRun = false } = {}) {
     batch.update(member.ref, { displayName: DELETED_ACCOUNT_NAME, active: false, updatedAt: now });
   }
   for (const address of addresses.docs) batch.delete(address.ref);
+  for (const acceptance of acceptances.docs) batch.delete(acceptance.ref);
   if (profile.exists) batch.delete(profileRef);
   if (adminGrant.exists) batch.delete(adminGrant.ref);
 
@@ -139,6 +144,7 @@ export async function deleteAccount(sdk, uid, { dryRun = false } = {}) {
     dryRun,
     profileDeleted: profile.exists,
     addressesDeleted: addresses.size,
+    acceptancesDeleted: acceptances.size,
     platformAdminRevoked: adminGrant.exists,
     membershipsAnonymised: memberships.docs.map((member) => member.ref.path),
     distributorsSuspended: suspended,
@@ -152,6 +158,7 @@ function describe(summary, label) {
     `${summary.dryRun ? 'DRY RUN — nothing was written. ' : ''}Account ${summary.uid} on ${label}:`,
     `  profile ${verb} deleted: ${summary.profileDeleted ? 'yes' : 'there was none'}`,
     `  addresses deleted: ${summary.addressesDeleted}`,
+    `  history of acceptances, entries deleted: ${summary.acceptancesDeleted}`,
     `  platform admin grant removed: ${summary.platformAdminRevoked ? 'yes' : 'there was none'}`,
     `  memberships anonymised and deactivated: ${summary.membershipsAnonymised.length}`,
     ...summary.membershipsAnonymised.map((path) => `    - ${path}`),
@@ -165,7 +172,8 @@ function describe(summary, label) {
   if (!summary.dryRun) {
     lines.push(
       'Run this script again after one hour: a session that was still open could have written',
-      'a new profile or address meanwhile. It should then report nothing left to delete.',
+      'a new profile, address or acceptance meanwhile. It should then report nothing left to',
+      'delete.',
     );
   }
   return `${lines.join('\n')}\n`;

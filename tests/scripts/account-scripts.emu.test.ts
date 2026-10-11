@@ -5,7 +5,14 @@ import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/
 import { collection, doc, getDoc, getDocs, setDoc, Timestamp } from 'firebase/firestore';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { EMULATOR_HOST, EMULATOR_PROJECT_ID, emulatorPorts } from '../../scripts/lane-ports.mjs';
-import { SEED_DISTRIBUTORS, SEED_PASSWORD, SEED_TERMS_VERSION, SEED_USERS } from '../seed/data';
+import {
+  SEED_CREATED_AT,
+  SEED_DISTRIBUTORS,
+  SEED_PASSWORD,
+  SEED_PRIVACY_VERSION,
+  SEED_TERMS_VERSION,
+  SEED_USERS,
+} from '../seed/data';
 import { seedEmulators } from '../seed/seed';
 
 const ports = emulatorPorts();
@@ -15,6 +22,8 @@ const EMULATOR_ENV = {
 };
 const NOT_A_DEMO_PROJECT = 'some-real-project';
 const AT = Timestamp.fromDate(new Date('2026-02-01T12:00:00Z'));
+/** The date of everything the seed writes, as the export prints a timestamp. */
+const SEEDED_AT = new Date(SEED_CREATED_AT).toISOString();
 
 interface Run {
   code: number;
@@ -160,6 +169,11 @@ describe('export-account.mjs', () => {
         terms: { version: SEED_TERMS_VERSION },
       },
       addresses: [{ id: 'a0', label: 'Casa' }],
+      // PLAN 2.11: the history of acceptances is part of what is stored about the person.
+      legalAcceptances: [
+        { id: `privacy-${SEED_PRIVACY_VERSION}`, document: 'privacy', acceptedAt: SEEDED_AT },
+        { id: `terms-${SEED_TERMS_VERSION}`, document: 'terms', acceptedAt: SEEDED_AT },
+      ],
       memberships: [{ role: 'owner', distributorId: SEED_DISTRIBUTORS.a.id }],
       isPlatformAdmin: false,
       foundedDistributors: [
@@ -182,6 +196,7 @@ describe('export-account.mjs', () => {
       signInAccount: { email: SEED_USERS.noProfile.email },
       profile: null,
       addresses: [],
+      legalAcceptances: [],
       memberships: [],
       foundedDistributors: [],
     });
@@ -197,11 +212,13 @@ describe('delete-account.mjs', () => {
     expect(result.code).toBe(0);
     expect(result.stdout).toContain('DRY RUN');
     expect(result.stdout).toContain('addresses deleted: 1');
+    expect(result.stdout).toContain('history of acceptances, entries deleted: 2');
     expect(await stored(`users/${customer.uid}`)).toBeDefined();
+    expect(await countIn(`users/${customer.uid}/acceptances`)).toBe(2);
     expect(await accountExists(customer.uid)).toBe(true);
   });
 
-  it('deletes a customer: sign-in account, profile and addresses', async () => {
+  it('deletes a customer: sign-in account, profile, addresses and history of acceptances', async () => {
     const { customer } = SEED_USERS;
 
     const result = await run('delete-account.mjs', forUid(customer.uid));
@@ -210,6 +227,7 @@ describe('delete-account.mjs', () => {
     expect(await accountExists(customer.uid)).toBe(false);
     expect(await stored(`users/${customer.uid}`)).toBeUndefined();
     expect(await countIn(`users/${customer.uid}/addresses`)).toBe(0);
+    expect(await countIn(`users/${customer.uid}/acceptances`)).toBe(0);
   });
 
   it('anonymises the membership of a member of the staff and leaves the distributor working', async () => {

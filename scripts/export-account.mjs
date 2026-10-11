@@ -15,7 +15,9 @@
 //     node scripts/export-account.mjs --project demo-glpweb --uid seed-cliente
 //
 // What it includes: the sign-in account (e-mail, name, providers, dates; never the password),
-// the profile, the addresses, every membership and, for each distributor the account founded,
+// the profile, the addresses, the history of acceptances (every version of the terms and of the
+// privacy policy the account accepted, and when), every membership and, for each distributor the
+// account founded,
 // its public profile, its control document and its private settings. Orders and shifts will be
 // added when those collections exist.
 import { existsSync, realpathSync, writeFileSync } from 'node:fs';
@@ -98,10 +100,11 @@ async function foundedDistributor(db, distributorId) {
 export async function exportAccount(sdk, uid) {
   const db = sdk.getFirestore();
   const profileRef = db.doc(`users/${uid}`);
-  const [account, profile, addresses, memberships, adminGrant] = await Promise.all([
+  const [account, profile, addresses, acceptances, memberships, adminGrant] = await Promise.all([
     signInAccount(sdk, uid),
     profileRef.get(),
     profileRef.collection('addresses').get(),
+    profileRef.collection('acceptances').orderBy('acceptedAt').get(),
     db.collectionGroup('members').where('uid', '==', uid).get(),
     db.doc(`platformAdmins/${uid}`).get(),
   ]);
@@ -113,6 +116,7 @@ export async function exportAccount(sdk, uid) {
     signInAccount: account,
     profile: profile.data() ?? null,
     addresses: addresses.docs.map((address) => ({ id: address.id, ...address.data() })),
+    legalAcceptances: acceptances.docs.map((entry) => ({ id: entry.id, ...entry.data() })),
     memberships: memberships.docs.map((member) => ({ path: member.ref.path, ...member.data() })),
     isPlatformAdmin: adminGrant.exists,
     foundedDistributors: founded.filter((entry) => entry.control?.ownerUid === uid),
