@@ -114,7 +114,8 @@ test.fixme('resending the verification e-mail is held back right after registeri
 // parameter, the registration always navigates to /verificar-correo and, once verified, the
 // guard sends the account to the area of its role: the person ends on /inicio (the customer
 // home) and has to find the way to the sign-up of the distributor again. Expected: after
-// registering and verifying, land on /distribuidora/nueva.
+// registering, verifying and accepting the terms (the order since PLAN 2.11), land on
+// /distribuidora/nueva.
 test.fixme('registering from "¿Tienes una distribuidora?" ends on the sign-up of the distributor', async ({
   page,
 }, testInfo) => {
@@ -128,6 +129,11 @@ test.fixme('registering from "¿Tienes una distribuidora?" ends on the sign-up o
 
   await register(page, email);
   await verifyAndComeBack(page, email);
+  // Since PLAN 2.11 the terms are accepted after the verification, before going on.
+  await expect(page).toHaveURL(/\/aceptar-terminos$/);
+  await page.getByRole('checkbox', { name: TERMS_BOX }).check();
+  await page.getByRole('checkbox', { name: PRIVACY_BOX }).check();
+  await page.getByRole('button', { name: 'Aceptar y continuar' }).click();
 
   await expect(page).toHaveURL(/\/distribuidora\/nueva$/);
   await expect(heading(page)).toContainText('tu negocio.');
