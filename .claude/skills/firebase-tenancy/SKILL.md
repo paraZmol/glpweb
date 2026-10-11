@@ -88,13 +88,63 @@ skill `glp-domain`: la válida pasa, las inválidas fallan. Un cambio de reglas 
 `firebase deploy --only firestore:rules,database,hosting` es una acción hacia afuera: confirmar
 con el usuario. Nunca desplegar reglas con tests en rojo. Índices en `firestore.indexes.json`.
 
-## 10. Decisiones posteriores (2026-10-10)
-- **Ficha pública mínima.** `/distributors/{d}` es público y lleva solo lo que el cliente necesita
-  más `acceptingOrders`. El estado (`status`), el fin de la prueba (`trialEndsAt`) y la cuenta
-  fundadora (`ownerUid`) viven en `/distributors/{d}/private/control`, que solo leen el personal
-  activo y el super admin. `writable(d)` y `foundedNow(d)` leen **el control**, no la ficha (el §3
-  de arriba muestra la forma antigua). `acceptingOrders` nunca se usa para autorizar: es solo para
-  el buscador y puede quedar desfasado cuando vence una prueba.
+## 10. Decisiones posteriores (al día: 2026-10-11)
+Cuando esta sección y los §2–§3 chocan, manda esta. La fuente exacta es la cabecera de
+`firebase/firestore.rules` (modelo de datos campo por campo) y `docs/PLAN.md` §11.
+
+### 10.1 Tres documentos por distribuidora
+- **`/distributors/{d}` — ficha pública mínima.** Solo lo que el cliente necesita, más
+  `acceptingOrders`. Sin estado de pago, fin de prueba ni cuenta fundadora.
+- **`/distributors/{d}/private/control` — dónde está con la plataforma.** `ownerUid`, `status`,
+  `trialEndsAt`, la aprobación (`listingApproved`, `approvedAt`, `approvedBy`), la nota de
+  revisión (`reviewNote`), la marca de corrección (`correctedAt`) y copia del nombre y del enlace
+  (`distributorName`, `slug`). Lo lee su personal activo y el super admin. **Es el documento que
+  leen las reglas**: `writable(d)` y `foundedNow(d)` leen el control, no la ficha (el §3 muestra
+  la forma antigua).
+- **`/distributors/{d}/private/settings` — datos de quien fundó y de verificación** (RUC, razón
+  social, registro de hidrocarburos). Solo quien fundó y el super admin: ni un co-dueño.
+
+### 10.2 Aprobación previa (PLAN 2.11)
+- Una distribuidora **nace sin listar**: `listingApproved: false` y `acceptingOrders: false`.
+- **Solo el super admin aprueba**, y la aprobación va firmada: `approvedAt == request.time` y
+  `approvedBy == request.auth.uid`. Quien es dueño solo puede poner `listingApproved` en `false`.
+- **`acceptingOrders` es derivado**: solo puede escribirse igual a "puede operar **y** está
+  aprobada" (`isOpenData(control)`), comprobado con `getAfter` en los dos sentidos: quien cambia
+  el control debe dejar la ficha de acuerdo en el mismo lote. Nunca se usa para autorizar una
+  escritura; puede quedar desfasado cuando vence una prueba y lo corrige quien abre el panel.
+- **Lectura pública de la ficha**: `allow get` solo si `acceptingOrders == true` (o el documento
+  no existe). Sin aprobar, suspendida o con la prueba vencida solo la leen su personal activo y
+  el super admin; `/d/{slug}` responde "no encontrada". Las reglas no filtran campos: la única
+  forma de no entregar teléfono ni WhatsApp es no entregar el documento. `allow list` exige
+  `where('acceptingOrders', '==', true)` y `limit <= 50`.
+- **Cambiar nombre, teléfono o WhatsApp devuelve la ficha a revisión**: esa edición debe dejar
+  `acceptingOrders: false` y, con `getAfter`, el control con `listingApproved: false`. Si cambia
+  el nombre, además `control.distributorName` igual al nombre nuevo.
+- **Nota y corrección.** El super admin devuelve una ficha con `reviewNote`. Cuando quien es
+  dueño corrige (ficha pública o `private/settings`), el mismo lote marca
+  `correctedAt == request.time`. La marca solo existe junto a una nota, quien es dueño no puede
+  quitarla ni tocar la nota, el super admin no puede escribirla y debe quitarla al cambiar la
+  nota o aprobar. **No concede nada**: ninguna regla la lee. Estados para las pantallas
+  (`listingStateOf`): `inReview`, `changesRequested`, `correctionsSent`, `listed`,
+  `notOperating`.
+- **Copias en el control** (`distributorName`, `slug`): obligatorias en el alta, solo se
+  escriben iguales a la ficha pública, nadie las quita; opcionales al leer documentos
+  anteriores. Mismo patrón que `members.distributorName`: una copia solo se acepta si es verdad
+  comprobada con `getAfter`.
+- **Listas del super admin**: consulta `collectionGroup('private')` con tope de 50 y uno de tres
+  filtros (`listingApproved == false`, `listingApproved == true`, `status == 'suspended'`). Los
+  documentos `settings` no tienen esos campos, así que nunca salen. Paginadas de 20.
+- **Fundar otra**: tope de 3 por cuenta (`users.ownedDistributorIds`) y ninguna de las que ya
+  fundó en solo lectura (hasta 2 `get` más en el lote del alta). El id debe tener la forma del que
+  genera Firestore (20 letras o números).
+
+### 10.3 Orden de las guardas
+**sesión → correo verificado → términos → rol** (`src/domain/auth/access.ts`). Las reglas lo
+respaldan: nada se guarda (perfil, consentimientos, direcciones, distribuidora) para una cuenta
+con el correo sin verificar, así que el paso de términos solo puede crear el perfil después de
+verificar. Sustituye el orden anterior (sesión → términos → correo).
+
+### 10.4 Otras
 - **Miembros solo por invitación.** Un dueño no puede crear miembros directamente; el fundador
   entra en el lote de alta y los demás por invitación aceptada (fase 3). Cada miembro lleva
   `distributorName`, fijado por reglas igual al nombre de la distribuidora.
@@ -104,3 +154,6 @@ con el usuario. Nunca desplegar reglas con tests en rojo. Índices en `firestore
   `storageNoticeSeen` (`src/data/local-wipe.ts`, `src/features/account/end-session.ts`).
 - **Emuladores.** Solo a través de `scripts/emulators.mjs` (carril con `E2E_LANE=N`); nunca
   `firebase emulators:*` ni `java` directos: abren ventanas en el equipo del usuario.
+- **Mutación de reglas.** `scripts/mutate-rules.mjs` rompe una condición cada vez y exige que un
+  test lo note. Al reescribir una regla, su entrada en la lista deja de aplicar: se actualiza en
+  el mismo cambio y se añaden las condiciones nuevas (`MUTANTS=ID,… npm run test:mutation`).
