@@ -2,12 +2,46 @@ import { BurnerRing } from '@/components/brand/burner-ring';
 import { Highlight } from '@/components/brand/highlight';
 import { HornillaLogo } from '@/components/brand/hornilla-logo';
 import { ButtonLink } from '@/components/common/button';
+import { useSession } from '@/features/auth/use-session';
 import { usePageTitle } from '@/lib/page-title';
 import { ROUTES } from '@/lib/routes';
 
 const SYMBOL_PX = 72;
 
-/** Any address the app does not know. Says so and offers the two usual ways on. */
+/**
+ * The ways on from an address that does not exist. Whoever is signed in is taken to the area of
+ * their role, never asked to sign in again; while the session is still unknown only the way
+ * that suits everybody shows, so no button appears to be taken away a moment later.
+ */
+function WaysOn() {
+  const session = useSession();
+  if (session.status === 'signedIn') {
+    return (
+      <>
+        <ButtonLink to={ROUTES.appEntry} variant="primary" size="lg">
+          Ir a mi inicio
+        </ButtonLink>
+        <ButtonLink to={ROUTES.home} variant="line" size="lg">
+          Ver la portada
+        </ButtonLink>
+      </>
+    );
+  }
+  return (
+    <>
+      <ButtonLink to={ROUTES.home} variant="primary" size="lg">
+        Ir al inicio
+      </ButtonLink>
+      {session.status === 'signedOut' && (
+        <ButtonLink to={ROUTES.signIn} variant="line" size="lg">
+          Ingresar
+        </ButtonLink>
+      )}
+    </>
+  );
+}
+
+/** Any address the app does not know. Says so and offers the usual ways on. */
 export function NotFoundPage() {
   usePageTitle('Página no encontrada');
   return (
@@ -24,12 +58,7 @@ export function NotFoundPage() {
           donde siempre.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <ButtonLink to={ROUTES.home} variant="primary" size="lg">
-            Ir al inicio
-          </ButtonLink>
-          <ButtonLink to={ROUTES.signIn} variant="line" size="lg">
-            Ingresar
-          </ButtonLink>
+          <WaysOn />
         </div>
       </section>
       <div aria-hidden="true" className="relative mx-auto hidden size-72 lg:block">
