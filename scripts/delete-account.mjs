@@ -22,8 +22,9 @@
 //   3. Every /distributors/{d}/members/{uid}: kept (orders and shifts will point at it), with the
 //      name replaced by "Cuenta eliminada" and `active: false`.
 //   4. Every distributor the account founded: suspended and unlisted (control document and
-//      public flag), and the founder's name, phone and e-mail emptied in private/settings. The
-//      business data stays. DECIDE WITH THE PERSON FIRST what happens to the distributor
+//      public flag), and the founder's name, phone and e-mail emptied in private/settings,
+//      together with the RUC, the legal name and the record number. The public business data
+//      stays. DECIDE WITH THE PERSON FIRST what happens to the distributor
 //      (privacy policy §7): if it should keep working, do not run this script yet.
 //   5. The Firebase Auth account: deleted.
 // Steps 1 to 4 are one atomic batch. The script can be run again: it tolerates what is already
@@ -37,6 +38,7 @@ import {
   isMissingAccount,
   loadAdminSdk,
   readArguments,
+  requireUid,
   resolveTarget,
   runAsScript,
 } from './admin-common.mjs';
@@ -72,6 +74,11 @@ function suspendDistributor({ sdk, db, batch }, distributorId, existing) {
       ownerName: DELETED_ACCOUNT_NAME,
       ownerPhone: '',
       ownerEmail: '',
+      // The RUC of a natural person carries its identity document, and the legal name may be
+      // the person's own: the verification data goes with the founder (PLAN 2.11).
+      taxId: '',
+      legalName: '',
+      hydrocarbonsRegistry: '',
       founderDeletedAt: now,
       updatedAt: now,
     });
@@ -173,10 +180,10 @@ async function main(argv) {
     project: options.project,
     confirmedReal: options['yes-real-project'],
   });
-  if (!options.uid)
-    throw new Error('Missing --uid <uid>. Never delete by an e-mail typed from memory.');
+  // Never delete by an e-mail typed from memory: only a uid copied from the console passes.
+  const uid = requireUid(options.uid);
   const sdk = await loadAdminSdk(options.project);
-  const summary = await deleteAccount(sdk, options.uid, { dryRun: options['dry-run'] });
+  const summary = await deleteAccount(sdk, uid, { dryRun: options['dry-run'] });
   process.stdout.write(describe(summary, target.label));
 }
 

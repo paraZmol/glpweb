@@ -5,9 +5,9 @@
 //   node scripts/export-account.mjs --project <project-id> --uid <uid> --yes-real-project \
 //     --out <path outside this repository>
 //
-// Without --out the JSON goes to standard output. THE RESULT IS PERSONAL DATA: never write it
-// inside this repository (it is public), send it only to the person it belongs to and delete
-// your copy afterwards. See scripts/admin-common.mjs for the safety pattern and for where the
+// Without --out the JSON goes to standard output. THE RESULT IS PERSONAL DATA: the script
+// refuses an --out inside this repository (it is public); send the file only to the person it
+// belongs to and delete your copy afterwards. See scripts/admin-common.mjs for the safety pattern and for where the
 // credentials come from.
 //
 // Against the emulators (safe; this is what the tests do):
@@ -18,16 +18,45 @@
 // the profile, the addresses, every membership and, for each distributor the account founded,
 // its public profile, its control document and its private settings. Orders and shifts will be
 // added when those collections exist.
-import { writeFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import { existsSync, realpathSync, writeFileSync } from 'node:fs';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   isMissingAccount,
   loadAdminSdk,
   readArguments,
+  requireUid,
   resolveTarget,
   runAsScript,
   toPlainJson,
 } from './admin-common.mjs';
+
+const REPOSITORY_ROOT = realpathSync(join(dirname(fileURLToPath(import.meta.url)), '..'));
+
+/** The real location of `path`, following links in the part of it that already exists. */
+function realLocationOf(path) {
+  const absolute = resolve(path);
+  if (existsSync(absolute)) return realpathSync(absolute);
+  const parent = dirname(absolute);
+  return parent === absolute ? absolute : join(realLocationOf(parent), basename(absolute));
+}
+
+/**
+ * Where the export will be written, or a refusal: never inside this repository, which is
+ * public. One `git add` away from publishing somebody's personal data is too close.
+ */
+export function requireOutsideRepository(out, root = REPOSITORY_ROOT) {
+  const target = realLocationOf(out);
+  const fromRoot = relative(root, target);
+  const isInside = fromRoot === '' || (!fromRoot.startsWith('..') && !isAbsolute(fromRoot));
+  if (isInside) {
+    throw new Error(
+      `--out "${out}" is inside this repository, which is public: an export is personal data. ` +
+        'Write it to a folder outside any git repository.',
+    );
+  }
+  return target;
+}
 
 async function signInAccount(sdk, uid) {
   try {
@@ -99,15 +128,17 @@ async function main(argv) {
     project: options.project,
     confirmedReal: options['yes-real-project'],
   });
-  if (!options.uid) throw new Error('Missing --uid <uid>.');
+  const uid = requireUid(options.uid);
+  // Decided before anything is read: a refused destination costs no query.
+  const out = options.out ? requireOutsideRepository(options.out) : null;
   const sdk = await loadAdminSdk(options.project);
-  const json = `${JSON.stringify(await exportAccount(sdk, options.uid), null, 2)}\n`;
-  if (!options.out) {
+  const json = `${JSON.stringify(await exportAccount(sdk, uid), null, 2)}\n`;
+  if (out === null) {
     process.stdout.write(json);
     return;
   }
-  writeFileSync(options.out, json);
-  process.stderr.write(`Exported account ${options.uid} from ${target.label} to ${options.out}.\n`);
+  writeFileSync(out, json);
+  process.stderr.write(`Exported account ${uid} from ${target.label} to ${out}.\n`);
 }
 
 const isCommandLine =

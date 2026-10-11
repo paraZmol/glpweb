@@ -110,7 +110,8 @@ describe('safety pattern of the account scripts', () => {
   it.each(['delete-account.mjs', 'export-account.mjs'])(
     '%s refuses a real project without the explicit confirmation, before touching anything',
     async (script) => {
-      const result = await run(script, ['--project', NOT_A_DEMO_PROJECT, '--uid', 'x'], {});
+      const args = ['--project', NOT_A_DEMO_PROJECT, '--uid', SEED_USERS.customer.uid];
+      const result = await run(script, args, {});
 
       expect(result.code).toBe(1);
       expect(result.stderr).toContain('--yes-real-project');
@@ -130,10 +131,10 @@ describe('safety pattern of the account scripts', () => {
   );
 
   it.each([
-    ['without a project', ['--uid', 'x'], EMULATOR_ENV, '--project'],
+    ['without a project', ['--uid', 'seed-cliente'], EMULATOR_ENV, '--project'],
     ['without a uid', ['--project', EMULATOR_PROJECT_ID], EMULATOR_ENV, '--uid'],
-    ['with a demo project and no emulators', forUid('x'), {}, 'demo-'],
-    ['with an option it does not know', forUid('x', '--all'), EMULATOR_ENV, '--all'],
+    ['with a demo project and no emulators', forUid('seed-cliente'), {}, 'demo-'],
+    ['with an option it does not know', forUid('seed-cliente', '--all'), EMULATOR_ENV, '--all'],
   ])('delete-account.mjs refuses to run %s', async (_case, args, variables, mention) => {
     const result = await run('delete-account.mjs', args, variables);
 
@@ -245,6 +246,10 @@ describe('delete-account.mjs', () => {
       ownerName: 'Cuenta eliminada',
       ownerPhone: '',
       ownerEmail: '',
+      // PLAN 2.11: the verification data may be personal (a natural person's RUC).
+      taxId: '',
+      legalName: '',
+      hydrocarbonsRegistry: '',
     });
     expect(await stored(`distributors/${a.id}/members/${ownerA.uid}`)).toMatchObject({
       displayName: 'Cuenta eliminada',

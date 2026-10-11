@@ -1,13 +1,15 @@
-// Shared by the local Admin SDK scripts that act on one account (delete-account.mjs and
-// export-account.mjs). They are manual procedures for the person responsible for the data
-// (docs/PLAN.md 2.10): they are NOT wired into npm scripts, CI or the app.
+// Shared by the local Admin SDK scripts: delete-account.mjs, export-account.mjs,
+// grant-platform-admin.mjs and set-distributor-status.mjs. They are manual procedures for the
+// person responsible for the platform (docs/PLAN.md 2.10 and 2.11): they are NOT wired into npm
+// scripts, CI or the app.
 //
-// Safety pattern, the same as scripts/grant-platform-admin.mjs:
+// Safety pattern, the same in every one of them:
 //   - `--project` must be typed every time; there is no default.
 //   - a project that is not an emulator needs `--yes-real-project`, also typed every time.
 //   - a `demo-*` project only exists in the emulators.
 //   - both emulator variables must be set, or neither: with only one of them the Admin SDK
 //     would talk to the emulator for the data and to the real service for the accounts.
+//   - unknown options and values that do not look like an id are refused before anything runs.
 // Credentials never live in this repository: `gcloud auth application-default login`, or
 // GOOGLE_APPLICATION_CREDENTIALS pointing at a key file kept outside any git repository.
 // `firebase-admin` is a development dependency only (the tests run these scripts against the
@@ -27,6 +29,37 @@ export function readArguments(argv, { values = [], flags = [] }) {
     else throw new Error(`Unknown option "--${name}".`);
   }
   return options;
+}
+
+/**
+ * A Firebase Auth uid as the scripts accept it: letters, digits, `-` and `_`, 6 to 128
+ * characters, starting with a letter or digit. Anything else is refused before it reaches a
+ * document path: an e-mail typed by mistake, a path with slashes, a value with spaces, or the
+ * next option swallowed as a value (`--uid --revoke`).
+ */
+const UID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{5,127}$/;
+
+/** A document id as Firestore generates it, or one of the readable ids of the seed. */
+const DOCUMENT_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{5,63}$/;
+
+function requireMatch(value, pattern, option, what) {
+  if (!value) throw new Error(`Missing --${option} <${what}>.`);
+  if (!pattern.test(value)) {
+    throw new Error(
+      `--${option} "${value}" does not look like ${what}: copy it from the Firebase console.`,
+    );
+  }
+  return value;
+}
+
+/** The value of `--uid` (or of another option that carries a uid), or a plain refusal. */
+export function requireUid(value, option = 'uid') {
+  return requireMatch(value, UID_PATTERN, option, 'an account uid');
+}
+
+/** The value of `--distributor`, or a plain refusal. */
+export function requireDistributorId(value, option = 'distributor') {
+  return requireMatch(value, DOCUMENT_ID_PATTERN, option, 'a distributor id');
 }
 
 /**
