@@ -1,5 +1,10 @@
 import { authErrorFor, isAuthError } from '../../domain/auth/errors';
-import { isAcceptablePassword, isValidEmail, normalizeEmail } from '../../domain/auth/session';
+import {
+  isAcceptablePassword,
+  isBlankPassword,
+  isValidEmail,
+  normalizeEmail,
+} from '../../domain/auth/session';
 import { prepareUserProfile } from '../../domain/tenancy/account-input';
 import { InvalidInputError } from '../../domain/tenancy/errors';
 import { describeTenancyError, fieldMessagesOf } from '../tenancy/tenancy-messages';
@@ -21,6 +26,8 @@ export interface RegistrationForm {
 
 const MISSING_NAME = 'Escribe tu nombre.';
 const MISSING_PASSWORD = 'Escribe tu contraseña.';
+const BLANK_PASSWORD =
+  'La contraseña no puede ser solo espacios. Usa letras, números o una frase que recuerdes.';
 const MISSING_CONSENT = 'Marca esta casilla para aceptar los términos y continuar.';
 const MISSING_PRIVACY_CONSENT =
   'Marca esta casilla para autorizar el uso de tus datos y continuar.';
@@ -81,10 +88,16 @@ export function validateRegistration(form: RegistrationForm): RegistrationErrors
   return withoutEmpty({
     ...validateProfile(form),
     email: emailProblemOf(form.email),
-    password: isAcceptablePassword(form.password)
-      ? undefined
-      : describeAuthError(authErrorFor('weakPassword')),
+    password: passwordProblemOf(form.password),
   });
+}
+
+/** Message for a password a new account cannot use; undefined when it is acceptable. */
+function passwordProblemOf(password: string): string | undefined {
+  if (isAcceptablePassword(password)) return undefined;
+  // Typed, but nothing in it: "at least 8 characters" would be a lie, it has them.
+  if (password !== '' && isBlankPassword(password)) return BLANK_PASSWORD;
+  return describeAuthError(authErrorFor('weakPassword'));
 }
 
 export function hasErrors(errors: Record<string, string | undefined>): boolean {

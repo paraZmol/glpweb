@@ -69,6 +69,17 @@ describe('validateRegistration', () => {
     expect(Object.keys(validateRegistration({ ...VALID, ...patch }))).toEqual([field]);
   });
 
+  // role-walker 2026-10-11: eight spaces passed "Mínimo 8 caracteres".
+  it.each([' '.repeat(MIN_PASSWORD_LENGTH), ' '.repeat(40)])(
+    'refuses a password of nothing but spaces, saying so: %j',
+    (password) => {
+      expect(validateRegistration({ ...VALID, password })).toEqual({
+        password:
+          'La contraseña no puede ser solo espacios. Usa letras, números o una frase que recuerdes.',
+      });
+    },
+  );
+
   it('accepts a password of exactly the minimum length and names with tildes or emoji', () => {
     expect(validateRegistration({ ...VALID, displayName: 'Ñusta Peña 🔥' })).toEqual({});
     expect(validateRegistration({ ...VALID, password: 'ñ'.repeat(MIN_PASSWORD_LENGTH) })).toEqual(

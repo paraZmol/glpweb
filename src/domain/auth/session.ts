@@ -51,8 +51,15 @@ export function isValidEmail(email: string): boolean {
   return email.length <= EMAIL_MAX_LENGTH && EMAIL_PATTERN.test(email);
 }
 
+/** True for a password with nothing but spaces: long enough for Firebase, a key for nobody. */
+export function isBlankPassword(password: string): boolean {
+  return password.trim() === '';
+}
+
 export function isAcceptablePassword(password: string): boolean {
-  return password.length >= MIN_PASSWORD_LENGTH && password.length <= MAX_PASSWORD_LENGTH;
+  const hasValidLength =
+    password.length >= MIN_PASSWORD_LENGTH && password.length <= MAX_PASSWORD_LENGTH;
+  return hasValidLength && !isBlankPassword(password);
 }
 
 /** Founding a distributor needs proof that the e-mail belongs to the account. */

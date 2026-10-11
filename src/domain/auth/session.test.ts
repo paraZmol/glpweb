@@ -3,6 +3,7 @@ import {
   canFoundDistributor,
   hasSessionEnded,
   isAcceptablePassword,
+  isBlankPassword,
   isValidEmail,
   leftDataBehind,
   MIN_PASSWORD_LENGTH,
@@ -56,6 +57,19 @@ describe('isAcceptablePassword', () => {
 
   it.each(['', 'x'.repeat(MIN_PASSWORD_LENGTH - 1), 'x'.repeat(5000)])('rejects length %#', (p) => {
     expect(isAcceptablePassword(p)).toBe(false);
+  });
+
+  // role-walker 2026-10-11: eight spaces passed the minimum length and the account was created.
+  it.each([' '.repeat(MIN_PASSWORD_LENGTH), '\t'.repeat(12), ' \n '.repeat(4)])(
+    'rejects a password of nothing but blanks: %j',
+    (p) => {
+      expect(isBlankPassword(p)).toBe(true);
+      expect(isAcceptablePassword(p)).toBe(false);
+    },
+  );
+
+  it('accepts spaces inside a password: a phrase is a good password', () => {
+    expect(isAcceptablePassword('mi gas de hoy')).toBe(true);
   });
 });
 
