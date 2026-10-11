@@ -203,8 +203,8 @@ const MUTANTS = [
   [
     'H51',
     'pending listing that claims an approver',
-    "\n        && !('approvedBy' in data)\n        && (!('reviewNote'",
-    "\n        && (!('reviewNote'",
+    "\n        && !('approvedBy' in data)\n        && !('reviewedProfileAt'",
+    "\n        && !('reviewedProfileAt'",
   ],
   [
     'H52',
@@ -688,7 +688,7 @@ const MUTANTS = [
   [
     'C08',
     'control without settings',
-    '\n          && getAfter(/databases/$(database)/documents/distributors/$(d)/private/settings).data.ownerUid == request.auth.uid',
+    '\n          && getAfter(settingsPath(d)).data.ownerUid == request.auth.uid',
     '',
   ],
   [
@@ -700,14 +700,14 @@ const MUTANTS = [
   [
     'C10',
     'admin changes the trial end',
-    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote',\n                'correctedAt', 'distributorName', 'slug', 'updatedAt'\n              ])",
-    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote',\n                'correctedAt', 'distributorName', 'slug', 'trialEndsAt', 'updatedAt'\n              ])",
+    "'reviewedSettingsAt', 'reviewNote', 'correctedAt', 'distributorName', 'slug',\n                'updatedAt'\n              ])",
+    "'reviewedSettingsAt', 'reviewNote', 'correctedAt', 'distributorName', 'slug',\n                'trialEndsAt', 'updatedAt'\n              ])",
   ],
   [
     'C11',
     'admin changes the founder',
-    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote',\n                'correctedAt', 'distributorName', 'slug', 'updatedAt'\n              ])",
-    "'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote',\n                'correctedAt', 'distributorName', 'slug', 'ownerUid', 'updatedAt'\n              ])",
+    "'reviewedSettingsAt', 'reviewNote', 'correctedAt', 'distributorName', 'slug',\n                'updatedAt'\n              ])",
+    "'reviewedSettingsAt', 'reviewNote', 'correctedAt', 'distributorName', 'slug',\n                'ownerUid', 'updatedAt'\n              ])",
   ],
   [
     'C12',
@@ -791,8 +791,8 @@ const MUTANTS = [
   [
     'C26',
     'an approval may be re-dated later',
-    "unchanged(['listingApproved', 'approvedAt', 'approvedBy'])",
-    "unchanged(['listingApproved'])",
+    "unchanged([\n              'listingApproved', 'approvedAt', 'approvedBy', 'reviewedProfileAt',\n              'reviewedSettingsAt'\n            ])",
+    "unchanged(['listingApproved', 'reviewedProfileAt', 'reviewedSettingsAt'])",
   ],
   [
     'C27',
@@ -815,14 +815,14 @@ const MUTANTS = [
   [
     'C30',
     'owner writes the review note',
-    "'listingApproved', 'approvedAt', 'approvedBy', 'correctedAt', 'distributorName',\n                'slug', 'updatedAt'\n              ])",
-    "'listingApproved', 'approvedAt', 'approvedBy', 'correctedAt', 'distributorName',\n                'slug', 'reviewNote', 'updatedAt'\n              ])",
+    "'reviewedSettingsAt', 'correctedAt', 'distributorName', 'slug', 'updatedAt'\n              ])",
+    "'reviewedSettingsAt', 'correctedAt', 'distributorName', 'slug', 'reviewNote',\n                'updatedAt'\n              ])",
   ],
   [
     'C31',
     'owner changes the status with the return to review',
-    "'listingApproved', 'approvedAt', 'approvedBy', 'correctedAt', 'distributorName',\n                'slug', 'updatedAt'\n              ])",
-    "'listingApproved', 'approvedAt', 'approvedBy', 'correctedAt', 'distributorName',\n                'slug', 'status', 'updatedAt'\n              ])",
+    "'reviewedSettingsAt', 'correctedAt', 'distributorName', 'slug', 'updatedAt'\n              ])",
+    "'reviewedSettingsAt', 'correctedAt', 'distributorName', 'slug', 'status',\n                'updatedAt'\n              ])",
   ],
   [
     'P01',
@@ -1142,20 +1142,68 @@ const MUTANTS = [
   [
     'X15',
     'correction mark without a correction',
-    '\n            && (\n              getAfter(distributorPath(d)).data.updatedAt == request.time\n              || getAfter(/databases/$(database)/documents/distributors/$(d)/private/settings).data.updatedAt == request.time\n            );',
+    '\n            && (\n              getAfter(distributorPath(d)).data.updatedAt == request.time\n              || getAfter(settingsPath(d)).data.updatedAt == request.time\n            );',
     ';',
   ],
   [
     'X16',
     'an edit of the public profile does not count as a correction',
-    'getAfter(distributorPath(d)).data.updatedAt == request.time\n              || getAfter(/databases',
-    'getAfter(/databases',
+    'getAfter(distributorPath(d)).data.updatedAt == request.time\n              || getAfter(settingsPath',
+    'getAfter(settingsPath',
   ],
   [
     'X17',
     'an edit of the private settings does not count as a correction',
-    '\n              || getAfter(/databases/$(database)/documents/distributors/$(d)/private/settings).data.updatedAt == request.time',
+    '\n              || getAfter(settingsPath(d)).data.updatedAt == request.time',
     '',
+  ],
+  [
+    'R01',
+    'approval for a version nobody checks',
+    '\n              && approvesWhatWasReviewed()',
+    '',
+  ],
+  [
+    'R02',
+    'approval of a public profile edited after the review',
+    'return request.resource.data.reviewedProfileAt == get(distributorPath(d)).data.updatedAt\n            && request',
+    'return request',
+  ],
+  [
+    'R03',
+    'approval of private settings edited after the review',
+    '\n            && request.resource.data.reviewedSettingsAt == get(settingsPath(d)).data.updatedAt',
+    '',
+  ],
+  [
+    'R04',
+    'reviewed version of the profile compared with what the approval itself writes',
+    'reviewedProfileAt == get(distributorPath(d)).data.updatedAt',
+    'reviewedProfileAt == getAfter(distributorPath(d)).data.updatedAt',
+  ],
+  [
+    'R05',
+    'the versions of an approval may be rewritten later',
+    "'listingApproved', 'approvedAt', 'approvedBy', 'reviewedProfileAt',\n              'reviewedSettingsAt'\n            ])",
+    "'listingApproved', 'approvedAt', 'approvedBy'\n            ])",
+  ],
+  [
+    'R06',
+    'pending listing that names a reviewed profile',
+    "\n        && !('reviewedProfileAt' in data)",
+    '',
+  ],
+  [
+    'R07',
+    'pending listing that names reviewed settings',
+    "\n        && !('reviewedSettingsAt' in data)",
+    '',
+  ],
+  [
+    'R08',
+    'reviewed version of the settings read from the public profile',
+    'reviewedSettingsAt == get(settingsPath(d)).data.updatedAt',
+    'reviewedSettingsAt == get(distributorPath(d)).data.updatedAt',
   ],
 ];
 
