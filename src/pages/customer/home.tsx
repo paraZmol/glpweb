@@ -5,11 +5,8 @@ import { OwnersBand } from '@/components/finder/owners-band';
 import { PageHeader } from '@/components/layout/page-header';
 import { useAccount } from '@/features/account/account-context';
 import { useDeliveryLocation } from '@/features/location/use-delivery-location';
+import { greetingFor } from '@/lib/greeting';
 import { usePageTitle } from '@/lib/page-title';
-
-function firstNameOf(displayName: string | undefined): string {
-  return displayName?.trim().split(/\s+/)[0] ?? '';
-}
 
 /**
  * Home of the customer (PLAN 2.6): the same search of the public home, inside the app frame
@@ -19,15 +16,13 @@ export function CustomerHomePage() {
   usePageTitle('Inicio');
   const { profile, role } = useAccount();
   const delivery = useDeliveryLocation();
-  const firstName = firstNameOf(profile?.displayName);
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         title={
           <>
-            {firstName ? `Hola, ${firstName}. ` : 'Hola. '}
-            <Highlight>¿Quién te lleva el gas hoy?</Highlight>
+            {greetingFor(profile?.displayName)} <Highlight>¿Quién te lleva el gas hoy?</Highlight>
           </>
         }
         lead="Dinos dónde estás y mira qué distribuidoras llegan hasta tu puerta."

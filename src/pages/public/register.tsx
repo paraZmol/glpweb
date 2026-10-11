@@ -20,6 +20,7 @@ import {
 } from '@/features/auth/auth-forms';
 import { useSession } from '@/features/auth/use-session';
 import { usePageTitle } from '@/lib/page-title';
+import { verificationSentState } from '@/lib/resend-wait';
 import {
   destinationState,
   RETURN_PARAM,
@@ -33,8 +34,6 @@ import { useOnlineStatus } from '@/lib/use-online-status';
 
 const OFFLINE_TEXT = 'Sin conexión: para crear tu cuenta necesitas internet.';
 const EMPTY_FORM: RegistrationForm = { displayName: '', email: '', password: '', phone: '' };
-/** Told to the verification screen: an e-mail was sent a moment ago, so "resend" starts waiting. */
-export const JUST_REGISTERED = { justRegistered: true };
 
 /**
  * `/registro` (PLAN 2.1, 2.11): creates the sign-in account and nothing else. The terms are
@@ -74,7 +73,8 @@ export function RegisterPage() {
       try {
         await registerAccount(form);
         setRegistered(true);
-        const state = { ...JUST_REGISTERED, ...destinationState(target) };
+        // The verification screen makes "resend" wait from the moment this e-mail left.
+        const state = { ...verificationSentState(Date.now()), ...destinationState(target) };
         await navigate(ROUTES.verifyEmail, { replace: true, state });
       } catch (error) {
         setErrors(registrationErrorsOf(error));

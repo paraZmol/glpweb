@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { Highlight } from '@/components/brand/highlight';
 import { Button } from '@/components/common/button';
 import { InlineAlert } from '@/components/common/inline-alert';
@@ -8,13 +8,11 @@ import { useAccount } from '@/features/account/account-context';
 import { refreshSession, resendVerificationEmail } from '@/features/auth/auth-actions';
 import { describeAuthError } from '@/features/auth/auth-messages';
 import { usePageTitle } from '@/lib/page-title';
+import { RESEND_WAIT_SECONDS, resendWaitLeft, verificationSentState } from '@/lib/resend-wait';
 import { useAsyncAction } from '@/lib/use-async-action';
 import { formatCountdown, useCountdown } from '@/lib/use-countdown';
 import { useOnlineStatus } from '@/lib/use-online-status';
 import { DiscardAccount } from './discard-account';
-
-/** Wait between two verification e-mails, so a nervous thumb does not hit the provider's limit. */
-const RESEND_WAIT_SECONDS = 60;
 
 type Notice = { tone: 'error' | 'info' | 'success'; text: string };
 
@@ -31,10 +29,6 @@ const OFFLINE: Notice = {
   text: 'Sin conexión: para comprobarlo necesitas internet.',
 };
 
-function wasJustRegistered(state: unknown): boolean {
-  return typeof state === 'object' && state !== null && 'justRegistered' in state;
-}
-
 /**
  * Pending step: the account exists but its e-mail is not verified. When the check succeeds the
  * session changes and the guard (`RequireAccess`) takes the person on by itself. Nothing is
@@ -45,7 +39,10 @@ export function VerifyEmailPage() {
   const { session } = useAccount();
   const location = useLocation();
   const isOnline = useOnlineStatus();
-  const wait = useCountdown(wasJustRegistered(location.state) ? RESEND_WAIT_SECONDS : 0);
+  const navigate = useNavigate();
+  // What is left of the wait since the last e-mail, also after reloading the screen.
+  const [waitAtArrival] = useState(() => resendWaitLeft(location.state, Date.now()));
+  const wait = useCountdown(waitAtArrival);
   const resending = useAsyncAction();
   const checking = useAsyncAction();
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -63,6 +60,12 @@ export function VerifyEmailPage() {
       attempt(async () => {
         await resendVerificationEmail();
         wait.start(RESEND_WAIT_SECONDS);
+        // The new moment replaces the one of this history entry; where the account was going stays.
+        const state = {
+          ...(location.state as object | null),
+          ...verificationSentState(Date.now()),
+        };
+        await navigate(location, { replace: true, state });
         return SENT;
       }),
     );

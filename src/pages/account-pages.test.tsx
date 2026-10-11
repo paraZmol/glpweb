@@ -10,6 +10,7 @@ import { count, renderStatic, tags, textOf } from '../../tests/support/render-st
 import { AppShell } from '../components/layout/app-shell';
 import { GateShell } from '../components/layout/gate-shell';
 import type { AppArea } from '../domain/auth/access';
+import { verificationSentState } from '../lib/resend-wait';
 import { AREA_HOME, JUST_FOUNDED_STATE, ROUTES } from '../lib/routes';
 import { AcceptTermsPage } from './account/accept-terms';
 import { VerifyEmailPage } from './account/verify-email';
@@ -19,7 +20,6 @@ import { CustomerOrdersPage } from './customer/orders';
 import { DriverHomePage } from './driver/home';
 import { OfficeHomePage } from './office/home';
 import { PlatformHomePage } from './platform/home';
-import { JUST_REGISTERED } from './public/register';
 
 const reload = () => {};
 const OWNER = accountOf({ current: workingAs([memberOf('owner')]) });
@@ -166,7 +166,7 @@ describe('pending steps of an account (PLAN 2.1, 2.7)', () => {
   it('makes only a person who has just registered wait before asking for another e-mail', () => {
     const justRegistered = renderStatic(<VerifyEmailPage />, {
       path: ROUTES.verifyEmail,
-      state: JUST_REGISTERED,
+      state: verificationSentState(Date.now()),
       shell: <GateShell />,
       account: accountOf(),
     });
@@ -174,6 +174,19 @@ describe('pending steps of an account (PLAN 2.1, 2.7)', () => {
 
     expect(textOf(justRegistered)).toContain('Reenviar en 1:00');
     expect(textOf(later)).not.toMatch(/Reenviar en \d/);
+  });
+
+  // role-walker 2026-10-11: a reload started the minute again.
+  it('goes on with what is left of the wait when the screen is opened again', () => {
+    const TWENTY_SECONDS_MS = 20_000;
+    const reloaded = renderStatic(<VerifyEmailPage />, {
+      path: ROUTES.verifyEmail,
+      state: verificationSentState(Date.now() - TWENTY_SECONDS_MS),
+      shell: <GateShell />,
+      account: accountOf(),
+    });
+
+    expect(textOf(reloaded)).toContain('Reenviar en 0:40');
   });
 });
 
