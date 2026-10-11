@@ -12,7 +12,7 @@ test.skip(
 
 const TERMS_BOX = /Acepto los Términos y condiciones/;
 const PRIVACY_BOX = /Leí la Política de privacidad/;
-const CURRENT_VERSION = '0.1';
+const CURRENT_VERSION = '0.2';
 const NEW_NAME = 'Y. Registro';
 /** Follows the fake pattern 9000000xx of the seed. */
 const NEW_PHONE = '900000097';

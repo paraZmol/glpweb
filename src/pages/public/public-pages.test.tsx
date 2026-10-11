@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { CheckboxField } from '../../components/common/checkbox-field';
 import { count, renderStatic, tags, textOf } from '../../../tests/support/render-static';
 import { PublicShell } from '../../components/layout/public-shell';
-import { TERMS_VERSION } from '../../domain/legal/versions';
+import { CURRENT_TEXT_VERSIONS } from '../../domain/legal/text-editions';
 import { ContactPage } from './contact';
 import { HomePage } from './home';
 import { CookiesPage, PrivacyPage, TermsPage } from './index';
@@ -193,12 +193,12 @@ describe('sign-in and password reset (PLAN 2.1)', () => {
 
 describe('legal pages (PLAN 2.7)', () => {
   const PAGES = [
-    ['/terminos', <TermsPage key="t" />, 'Términos y condiciones de Hornilla'],
-    ['/privacidad', <PrivacyPage key="p" />, 'Política de privacidad de Hornilla'],
-    ['/cookies', <CookiesPage key="c" />, 'Cookies y almacenamiento en tu dispositivo'],
+    ['/terminos', <TermsPage key="t" />, 'Términos y condiciones de Hornilla', 'terms'],
+    ['/privacidad', <PrivacyPage key="p" />, 'Política de privacidad de Hornilla', 'privacy'],
+    ['/cookies', <CookiesPage key="c" />, 'Cookies y almacenamiento en tu dispositivo', 'cookies'],
   ] as const;
 
-  it.each(PAGES)('%s shows its document under the draft banner', (path, page, title) => {
+  it.each(PAGES)('%s shows its document under the draft banner', (path, page, title, id) => {
     const html = inPublicShell(page, path);
     const text = textOf(html);
 
@@ -207,7 +207,7 @@ describe('legal pages (PLAN 2.7)', () => {
     expect(text).toContain('Borrador en revisión.');
     expect(text).toMatch(/es la que rige mientras Hornilla está en prueba/);
     expect(text).toContain('te pediremos aceptarla de nuevo.');
-    expect(text).toContain(`Versión ${TERMS_VERSION} · 10 de octubre de 2026`);
+    expect(text).toContain(`Versión ${CURRENT_TEXT_VERSIONS[id]} · 11 de octubre de 2026`);
   });
 
   it.each(PAGES)('%s renders text only: no markup from the document', (path, page) => {

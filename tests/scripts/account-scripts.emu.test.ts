@@ -5,7 +5,7 @@ import { initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/
 import { collection, doc, getDoc, getDocs, setDoc, Timestamp } from 'firebase/firestore';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { EMULATOR_HOST, EMULATOR_PROJECT_ID, emulatorPorts } from '../../scripts/lane-ports.mjs';
-import { SEED_DISTRIBUTORS, SEED_PASSWORD, SEED_USERS } from '../seed/data';
+import { SEED_DISTRIBUTORS, SEED_PASSWORD, SEED_TERMS_VERSION, SEED_USERS } from '../seed/data';
 import { seedEmulators } from '../seed/seed';
 
 const ports = emulatorPorts();
@@ -154,7 +154,11 @@ describe('export-account.mjs', () => {
     expect(exported).toMatchObject({
       uid: ownerA.uid,
       signInAccount: { email: ownerA.email, emailVerified: true },
-      profile: { displayName: ownerA.displayName, phone: ownerA.phone, terms: { version: '0.1' } },
+      profile: {
+        displayName: ownerA.displayName,
+        phone: ownerA.phone,
+        terms: { version: SEED_TERMS_VERSION },
+      },
       addresses: [{ id: 'a0', label: 'Casa' }],
       memberships: [{ role: 'owner', distributorId: SEED_DISTRIBUTORS.a.id }],
       isPlatformAdmin: false,

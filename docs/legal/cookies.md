@@ -1,6 +1,6 @@
 # Cookies y almacenamiento en tu dispositivo
 
-> **BORRADOR v0.1 (2026-10-10) — pendiente de revisión por un profesional antes del lanzamiento.**
+> **BORRADOR v0.2 (2026-10-11) — pendiente de revisión por un profesional antes del lanzamiento.**
 
 Hornilla guarda en tu navegador solo lo necesario para funcionar. **No usa cookies de publicidad
 ni de seguimiento, ni herramientas de analítica de terceros.**
@@ -68,6 +68,8 @@ con enlace a esta página, y no un panel de consentimiento. **Si en el futuro se
 publicidad, antes se pedirá tu consentimiento expreso** y esta página se actualizará.
 
 ## Historial de cambios
+- 0.2 (2026-10-11): desde esta versión cada cambio de este texto lleva número nuevo. El
+  contenido es el de la séptima redacción de la 0.1.
 - 0.1, séptima redacción (2026-10-11): tercera revisión de cumplimiento. Se precisa que el
   último punto de búsqueda caduca a los 30 días de haberse guardado (no de la última vez que se
   usó), que se borra al abrir el buscador pasado ese plazo y que guarda fecha y hora; que una

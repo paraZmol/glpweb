@@ -1,12 +1,12 @@
 # Términos y condiciones de Hornilla
 
-> **BORRADOR v0.1 (2026-10-10) — pendiente de revisión por un profesional antes del lanzamiento.**
+> **BORRADOR v0.2 (2026-10-11) — pendiente de revisión por un profesional antes del lanzamiento.**
 > Los datos entre corchetes se completan cuando exista la razón social. Este texto se muestra en
 > la aplicación marcado como borrador en revisión (paso 2.7 del plan) y su número de versión queda
 > registrado con cada aceptación. Mientras queden corchetes en la sección 1 no debe registrarse a
-> personas reales: solo datos de prueba. Desde que una persona real acepte una versión, su texto
-> no se toca: cualquier cambio lleva número nuevo. Antes de abrir al público se publica la
-> versión 1.0 revisada y se vuelve a pedir aceptación.
+> personas reales: solo datos de prueba. El texto de una versión no se toca: cualquier cambio
+> lleva número nuevo. Antes de abrir al público se publica la versión 1.0 revisada y se vuelve a
+> pedir aceptación.
 
 > Hornilla está en construcción. Esta versión preliminar es la que se muestra en la aplicación y
 > la que queda registrada, con su número y su fecha, cuando alguien la acepta. Antes de abrir
@@ -162,6 +162,9 @@ requieren aceptación para seguir usándola.
 Estos términos se rigen por las leyes de la República del Perú.
 
 ## Historial de cambios
+- 0.2 (2026-10-11): desde esta versión cada cambio de este texto lleva número nuevo, de modo que
+  un número de versión corresponde a un solo texto. El contenido es el de la sexta redacción de
+  la 0.1; solo cambia la nota inicial, que ahora lo dice así. La 0.1 deja de poder aceptarse.
 - 0.1, sexta redacción (2026-10-11): tercera revisión de cumplimiento. Se dice con todas las
   letras que la revisión de una ficha no es una certificación, una garantía ni una recomendación,
   que se hace sobre lo declarado y en ese momento, que puede compararse con consultas públicas y

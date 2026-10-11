@@ -18,7 +18,7 @@ test.skip(
 
 const TERMS_BOX = /Acepto los Términos y condiciones/;
 const PRIVACY_BOX = /Leí la Política de privacidad/;
-const CURRENT_VERSION = '0.1';
+const CURRENT_VERSION = '0.2';
 /** Every signed-in address somebody could type to skip a pending step. */
 const WAYS_AROUND = ['/inicio', '/pedidos', '/cuenta', '/distribuidora/nueva', '/central', '/app'];
 

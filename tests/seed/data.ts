@@ -45,8 +45,8 @@ export interface SeedDistributor {
 }
 
 /** Versions of the terms and of the privacy policy every seeded profile accepted. */
-export const SEED_TERMS_VERSION = '0.1';
-export const SEED_PRIVACY_VERSION = '0.1';
+export const SEED_TERMS_VERSION = '0.2';
+export const SEED_PRIVACY_VERSION = '0.2';
 
 const user = (key: string, displayName: string, phoneSuffix: string, emailVerified = true) => ({
   uid: `seed-${key}`,

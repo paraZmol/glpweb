@@ -1,11 +1,16 @@
-// Versions of the legal texts in docs/legal. Bump one when its text changes in a way that needs
-// a new acceptance (terms §11), and add the new value to `acceptedTermsVersions()` or
-// `acceptedPrivacyVersions()` in firebase/firestore.rules: a rules test fails while they disagree.
+// Versions of the legal texts in docs/legal. EVERY CHANGE OF TEXT BUMPS THE VERSION (docs/PLAN.md
+// §11): "accepted 0.2 on that day" must name one text only. To change a document: new version in
+// its header and history, a new edition in ./text-editions.ts (a unit test fails until then), the
+// constant here, and the new value in `acceptedTermsVersions()` or `acceptedPrivacyVersions()`
+// of firebase/firestore.rules (a rules test fails while they disagree).
 
-export const TERMS_VERSION = '0.1';
-export const PRIVACY_VERSION = '0.1';
+export const TERMS_VERSION = '0.2';
+export const PRIVACY_VERSION = '0.2';
 
-/** Every terms version an account may hold; the last one is the current one. */
+/**
+ * Every terms version an account may hold; the last one is the current one. 0.1 is gone on
+ * purpose: it covered six different wordings, so it proves nothing, and nobody real accepted it.
+ */
 export const TERMS_VERSIONS = [TERMS_VERSION] as const;
 
 /** Every privacy-policy version an account may hold; the last one is the current one. */

@@ -1,4 +1,5 @@
 import type { Session } from '../../src/domain/auth/session';
+import { PRIVACY_VERSION, TERMS_VERSION } from '../../src/domain/legal/versions';
 import type {
   Distributor,
   Member,
@@ -27,8 +28,8 @@ export const PROFILE: UserProfile = {
   displayName: 'Persona Demo',
   phone: null,
   ownedDistributorIds: [],
-  terms: { version: '0.1', acceptedAt: NOW },
-  privacy: { version: '0.1', acceptedAt: NOW },
+  terms: { version: TERMS_VERSION, acceptedAt: NOW },
+  privacy: { version: PRIVACY_VERSION, acceptedAt: NOW },
   createdAt: NOW,
   updatedAt: NOW,
 };

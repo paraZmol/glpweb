@@ -1,6 +1,6 @@
 # Política de privacidad de Hornilla
 
-> **BORRADOR v0.1 (2026-10-10) — pendiente de revisión por un profesional antes del lanzamiento**
+> **BORRADOR v0.2 (2026-10-11) — pendiente de revisión por un profesional antes del lanzamiento**
 > (Ley N.º 29733 de Protección de Datos Personales y su reglamento). Los datos entre corchetes se
 > completan cuando exista la razón social. Mientras queden corchetes en las secciones 1 y 7 no
 > debe registrarse a personas reales: sin responsable identificado y sin un correo que funcione,
@@ -23,6 +23,7 @@
 | Nombre, correo y foto de perfil de tu cuenta de Google | Quien elige "Continuar con Google" | Crear la cuenta sin contraseña. Google entrega también la dirección de la foto: Hornilla la quita del perfil de la cuenta en cuanto termina el ingreso y no la muestra ni la usa. El servicio de inicio de sesión conserva, entre los datos que recibe de Google, la copia que Google le entrega | Nadie más |
 | Nombre y celular (el celular es opcional) | Todos | Identificarte y, cuando existan los pedidos, coordinar la entrega. Se guardan en Hornilla solo después de que verificas tu correo y aceptas los términos y esta política; hasta entonces quedan en la pestaña de tu navegador (ver Cookies y almacenamiento) | Hoy nadie más. Cuando pidas: la distribuidora a la que pides y su repartidor asignado |
 | Versión de los términos y versión de esta política que aceptaste, con la fecha y hora de cada aceptación | Todos, una vez verificado su correo | Dejar constancia de tu aceptación | Nadie más |
+| Historial de tus aceptaciones: una anotación por cada versión de los términos y de esta política que aceptaste, con el texto de que se trata, su versión y la fecha y hora en que la aceptaste. No se cambia ni se borra desde la aplicación; se elimina al eliminar la cuenta | Todos, una vez verificado su correo | Conservar la constancia de cada aceptación aunque después aceptes una versión más nueva | La administración de Hornilla |
 | Fechas de creación y de último cambio de tu perfil, y la lista de las distribuidoras que registraste (sus identificadores internos) | Todos, una vez creado su perfil | Operar el servicio, resolver fallos y aplicar el tope de distribuidoras por cuenta | Nadie más |
 | Fecha de creación de la cuenta, fecha del último ingreso, forma de ingreso (contraseña o Google) y si el correo está verificado | Todos | Los registra el servicio de inicio de sesión para ingresar y proteger la cuenta | Nadie más |
 | Punto desde el que buscas distribuidoras: la ubicación de tu dispositivo, si tocas "Usar mi ubicación", o las coordenadas que escribas | Quien usa el buscador, con o sin cuenta | Calcular, en tu propio dispositivo, qué distribuidoras llegan hasta ahí y a qué distancia están | Nadie. No se envía a Hornilla ni se guarda en tu cuenta: queda solo en tu dispositivo, redondeado a unos cien metros, hasta que lo olvides, busques desde otro punto, cierres sesión o pasen 30 días desde que se guardó (ver Cookies y almacenamiento) |
@@ -78,7 +79,9 @@ das al registrarte y al conceder permisos (ubicación, avisos).
   edad, otra para esta política y el uso de tus datos. Las dos están en el paso "Aceptar los
   términos", que viene después de verificar tu correo; el formulario de registro no tiene
   casillas y enlaza estos textos. Tu aceptación queda registrada con la versión de cada texto y
-  la fecha y hora que pone el servidor, no tu dispositivo.
+  la fecha y hora que pone el servidor, no tu dispositivo. Cada versión que aceptas queda además
+  anotada en un historial que no se sobrescribe; cuando solo cambia uno de los dos textos, se te
+  pide aceptar ese y la fecha del otro no se toca.
 - Hasta ese momento Hornilla solo guarda, en el servicio de inicio de sesión, tu correo y tu
   contraseña cifrada o, si ingresas con Google, tu correo, tu nombre y la copia de los datos que
   Google entrega (ver la tabla). Sin el correo verificado y sin las dos casillas no se crea el
@@ -169,6 +172,11 @@ terminar.
 Los cambios importantes se avisan en la aplicación.
 
 ## Historial de cambios
+- 0.2 (2026-10-11): se añade a la tabla el historial de aceptaciones (una anotación por cada
+  versión aceptada, que no se cambia ni se borra desde la aplicación y que puede leer la
+  administración de Hornilla); la base legal dice que al cambiar un solo texto se pide aceptar
+  solo ese. Desde esta versión cada cambio de este texto lleva número nuevo. La 0.1 deja de
+  poder aceptarse.
 - 0.1, sexta redacción (2026-10-11): tercera revisión de cumplimiento. Se añaden a la tabla la
   lista de distribuidoras registradas por la cuenta, los datos que anota el servicio de inicio de
   sesión y la versión de los términos aceptada al registrar una distribuidora; la base legal dice
