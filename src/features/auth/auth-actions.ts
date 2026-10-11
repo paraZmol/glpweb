@@ -1,6 +1,6 @@
 import * as authRepo from '../../data/auth-repo';
 import * as usersRepo from '../../data/users-repo';
-import { authErrorFor } from '../../domain/auth/errors';
+import { authErrorFor, isAuthError } from '../../domain/auth/errors';
 import {
   isAcceptablePassword,
   isValidEmail,
@@ -167,11 +167,21 @@ export const resendVerificationEmail = authRepo.resendVerificationEmail;
 /** After the user says "ya verifiqué": re-reads the account so `emailVerified` is current. */
 export const refreshSession = authRepo.refreshSession;
 
-/** Resolves even when no account uses that address: never tell the visitor which case it was. */
-export function requestPasswordReset(email: string): Promise<void> {
+/**
+ * Resolves even when no account uses that address: never tell the visitor which case it was.
+ * Firebase answers "no such account" where its protection against listing e-mails is off (the
+ * emulators, and a project that has not turned it on): that answer is swallowed HERE, so the
+ * screen has nothing to tell apart. Throws `AuthError` only for what is not about the account:
+ * `invalidEmail`, `network`, `tooManyAttempts`.
+ */
+export async function requestPasswordReset(email: string): Promise<void> {
   const normalized = normalizeEmail(email);
   if (!isValidEmail(normalized)) throw authErrorFor('invalidEmail');
-  return authRepo.sendPasswordReset(normalized);
+  try {
+    await authRepo.sendPasswordReset(normalized);
+  } catch (error) {
+    if (!isAuthError(error, 'invalidCredentials')) throw error;
+  }
 }
 
 /**
