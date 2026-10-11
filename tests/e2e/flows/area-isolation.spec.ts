@@ -9,6 +9,9 @@ test.skip(
   'Needs the seeded emulators: run with E2E_EMULATORS=true',
 );
 runOncePerActorDevices();
+// Every actor opens a context of its own, which loads the app cold (nothing cached): with
+// all the workers doing the same, two actors do not fit in the budget of one screen.
+test.slow();
 
 const DENIED_NOTICE = 'Esa sección no está disponible para tu cuenta. Te llevamos a la tuya.';
 const { a, b } = SEED_DISTRIBUTORS;
@@ -80,8 +83,6 @@ test('a visitor typing /central signs in first and is still kept out of it', asy
 test('the owners of A and B work at the same time and each sees only their own', async ({
   actors,
 }) => {
-  // Many full loads of the app in one flow: the default budget is for a single screen.
-  test.slow();
   const ownerOfA = await actors.openSeed('ownerA');
   const ownerOfB = await actors.openSeed('ownerB');
   const tracesOfB = [b.id, b.name, b.slug, ownerB.displayName, dispatcherB.uid, driverB.uid];

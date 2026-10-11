@@ -8,6 +8,9 @@ test.skip(
   'Needs the seeded emulators: run with E2E_EMULATORS=true',
 );
 runOncePerActorDevices();
+// Every actor opens a context of its own, which loads the app cold (nothing cached): with
+// all the workers doing the same, two actors do not fit in the budget of one screen.
+test.slow();
 
 const NOT_TAKING_ORDERS = 'Esta distribuidora no está recibiendo pedidos por ahora.';
 const READ_ONLY =
