@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ButtonLink } from '@/components/common/button';
+import { Button, ButtonLink } from '@/components/common/button';
 import { EmptyState } from '@/components/common/state-views';
 import { TextLink } from '@/components/common/text-link';
 import { MAX_DISTRIBUTORS_PER_ACCOUNT } from '@/domain/tenancy/constants';
@@ -52,3 +52,30 @@ export const FoundingLimit = () => <FoundingStop stop="limitReached" />;
  * (`FoundingBlockedError`, PLAN 2.11). Nothing in the form can fix it: the form is not shown.
  */
 export const FoundingBlocked = () => <FoundingStop stop="blocked" />;
+
+/**
+ * A step of a sign-up that already founded its distributor, reached again with the back button
+ * (PLAN 2.2). The form is not shown: an empty wizard here would look ready to found a second
+ * one by accident. Whoever does want another one says so.
+ */
+export function FoundingDone({ onStartOver }: { onStartOver: () => void }) {
+  return (
+    <div className="mx-auto w-full max-w-xl flex-1 px-4 py-10">
+      <EmptyState
+        className="rounded-xl bg-card p-6 shadow-card"
+        title="Tu distribuidora ya está creada."
+        description="Este registro terminó y lo que escribiste ya no está aquí. Sigue desde tu central: ahí cambias su ficha cuando quieras."
+        action={
+          <div className="flex flex-wrap gap-3">
+            <ButtonLink to={ROUTES.officeHome} variant="ink">
+              Ir a mi central
+            </ButtonLink>
+            <Button type="button" variant="line" onClick={onStartOver}>
+              Registrar otra distribuidora
+            </Button>
+          </div>
+        }
+      />
+    </div>
+  );
+}

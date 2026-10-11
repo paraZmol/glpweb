@@ -16,7 +16,7 @@ import { usePageTitle } from '@/lib/page-title';
 import { JUST_FOUNDED_STATE, ROUTES } from '@/lib/routes';
 import { useFocusFirstInvalid } from '@/lib/use-focus-first-invalid';
 import { useOnlineStatus } from '@/lib/use-online-status';
-import { FoundingBlocked, FoundingLimit } from './founding-stops';
+import { FoundingBlocked, FoundingDone, FoundingLimit } from './founding-stops';
 import { STEP_COPY, StepFields, StepHeading } from './new-distributor-parts';
 
 const OFFLINE_TEXT = 'Sin conexión: para crear tu distribuidora necesitas internet.';
@@ -24,7 +24,8 @@ const OFFLINE_TEXT = 'Sin conexión: para crear tu distribuidora necesitas inter
 /**
  * `/distribuidora/nueva` (PLAN 2.2): a short wizard, one subject per step, for an account with
  * a verified e-mail. Phone: one column. Desktop: the form on the left and the live sample of
- * the page on the right. When it ends, the account is the owner and lands on its office.
+ * the page on the right. Each step is an entry of the browser history. When it ends, the
+ * account is the owner and lands on its office, which takes the place of the last step.
  */
 export function NewDistributorPage() {
   usePageTitle('Registrar tu distribuidora');
@@ -40,7 +41,7 @@ export function NewDistributorPage() {
     else rememberDistributor(session.uid, distributorId);
     if (current.status === 'ready' || current.status === 'none') current.reload();
     reloadProfile();
-    void navigate(ROUTES.officeHome, { state: JUST_FOUNDED_STATE });
+    void navigate(ROUTES.officeHome, { replace: true, state: JUST_FOUNDED_STATE });
   };
 
   const owner = { displayName: profile?.displayName ?? '', phone: profile?.phone ?? null };
@@ -52,6 +53,7 @@ export function NewDistributorPage() {
   const { availability } = useFoundingAvailability();
   if (wizard.isBlocked || availability === 'blocked') return <FoundingBlocked />;
   if (availability === 'limitReached' && !wizard.isSubmitting) return <FoundingLimit />;
+  if (wizard.isDone) return <FoundingDone onStartOver={wizard.startOver} />;
 
   const { step, position, errors, form } = wizard;
   const isLast = position.index === FOUNDING_STEPS.length - 1;
@@ -105,8 +107,10 @@ export function NewDistributorPage() {
                 <Button
                   type="submit"
                   className="flex-1"
-                  loading={wizard.isSubmitting}
-                  loadingLabel="Creando tu distribuidora…"
+                  loading={wizard.isSubmitting || wizard.isAwaitingSlug}
+                  loadingLabel={
+                    wizard.isSubmitting ? 'Creando tu distribuidora…' : 'Comprobando el enlace…'
+                  }
                   disabled={isLast && !isOnline}
                 >
                   {isLast ? 'Crear mi distribuidora' : 'Continuar'}
