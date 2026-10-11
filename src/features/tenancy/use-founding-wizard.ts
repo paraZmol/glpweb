@@ -21,6 +21,8 @@ import { useSlugCheck } from './use-slug-check';
 
 const TAKEN = 'Ese enlace ya lo usa otra distribuidora. Prueba con otro.';
 const LAST_INDEX = FOUNDING_STEPS.length - 1;
+/** How long "Continuar" waits for the answer about the link before going on without it. */
+export const SLUG_ANSWER_WAIT_MS = 6_000;
 
 export type SetFoundingField = <Field extends keyof FoundingForm>(
   field: Field,
@@ -98,10 +100,18 @@ export function useFoundingWizard({ session, owner, onFounded }: WizardOptions) 
   };
 
   useEffect(() => {
-    if (!isAwaitingSlug || isSlugSettling) return;
-    setAwaitingSlug(false);
-    next();
-    // Runs when the answer about the link arrives; `next` reads the state of that render.
+    if (!isAwaitingSlug) return undefined;
+    const goOn = (advance: () => void) => {
+      setAwaitingSlug(false);
+      advance();
+    };
+    if (!isSlugSettling) return goOn(next);
+    // A weak signal can hold the question for long: past this the step goes on as it does when
+    // the question cannot be asked at all, and the founding has the last word. Nothing was
+    // edited meanwhile (an edit ends the wait), so the step is still the one that was checked.
+    const timer = setTimeout(() => goOn(steps.advance), SLUG_ANSWER_WAIT_MS);
+    return () => clearTimeout(timer);
+    // Runs when the wait starts and when the answer arrives; it reads the state of that render.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [isAwaitingSlug, isSlugSettling]);
 
