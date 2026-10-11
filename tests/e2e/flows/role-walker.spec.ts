@@ -24,6 +24,11 @@ const heading = (page: Page) => page.getByRole('heading', { level: 1 });
 /** Follows the fake pattern 9000000xx of the seed. */
 const BUSINESS_PHONE = '900000097';
 const OTHER_PHONE = '900000096';
+/** How the screens write that phone, when they group its digits. */
+const OTHER_PHONE_SHOWN = /900\s?000\s?096/;
+const LISTING_CHANGED =
+  'La ficha cambió mientras la revisabas. Revisa los datos nuevos antes de aprobar.';
+const REVIEW_NOTE = 'El nombre no coincide con la razón social declarada.';
 
 /** Fills the first step of the sign-up of a distributor and leaves the wizard on the second. */
 async function reachSecondStep(page: Page, name: string, slug: string): Promise<void> {
@@ -102,10 +107,6 @@ test.describe('review of a listing with two people at once', () => {
   test('the platform cannot approve a listing that changed after its review was opened', async ({
     actors,
   }, testInfo) => {
-    test.fail(
-      true,
-      'role-walker 2026-10-11: the review screen does not notice the edit of the owner; "Aprobar" publishes the new name and phone, which the admin never saw',
-    );
     const { id, owner } = await foundedOffice(actors, uniqueTag(testInfo));
     const admin = await actors.openSeed('admin');
     const changedName = `Gas Cambiado ${uniqueTag(testInfo)}`;
@@ -120,13 +121,28 @@ test.describe('review of a listing with two people at once', () => {
     // The admin decides on what is on the screen, without reloading.
     await admin.page.getByRole('button', { name: 'Aprobar' }).click();
     await admin.page.getByRole('button', { name: 'Sí, aprobar' }).click();
-    // The screen ends up showing the new name either way: by then the decision was taken.
+    // Nothing was approved: the screen says why and shows the new data (it follows the listing
+    // live, so the name may have arrived even before the click).
+    await expect(admin.page.getByText(LISTING_CHANGED)).toBeVisible();
     await expect(admin.page.getByText(changedName).first()).toBeVisible();
+    await expect(admin.page.getByText(OTHER_PHONE_SHOWN).first()).toBeVisible();
+    await expect(admin.page.getByText('Ficha aprobada.')).toHaveCount(0);
 
-    const control = await readDocument(`distributors/${id}/private/control`);
+    const refused = await readDocument(`distributors/${id}/private/control`);
     const listing = await readDocument(`distributors/${id}`);
     expect(listing?.name).toBe(changedName);
-    expect(control?.listingApproved, 'approved a name the admin never saw').not.toBe(true);
+    expect(refused?.listingApproved, 'approved a name the admin never saw').not.toBe(true);
+
+    // Once the admin says it looked at the new data, the approval is for that data.
+    await admin.page.getByRole('button', { name: 'Ya revisé los datos nuevos' }).click();
+    await expect(admin.page.getByText(LISTING_CHANGED)).toHaveCount(0);
+    await admin.page.getByRole('button', { name: 'Aprobar' }).click();
+    await admin.page.getByRole('button', { name: 'Sí, aprobar' }).click();
+    await expect(admin.page.getByText('Ficha aprobada.')).toBeVisible();
+
+    const approved = await readDocument(`distributors/${id}/private/control`);
+    expect(approved?.listingApproved).toBe(true);
+    expect(approved?.distributorName).toBe(changedName);
     expect([...owner.errors, ...admin.errors]).toEqual([]);
   });
 
@@ -134,10 +150,6 @@ test.describe('review of a listing with two people at once', () => {
   test('the office of the owner shows the approval without reloading the page', async ({
     actors,
   }, testInfo) => {
-    test.fail(
-      true,
-      'role-walker 2026-10-11: the status of the listing is read once; the open office keeps saying "En revisión" after the approval (and shows no note after "Pedir cambios") until the page is reloaded',
-    );
     const { id, owner } = await foundedOffice(actors, uniqueTag(testInfo));
     const admin = await actors.openSeed('admin');
     await admin.page.goto(`/plataforma/altas/${id}`);
@@ -147,7 +159,26 @@ test.describe('review of a listing with two people at once', () => {
 
     // The owner never left the office and never reloaded it.
     await expect(owner.page.getByRole('button', { name: 'Copiar enlace' })).toBeVisible();
+    await expect(owner.page.getByText('Visible en el buscador', { exact: true })).toBeVisible();
     await expect(owner.page.getByText('En revisión', { exact: true })).toHaveCount(0);
+
+    // The same for a note: it reaches the open office with its text.
+    await admin.page.getByRole('button', { name: 'Pedir cambios' }).click();
+    await admin.page.getByLabel('Nota para la distribuidora').fill(REVIEW_NOTE);
+    await admin.page.getByRole('button', { name: 'Enviar nota' }).click();
+    await expect(admin.page.getByText('Nota enviada.')).toBeVisible();
+
+    await expect(owner.page.getByText('Cambios pedidos', { exact: true })).toBeVisible();
+    await expect(owner.page.getByText(REVIEW_NOTE)).toBeVisible();
+    await expect(owner.page.getByRole('button', { name: 'Copiar enlace' })).toHaveCount(0);
+
+    // And for a suspension: the office turns read-only under its owner.
+    await admin.page.getByRole('button', { name: 'Suspender' }).click();
+    await admin.page.getByRole('button', { name: 'Sí, suspender' }).click();
+    await expect(admin.page.getByText('Distribuidora suspendida.')).toBeVisible();
+
+    await expect(owner.page.getByText('Hornilla suspendió tu distribuidora').first()).toBeVisible();
+    expect([...owner.errors, ...admin.errors]).toEqual([]);
   });
 
   // MEDIO. Every other browser test marks the storage notice as read before the first screen
