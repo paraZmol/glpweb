@@ -35,21 +35,38 @@ Titular de la plataforma: [razón social], RUC [número], [domicilio]. Contacto:
 Todas las personas que crean una cuenta declaran tener 18 años o más.
 
 Una distribuidora no se muestra en cuanto se registra. Antes de que aparezca en el buscador y de
-que su página pueda verse, Hornilla revisa los datos que declaró: su nombre, sus datos de
-contacto, su RUC, su razón social o el nombre de su titular y su número de ficha del Registro de
-Hidrocarburos. Si después cambia su nombre, su teléfono o su WhatsApp, deja de mostrarse hasta
-una nueva revisión. **Esa revisión se hace sobre lo que la distribuidora declara: Hornilla no
-garantiza que esos datos sean ciertos ni que el negocio cuente con las autorizaciones que la ley
-exige, que siguen siendo responsabilidad de quien lo registra.** Si crees que una ficha suplanta
-a otro negocio o tiene datos falsos, avisa a Hornilla (sección 8).
+que su página pueda verse, una persona de Hornilla revisa los datos que declaró: su nombre, sus
+datos de contacto, su RUC, su razón social o el nombre de su titular y su número de ficha del
+Registro de Hidrocarburos. Puede compararlos con las consultas públicas de SUNAT y de Osinergmin.
+Si algo no coincide, Hornilla puede devolver la ficha con una nota, que lee el personal de la
+distribuidora, y la ficha sigue sin mostrarse hasta que se corrija y se revise de nuevo. Si
+después de aprobada la distribuidora cambia su nombre, su teléfono o su WhatsApp, deja de
+mostrarse hasta una nueva revisión; su dirección, la ubicación de su planta, su zona de reparto y
+su horario puede cambiarlos sin que se revise otra vez.
+
+**Esa revisión se hace sobre lo que la distribuidora declara y en el momento en que lo declara.
+No es una certificación, una garantía ni una recomendación: Hornilla no garantiza que esos datos
+sean ciertos ni que lo sigan siendo, ni que el negocio cuente con las autorizaciones que la ley
+exige, que siguen siendo responsabilidad de quien lo registra. Que una distribuidora aparezca en
+Hornilla no significa que Hornilla la haya verificado.** Nada de esto limita los derechos que la
+ley reconoce a los consumidores. Si crees que una ficha suplanta a otro negocio o tiene datos
+falsos, avisa a Hornilla (sección 8).
+
+Hornilla puede retirar la aprobación de una ficha, suspender a una distribuidora (secciones 4 y
+10) y volver a activarla. La distribuidora puede pedir el motivo y que se revise la decisión por
+el canal de la sección 8.
 
 ## 3. Cuenta
 Cada persona es responsable de la veracidad de sus datos y de cuidar su contraseña. Hornilla puede
 suspender una cuenta que incumpla estos términos, suplante a otra persona o use la plataforma
 para fines distintos a pedir o vender gas.
 
-La cuenta se completa después de verificar el correo: hasta entonces Hornilla no guarda el
-nombre, el celular ni la aceptación de estos términos, que se registra en el paso siguiente.
+La cuenta se completa después de verificar el correo. Al crearla Hornilla guarda solo el correo y
+la contraseña cifrada; el nombre, el celular y la aceptación de estos términos se guardan en el
+paso siguiente, cuando el correo ya está verificado y la persona marca las dos casillas. Quien
+ingresa con Google no pasa por la verificación (Google ya la hizo) y su nombre llega con su
+cuenta de Google, pero su perfil y su aceptación se guardan igual solo en ese paso. Quien no
+quiera continuar puede eliminar su cuenta en esas mismas pantallas.
 
 Una misma cuenta puede registrar hasta 3 distribuidoras, y no puede registrar otra mientras una
 de las suyas esté suspendida, con un pago pendiente o con el periodo de prueba terminado.
@@ -96,8 +113,10 @@ fuego, ventilar, cerrar la válvula y llamar a los bomberos (116).
 - Sobre un pedido, un precio o una promoción: ante la distribuidora, que debe contar con su
   Libro de Reclamaciones.
 - Para avisar a Hornilla de un precio o una promoción engañosos, o de una ficha que suplanta a
-  otro negocio o tiene datos falsos: a [correo de contacto]. El botón para reportarlo dentro de
-  la aplicación se añadirá junto con las promociones.
+  otro negocio o tiene datos falsos: a [correo de contacto]. La página de cada distribuidora
+  tiene el enlace "Reportar esta distribuidora", que lleva a "Contacto y reclamos"; el aviso se
+  envía por correo, no desde un formulario. El botón para reportar una promoción concreta se
+  añadirá junto con las promociones.
 - Sobre el funcionamiento de la plataforma: a [correo de contacto]. Hornilla contará con su propio
   Libro de Reclamaciones virtual antes de abrir al público; todavía no está disponible en la
   aplicación.
@@ -110,6 +129,11 @@ de las distribuidoras o de los clientes, sin perjuicio de lo que disponga la ley
 ## 10. Planes para distribuidoras
 El uso por distribuidoras tiene un periodo de prueba gratuito de 30 días y, después, un plan cuyo
 precio se informa antes de contratarlo. [Condiciones del plan por definir.]
+
+Los 30 días se cuentan desde el momento en que se registra la distribuidora, también mientras su
+ficha espera la revisión de Hornilla y todavía no se muestra. Para la prueba no se pide tarjeta
+ni otro medio de pago: sin un plan contratado por la distribuidora, Hornilla no cobra nada al
+terminar la prueba.
 
 Al terminar el periodo de prueba sin un plan activo, o si Hornilla suspende a la distribuidora,
 su panel queda en solo lectura: no puede recibir pedidos ni cambiar sus datos hasta regularizar
@@ -125,7 +149,10 @@ planta, su zona de reparto, su horario, sus marcas y precios, su tope de balones
 fechas en que se registró y en que cambió su ficha por última vez. El registro avisa de los
 principales antes de crear la distribuidora. Su situación con Hornilla (revisión, prueba, plan,
 pagos o suspensión), su RUC, su razón social y su número de ficha del Registro de Hidrocarburos
-no son públicos. El detalle está en la Política de privacidad.
+no son públicos: el RUC, la razón social y el número de ficha los ven solo quien registró la
+distribuidora y la administración de Hornilla. Una vez aprobada la ficha, esos tres datos ya no
+pueden cambiarse desde la aplicación: se corrigen por el canal de la sección 8. El detalle está
+en la Política de privacidad.
 
 ## 11. Cambios
 Hornilla puede actualizar estos términos. Los cambios importantes se avisan en la aplicación y
@@ -135,6 +162,14 @@ requieren aceptación para seguir usándola.
 Estos términos se rigen por las leyes de la República del Perú.
 
 ## Historial de cambios
+- 0.1, sexta redacción (2026-10-11): tercera revisión de cumplimiento. Se dice con todas las
+  letras que la revisión de una ficha no es una certificación, una garantía ni una recomendación,
+  que se hace sobre lo declarado y en ese momento, que puede compararse con consultas públicas y
+  qué cambios vuelven a pasar por ella; Hornilla puede devolver una ficha con una nota, retirar
+  la aprobación, suspender y reactivar; se precisa qué se guarda al crear la cuenta y qué al
+  aceptar, también con Google; existe el enlace "Reportar esta distribuidora"; los 30 días de
+  prueba corren desde el registro, sin tarjeta ni cobro al terminar; el RUC, la razón social y
+  el número de ficha no se cambian desde la aplicación una vez aprobada la ficha.
 - 0.1, quinta redacción (2026-10-11): una distribuidora ya no aparece en cuanto se registra:
   Hornilla revisa antes los datos que declara, sin garantizar que sean ciertos ni sus
   autorizaciones, y vuelve a revisarla si cambia su nombre o sus teléfonos; el registro pide RUC,
