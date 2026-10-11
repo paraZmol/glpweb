@@ -228,26 +228,26 @@ const MUTANTS = [
   ],
   [
     'U02',
-    'profile created with old terms date',
-    '\n        && request.resource.data.terms.acceptedAt == request.time\n        && request.resource.data.privacy',
-    '\n        && request.resource.data.privacy',
+    'profile created without the history entry of its terms',
+    "\n        && logsAcceptance(uid, 'terms', request.resource.data.terms)",
+    '',
   ],
   [
     'U03',
-    'profile created with old privacy date',
-    '\n        && request.resource.data.privacy.acceptedAt == request.time\n        && stampedNow',
-    '\n        && stampedNow',
+    'profile created without the history entry of its privacy consent',
+    "\n        && logsAcceptance(uid, 'privacy', request.resource.data.privacy)",
+    '',
   ],
   [
     'U04',
-    'terms re-dated on update',
-    "(unchanged(['terms']) || request.resource.data.terms.acceptedAt == request.time)",
+    'terms accepted on update without their history entry',
+    "(unchanged(['terms']) || logsAcceptance(uid, 'terms', request.resource.data.terms))",
     'true',
   ],
   [
     'U05',
-    'privacy re-dated on update',
-    "(unchanged(['privacy']) || request.resource.data.privacy.acceptedAt == request.time)",
+    'privacy accepted on update without its history entry',
+    "(unchanged(['privacy'])\n          || logsAcceptance(uid, 'privacy', request.resource.data.privacy))",
     'true',
   ],
   [
@@ -259,14 +259,14 @@ const MUTANTS = [
   [
     'U07',
     'profile createdAt editable',
-    "&& unchanged(['createdAt'])\n        && request.resource.data.updatedAt == request.time\n        // Each text",
-    '&& request.resource.data.updatedAt == request.time\n        // Each text',
+    "&& unchanged(['createdAt'])\n        && request.resource.data.updatedAt == request.time\n        // A text is",
+    '&& request.resource.data.updatedAt == request.time\n        // A text is',
   ],
   [
     'U08',
     'profile updatedAt free',
-    "&& unchanged(['createdAt'])\n        && request.resource.data.updatedAt == request.time\n        // Each text",
-    "&& unchanged(['createdAt'])\n        // Each text",
+    "&& unchanged(['createdAt'])\n        && request.resource.data.updatedAt == request.time\n        // A text is",
+    "&& unchanged(['createdAt'])\n        // A text is",
   ],
   ['U09', 'owned list may drop old ids', '\n          && after.hasAll(before)', ''],
   ['U10', 'owned list id not founded now', '\n          && foundedNow(after[before.size()])', ''],
@@ -349,6 +349,91 @@ const MUTANTS = [
     'address edited by an unverified account',
     'allow update: if isSelf(uid)\n          && emailVerified()\n          && isValidAddress',
     'allow update: if isSelf(uid)\n          && isValidAddress',
+  ],
+  // History of acceptances (/users/{uid}/acceptances): the two halves of an acceptance.
+  [
+    'A01',
+    'acceptance dated freely in the profile while its entry is stamped now',
+    'return acceptance.acceptedAt == request.time\n        && entry.data.acceptedAt == request.time;',
+    'return entry.data.acceptedAt == request.time;',
+  ],
+  [
+    'A02',
+    'acceptance in the profile needs no history entry',
+    '\n        && entry.data.acceptedAt == request.time;',
+    '\n        && (entry == null || entry != null);',
+  ],
+  [
+    'A03',
+    'an entry of any date is enough: an accepted version can be dated again',
+    '\n        && entry.data.acceptedAt == request.time;',
+    '\n        && entry.data.acceptedAt is timestamp;',
+  ],
+  [
+    'A04',
+    'any account reads any history',
+    'return isSelf(uid) || isPlatformAdmin();',
+    'return signedIn();',
+  ],
+  [
+    'A05',
+    'history listed without cap',
+    'allow list: if mayRead() && request.query.limit <= 50;',
+    'allow list: if mayRead();',
+  ],
+  [
+    'A06',
+    'history entry created by another account',
+    'allow create: if isSelf(uid)\n          && emailVerified()\n          && isAcceptanceEntry',
+    'allow create: if emailVerified()\n          && isAcceptanceEntry',
+  ],
+  [
+    'A07',
+    'history entry created by an unverified account',
+    'allow create: if isSelf(uid)\n          && emailVerified()\n          && isAcceptanceEntry',
+    'allow create: if isSelf(uid)\n          && isAcceptanceEntry',
+  ],
+  [
+    'A08',
+    'history entry under any id',
+    '\n          && entryId == acceptanceEntryId(\n            request.resource.data.document, request.resource.data.version)',
+    '',
+  ],
+  [
+    'A09',
+    'history entry dated freely',
+    '\n          && request.resource.data.acceptedAt == request.time\n          && profileAccepts',
+    '\n          && profileAccepts',
+  ],
+  [
+    'A10',
+    'history entry without the acceptance in the profile',
+    '\n          && profileAccepts(request.resource.data);',
+    ';',
+  ],
+  [
+    'A11',
+    'history entry for another version than the profile takes',
+    'return held.version == entry.version && held.acceptedAt == request.time;',
+    'return held.acceptedAt == request.time;',
+  ],
+  [
+    'A12',
+    'history entry dated now for an acceptance the profile made before',
+    'return held.version == entry.version && held.acceptedAt == request.time;',
+    'return held.version == entry.version;',
+  ],
+  [
+    'A13',
+    'history entry accepts extra keys',
+    "hasExactly(entry, ['document', 'version', 'acceptedAt'])",
+    "entry.keys().hasAll(['document', 'version', 'acceptedAt'])",
+  ],
+  [
+    'A14',
+    'history entry names any text and version',
+    "((entry.document == 'terms' && entry.version in acceptedTermsVersions())\n          || (entry.document == 'privacy' && entry.version in acceptedPrivacyVersions()))",
+    'entry.version is string',
   ],
   [
     'S01',
@@ -1084,7 +1169,19 @@ const WHOLE_STRING =
 // purpose: breaking one copy changes nothing while the other stands.
 const VERIFIED_BY_CONTROL =
   'the piece needs foundedNow(d), so the control document is created in the same request, and that requires a verified e-mail';
+// An acceptance is two writes that vouch for each other: the field of the profile demands its
+// history entry stamped now (logsAcceptance) and the entry demands that field stamped now
+// (profileAccepts). A check written on both sides survives while the other side stands.
+const ENTRY_NEEDS_PROFILE =
+  'profileAccepts() needs the profile of that account to take the acceptance in this same request';
 const EQUIVALENT = {
+  U22: 'a profile needs its two history entries in the same request (logsAcceptance), and creating an entry requires a verified e-mail (pair of A07)',
+  A01: 'the entry it needs is stamped now, so this request creates it, and creating it requires the profile to hold the acceptance stamped with request.time (profileAccepts, pair of A12)',
+  A06: `${ENTRY_NEEDS_PROFILE}, and only the account itself writes its profile`,
+  A07: `${ENTRY_NEEDS_PROFILE}, and writing the profile requires a verified e-mail (pair of U22)`,
+  A09: 'the profile that takes the acceptance demands, through logsAcceptance(), that this very entry (same id: A08) be stamped with request.time',
+  A11: 'the version of an entry must be an allowed one of its text, and each list holds a single version today: the one the profile takes. NOT equivalent once a list has two versions: add then a rules test with an entry of the other version',
+  A14: 'the id must be document-version (A08) and profileAccepts() reads the profile field named by the document, which exists only for terms and privacy and only with an allowed version',
   H07: 'a control document stamped with request.time was created by this request, and creating it already requires the caller as ownerUid (pair of C02)',
   H09: WHOLE_STRING,
   H12: WHOLE_STRING,

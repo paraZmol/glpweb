@@ -14,7 +14,13 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { EMULATOR_HOST, emulatorPorts } from '../../scripts/lane-ports.mjs';
-import { PRIVACY_VERSION, TERMS_VERSION } from '../../src/domain/legal/versions';
+import {
+  ACCEPTED_TEXTS,
+  type AcceptedText,
+  acceptanceEntryId,
+  PRIVACY_VERSION,
+  TERMS_VERSION,
+} from '../../src/domain/legal/versions';
 import { DEFAULT_SCHEDULE, TRIAL_DAYS } from '../../src/domain/tenancy/constants';
 import type { DistributorStatus, MemberRole } from '../../src/domain/tenancy/types';
 
@@ -84,6 +90,87 @@ export function userDoc(change: Record<string, unknown> = {}) {
     updatedAt: serverTimestamp(),
     ...change,
   };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Acceptances: the field of the profile and its line in the history travel in one batch.
+// ---------------------------------------------------------------------------------------------
+
+export const CURRENT_VERSION_OF: Record<AcceptedText, string> = {
+  terms: TERMS_VERSION,
+  privacy: PRIVACY_VERSION,
+};
+
+/** History entries by document id, as `createProfile` and `acceptOnProfile` send them. */
+export type Entries = Record<string, Record<string, unknown>>;
+
+/** One line of the history of acceptances, as a well-behaved client writes it. */
+export function entryDoc(text: AcceptedText, change: Record<string, unknown> = {}) {
+  return {
+    document: text,
+    version: CURRENT_VERSION_OF[text],
+    acceptedAt: serverTimestamp(),
+    ...change,
+  };
+}
+
+export const entryPath = (uid: string, text: AcceptedText, version = CURRENT_VERSION_OF[text]) =>
+  `users/${uid}/acceptances/${acceptanceEntryId(text, version)}`;
+
+/** The well-formed entry of the current version of `text`, under its id. */
+export function currentEntry(text: AcceptedText, change: Record<string, unknown> = {}): Entries {
+  return { [acceptanceEntryId(text, CURRENT_VERSION_OF[text])]: entryDoc(text, change) };
+}
+
+function versionIn(value: unknown): string | null {
+  if (typeof value !== 'object' || value === null || !('version' in value)) return null;
+  return typeof value.version === 'string' ? value.version : null;
+}
+
+/**
+ * The entries that go with the acceptances `data` carries: one per text whose value names a
+ * version, with that version and stamped now. An attack on the profile then fails for what it
+ * changed, not for a missing entry.
+ */
+export function entriesFor(data: Record<string, unknown>): Entries {
+  const entries: Entries = {};
+  for (const text of ACCEPTED_TEXTS) {
+    const version = versionIn(data[text]);
+    if (version !== null) entries[acceptanceEntryId(text, version)] = entryDoc(text, { version });
+  }
+  return entries;
+}
+
+function setEntries(batch: ReturnType<typeof writeBatch>, db: Db, uid: string, entries: Entries) {
+  for (const [id, entry] of Object.entries(entries)) {
+    batch.set(doc(db, `users/${uid}/acceptances/${id}`), entry);
+  }
+}
+
+/** Creates a profile the way the app does: with the history entries of what it accepts. */
+export function createProfile(
+  db: Db,
+  uid: string,
+  profile: Record<string, unknown> = userDoc(),
+  entries: Entries = entriesFor(profile),
+): Promise<void> {
+  const batch = writeBatch(db);
+  batch.set(doc(db, `users/${uid}`), profile);
+  setEntries(batch, db, uid, entries);
+  return batch.commit();
+}
+
+/** Updates a profile, stamped now, together with the history entries of what it accepts. */
+export function acceptOnProfile(
+  db: Db,
+  uid: string,
+  change: Record<string, unknown>,
+  entries: Entries = entriesFor(change),
+): Promise<void> {
+  const batch = writeBatch(db);
+  batch.update(doc(db, `users/${uid}`), { ...change, updatedAt: serverTimestamp() });
+  setEntries(batch, db, uid, entries);
+  return batch.commit();
 }
 
 export function addressDoc(change: Record<string, unknown> = {}) {
@@ -434,6 +521,32 @@ export async function seedDoc(
   data: Record<string, unknown>,
 ): Promise<void> {
   await env.withSecurityRulesDisabled((context) => setDoc(doc(context.firestore(), path), data));
+}
+
+/**
+ * A profile that accepted `versions` on `at`, with its history, written with the rules
+ * disabled. A text left out was never accepted: the profile has no such field.
+ */
+export async function seedAcceptedProfile(
+  env: RulesTestEnvironment,
+  uid: string,
+  versions: Partial<Record<AcceptedText, string>>,
+  at: Timestamp = PAST,
+): Promise<void> {
+  const held = Object.fromEntries(
+    Object.entries(versions).map(([text, version]) => [text, { version, acceptedAt: at }]),
+  );
+  const { terms: _terms, privacy: _privacy, ...rest } = userDoc({ createdAt: at, updatedAt: at });
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    const batch = writeBatch(db);
+    batch.set(doc(db, `users/${uid}`), { ...rest, ...held });
+    for (const [text, version] of Object.entries(versions)) {
+      const entry = { document: text, version, acceptedAt: at };
+      batch.set(doc(db, `users/${uid}/acceptances/${text}-${version}`), entry);
+    }
+    await batch.commit();
+  });
 }
 
 /** A profile for a fresh account, so it can found distributors. */

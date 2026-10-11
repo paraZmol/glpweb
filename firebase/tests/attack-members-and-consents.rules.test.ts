@@ -26,9 +26,12 @@ import {
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { PRIVACY_VERSION, TERMS_VERSION } from '../../src/domain/legal/versions';
 import {
+  acceptOnProfile,
   ADMIN_UID,
   anonymous,
   createEnv,
+  createProfile,
+  currentEntry,
   CUSTOMER_UID,
   type Db,
   DISTRIBUTOR_NAME,
@@ -204,7 +207,10 @@ describe('consents — taking them back or dating them', () => {
     ['a version as a list', { terms: termsDoc({ version: [TERMS_VERSION] }) }],
     ['a nested proof', { terms: termsDoc({ proof: { ip: 'x'.repeat(1000) } }) }],
   ])('blocks %s', async (_case, change) => {
-    await assertFails(updateDoc(own(), { ...change, ...stamp }));
+    // With the history entries a well-behaved client would send: refused for the profile.
+    const entries = { ...currentEntry('terms'), ...currentEntry('privacy') };
+
+    await assertFails(acceptOnProfile(verified(env, CUSTOMER_UID), CUSTOMER_UID, change, entries));
   });
 
   it('blocks changing the version while keeping the old acceptance date', async () => {
@@ -217,18 +223,19 @@ describe('consents — taking them back or dating them', () => {
     await seedDoc(env, `users/${CUSTOMER_UID}`, legacy);
 
     await assertFails(updateDoc(own(), { displayName: 'C. Otra', ...stamp }));
-    await assertFails(
-      updateDoc(own(), { terms: { version: TERMS_VERSION, acceptedAt: PAST }, ...stamp }),
-    );
-    await assertSucceeds(updateDoc(own(), { terms: termsDoc(), ...stamp }));
+    const db = verified(env, CUSTOMER_UID);
+    const backdated = { terms: { version: TERMS_VERSION, acceptedAt: PAST } };
+    await assertFails(acceptOnProfile(db, CUSTOMER_UID, backdated));
+    await assertSucceeds(acceptOnProfile(db, CUSTOMER_UID, { terms: termsDoc() }));
   });
 
   it('blocks a profile created with the consents of another moment', async () => {
     const db = verified(env, 'newcomer');
-    const fresh = doc(db, 'users/newcomer');
-    await assertFails(setDoc(fresh, userDoc({ terms: termsDoc({ acceptedAt: FUTURE }) })));
-    await assertFails(setDoc(fresh, userDoc({ privacy: privacyDoc({ acceptedAt: FUTURE }) })));
-    await assertFails(setDoc(fresh, userDoc({ terms: null })));
+    const create = (change: Record<string, unknown>) =>
+      createProfile(db, 'newcomer', userDoc(change));
+    await assertFails(create({ terms: termsDoc({ acceptedAt: FUTURE }) }));
+    await assertFails(create({ privacy: privacyDoc({ acceptedAt: FUTURE }) }));
+    await assertFails(create({ terms: null }));
   });
 });
 

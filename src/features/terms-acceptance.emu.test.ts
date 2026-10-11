@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SEED_PASSWORD, SEED_USERS } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
-import { markEmailVerified } from '../../tests/support/emulator';
+import { markEmailVerified, rewindAcceptance } from '../../tests/support/emulator';
 import { currentSession, refreshSession, registerWithEmail } from '../data/auth-repo';
 import {
   getDistributorBySlug,
@@ -25,6 +25,7 @@ import {
   acceptCurrentTerms,
   acceptLegalDocuments,
   discardUnacceptedAccount,
+  listLegalAcceptances,
   registerAccount,
   signIn,
   signOut,
@@ -54,6 +55,10 @@ const FOUNDING: FoundingInput = {
   acceptTerms: true,
   declaresAuthority: true,
 };
+
+const LONG_AGO = new Date('2026-03-01T12:00:00Z');
+/** An account that accepted the privacy policy before its current version was published. */
+const BEHIND_IN_PRIVACY = { from: PRIVACY_VERSION, to: '0.0', at: LONG_AGO };
 
 /** What a hostile or buggy caller sends: the type says `true`, the value does not. */
 const unticked = false as unknown as true;
@@ -159,6 +164,10 @@ describe('registration — nothing on the server before the e-mail is verified',
       privacy: { version: PRIVACY_VERSION },
     });
     expect(needsTermsAcceptance(profile)).toBe(false);
+    expect((await listLegalAcceptances(session.uid)).map((entry) => entry.id).toSorted()).toEqual([
+      `privacy-${PRIVACY_VERSION}`,
+      `terms-${TERMS_VERSION}`,
+    ]);
     // What the tab kept is gone, and the session now carries the name.
     expect(tabStorage.getItem(PENDING_PROFILE_KEY)).toBeNull();
     expect(currentSession()?.displayName).toBe('P. Acepta');
@@ -225,20 +234,34 @@ describe('acceptLegalDocuments', () => {
     expect(needsTermsAcceptance(profile)).toBe(false);
   });
 
-  it('renews the acceptance of an account that already has a profile', async () => {
+  // PLAN 2.11: only the pending text is renewed; the other keeps the date it was accepted.
+  it('renews the pending text of an account that already has a profile, and only that one', async () => {
     const session = await signIn(SEED_USERS.customer.email, SEED_PASSWORD);
-    const seededAt = (await getUserProfile(session.uid))?.terms?.acceptedAt.getTime() ?? 0;
+    await rewindAcceptance(session.uid, 'privacy', BEHIND_IN_PRIVACY);
+    const before = await getUserProfile(session.uid);
 
     await acceptLegalDocuments(session.uid, { displayName: 'Ignorado', phone: null });
 
     const renewed = await getUserProfile(session.uid);
-    expect(renewed?.terms?.acceptedAt.getTime()).toBeGreaterThan(seededAt);
-    expect(renewed?.privacy?.acceptedAt.getTime()).toBeGreaterThan(seededAt);
+    expect(needsTermsAcceptance(before)).toBe(true);
+    expect(needsTermsAcceptance(renewed)).toBe(false);
+    expect(renewed?.terms).toEqual(before?.terms);
+    expect(renewed?.privacy?.acceptedAt.getTime()).toBeGreaterThan(LONG_AGO.getTime());
     expect(renewed?.displayName).toBe(SEED_USERS.customer.displayName);
   });
 
-  it('still answers to its old name, recording both texts', async () => {
+  it('changes no date when the account has nothing pending', async () => {
+    const session = await signIn(SEED_USERS.ownerB.email, SEED_PASSWORD);
+    const before = await getUserProfile(session.uid);
+
+    await acceptLegalDocuments(session.uid);
+
+    expect(await getUserProfile(session.uid)).toEqual(before);
+  });
+
+  it('still answers to its old name', async () => {
     const session = await signIn(SEED_USERS.dispatcherA.email, SEED_PASSWORD);
+    await rewindAcceptance(session.uid, 'privacy', BEHIND_IN_PRIVACY);
     const seededAt = (await getUserProfile(session.uid))?.privacy?.acceptedAt.getTime() ?? 0;
 
     await acceptCurrentTerms(session.uid);

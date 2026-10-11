@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  acceptanceEntryId,
   compareVersions,
+  CURRENT_LEGAL_VERSIONS,
   needsTermsAcceptance,
   pendingLegalTexts,
   PRIVACY_VERSION,
   PRIVACY_VERSIONS,
   TERMS_VERSION,
   TERMS_VERSIONS,
+  textsToAccept,
 } from './versions';
 
 const AT = new Date('2026-03-10T15:00:00Z');
@@ -58,6 +61,38 @@ describe('needsTermsAcceptance', () => {
   it('is false for versions newer than this build knows', () => {
     const newer = { version: '99.0', acceptedAt: AT };
     expect(needsTermsAcceptance({ terms: newer, privacy: newer })).toBe(false);
+  });
+});
+
+// PLAN 2.11: renewing one text leaves the date of the other alone.
+describe('textsToAccept', () => {
+  it.each([
+    ['both for an account without a profile', null, ['terms', 'privacy']],
+    ['both when neither was accepted', { terms: null, privacy: null }, ['terms', 'privacy']],
+    ['only the privacy policy', { terms: current, privacy: old }, ['privacy']],
+    ['only the terms', { terms: old, privacy: currentPrivacy }, ['terms']],
+    ['nothing when both are current', { terms: current, privacy: currentPrivacy }, []],
+  ])('asks for %s', (_case, held, expected) => {
+    expect(textsToAccept(held)).toEqual(expected);
+  });
+
+  it('compares against the versions it is given, not only the current ones', () => {
+    const next = { ...CURRENT_LEGAL_VERSIONS, privacyVersion: '99.0' };
+
+    expect(textsToAccept({ terms: current, privacy: currentPrivacy }, next)).toEqual(['privacy']);
+  });
+
+  it('never asks to go back to a version older than the one held', () => {
+    const newer = { version: '99.0', acceptedAt: AT };
+
+    expect(textsToAccept({ terms: newer, privacy: newer })).toEqual([]);
+  });
+});
+
+describe('acceptanceEntryId', () => {
+  it('names the entry after the text and its version', () => {
+    expect(acceptanceEntryId('terms', '0.2')).toBe('terms-0.2');
+    expect(acceptanceEntryId('privacy', '1.10')).toBe('privacy-1.10');
   });
 });
 

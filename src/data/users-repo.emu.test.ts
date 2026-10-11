@@ -4,7 +4,7 @@ import { seedEmulators } from '../../tests/seed/seed';
 import { CURRENT_LEGAL_VERSIONS, PRIVACY_VERSION, TERMS_VERSION } from '../domain/legal/versions';
 import { ADDRESS_SLOT_IDS } from '../domain/tenancy/account-input';
 import { MAX_ADDRESSES_PER_USER } from '../domain/tenancy/constants';
-import { markEmailVerified } from '../../tests/support/emulator';
+import { markEmailVerified, rewindAcceptance } from '../../tests/support/emulator';
 import {
   AddressLimitError,
   OfflineError,
@@ -20,6 +20,7 @@ import {
   deleteAddress,
   getUserProfile,
   listAddresses,
+  listLegalAcceptances,
   updateAddress,
   updateUserProfile,
 } from './users-repo';
@@ -67,6 +68,29 @@ describe('profile', () => {
     expect(created?.privacy?.acceptedAt).toEqual(created?.terms?.acceptedAt);
   });
 
+  // PLAN 2.11: every acceptance leaves its line in the history, in the same batch.
+  it('leaves one history entry per text, dated like the profile', async () => {
+    const registered = await registerWithEmail({
+      email: 'deja-constancia@example.com',
+      password: SEED_PASSWORD,
+    });
+    await markEmailVerified(registered.uid);
+    const { uid } = (await refreshSession()) ?? registered;
+
+    await createUserProfile(
+      uid,
+      { displayName: 'O. Constancia', phone: null },
+      CURRENT_LEGAL_VERSIONS,
+    );
+
+    const profile = await getUserProfile(uid);
+    const history = await listLegalAcceptances(uid);
+    expect(history.toSorted((a, b) => a.id.localeCompare(b.id))).toEqual([
+      { id: `privacy-${PRIVACY_VERSION}`, document: 'privacy', ...profile?.privacy },
+      { id: `terms-${TERMS_VERSION}`, document: 'terms', ...profile?.terms },
+    ]);
+  });
+
   it.each([
     ['of the terms', { ...CURRENT_LEGAL_VERSIONS, termsVersion: '9.9' }],
     ['of the privacy policy', { ...CURRENT_LEGAL_VERSIONS, privacyVersion: '9.9' }],
@@ -102,20 +126,6 @@ describe('profile', () => {
     await refreshSession();
     await createUserProfile(session.uid, profile, CURRENT_LEGAL_VERSIONS);
     expect(await addAddress(session.uid, HOME)).toBe('a0');
-  });
-
-  it('renews the acceptance without touching the rest of the profile', async () => {
-    const { uid } = await signInWithEmail(SEED_USERS.dispatcherB.email, SEED_PASSWORD);
-    const seededAt = (await getUserProfile(uid))?.terms?.acceptedAt.getTime() ?? 0;
-
-    await acceptLegalVersions(uid, CURRENT_LEGAL_VERSIONS);
-
-    const renewed = await getUserProfile(uid);
-    expect(renewed?.terms?.acceptedAt.getTime()).toBeGreaterThan(seededAt);
-    expect(renewed?.privacy?.acceptedAt.getTime()).toBeGreaterThan(seededAt);
-    expect(renewed?.displayName).toBe(SEED_USERS.dispatcherB.displayName);
-    const unknown = { ...CURRENT_LEGAL_VERSIONS, privacyVersion: '9.9' };
-    await expect(acceptLegalVersions(uid, unknown)).rejects.toBeInstanceOf(PermissionDeniedError);
   });
 
   it('updates the name and the phone', async () => {
@@ -164,6 +174,133 @@ describe('profile', () => {
     await expect(
       createUserProfile('uid-libre', intruder, CURRENT_LEGAL_VERSIONS),
     ).rejects.toBeInstanceOf(PermissionDeniedError);
+  });
+});
+
+// PLAN 2.11: the acceptance as proof — only what is pending is renewed, and nothing is lost.
+describe('acceptLegalVersions', () => {
+  const OLD_VERSION = '0.0';
+  const LONG_AGO = new Date('2026-03-01T12:00:00Z');
+  const behindInPrivacy = { from: PRIVACY_VERSION, to: OLD_VERSION, at: LONG_AGO };
+  const behindInTerms = { from: TERMS_VERSION, to: OLD_VERSION, at: LONG_AGO };
+
+  it('renews only the text that is pending and leaves the date of the other alone', async () => {
+    const { uid } = await signInWithEmail(SEED_USERS.ownerB.email, SEED_PASSWORD);
+    await rewindAcceptance(uid, 'privacy', behindInPrivacy);
+    const before = await getUserProfile(uid);
+    const started = Date.now();
+
+    await acceptLegalVersions(uid, CURRENT_LEGAL_VERSIONS);
+
+    const after = await getUserProfile(uid);
+    expect(before?.privacy).toEqual({ version: OLD_VERSION, acceptedAt: LONG_AGO });
+    expect(after?.terms).toEqual(before?.terms);
+    expect(after?.privacy?.version).toBe(PRIVACY_VERSION);
+    expect(after?.privacy?.acceptedAt.getTime()).toBeGreaterThan(started - CLOCK_SLACK_MS);
+    expect(after).toMatchObject({
+      displayName: SEED_USERS.ownerB.displayName,
+      ownedDistributorIds: before?.ownedDistributorIds,
+    });
+  });
+
+  it('adds the new version to the history and keeps the entry of the one before', async () => {
+    const { uid } = await signInWithEmail(SEED_USERS.ownerC.email, SEED_PASSWORD);
+    await rewindAcceptance(uid, 'terms', behindInTerms);
+
+    await acceptLegalVersions(uid, CURRENT_LEGAL_VERSIONS);
+
+    const profile = await getUserProfile(uid);
+    const history = await listLegalAcceptances(uid);
+    expect(history[0]).toEqual({
+      id: `terms-${TERMS_VERSION}`,
+      document: 'terms',
+      ...profile?.terms,
+    });
+    expect(history).toContainEqual({
+      id: `terms-${OLD_VERSION}`,
+      document: 'terms',
+      version: OLD_VERSION,
+      acceptedAt: LONG_AGO,
+    });
+    expect(history).toContainEqual({
+      id: `privacy-${PRIVACY_VERSION}`,
+      document: 'privacy',
+      ...profile?.privacy,
+    });
+    expect(history).toHaveLength(3);
+  });
+
+  it('renews both texts in one go when both are behind', async () => {
+    const { uid } = await signInWithEmail(SEED_USERS.driverB.email, SEED_PASSWORD);
+    await rewindAcceptance(uid, 'terms', behindInTerms);
+    await rewindAcceptance(uid, 'privacy', behindInPrivacy);
+
+    await acceptLegalVersions(uid, CURRENT_LEGAL_VERSIONS);
+
+    const after = await getUserProfile(uid);
+    expect(after).toMatchObject({
+      terms: { version: TERMS_VERSION },
+      privacy: { version: PRIVACY_VERSION },
+    });
+    expect(after?.privacy?.acceptedAt).toEqual(after?.terms?.acceptedAt);
+    expect(await listLegalAcceptances(uid)).toHaveLength(4);
+  });
+
+  it('writes nothing for an account that already holds those versions', async () => {
+    const { uid } = await signInWithEmail(SEED_USERS.dispatcherB.email, SEED_PASSWORD);
+    const before = await getUserProfile(uid);
+    const historyBefore = await listLegalAcceptances(uid);
+
+    await acceptLegalVersions(uid, CURRENT_LEGAL_VERSIONS);
+
+    expect(await getUserProfile(uid)).toEqual(before);
+    expect(await listLegalAcceptances(uid)).toEqual(historyBefore);
+  });
+
+  it('refuses a version that does not exist and stores nothing, history included', async () => {
+    const { uid } = await signInWithEmail(SEED_USERS.dispatcherB.email, SEED_PASSWORD);
+    const before = await getUserProfile(uid);
+    const unknown = { ...CURRENT_LEGAL_VERSIONS, privacyVersion: '9.9' };
+
+    await expect(acceptLegalVersions(uid, unknown)).rejects.toBeInstanceOf(PermissionDeniedError);
+
+    expect(await getUserProfile(uid)).toEqual(before);
+    expect((await listLegalAcceptances(uid)).map((entry) => entry.version)).not.toContain('9.9');
+  });
+
+  it('refuses an account that has no profile', async () => {
+    const { uid } = await registerWithEmail({
+      email: 'acepta-sin-perfil@example.com',
+      password: SEED_PASSWORD,
+    });
+
+    await expect(acceptLegalVersions(uid, CURRENT_LEGAL_VERSIONS)).rejects.toBeInstanceOf(
+      ProfileRequiredError,
+    );
+    expect(await getUserProfile(uid)).toBeNull();
+  });
+
+  it('gives up with OfflineError past its deadline and accepts nothing afterwards', async () => {
+    const { uid } = await signInWithEmail(SEED_USERS.ownerD.email, SEED_PASSWORD);
+    await rewindAcceptance(uid, 'privacy', behindInPrivacy);
+
+    await expect(acceptLegalVersions(uid, CURRENT_LEGAL_VERSIONS, 0)).rejects.toBeInstanceOf(
+      OfflineError,
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    expect((await getUserProfile(uid))?.privacy?.version).toBe(OLD_VERSION);
+  });
+
+  it('lets a platform admin read the history of an account, and no other account', async () => {
+    const target = SEED_USERS.ownerA.uid;
+
+    await signInWithEmail(SEED_USERS.admin.email, SEED_PASSWORD);
+    const seenByAdmin = await listLegalAcceptances(target);
+    await signInWithEmail(SEED_USERS.customer.email, SEED_PASSWORD);
+
+    expect(seenByAdmin.map((entry) => entry.document).toSorted()).toEqual(['privacy', 'terms']);
+    await expect(listLegalAcceptances(target)).rejects.toBeInstanceOf(PermissionDeniedError);
   });
 });
 

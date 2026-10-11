@@ -5,7 +5,11 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { type GeoPoint, isValidGeoPoint } from '../domain/geo/distance';
-import type { LegalAcceptance } from '../domain/legal/versions';
+import {
+  ACCEPTED_TEXTS,
+  type AcceptanceEntry,
+  type LegalAcceptance,
+} from '../domain/legal/versions';
 import {
   DEFAULT_BRAND_COLOR,
   DEFAULT_COVERAGE_RADIUS_KM,
@@ -162,6 +166,16 @@ export const parseAddress: Parser<Address> = (id, path, data) => {
   };
 };
 
+export const parseAcceptanceEntry: Parser<AcceptanceEntry> = (id, path, data) => {
+  const read = new FieldReader(path, data);
+  return {
+    id,
+    document: read.oneOf('document', ACCEPTED_TEXTS),
+    version: read.text('version'),
+    acceptedAt: read.date('acceptedAt'),
+  };
+};
+
 export const parsePublicDistributor: Parser<PublicDistributor> = (id, path, data) => {
   const read = new FieldReader(path, data);
   const createdAt = read.date('createdAt');
@@ -263,6 +277,7 @@ function readOnlyConverter<T>(parse: Parser<T>): FirestoreDataConverter<T> {
 
 export const userProfileConverter = readOnlyConverter(parseUserProfile);
 export const addressConverter = readOnlyConverter(parseAddress);
+export const acceptanceEntryConverter = readOnlyConverter(parseAcceptanceEntry);
 export const publicDistributorConverter = readOnlyConverter(parsePublicDistributor);
 export const controlConverter = readOnlyConverter(parseControl);
 export const privateSettingsConverter = readOnlyConverter(parsePrivateSettings);

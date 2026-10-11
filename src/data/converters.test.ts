@@ -8,6 +8,7 @@ import {
 } from '../domain/tenancy/constants';
 import { CorruptDocumentError } from '../domain/tenancy/errors';
 import {
+  parseAcceptanceEntry,
   parseAddress,
   parseControl,
   parsePublicDistributor,
@@ -354,5 +355,28 @@ describe('parsePrivateSettings', () => {
     });
 
     expect(settings.terms).toBeNull();
+  });
+});
+
+// PLAN 2.11: the history of acceptances is proof, so a line that cannot be read is an error.
+describe('parseAcceptanceEntry', () => {
+  const ENTRY = { document: 'terms', version: '0.2', acceptedAt: stamp };
+  const PATH = 'users/u1/acceptances/terms-0.2';
+
+  it('reads an entry of the history', () => {
+    expect(parseAcceptanceEntry('terms-0.2', PATH, ENTRY)).toEqual({
+      id: 'terms-0.2',
+      document: 'terms',
+      version: '0.2',
+      acceptedAt: AT,
+    });
+  });
+
+  it.each([
+    ['a text nobody accepts', { ...ENTRY, document: 'cookies' }],
+    ['no version', { document: 'terms', acceptedAt: stamp }],
+    ['a date that is not a timestamp', { ...ENTRY, acceptedAt: '2026-03-10' }],
+  ])('rejects an entry with %s', (_case, broken) => {
+    expect(() => parseAcceptanceEntry('terms-0.2', PATH, broken)).toThrow(CorruptDocumentError);
   });
 });

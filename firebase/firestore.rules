@@ -13,9 +13,19 @@ rules_version = '2';
 //   displayName: string 1..80 · phone: null | '9' + 8 digits
 //   ownedDistributorIds: list ≤ 3 — grows only inside a founding batch (caps distributors/account)
 //   terms: { version: an allowed terms version, acceptedAt: timestamp = request.time when it
-//     is written } — required from creation, can be renewed, never removed
+//     is written } — required from creation, never removed. It can only be written in a request
+//     that also creates its entry in the history below, so each version is accepted once.
 //   privacy: the same shape for the privacy policy, with its own list of allowed versions
 //   createdAt, updatedAt: timestamp (= request.time when written; createdAt immutable)
+//
+// /users/{uid}/acceptances/{id}    history of acceptances: proof of every version the account
+//                                  accepted. {id} is document + '-' + version (terms-0.2).
+//                                  Created by the account only, with a verified e-mail and in the
+//                                  same request that writes that acceptance in the profile;
+//                                  never updated or deleted from the app. Read by the account
+//                                  and by platform admins.
+//   document: 'terms' | 'privacy' · version: an allowed version of that text
+//   acceptedAt: timestamp = request.time
 //
 // /users/{uid}/addresses/{slot}    private to the account; slot is a0..a9 (caps addresses at 10);
 //                                  created only once the profile (and its consents) exists
@@ -275,6 +285,29 @@ service cloud.firestore {
       return isAcceptance(privacy, acceptedPrivacyVersions());
     }
 
+    // One line of the history of acceptances: which text, which of its versions, when.
+    function isAcceptanceEntry(entry) {
+      return hasExactly(entry, ['document', 'version', 'acceptedAt'])
+        && ((entry.document == 'terms' && entry.version in acceptedTermsVersions())
+          || (entry.document == 'privacy' && entry.version in acceptedPrivacyVersions()))
+        && entry.acceptedAt is timestamp;
+    }
+
+    function acceptanceEntryId(text, version) {
+      return text + '-' + version;
+    }
+
+    // An acceptance written in the profile counts only when this same request leaves its line
+    // in the history, stamped now. The line is found by its id and is never edited, so a
+    // version that is already in the history cannot be accepted (dated) again. Call it only
+    // after the acceptance was validated: its version becomes part of a document path.
+    function logsAcceptance(uid, text, acceptance) {
+      let entryId = acceptanceEntryId(text, acceptance.version);
+      let entry = getAfter(/databases/$(database)/documents/users/$(uid)/acceptances/$(entryId));
+      return acceptance.acceptedAt == request.time
+        && entry.data.acceptedAt == request.time;
+    }
+
     // Rules cannot loop: the list is capped at 8 and each position is checked by hand.
     function isBrandAt(brands, index) {
       return brands.size() <= index || isText(brands[index], 1, 30);
@@ -419,20 +452,24 @@ service cloud.firestore {
         && emailVerified()
         && isValidUserProfile(request.resource.data)
         && request.resource.data.ownedDistributorIds.size() == 0
-        && request.resource.data.terms.acceptedAt == request.time
-        && request.resource.data.privacy.acceptedAt == request.time
+        // Reads added by rules: 2 (getAfter of the two history entries).
+        && logsAcceptance(uid, 'terms', request.resource.data.terms)
+        && logsAcceptance(uid, 'privacy', request.resource.data.privacy)
         && stampedNow(request.resource.data);
 
-      // Reads added by rules: 0 for a profile edit, 1 (getAfter) inside a founding batch.
+      // Reads added by rules: 0 for a profile edit, 1 (getAfter) inside a founding batch, 1
+      // (getAfter of its history entry) for each text accepted.
       allow update: if isSelf(uid)
         && emailVerified()
         && isValidUserProfile(request.resource.data)
         && unchanged(['createdAt'])
         && request.resource.data.updatedAt == request.time
-        // Each text can only be accepted again, now; the validator already forbids removing
-        // an acceptance. A profile older than `privacy` gains it the same way.
-        && (unchanged(['terms']) || request.resource.data.terms.acceptedAt == request.time)
-        && (unchanged(['privacy']) || request.resource.data.privacy.acceptedAt == request.time)
+        // A text is accepted now and leaves its line in the history, or it is not touched; the
+        // validator already forbids removing an acceptance. A profile older than `privacy`
+        // gains it the same way.
+        && (unchanged(['terms']) || logsAcceptance(uid, 'terms', request.resource.data.terms))
+        && (unchanged(['privacy'])
+          || logsAcceptance(uid, 'privacy', request.resource.data.privacy))
         && (unchanged(['ownedDistributorIds']) || recordsFounding());
 
       // No delete: it would reset ownedDistributorIds and with it the cap per account.
@@ -474,6 +511,35 @@ service cloud.firestore {
           && request.resource.data.updatedAt == request.time;
 
         allow delete: if isSelf(uid);
+      }
+
+      // History of acceptances: the proof that the account accepted each version, and when.
+      match /acceptances/{entryId} {
+        function mayRead() {
+          return isSelf(uid) || isPlatformAdmin();
+        }
+
+        // Reads added by rules: 0 for the account itself, 1 (exists admin) for anyone else.
+        allow get: if mayRead();
+        allow list: if mayRead() && request.query.limit <= 50;
+
+        // The other half of logsAcceptance(): no line without the acceptance it proves, written
+        // in the profile by this same request.
+        // Reads added by rules: 1 (getAfter profile).
+        allow create: if isSelf(uid)
+          && emailVerified()
+          && isAcceptanceEntry(request.resource.data)
+          && entryId == acceptanceEntryId(
+            request.resource.data.document, request.resource.data.version)
+          && request.resource.data.acceptedAt == request.time
+          && profileAccepts(request.resource.data);
+
+        // No update and no delete: a proof that its holder can rewrite proves nothing.
+
+        function profileAccepts(entry) {
+          let held = getAfter(/databases/$(database)/documents/users/$(uid)).data[entry.document];
+          return held.version == entry.version && held.acceptedAt == request.time;
+        }
       }
     }
 

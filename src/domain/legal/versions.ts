@@ -24,6 +24,31 @@ export interface LegalAcceptance {
 
 export type TermsAcceptance = LegalAcceptance;
 
+/** The texts an account accepts; each one is a field of its profile. */
+export const ACCEPTED_TEXTS = ['terms', 'privacy'] as const;
+export type AcceptedText = (typeof ACCEPTED_TEXTS)[number];
+
+/**
+ * One line of the history of acceptances of an account (`users/{uid}/acceptances`): it accepted
+ * that version of that text then. Written once, together with the acceptance in the profile,
+ * and never edited or removed from the app.
+ */
+export interface AcceptanceEntry extends LegalAcceptance {
+  id: string;
+  document: AcceptedText;
+}
+
+/** More lines than an account can gather: two texts, a handful of versions each. */
+export const MAX_ACCEPTANCE_ENTRIES = 50;
+
+/**
+ * Id of a history entry (`terms-0.2`). One per text and version: the rules find the entry by
+ * it, and a version that was accepted once cannot be given a new date.
+ */
+export function acceptanceEntryId(text: AcceptedText, version: string): string {
+  return `${text}-${version}`;
+}
+
 /** The versions an account accepts in one go: the two boxes of the registration form. */
 export interface LegalVersions {
   termsVersion: string;
@@ -46,27 +71,44 @@ export function compareVersions(a: string, b: string): number {
   return 0;
 }
 
+/** What an account holds today: the acceptance of each text, or none. */
+export type HeldAcceptances = Record<AcceptedText, LegalAcceptance | null>;
+
+export function versionOfText(versions: LegalVersions, text: AcceptedText): string {
+  return text === 'terms' ? versions.termsVersion : versions.privacyVersion;
+}
+
 function isOutdated(acceptance: LegalAcceptance | null, current: string): boolean {
   return acceptance === null || compareVersions(acceptance.version, current) < 0;
 }
 
+/**
+ * The texts the account has to accept to hold `versions`: the ones it never accepted or holds in
+ * an older version. A text already held in that version (or a newer one) is left out, so its
+ * date is not written again.
+ */
+export function textsToAccept(
+  held: HeldAcceptances | null,
+  versions: LegalVersions = CURRENT_LEGAL_VERSIONS,
+): AcceptedText[] {
+  return ACCEPTED_TEXTS.filter((text) =>
+    isOutdated(held?.[text] ?? null, versionOfText(versions, text)),
+  );
+}
+
 /** What the account still has to accept: nothing, one text or both. */
-export function pendingLegalTexts(
-  profile: { terms: LegalAcceptance | null; privacy: LegalAcceptance | null } | null,
-): { terms: boolean; privacy: boolean } {
-  return {
-    terms: isOutdated(profile?.terms ?? null, TERMS_VERSION),
-    privacy: isOutdated(profile?.privacy ?? null, PRIVACY_VERSION),
-  };
+export function pendingLegalTexts(profile: HeldAcceptances | null): {
+  terms: boolean;
+  privacy: boolean;
+} {
+  const pending = textsToAccept(profile);
+  return { terms: pending.includes('terms'), privacy: pending.includes('privacy') };
 }
 
 /**
  * True when the account must accept before going on: it has no profile yet, its profile lacks
  * the acceptance of the terms or of the privacy policy, or one of them is on an older version.
  */
-export function needsTermsAcceptance(
-  profile: { terms: LegalAcceptance | null; privacy: LegalAcceptance | null } | null,
-): boolean {
-  const pending = pendingLegalTexts(profile);
-  return pending.terms || pending.privacy;
+export function needsTermsAcceptance(profile: HeldAcceptances | null): boolean {
+  return textsToAccept(profile).length > 0;
 }

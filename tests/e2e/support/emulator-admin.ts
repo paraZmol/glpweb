@@ -149,6 +149,26 @@ function profileDocument(account: SeedUser, kind: Exclude<TestProfile, 'none'>) 
   };
 }
 
+interface Held {
+  version: string;
+  acceptedAt: Date;
+}
+
+/** The profile and, like the app does, one entry of the history for each text it accepted. */
+async function writeProfile(account: SeedUser, kind: Exclude<TestProfile, 'none'>): Promise<void> {
+  const document = profileDocument(account, kind);
+  await writeDocument(`users/${account.uid}`, document);
+  const accepted: Record<string, Held | undefined> = {
+    terms: document.terms,
+    privacy: document.privacy,
+  };
+  for (const [text, held] of Object.entries(accepted)) {
+    if (!held) continue;
+    const path = `users/${account.uid}/acceptances/${text}-${held.version}`;
+    await writeDocument(path, { document: text, ...held });
+  }
+}
+
 /**
  * Creates an account only this test uses (password: `SEED_PASSWORD`), so the test can verify
  * it, accept with it, found with it or delete it without touching the seeded ones. By default
@@ -175,8 +195,6 @@ export async function createTestAccount(
     emailVerified,
   });
   await mustSucceed(response, 'Auth emulator create account');
-  if (profile !== 'none') {
-    await writeDocument(`users/${account.uid}`, profileDocument(account, profile));
-  }
+  if (profile !== 'none') await writeProfile(account, profile);
   return account;
 }

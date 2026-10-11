@@ -159,6 +159,11 @@ function writeProfiles(batch: Batch, db: Db, distributors: SeedDistributor[]) {
       privacy,
       ...stamps,
     });
+    // The history of acceptances: every acceptance of a profile has its entry (PLAN 2.11).
+    for (const [text, held] of Object.entries({ terms, privacy })) {
+      const entryId = `${text}-${held.version}`;
+      batch.set(doc(db, `users/${user.uid}/acceptances/${entryId}`), { document: text, ...held });
+    }
   }
   batch.set(doc(db, `platformAdmins/${SEED_USERS.admin.uid}`), { createdAt });
 }

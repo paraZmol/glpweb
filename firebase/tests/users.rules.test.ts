@@ -33,12 +33,16 @@ import {
   MAX_ADDRESSES_PER_USER,
 } from '../../src/domain/tenancy/constants';
 import {
+  acceptOnProfile,
   addressDoc,
   ADMIN_UID,
   anonymous,
   createEnv,
+  createProfile,
+  currentEntry,
   CUSTOMER_UID,
   privacyDoc,
+  seedAcceptedProfile,
   seedDoc,
   seedWorld,
   termsDoc,
@@ -67,20 +71,20 @@ afterAll(async () => {
 
 describe('/users/{uid} — create', () => {
   it('lets an account with a verified e-mail create its own profile', async () => {
-    await assertSucceeds(setDoc(doc(verified(env, NEWCOMER), `users/${NEWCOMER}`), userDoc()));
+    await assertSucceeds(createProfile(verified(env, NEWCOMER), NEWCOMER, userDoc()));
     await assertSucceeds(
-      setDoc(doc(verified(env, 'second'), 'users/second'), userDoc({ phone: '900000010' })),
+      createProfile(verified(env, 'second'), 'second', userDoc({ phone: '900000010' })),
     );
   });
 
   // PLAN 2.11: nothing is stored, consents included, for an address nobody proved is theirs.
   it('blocks an account whose e-mail is not verified from creating its profile', async () => {
-    await assertFails(setDoc(doc(unverified(env, NEWCOMER), `users/${NEWCOMER}`), userDoc()));
+    await assertFails(createProfile(unverified(env, NEWCOMER), NEWCOMER, userDoc()));
   });
 
   it('blocks an account without an e-mail claim at all', async () => {
     const db = env.authenticatedContext(NEWCOMER).firestore();
-    await assertFails(setDoc(doc(db, `users/${NEWCOMER}`), userDoc()));
+    await assertFails(createProfile(db, NEWCOMER, userDoc()));
   });
 
   it('blocks an unverified account from editing a profile, renewing consents or saving addresses', async () => {
@@ -92,7 +96,7 @@ describe('/users/{uid} — create', () => {
     const now = { updatedAt: serverTimestamp() };
 
     await assertFails(updateDoc(doc(db, `users/${NEWCOMER}`), { displayName: 'Otra', ...now }));
-    await assertFails(updateDoc(doc(db, `users/${NEWCOMER}`), { terms: termsDoc(), ...now }));
+    await assertFails(acceptOnProfile(db, NEWCOMER, { terms: termsDoc() }));
     await assertFails(setDoc(doc(db, `users/${NEWCOMER}/addresses/a1`), addressDoc()));
     await assertFails(
       updateDoc(doc(db, `users/${NEWCOMER}/addresses/a0`), { label: 'Trabajo', ...now }),
@@ -103,11 +107,11 @@ describe('/users/{uid} — create', () => {
   });
 
   it('blocks anonymous visitors', async () => {
-    await assertFails(setDoc(doc(anonymous(env), `users/${NEWCOMER}`), userDoc()));
+    await assertFails(createProfile(anonymous(env), NEWCOMER, userDoc()));
   });
 
   it('blocks creating the profile of another account', async () => {
-    await assertFails(setDoc(doc(verified(env, 'intruder'), `users/${NEWCOMER}`), userDoc()));
+    await assertFails(createProfile(verified(env, 'intruder'), NEWCOMER, userDoc()));
   });
 
   it.each([
@@ -119,7 +123,7 @@ describe('/users/{uid} — create', () => {
     ['e-mail', { email: 'newcomer@example.com' }],
     ['arbitrary field', { anything: 1 }],
   ])('blocks the extra field %s', async (_field, extra) => {
-    await assertFails(setDoc(doc(verified(env, NEWCOMER), `users/${NEWCOMER}`), userDoc(extra)));
+    await assertFails(createProfile(verified(env, NEWCOMER), NEWCOMER, userDoc(extra)));
   });
 
   it.each([
@@ -136,7 +140,7 @@ describe('/users/{uid} — create', () => {
     ['createdAt as text', { createdAt: '2026-01-01' }],
     ['updatedAt as number', { updatedAt: 1 }],
   ])('blocks %s', async (_case, change) => {
-    await assertFails(setDoc(doc(verified(env, NEWCOMER), `users/${NEWCOMER}`), userDoc(change)));
+    await assertFails(createProfile(verified(env, NEWCOMER), NEWCOMER, userDoc(change)));
   });
 
   it.each([
@@ -149,38 +153,42 @@ describe('/users/{uid} — create', () => {
     'updatedAt',
   ])('blocks a profile without %s', async (field) => {
     const { [field]: _dropped, ...partial } = userDoc() as Record<string, unknown>;
-    await assertFails(setDoc(doc(verified(env, NEWCOMER), `users/${NEWCOMER}`), partial));
+    await assertFails(createProfile(verified(env, NEWCOMER), NEWCOMER, partial));
   });
 
   it('blocks a made-up createdAt or updatedAt', async () => {
     const db = verified(env, NEWCOMER);
-    await assertFails(setDoc(doc(db, `users/${NEWCOMER}`), userDoc({ createdAt: PAST })));
-    await assertFails(setDoc(doc(db, `users/${NEWCOMER}`), userDoc({ updatedAt: PAST })));
+    await assertFails(createProfile(db, NEWCOMER, userDoc({ createdAt: PAST })));
+    await assertFails(createProfile(db, NEWCOMER, userDoc({ updatedAt: PAST })));
   });
 
   it('blocks a profile that already claims distributors', async () => {
     const claim = userDoc({ ownedDistributorIds: [WORLD.a.d] });
-    await assertFails(setDoc(doc(verified(env, NEWCOMER), `users/${NEWCOMER}`), claim));
+    await assertFails(createProfile(verified(env, NEWCOMER), NEWCOMER, claim));
   });
 });
 
-// PLAN 2.7 and 2.9: two consents, each with its own version and server date.
+// PLAN 2.7 and 2.9: two consents, each with its own version and server date. The history entry
+// that every acceptance must leave has its own file: acceptance-history.rules.test.ts.
 describe.each([
   ['terms', TERMS_VERSION, TERMS_VERSIONS, termsDoc],
   ['privacy', PRIVACY_VERSION, PRIVACY_VERSIONS, privacyDoc],
 ] as const)('/users/{uid} — acceptance of %s', (field, current, versions, acceptance) => {
   const own = () => doc(verified(env, CUSTOMER_UID), `users/${CUSTOMER_UID}`);
-  const fresh = () => doc(verified(env, NEWCOMER), `users/${NEWCOMER}`);
+  const newcomer = () => verified(env, NEWCOMER);
   const stamp = { updatedAt: serverTimestamp() };
 
   it.each([...versions])('accepts a new profile on version %s', async (version) => {
-    await assertSucceeds(setDoc(fresh(), userDoc({ [field]: acceptance({ version }) })));
+    const profile = userDoc({ [field]: acceptance({ version }) });
+
+    await assertSucceeds(createProfile(newcomer(), NEWCOMER, profile));
   });
 
   it.each([
     ['a version that does not exist', acceptance({ version: '9.9' })],
+    ['the version that named several texts', acceptance({ version: '0.1' })],
     ['an empty version', acceptance({ version: '' })],
-    ['a numeric version', acceptance({ version: 0.1 })],
+    ['a numeric version', acceptance({ version: 0.2 })],
     ['a made-up acceptance date', acceptance({ acceptedAt: PAST })],
     ['an acceptance date as text', acceptance({ acceptedAt: '2026-01-01' })],
     ['no acceptance date', { version: current }],
@@ -190,11 +198,15 @@ describe.each([
     ['the acceptance as text', current],
     ['the acceptance as null', null],
   ])('blocks a new profile with %s', async (_case, value) => {
-    await assertFails(setDoc(fresh(), userDoc({ [field]: value })));
+    await assertFails(createProfile(newcomer(), NEWCOMER, userDoc({ [field]: value })));
   });
 
-  it('lets the account accept again, stamped now', async () => {
-    await assertSucceeds(updateDoc(own(), { [field]: acceptance(), ...stamp }));
+  // The seeded profile holds the current version without a history entry, like one from before
+  // the history existed: it can still leave its proof, once.
+  it('lets a profile without history accept, stamped now', async () => {
+    const db = verified(env, CUSTOMER_UID);
+
+    await assertSucceeds(acceptOnProfile(db, CUSTOMER_UID, { [field]: acceptance() }));
   });
 
   it('leaves the acceptance alone when the profile is edited', async () => {
@@ -204,6 +216,8 @@ describe.each([
     expect((await getDoc(own())).data()?.[field]).toEqual(before);
   });
 
+  // Each attack carries the well-formed entry of the current version, so it is refused for
+  // what it does to the profile and not for a missing entry.
   it.each([
     ['a version that does not exist', { [field]: acceptance({ version: '9.9' }) }],
     ['a made-up acceptance date', { [field]: acceptance({ acceptedAt: PAST }) }],
@@ -214,30 +228,35 @@ describe.each([
     ['the acceptance date removed', { [`${field}.acceptedAt`]: deleteField() }],
     ['the acceptance as null', { [field]: null }],
   ])('blocks an update with %s', async (_case, change) => {
-    await assertFails(updateDoc(own(), { ...change, ...stamp }));
+    const db = verified(env, CUSTOMER_UID);
+
+    await assertFails(acceptOnProfile(db, CUSTOMER_UID, change, currentEntry(field)));
   });
 
   it('blocks accepting in the name of another account', async () => {
-    const intruder = doc(verified(env, 'owner-a'), `users/${CUSTOMER_UID}`);
-    await assertFails(updateDoc(intruder, { [field]: acceptance(), ...stamp }));
+    const intruder = verified(env, 'owner-a');
+
+    await assertFails(acceptOnProfile(intruder, CUSTOMER_UID, { [field]: acceptance() }));
   });
 });
 
 describe('/users/{uid} — both consents together (PLAN 2.9)', () => {
   const stamp = { updatedAt: serverTimestamp() };
 
-  it('lets the account renew both in one write', async () => {
-    const own = doc(verified(env, CUSTOMER_UID), `users/${CUSTOMER_UID}`);
-    await assertSucceeds(updateDoc(own, { terms: termsDoc(), privacy: privacyDoc(), ...stamp }));
+  it('lets a profile without history accept both in one request', async () => {
+    const db = verified(env, CUSTOMER_UID);
+    const both = { terms: termsDoc(), privacy: privacyDoc() };
+
+    await assertSucceeds(acceptOnProfile(db, CUSTOMER_UID, both));
   });
 
   it('lets a profile older than the privacy consent gain it, and nothing else until then', async () => {
-    const { privacy: _dropped, ...older } = userDoc({ createdAt: PAST, updatedAt: PAST });
-    await seedDoc(env, 'users/older', { ...older, terms: termsDoc({ acceptedAt: PAST }) });
-    const own = doc(verified(env, 'older'), 'users/older');
+    await seedAcceptedProfile(env, 'older', { terms: TERMS_VERSION });
+    const db = verified(env, 'older');
+    const own = doc(db, 'users/older');
 
     await assertFails(updateDoc(own, { displayName: 'C. Otra', ...stamp }));
-    await assertSucceeds(updateDoc(own, { privacy: privacyDoc(), ...stamp }));
+    await assertSucceeds(acceptOnProfile(db, 'older', { privacy: privacyDoc() }));
     await assertSucceeds(updateDoc(own, { displayName: 'C. Otra', ...stamp }));
   });
 });

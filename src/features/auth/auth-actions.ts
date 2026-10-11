@@ -13,7 +13,7 @@ import {
   prepareUserProfile,
   type UserProfileInput,
 } from '../../domain/tenancy/account-input';
-import { CURRENT_LEGAL_VERSIONS } from '../../domain/legal/versions';
+import { type AcceptanceEntry, CURRENT_LEGAL_VERSIONS } from '../../domain/legal/versions';
 import { DISPLAY_NAME_MAX_LENGTH } from '../../domain/tenancy/constants';
 import {
   AccountInUseError,
@@ -101,8 +101,11 @@ function fallbackProfile(session: Session | null): UserProfileInput {
  *   Google sign-in): creates the profile with both acceptances. Its name and phone are
  *   `details` when the screen passes them (validated: `InvalidInputError`), otherwise what the
  *   person typed when registering in this tab, otherwise the name of the session.
- * - Account with a profile on an older version of either text: renews both; `details` is
- *   ignored.
+ * - Account with a profile on an older version of either text: renews ONLY the text that is
+ *   pending; the one it already holds in its current version keeps its date. `details` is
+ *   ignored. Needs the connection: without it, it throws `OfflineError` after a few seconds.
+ * Either way each accepted version also leaves a line in the history of acceptances of the
+ * account (`listLegalAcceptances`), which nobody can edit or delete from the app.
  * Then call `reload()` on `useUserProfile()`.
  */
 export async function acceptLegalDocuments(uid: string, details?: UserProfileInput): Promise<void> {
@@ -121,6 +124,13 @@ export async function acceptLegalDocuments(uid: string, details?: UserProfileInp
 
 /** @deprecated Old name of `acceptLegalDocuments`: it records both texts, not only the terms. */
 export const acceptCurrentTerms = acceptLegalDocuments;
+
+/**
+ * Every version of the terms and of the privacy policy the account accepted, newest first, with
+ * the server time of each. Only the account itself and a platform admin may read it.
+ */
+export const listLegalAcceptances: (uid: string) => Promise<AcceptanceEntry[]> =
+  usersRepo.listLegalAcceptances;
 
 /**
  * "No acepto: eliminar mi cuenta" (PLAN 2.9): removes the signed-in account from Firebase Auth

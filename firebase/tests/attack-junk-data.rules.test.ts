@@ -27,6 +27,7 @@ import {
 import {
   addressDoc,
   createEnv,
+  createProfile,
   CUSTOMER_UID,
   foundDistributor,
   type FoundingOptions,
@@ -170,7 +171,7 @@ describe('account — junk in the profile and the addresses', () => {
     ['a name as a list', { displayName: ['C', 'P'] }],
   ])('blocks a profile with %s, on create and on update', async (_case, change) => {
     await assertFails(updateDoc(own(), { ...change, ...stamp }));
-    await assertFails(setDoc(doc(verified(env, 'newcomer'), 'users/newcomer'), userDoc(change)));
+    await assertFails(createProfile(verified(env, 'newcomer'), 'newcomer', userDoc(change)));
   });
 
   it('accepts a name at the maximum length with accents', async () => {
@@ -212,7 +213,7 @@ describe('account — junk in the profile and the addresses', () => {
     await assertFails(setDoc(first, addressDoc()));
     await assertFails(setDoc(first, addressDoc(), { merge: true }));
 
-    await assertSucceeds(setDoc(doc(db, 'users/no-profile'), userDoc()));
+    await assertSucceeds(createProfile(db, 'no-profile'));
     await assertSucceeds(setDoc(first, addressDoc()));
   });
 });
