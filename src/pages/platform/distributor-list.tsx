@@ -1,37 +1,54 @@
 import { ChevronRight } from 'lucide-react';
+import { useState } from 'react';
 import { NavLink } from 'react-router';
+import { Button } from '@/components/common/button';
+import { InlineAlert } from '@/components/common/inline-alert';
 import { Bone, LoadingRegion } from '@/components/common/skeleton';
 import { StateChip } from '@/components/common/state-chip';
 import { EmptyState, ErrorState } from '@/components/common/state-views';
-import { DEFAULT_TIMEZONE, PENDING_LISTINGS_LIMIT } from '@/domain/tenancy/constants';
+import { DEFAULT_TIMEZONE } from '@/domain/tenancy/constants';
 import { OfflineError } from '@/domain/tenancy/errors';
-import type { PendingListing } from '@/features/platform/platform-actions';
+import { listingStateOf, type PlatformListFilter } from '@/domain/tenancy/listing';
+import type { ListedDistributor } from '@/features/platform/platform-actions';
+import type { PlatformDistributors } from '@/features/platform/use-platform-distributors';
 import { formatDateTime } from '@/lib/format-date';
 import { ICON_STROKE } from '@/lib/icons';
-import { platformListingPath } from '@/lib/routes';
-import type { ReloadableResource } from '@/lib/use-async-resource';
+import { distributorPath, platformListingPath } from '@/lib/routes';
+import { FILTER_COPY, LISTING_LABELS, PLAN_LABELS, searchOf } from './listing-labels';
 
 const SKELETON_ROWS = 3;
 
-function PendingRow({ listing }: { listing: PendingListing }) {
-  const { distributorId, control } = listing;
-  const wasSentBack = Boolean(control.reviewNote);
+type RowProps = { listed: ListedDistributor; filter: PlatformListFilter; now: Date };
+
+function DistributorRow({ listed, filter, now }: RowProps) {
+  const { distributorId, control } = listed;
+  const listing = LISTING_LABELS[listingStateOf(control, now)];
+  const founded = `Alta del ${formatDateTime(control.createdAt, DEFAULT_TIMEZONE)}`;
+  const isStopped = control.status === 'suspended' || control.status === 'pastDue';
   return (
     <li>
       <NavLink
-        to={platformListingPath(distributorId)}
+        to={{ pathname: platformListingPath(distributorId), search: searchOf(filter) }}
         className="flex items-center gap-3 rounded-lg px-3 py-3 transition-colors motion-fast hover:bg-muted aria-[current=page]:bg-muted"
       >
         <div className="min-w-0 flex-1">
-          <p className="font-heading font-bold tabular-nums">
-            Alta del {formatDateTime(control.createdAt, DEFAULT_TIMEZONE)}
+          {/* A control document older than the copy of the name shows when it was founded. */}
+          <p className="truncate font-heading font-bold">{control.distributorName ?? founded}</p>
+          <p className="truncate text-[0.8125rem] text-muted-foreground tabular-nums">
+            {control.slug ? `${distributorPath(control.slug)} · ` : ''}
+            {control.distributorName ? founded : 'Sin nombre en la lista'}
           </p>
           <p className="truncate text-[0.8125rem] text-muted-foreground">
             Identificador {distributorId}
           </p>
-          <StateChip state={wasSentBack ? 'danger' : 'paused'} className="mt-1.5">
-            {wasSentBack ? 'Con cambios pedidos' : 'Sin revisar'}
-          </StateChip>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <StateChip state={listing.state}>{listing.text}</StateChip>
+            {isStopped && (
+              <span className="text-[0.8125rem] font-bold text-muted-foreground">
+                {PLAN_LABELS[control.status]}
+              </span>
+            )}
+          </div>
         </div>
         <ChevronRight
           aria-hidden="true"
@@ -43,51 +60,61 @@ function PendingRow({ listing }: { listing: PendingListing }) {
   );
 }
 
+type ListProps = { filter: PlatformListFilter; list: PlatformDistributors };
+
 /**
- * The listings that wait for a decision, oldest first (PLAN 2.11). Each entry is what the
- * control document holds: the name of the distributor arrives when it is opened.
+ * One list of the platform panel (PLAN 2.11), oldest first and a page at a time: the listings
+ * that wait for a decision, the approved distributors or the suspended ones. Each row is what
+ * the control document holds, which includes the name and the link.
  */
-export function PendingList({ pending }: { pending: ReloadableResource<PendingListing[]> }) {
-  if (pending.status === 'error') {
-    const isOffline = pending.error instanceof OfflineError;
+export function DistributorList({ filter, list }: ListProps) {
+  // Judged once when the list is shown: a state does not flip under the reader.
+  const [now] = useState(() => new Date());
+  if (list.status === 'error') {
+    const isOffline = list.error instanceof OfflineError;
     return (
       <ErrorState
         className="shadow-none"
-        title={isOffline ? 'Sin conexión.' : 'No pudimos cargar las altas pendientes.'}
+        title={isOffline ? 'Sin conexión.' : 'No pudimos cargar esta lista.'}
         description="Vuelve a intentar en un momento."
-        onRetry={pending.reload}
+        onRetry={list.reload}
       />
     );
   }
-  if (pending.status !== 'ready') {
+  if (list.status !== 'ready') {
     return (
-      <LoadingRegion label="Cargando las altas pendientes" className="flex flex-col gap-2">
+      <LoadingRegion label="Cargando la lista" className="flex flex-col gap-2">
         {Array.from({ length: SKELETON_ROWS }, (_unused, index) => (
-          <Bone key={index} className="h-20 rounded-lg" />
+          <Bone key={index} className="h-24 rounded-lg" />
         ))}
       </LoadingRegion>
     );
   }
-  if (pending.data.length === 0) {
-    return (
-      <EmptyState
-        title="No hay altas pendientes."
-        description="Cuando alguien registre una distribuidora, o cambie su nombre o un teléfono, va a aparecer aquí para revisarla."
-      />
-    );
-  }
+  if (list.items.length === 0) return <EmptyState {...FILTER_COPY[filter].empty} />;
   return (
     <>
       <ul className="flex flex-col gap-1">
-        {pending.data.map((listing) => (
-          <PendingRow key={listing.distributorId} listing={listing} />
+        {list.items.map((listed) => (
+          <DistributorRow key={listed.distributorId} listed={listed} filter={filter} now={now} />
         ))}
       </ul>
-      {pending.data.length >= PENDING_LISTINGS_LIMIT && (
-        <p className="mt-3 px-3 text-[0.8125rem] text-muted-foreground tabular-nums">
-          Se muestran las {PENDING_LISTINGS_LIMIT} más antiguas. Al decidir sobre ellas aparecen las
-          siguientes.
-        </p>
+      {list.loadMoreError !== null && (
+        <InlineAlert tone="error" className="mt-3">
+          No pudimos cargar más. Vuelve a intentar.
+        </InlineAlert>
+      )}
+      {list.hasMore && (
+        <Button
+          type="button"
+          variant="line"
+          size="sm"
+          className="mt-3 w-full"
+          loading={list.isLoadingMore}
+          loadingLabel="Cargando más…"
+          onClick={list.loadMore}
+        >
+          Cargar más
+        </Button>
       )}
     </>
   );

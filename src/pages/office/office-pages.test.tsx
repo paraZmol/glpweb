@@ -93,7 +93,24 @@ describe('listing status of the office', () => {
     expect(text).not.toContain('Copiar enlace');
   });
 
-  it.each(['inReview', 'changesRequested', 'listed', 'notOperating'] as const)(
+  // PLAN 2.11: after correcting, the owner no longer reads "changes requested".
+  it('says the corrections were sent, keeps the note and still lets the founder correct', () => {
+    const html = status('correctionsSent', {
+      listingApproved: false,
+      reviewNote: 'El RUC no coincide con la razón social.',
+      correctedAt: new Date('2026-10-11T20:30:00Z'),
+    });
+    const text = textOf(html);
+
+    expect(text).toContain('Correcciones enviadas');
+    expect(text).toContain('Recibimos tus correcciones y las estamos revisando de nuevo.');
+    expect(text).not.toContain('Cambios pedidos');
+    expect(text).toContain('El RUC no coincide con la razón social.');
+    expect(text).toContain('Corregir mis datos');
+    expect(text).toContain('Tus clientes todavía no te ven.');
+  });
+
+  it.each(['inReview', 'changesRequested', 'correctionsSent', 'listed', 'notOperating'] as const)(
     'never calls the distributor verified or authorised (%s)',
     (listing) => {
       expect(textOf(status(listing, { reviewNote: 'Nota.' }))).not.toMatch(

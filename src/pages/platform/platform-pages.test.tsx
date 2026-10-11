@@ -3,9 +3,12 @@ import { publicDistributorOf, SESSION } from '../../../tests/support/account-fix
 import { count, renderStatic, tags, textOf } from '../../../tests/support/render-static';
 import { PermissionDeniedError } from '../../domain/tenancy/errors';
 import type { DistributorControl, DistributorPrivateSettings } from '../../domain/tenancy/types';
-import type { ListingReview, PendingListing } from '../../features/platform/platform-actions';
+import type { ListedDistributor, ListingReview } from '../../features/platform/platform-actions';
+import type { PlatformDistributors } from '../../features/platform/use-platform-distributors';
+import { DistributorList } from './distributor-list';
+import { ListFilter } from './list-filter';
+import { filterOf, platformListPath, searchOf } from './listing-labels';
 import { ListingReviewView } from './listing-review';
-import { PendingList } from './pending-list';
 
 // Invented data: the repository is public.
 const CREATED = new Date('2026-10-11T20:30:00Z');
@@ -19,6 +22,9 @@ const controlOf = (patch: Partial<DistributorControl> = {}): DistributorControl 
   approvedAt: null,
   approvedBy: null,
   reviewNote: null,
+  correctedAt: null,
+  distributorName: 'Gas Demo Norte',
+  slug: 'gas-demo-norte',
   createdAt: CREATED,
   updatedAt: CREATED,
   ...patch,
@@ -55,48 +61,154 @@ const review = (control: Partial<DistributorControl> = {}) =>
 const buttons = (html: string) =>
   [...html.matchAll(/<button\b[^>]*>(.*?)<\/button>/gs)].map(([, label = '']) => textOf(label));
 
-// PLAN 2.11: the listings that wait for the review of the platform.
-describe('pending listings', () => {
-  const list = (pending: Parameters<typeof PendingList>[0]['pending']) =>
-    renderStatic(<PendingList pending={pending} />, { path: '/plataforma' });
+const loaded = (
+  items: ListedDistributor[],
+  patch: Partial<Extract<PlatformDistributors, { status: 'ready' }>> = {},
+): PlatformDistributors => ({
+  status: 'ready',
+  items,
+  hasMore: false,
+  isLoadingMore: false,
+  loadMoreError: null,
+  loadMore: reload,
+  reload,
+  ...patch,
+});
 
-  it('says so when nothing waits', () => {
-    expect(textOf(list({ status: 'ready', data: [], reload }))).toContain(
-      'No hay altas pendientes.',
-    );
+// PLAN 2.11: the lists of the platform panel.
+describe('lists of distributors', () => {
+  const list = (state: PlatformDistributors, filter: 'inReview' | 'approved' | 'suspended') =>
+    renderStatic(<DistributorList filter={filter} list={state} />, { path: '/plataforma' });
+  const opened = (html: string) =>
+    tags(html, 'a')
+      .map((tag) => /href="([^"]+)"/.exec(tag)?.[1])
+      .filter((href) => href?.startsWith('/plataforma/'));
+
+  it.each([
+    ['inReview', 'No hay altas pendientes.'],
+    ['approved', 'Todavía no hay distribuidoras aprobadas.'],
+    ['suspended', 'No hay distribuidoras suspendidas.'],
+  ] as const)('says so when the %s list is empty', (filter, expected) => {
+    expect(textOf(list(loaded([]), filter))).toContain(expected);
   });
 
   it('holds the place of the list while it loads', () => {
-    const html = list({ status: 'loading', reload });
+    const html = list({ status: 'loading', reload }, 'inReview');
 
     expect(html).toContain('aria-busy="true"');
-    expect(textOf(html)).toContain('Cargando las altas pendientes');
+    expect(textOf(html)).toContain('Cargando la lista');
   });
 
   it('explains a failure and offers to try again', () => {
-    const text = textOf(list({ status: 'error', error: new PermissionDeniedError(), reload }));
+    const failed = { status: 'error', error: new PermissionDeniedError(), reload } as const;
+    const text = textOf(list(failed, 'inReview'));
 
-    expect(text).toContain('No pudimos cargar las altas pendientes.');
+    expect(text).toContain('No pudimos cargar esta lista.');
     expect(text).toContain('Reintentar');
   });
 
-  it('lists each one with when it was founded, its state in words and the way to open it', () => {
-    const pending: PendingListing[] = [
+  it('lists each one by name, with its link, when it was founded, its state and the way in', () => {
+    const waiting: ListedDistributor[] = [
       { distributorId: 'abcdefghij0123456789', control: controlOf() },
-      { distributorId: 'zyxwvutsrq9876543210', control: controlOf({ reviewNote: 'Revisa.' }) },
+      {
+        distributorId: 'zyxwvutsrq9876543210',
+        control: controlOf({ distributorName: 'Gas Demo Sur', reviewNote: 'Revisa.' }),
+      },
+      {
+        distributorId: 'mnopqrstuv5555555555',
+        control: controlOf({ reviewNote: 'Revisa.', correctedAt: CREATED }),
+      },
     ];
-    const html = list({ status: 'ready', data: pending, reload });
+    const html = list(loaded(waiting), 'inReview');
     const text = textOf(html);
 
+    expect(text).toContain('Gas Demo Norte');
+    expect(text).toContain('Gas Demo Sur');
+    expect(text).toContain('/d/gas-demo-norte');
     expect(text).toContain('Alta del 11 oct. 2026, 3:30 p. m.');
+    expect(text).toContain('Identificador abcdefghij0123456789');
     expect(text).toContain('Sin revisar');
     expect(text).toContain('Con cambios pedidos');
-    const opened = tags(html, 'a').map((tag) => /href="([^"]+)"/.exec(tag)?.[1]);
-    expect(opened.filter((href) => href?.startsWith('/plataforma/'))).toEqual([
+    expect(text).toContain('Correcciones enviadas');
+    expect(opened(html)).toEqual([
       '/plataforma/altas/abcdefghij0123456789',
       '/plataforma/altas/zyxwvutsrq9876543210',
+      '/plataforma/altas/mnopqrstuv5555555555',
     ]);
   });
+
+  // CLAUDE.md rule 10: a control document older than the copies still lists.
+  it('lists a distributor whose control document has no name yet by when it was founded', () => {
+    const legacy = controlOf({ distributorName: null, slug: null });
+    const text = textOf(
+      list(loaded([{ distributorId: 'abcdefghij0123456789', control: legacy }]), 'inReview'),
+    );
+
+    expect(text).toContain('Alta del 11 oct. 2026, 3:30 p. m.');
+    expect(text).toContain('Sin nombre en la lista');
+    expect(text).toContain('Identificador abcdefghij0123456789');
+  });
+
+  it('says in words that a listed distributor is suspended, and keeps the list in the link', () => {
+    const suspended = controlOf({ status: 'suspended', listingApproved: true });
+    const html = list(
+      loaded([{ distributorId: 'abcdefghij0123456789', control: suspended }]),
+      'suspended',
+    );
+
+    expect(textOf(html)).toContain('Aprobada, sin operar');
+    expect(textOf(html)).toContain('Suspendida');
+    expect(opened(html)).toEqual(['/plataforma/altas/abcdefghij0123456789?estado=suspendidas']);
+  });
+
+  it('offers the next page only while there is one', () => {
+    const rows = [{ distributorId: 'abcdefghij0123456789', control: controlOf() }];
+
+    expect(buttons(list(loaded(rows), 'approved'))).toEqual([]);
+    expect(buttons(list(loaded(rows, { hasMore: true }), 'approved'))).toEqual(['Cargar más']);
+  });
+
+  it('keeps the rows and says so when the next page fails', () => {
+    const rows = [{ distributorId: 'abcdefghij0123456789', control: controlOf() }];
+    const failed = loaded(rows, { hasMore: true, loadMoreError: new Error('boom') });
+    const text = textOf(list(failed, 'approved'));
+
+    expect(text).toContain('Gas Demo Norte');
+    expect(text).toContain('No pudimos cargar más.');
+  });
+});
+
+describe('choice of list', () => {
+  it('offers the three lists as links and marks the one on screen', () => {
+    const html = renderStatic(<ListFilter current="approved" />, { path: '/plataforma' });
+    const links = tags(html, 'a').filter((tag) => tag.includes('href="/plataforma'));
+
+    expect(links.map((tag) => /href="([^"]+)"/.exec(tag)?.[1])).toEqual([
+      '/plataforma',
+      '/plataforma?estado=aprobadas',
+      '/plataforma?estado=suspendidas',
+    ]);
+    expect(links.map((tag) => tag.includes('aria-current="true"'))).toEqual([false, true, false]);
+    expect(textOf(html)).toContain('En revisión');
+  });
+
+  it.each([
+    ['', 'inReview'],
+    ['estado=aprobadas', 'approved'],
+    ['estado=suspendidas', 'suspended'],
+    ['estado=todas', 'inReview'],
+    ['estado=', 'inReview'],
+  ] as const)('reads "%s" in the address as the %s list', (search, expected) => {
+    expect(filterOf(new URLSearchParams(search))).toBe(expected);
+  });
+
+  it.each(['inReview', 'approved', 'suspended'] as const)(
+    'writes the %s list in the address so that it reads back the same',
+    (filter) => {
+      expect(filterOf(new URLSearchParams(searchOf(filter)))).toBe(filter);
+      expect(platformListPath(filter).startsWith('/plataforma')).toBe(true);
+    },
+  );
 });
 
 describe('review of one listing', () => {
@@ -155,6 +267,24 @@ describe('review of one listing', () => {
     expect(textOf(review({ reviewNote: 'El registro no figura.' }))).toContain(
       'El registro no figura.',
     );
+  });
+
+  // PLAN 2.11: the owner answered the note; the admin sees both the note and the answer.
+  it('says when the owner sent corrections, next to the note it answers', () => {
+    const answered = textOf(review({ reviewNote: 'El registro no figura.', correctedAt: CREATED }));
+
+    expect(answered).toContain('Correcciones enviadas');
+    expect(answered).toContain('El registro no figura.');
+    expect(answered).toContain('Su titular envió correcciones el 11 oct. 2026, 3:30 p. m.');
+    expect(buttons(review({ reviewNote: 'x', correctedAt: CREATED }))).toEqual([
+      'Aprobar',
+      'Pedir cambios',
+      'Suspender',
+    ]);
+  });
+
+  it('does not speak of corrections while the owner has not answered', () => {
+    expect(textOf(review({ reviewNote: 'El registro no figura.' }))).not.toContain('correcciones');
   });
 
   it('never calls the distributor verified or authorised', () => {

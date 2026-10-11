@@ -1,4 +1,5 @@
 import { type FormEvent, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { FormStatus } from '@/components/account/form-parts';
 import { Button } from '@/components/common/button';
 import { InlineAlert } from '@/components/common/inline-alert';
@@ -85,28 +86,36 @@ function CorrectionForm({ distributorId, settings, onDone }: FormProps) {
   );
 }
 
+type CorrectionProps = { distributorId: string; onCorrected?: () => void };
+
 /**
  * The founder corrects the RUC, the legal name or the record number a platform admin sent back
  * (PLAN 2.11). Closed until asked for: the private data is read only when the form opens.
+ * Saving marks the listing as corrected: `onCorrected` lets the office read its new state.
  */
-export function VerificationCorrection({ distributorId }: { distributorId: string }) {
+export function VerificationCorrection({ distributorId, onCorrected }: CorrectionProps) {
   const [isOpen, setOpen] = useState(false);
-  const [wasSaved, setSaved] = useState(false);
   const settings = useVerificationData(isOpen ? distributorId : null);
 
   const close = (saved: boolean) => {
-    setSaved(saved);
     setOpen(false);
+    if (!saved) return;
+    // A toast: the panel around this form is read again and would take an inline message away.
+    toast.success(SAVED);
+    onCorrected?.();
   };
 
   if (!isOpen) {
     return (
-      <div className="flex flex-col items-start gap-3">
-        {wasSaved && <InlineAlert tone="success">{SAVED}</InlineAlert>}
-        <Button type="button" variant="ink" size="sm" onClick={() => setOpen(true)}>
-          Corregir mis datos
-        </Button>
-      </div>
+      <Button
+        type="button"
+        variant="ink"
+        size="sm"
+        className="self-start"
+        onClick={() => setOpen(true)}
+      >
+        Corregir mis datos
+      </Button>
     );
   }
   if (settings.status === 'error' || (settings.status === 'ready' && settings.data === null)) {

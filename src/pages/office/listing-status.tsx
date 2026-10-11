@@ -24,6 +24,11 @@ const STATES: Record<ListingState, { chip: string; state: SystemState; text: str
     state: 'danger',
     text: 'Hornilla revisó tu distribuidora y te pide corregir algo antes de mostrarla. Tus clientes todavía no te ven.',
   },
+  correctionsSent: {
+    chip: 'Correcciones enviadas',
+    state: 'paused',
+    text: 'Recibimos tus correcciones y las estamos revisando de nuevo. Tus clientes todavía no te ven.',
+  },
   listed: {
     chip: 'Visible en el buscador',
     state: 'free',
@@ -74,15 +79,22 @@ type ListingStatusProps = {
   isOwner: boolean;
   /** Only whoever founded it can read and correct the verification data. */
   isFounder: boolean;
+  /** After the founder corrected its data: the state of the listing changed. */
+  onCorrected?: () => void;
 };
 
-function actionsOf({ distributor, listing, isOwner, isFounder }: ListingStatusProps): ReactNode {
+/** The platform left a note: it stays on screen until the platform decides again. */
+const hasNote = (listing: ListingState) =>
+  listing === 'changesRequested' || listing === 'correctionsSent';
+
+function actionsOf(props: ListingStatusProps): ReactNode {
+  const { distributor, listing, isOwner, isFounder, onCorrected } = props;
   if (listing === 'listed') return <PublicLink slug={distributor.slug} />;
-  if (listing !== 'changesRequested' || !isOwner) return null;
+  if (!hasNote(listing) || !isOwner) return null;
   return (
     <>
       {isFounder ? (
-        <VerificationCorrection distributorId={distributor.id} />
+        <VerificationCorrection distributorId={distributor.id} onCorrected={onCorrected} />
       ) : (
         <p className="text-muted-foreground">
           El RUC, la razón social y el registro los corrige quien registró la distribuidora.
@@ -98,7 +110,8 @@ function actionsOf({ distributor, listing, isOwner, isFounder }: ListingStatusPr
 
 /**
  * Where the distributor stands with the review of the platform (PLAN 2.11), at the top of the
- * office: waiting, sent back with a note, listed (with its link) or approved but not operating.
+ * office: waiting, sent back with a note, corrected and waiting again, listed (with its link) or
+ * approved but not operating.
  */
 export function ListingStatus(props: ListingStatusProps) {
   const { distributor, listing } = props;
@@ -111,7 +124,7 @@ export function ListingStatus(props: ListingStatusProps) {
         <StateChip state={state}>{chip}</StateChip>
       </div>
       <p className="mt-2 max-w-prose text-muted-foreground">{text}</p>
-      {listing === 'changesRequested' && distributor.reviewNote && (
+      {hasNote(listing) && distributor.reviewNote && (
         <figure className="mt-3 rounded-lg bg-muted p-3.5">
           <figcaption className="text-[0.8125rem] font-bold text-muted-foreground">
             Nota de Hornilla

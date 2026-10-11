@@ -8,15 +8,30 @@ import { forgetVisibleDistributors } from '../tenancy/visible-distributors';
 // security rules check it again, so an account that is not one gets `PermissionDeniedError`.
 // They throw `OfflineError` without a connection (none of them can be queued).
 
-export type { ListingReview, PendingListing } from '../../data/platform-repo';
+export type {
+  DistributorListRequest,
+  DistributorPage,
+  ListedDistributor,
+  ListingReview,
+  PageCursor,
+  PendingListing,
+} from '../../data/platform-repo';
 
 /**
  * The listings that wait for a decision, oldest first: new distributors, and those whose owner
  * changed the name or a phone. Each entry is the control document (founder, status, trial end,
- * the note left before, if any); read `getListingReview` for the rest.
+ * the note left before, if any, whether its owner answered it, and copies of the public name
+ * and link); read `getListingReview` for the rest.
  * Cost: one read per listing (minimum one), at most `PENDING_LISTINGS_LIMIT`.
  */
 export const listPendingListings = platformRepo.listPendingListings;
+
+/**
+ * One page of the distributors in a given standing (`inReview`, `approved` or `suspended`),
+ * oldest first: how the panel reaches a distributor that is already approved or suspended.
+ * Pass `after: page.next` for the following page. Cost: one read per row plus one, per page.
+ */
+export const listDistributors = platformRepo.listDistributors;
 
 /**
  * Everything to decide on one listing: what visitors will see, where it stands, and what the

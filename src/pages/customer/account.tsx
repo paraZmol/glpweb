@@ -7,7 +7,7 @@ import { PageHeader, Panel } from '@/components/layout/page-header';
 import { Stagger } from '@/components/motion/stagger';
 import { useAccount } from '@/features/account/account-context';
 import { useSignOut } from '@/features/account/use-sign-out';
-import { foundingAvailabilityOf } from '@/features/tenancy/founding-availability';
+import { useFoundingAvailability } from '@/features/tenancy/use-founding-availability';
 import { ICON_STROKE } from '@/lib/icons';
 import { usePageTitle } from '@/lib/page-title';
 import { ROUTES } from '@/lib/routes';
@@ -50,11 +50,8 @@ export function AccountPage() {
   usePageTitle('Tu cuenta');
   const account = useAccount();
   const { session, profile } = account;
-  const availability = foundingAvailabilityOf({
-    uid: session.uid,
-    profile,
-    current: account.current,
-  });
+  // Every distributor the account founded is looked at, not only the one the panels show.
+  const founding = useFoundingAvailability();
 
   return (
     <div className="flex flex-col gap-8">
@@ -87,7 +84,7 @@ export function AccountPage() {
           {workAreasOf(account).length > 0 && (
             <WorkAreas role={account.role} isPlatformAdmin={account.isPlatformAdmin} />
           )}
-          <OwnersPanel availability={availability} />
+          {!founding.isChecking && <OwnersPanel availability={founding.availability} />}
           <SessionPanel email={session.email} />
         </Stagger>
       </div>

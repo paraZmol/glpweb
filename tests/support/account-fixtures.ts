@@ -50,6 +50,7 @@ export function distributorOf(id: string, patch: Partial<Distributor> = {}): Dis
     trialEndsAt: IN_TWELVE_DAYS,
     listingApproved: true,
     reviewNote: null,
+    correctedAt: null,
     schedule: { days: [1, 2, 3, 4, 5, 6], opensAt: '07:00', closesAt: '20:00' },
     maxCylindersPerOrder: 3,
     brands: [],
@@ -69,6 +70,7 @@ export function publicDistributorOf(patch: Partial<PublicDistributor> = {}): Pub
     trialEndsAt: _trialEndsAt,
     listingApproved: _listingApproved,
     reviewNote: _reviewNote,
+    correctedAt: _correctedAt,
     ...shown
   } = distributorOf('d-norte');
   return { ...shown, ...patch };

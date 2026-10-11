@@ -7,9 +7,9 @@ import { Button } from '@/components/common/button';
 import { BrandPreview } from '@/components/founding/brand-preview';
 import { WizardProgress } from '@/components/founding/wizard-progress';
 import { useAccount } from '@/features/account/account-context';
-import { foundingAvailabilityOf } from '@/features/tenancy/founding-availability';
 import { FOUNDING_STEPS } from '@/features/tenancy/founding-form';
 import { rememberDistributor } from '@/features/tenancy/selection-storage';
+import { useFoundingAvailability } from '@/features/tenancy/use-founding-availability';
 import { useFoundingWizard } from '@/features/tenancy/use-founding-wizard';
 import { stepVariants } from '@/lib/motion';
 import { usePageTitle } from '@/lib/page-title';
@@ -47,8 +47,9 @@ export function NewDistributorPage() {
   const wizard = useFoundingWizard({ session, owner, onFounded: enter });
   useFocusFirstInvalid(formRef, wizard.errors);
 
-  // Judged with what is already loaded; the founding itself has the last word (`isBlocked`).
-  const availability = foundingAvailabilityOf({ uid: session.uid, profile, current });
+  // Every distributor the account founded is looked at (PLAN 2.11); the founding itself still
+  // has the last word (`isBlocked`). While the check runs the form is shown.
+  const { availability } = useFoundingAvailability();
   if (wizard.isBlocked || availability === 'blocked') return <FoundingBlocked />;
   if (availability === 'limitReached' && !wizard.isSubmitting) return <FoundingLimit />;
 

@@ -37,8 +37,9 @@ export type CurrentDistributor =
       isWritable: boolean;
       /**
        * Where it stands with the review of the platform (PLAN 2.11): `inReview` (visitors do
-       * not see it yet), `changesRequested` (read `distributor.reviewNote`), `listed`, or
-       * `notOperating` (approved but read-only).
+       * not see it yet), `changesRequested` (read `distributor.reviewNote`), `correctionsSent`
+       * (the owner answered that note at `distributor.correctedAt` and waits again; the note
+       * is still there), `listed`, or `notOperating` (approved but read-only).
        */
       listing: ListingState;
       select: (distributorId: string) => void;

@@ -88,6 +88,7 @@ export function OfficeHomePage() {
             listing={listing}
             isOwner={isOwner}
             isFounder={distributor.ownerUid === session.uid}
+            onCorrected={current.reload}
           />
           {isOwner && <SetupChecklist distributor={distributor} isListed={listing === 'listed'} />}
           <Panel dense>

@@ -1,4 +1,5 @@
 import * as distributorsRepo from '../../data/distributors-repo';
+import { getUserProfile } from '../../data/users-repo';
 import { canFoundDistributor, type Session } from '../../domain/auth/session';
 import {
   type DistributorProfilePatch,
@@ -9,6 +10,10 @@ import {
 import { TERMS_VERSION } from '../../domain/legal/versions';
 import { EmailNotVerifiedError, InvalidInputError } from '../../domain/tenancy/errors';
 import { checkConsent, collectIssues } from '../../domain/tenancy/field-checks';
+import {
+  type FoundingAvailability,
+  foundingAvailabilityOf,
+} from '../../domain/tenancy/founding-availability';
 import { normalizeSlug, type SlugIssue, validateSlug } from '../../domain/tenancy/slug';
 import {
   type BusinessVerificationInput,
@@ -59,6 +64,35 @@ export async function foundDistributor(session: Session, input: FoundingInput): 
   return id;
 }
 
+/**
+ * Whether an account that founded `ownedCount` distributors may found another one, reading the
+ * control document of each id in `toCheck` (the ones whose standing is not already known).
+ * Cost: one read per id, none by the rules.
+ */
+export async function checkOwnedDistributors(
+  ownedCount: number,
+  toCheck: readonly string[],
+): Promise<FoundingAvailability> {
+  const controls = await distributorsRepo.getOwnedControls(toCheck);
+  return foundingAvailabilityOf(ownedCount, controls, new Date());
+}
+
+/**
+ * Whether the account may found another distributor, asked from scratch (PLAN 2.11): the same
+ * answer `foundDistributor` would give — `limitReached` instead of `DistributorLimitError`,
+ * `blocked` instead of `FoundingBlockedError` — before anything is filled in. It looks at every
+ * distributor the account founded, not only the one the panels show. The founding still has the
+ * last word (a suspension can arrive in between). Screens under `AccountProvider` should use
+ * `useFoundingAvailability()`, which reuses what is already loaded.
+ * Cost: 1 read (the profile) plus one per distributor founded (at most 2; none at the cap).
+ */
+export async function getFoundingAvailability(uid: string): Promise<FoundingAvailability> {
+  const owned = (await getUserProfile(uid))?.ownedDistributorIds ?? [];
+  // At the cap nothing else matters: answer without reading the control documents.
+  const toCheck = foundingAvailabilityOf(owned.length, [], new Date()) === 'available' ? owned : [];
+  return checkOwnedDistributors(owned.length, toCheck);
+}
+
 export type SlugCheck =
   | { status: 'invalid'; slug: string; issue: SlugIssue }
   | { status: 'taken'; slug: string }
@@ -87,7 +121,9 @@ export interface ProfileEditOutcome {
 /**
  * Owner edit of the public profile. PASS ONLY THE FIELDS THAT CHANGED: a patch that carries
  * `name`, `contactPhone` or `whatsapp` sends the listing back to review (see `touchesIdentity`
- * in the domain to warn the person before saving). Throws `InvalidInputError`, or
+ * in the domain to warn the person before saving). While the listing waits with a note of the
+ * platform, any edit counts as its answer (`listing` becomes `correctionsSent`).
+ * Throws `InvalidInputError`, or
  * `PermissionDeniedError` when the account is not an owner or the distributor is read-only
  * (suspended, trial over).
  */
@@ -114,7 +150,10 @@ export const getPrivateSettings = distributorsRepo.getDistributorPrivateSettings
 /**
  * Founder only, while the listing waits for its review: corrects the RUC, the legal name or the
  * record number a platform admin sent back. Once approved they cannot be changed from the app.
- * Throws `InvalidInputError` or `PermissionDeniedError`.
+ * When the platform had left a note, the listing is marked as corrected in the same transaction:
+ * after `current.reload()`, `useCurrentDistributor()` reports `listing: 'correctionsSent'`
+ * instead of `changesRequested`. The note stays for the platform admin, and nothing is approved.
+ * Throws `InvalidInputError`, `PermissionDeniedError` or `OfflineError` (it is not queued).
  */
 export async function correctVerificationData(
   distributorId: string,

@@ -2,16 +2,18 @@ import { useState } from 'react';
 import { BrandTheme } from '@/components/brand/brand-theme';
 import { Monogram } from '@/components/brand/monogram';
 import { Button } from '@/components/common/button';
-import { StateChip, type SystemState } from '@/components/common/state-chip';
+import { StateChip } from '@/components/common/state-chip';
 import { TextLink } from '@/components/common/text-link';
 import { BrandPreview } from '@/components/founding/brand-preview';
 import type { Session } from '@/domain/auth/session';
-import { type ListingState, listingStateOf } from '@/domain/tenancy/listing';
-import type { DistributorStatus } from '@/domain/tenancy/types';
+import { DEFAULT_TIMEZONE } from '@/domain/tenancy/constants';
+import { listingStateOf } from '@/domain/tenancy/listing';
 import type { ListingReview } from '@/features/platform/platform-actions';
 import { type ReviewAction, reviewActionsOf } from '@/features/platform/review-actions';
+import { formatDateTime } from '@/lib/format-date';
 import { distributorPath } from '@/lib/routes';
 import { DECISION_COPY } from './decision-copy';
+import { LISTING_LABELS, PLAN_LABELS } from './listing-labels';
 import {
   DataList,
   declaredRowsOf,
@@ -21,19 +23,6 @@ import {
   SourceLinks,
 } from './review-data';
 import { ReviewDecision } from './review-decision';
-
-const LISTING: Record<ListingState, { text: string; state: SystemState }> = {
-  inReview: { text: 'Sin revisar', state: 'paused' },
-  changesRequested: { text: 'Con cambios pedidos', state: 'danger' },
-  listed: { text: 'Aprobada y visible', state: 'free' },
-  notOperating: { text: 'Aprobada, sin operar', state: 'offline' },
-};
-const PLAN: Record<DistributorStatus, string> = {
-  trial: 'En prueba',
-  active: 'Plan activo',
-  pastDue: 'Pago pendiente',
-  suspended: 'Suspendida',
-};
 
 type ListingReviewViewProps = {
   review: ListingReview;
@@ -51,7 +40,7 @@ export function ListingReviewView({ review, admin, onDecided }: ListingReviewVie
   // Judged once when the listing is shown: the state does not flip under the reader.
   const [now] = useState(() => new Date());
   const { profile, control, distributorId } = review;
-  const listing = LISTING[listingStateOf(control, now)];
+  const listing = LISTING_LABELS[listingStateOf(control, now)];
 
   const decided = () => {
     setOpen(null);
@@ -69,7 +58,7 @@ export function ListingReviewView({ review, admin, onDecided }: ListingReviewVie
           <div className="mt-1.5 flex flex-wrap gap-2">
             <StateChip state={listing.state}>{listing.text}</StateChip>
             <span className="rounded-full bg-muted px-2.5 py-1 text-[0.8125rem] font-bold text-muted-foreground">
-              {PLAN[control.status]}
+              {PLAN_LABELS[control.status]}
             </span>
           </div>
         </div>
@@ -82,6 +71,13 @@ export function ListingReviewView({ review, admin, onDecided }: ListingReviewVie
           <blockquote className="mt-1 font-semibold wrap-anywhere whitespace-pre-line">
             {control.reviewNote}
           </blockquote>
+          {/* The note stays after a correction: it says what to look at again. */}
+          {control.correctedAt && (
+            <p className="mt-2 text-[0.8125rem] font-bold tabular-nums">
+              Su titular envió correcciones el{' '}
+              {formatDateTime(control.correctedAt, DEFAULT_TIMEZONE)}. Compara de nuevo los datos.
+            </p>
+          )}
         </figure>
       )}
       <div className="grid gap-6 xl:grid-cols-2">

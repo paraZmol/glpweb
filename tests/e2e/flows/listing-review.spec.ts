@@ -30,6 +30,9 @@ const NOTE = 'El número de ficha no coincide con la razón social. Revísalo.';
 const NEW_PHONE = '900000096';
 const CORRECTED_LEGAL_NAME = 'Gas Ensayo Corregido S.A.C.';
 
+const CORRECTIONS_SENT_TEXT =
+  'Recibimos tus correcciones y las estamos revisando de nuevo. Tus clientes todavía no te ven.';
+
 const heading = (page: Page) => page.getByRole('heading', { level: 1 });
 const chip = (page: Page, text: string) => page.getByText(text, { exact: true });
 
@@ -78,6 +81,22 @@ async function decide(page: Page, action: string, confirm: string, toast: string
 
 const approve = (page: Page) => decide(page, 'Aprobar', 'Sí, aprobar', 'Ficha aprobada.');
 
+/**
+ * The row of a distributor in the list of the platform panel that is on screen. The lists are
+ * paged, oldest first, and every flow of the run leaves distributors behind: the one a test just
+ * founded is on the last page, so the next page is asked for until its row shows.
+ */
+async function rowOf(page: Page, id: string) {
+  const row = page.getByRole('link', { name: new RegExp(id) });
+  const more = page.getByRole('button', { name: 'Cargar más' });
+  await expect(async () => {
+    await expect(row.or(more)).toBeVisible();
+    if (!(await row.isVisible())) await more.click();
+    await expect(row).toBeVisible({ timeout: 2_000 });
+  }).toPass();
+  return row;
+}
+
 /** Whether the search from the door of the plant lists it, once the search has settled. */
 async function expectInFinder(visitor: Page, name: string, isListed: boolean) {
   await visitor.goto('/');
@@ -111,10 +130,13 @@ test('a new distributor is in review and hidden; the admin approves it and visit
   await expectPage(visitor.page, listing, false);
   await expectInFinder(visitor.page, name, false);
 
-  // The admin finds it among the pending ones and opens it.
+  // The admin finds it among the pending ones, by its name and its link, and opens it.
   await admin.page.goto('/plataforma');
   await expect(heading(admin.page)).toHaveText('Altas pendientes.');
-  await admin.page.getByRole('link', { name: new RegExp(id) }).click();
+  const row = await rowOf(admin.page, id);
+  await expect(row).toContainText(name);
+  await expect(row).toContainText(`/d/${listing.slug}`);
+  await row.click();
   await expect(admin.page).toHaveURL(new RegExp(`/plataforma/altas/${id}$`));
   await expect(admin.page.getByRole('heading', { name, exact: true })).toBeVisible();
   await expect(chip(admin.page, 'Sin revisar').last()).toBeVisible();
@@ -139,8 +161,11 @@ test('a new distributor is in review and hidden; the admin approves it and visit
   await approve(admin.page);
 
   await expect(chip(admin.page, 'Aprobada y visible')).toBeVisible();
-  // Approved: it is no longer among the pending ones.
+  // Approved: it is no longer among the pending ones, and it is reached from the approved ones.
   await expect(admin.page.getByRole('link', { name: new RegExp(id) })).toHaveCount(0);
+  await admin.page.goto('/plataforma?estado=aprobadas');
+  await expect(heading(admin.page)).toHaveText('Distribuidoras aprobadas.');
+  await expect(await rowOf(admin.page, id)).toContainText(name);
   expect(await readDocument(`distributors/${id}/private/control`)).toMatchObject({
     listingApproved: true,
     approvedBy: admin.user.uid,
@@ -207,7 +232,7 @@ test('the owner changes the phone: warned before saving, back in review and hidd
   await expectInFinder(visitor.page, listing.name, false);
   // And it is back among the pending ones of the platform.
   await admin.page.goto('/plataforma');
-  await expect(admin.page.getByRole('link', { name: new RegExp(id) })).toBeVisible();
+  await expect(await rowOf(admin.page, id)).toContainText('Sin revisar');
   expect([...owner.errors, ...admin.errors, ...visitor.errors]).toEqual([]);
 });
 
@@ -247,18 +272,32 @@ test('the admin asks for changes with a note, the founder corrects the data, and
     legalName: CORRECTED_LEGAL_NAME,
     taxId: FOUNDING_VERIFICATION.taxId,
   });
+  // The office no longer says "changes requested": the corrections were sent. The note stays,
+  // nothing was approved, and visitors still learn nothing.
+  await expect(chip(owner.page, 'Correcciones enviadas')).toBeVisible();
+  await expect(owner.page.getByText(CORRECTIONS_SENT_TEXT)).toBeVisible();
+  await expect(chip(owner.page, 'Cambios pedidos')).toHaveCount(0);
+  await expect(owner.page.getByText(NOTE)).toBeVisible();
+  const corrected = await readDocument(`distributors/${id}/private/control`);
+  expect(corrected).toMatchObject({ listingApproved: false, reviewNote: NOTE });
+  expect(corrected).toHaveProperty('correctedAt');
+  expect(corrected).not.toHaveProperty('approvedAt');
   await expectPage(visitor.page, listing, false);
 
-  // The admin sees the correction and approves.
+  // The admin sees that an answer came, next to its own note, and the corrected data.
   await admin.page.reload();
+  await expect(chip(admin.page, 'Correcciones enviadas').last()).toBeVisible();
+  await expect(admin.page.getByText(/Su titular envió correcciones el/)).toBeVisible();
+  await expect(admin.page.getByText(NOTE)).toBeVisible();
   await expect(admin.page.getByText(CORRECTED_LEGAL_NAME)).toBeVisible();
   await approve(admin.page);
   await expectPage(visitor.page, listing, true);
 
   // Suspending hides the page again and leaves the office read-only.
   await decide(admin.page, 'Suspender', 'Sí, suspender', 'Distribuidora suspendida.');
-  await expect(chip(admin.page, 'Aprobada, sin operar')).toBeVisible();
-  await expect(chip(admin.page, 'Suspendida')).toBeVisible();
+  // The list beside the review may name other suspended distributors: the review comes last.
+  await expect(chip(admin.page, 'Aprobada, sin operar').last()).toBeVisible();
+  await expect(chip(admin.page, 'Suspendida').last()).toBeVisible();
   await expectPage(visitor.page, listing, false);
   await expectInFinder(visitor.page, listing.name, false);
   await owner.page.reload();
@@ -268,6 +307,13 @@ test('the admin asks for changes with a note, the founder corrects the data, and
     status: 'suspended',
     listingApproved: true,
   });
+  // A suspended distributor is reached from its own list, not only by its address.
+  await admin.page.goto('/plataforma');
+  await admin.page.getByRole('link', { name: 'Suspendidas', exact: true }).click();
+  await expect(heading(admin.page)).toHaveText('Distribuidoras suspendidas.');
+  await (await rowOf(admin.page, id)).click();
+  await expect(admin.page).toHaveURL(new RegExp(`/plataforma/altas/${id}\\?estado=suspendidas$`));
+  await expect(admin.page.getByRole('heading', { name: listing.name, exact: true })).toBeVisible();
 
   // Reactivating shows it again: the approval was kept.
   await decide(admin.page, 'Reactivar', 'Sí, reactivar', 'Distribuidora reactivada.');

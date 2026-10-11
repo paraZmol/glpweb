@@ -255,7 +255,7 @@ describe('home of each area: an empty state that says what is going on', () => {
     ['driver', <DriverHomePage key="d" />, DRIVER, 'Sin jornada abierta.'],
     ['office', <OfficeHomePage key="o" />, OWNER, 'Todavía no entra ningún pedido.'],
     // Its list needs the database: the first HTML holds its place (platform-pages.test.tsx).
-    ['platform', <PlatformHomePage key="p" />, accountOf(), 'Cargando las altas pendientes'],
+    ['platform', <PlatformHomePage key="p" />, accountOf(), 'Cargando la lista'],
   ] as const)('%s', (area, page, account, sentence) => {
     const html = inArea(area, page, account);
 

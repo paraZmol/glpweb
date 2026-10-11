@@ -1,17 +1,20 @@
 import { ArrowLeft } from 'lucide-react';
-import { useParams } from 'react-router';
+import { useParams, useSearchParams } from 'react-router';
 import { ButtonLink } from '@/components/common/button';
 import { Bone, LoadingRegion } from '@/components/common/skeleton';
 import { EmptyState, ErrorState } from '@/components/common/state-views';
 import { PageHeader, Panel } from '@/components/layout/page-header';
 import { useAccount } from '@/features/account/account-context';
-import { useListingReview, usePendingListings } from '@/features/platform/use-pending-listings';
+import { useListingReview } from '@/features/platform/use-listing-review';
+import { usePlatformDistributors } from '@/features/platform/use-platform-distributors';
 import { ICON_STROKE } from '@/lib/icons';
 import { usePageTitle } from '@/lib/page-title';
 import { ROUTES } from '@/lib/routes';
 import { useIsDesktop } from '@/lib/use-media-query';
+import { DistributorList } from './distributor-list';
+import { ListFilter } from './list-filter';
+import { FILTER_COPY, filterOf, platformListPath } from './listing-labels';
 import { ListingReviewView } from './listing-review';
-import { PendingList } from './pending-list';
 
 function ReviewSkeleton() {
   return (
@@ -38,7 +41,7 @@ function ReviewPane({ distributorId, onDecided }: ReviewPaneProps) {
   if (distributorId === null) {
     return (
       <EmptyState
-        title="Elige un alta de la lista."
+        title="Elige una distribuidora de la lista."
         description="Vas a ver su ficha pública, los datos que declaró y las decisiones posibles."
       />
     );
@@ -70,16 +73,21 @@ function ReviewPane({ distributorId, onDecided }: ReviewPaneProps) {
 }
 
 /**
- * `/plataforma` (PLAN 2.11): the listings that wait for the review of the platform and, for the
- * one that is open, everything needed to decide. Phone: the list, then the listing on its own
- * screen. Desktop: the list on the left and the listing beside it. Being here grants nothing:
- * every decision is checked again by the security rules.
+ * `/plataforma` (PLAN 2.11): the distributors of the platform in three lists — the listings that
+ * wait for its review (the one it opens on), the approved ones and the suspended ones — and, for
+ * the one that is open, everything needed to decide. The list is chosen with `?estado=`. Phone:
+ * the list, then the distributor on its own screen. Desktop: the list on the left and the
+ * distributor beside it. Being here grants nothing: every decision is checked again by the
+ * security rules.
  */
 export function PlatformHomePage() {
   const { distributorId = null } = useParams();
-  usePageTitle(distributorId ? 'Revisar un alta' : 'Altas pendientes');
+  const [search] = useSearchParams();
+  const filter = filterOf(search);
+  const copy = FILTER_COPY[filter];
+  usePageTitle(distributorId ? 'Revisar una distribuidora' : copy.title.replace('.', ''));
   const isDesktop = useIsDesktop();
-  const pending = usePendingListings();
+  const list = usePlatformDistributors(filter);
   const showsList = isDesktop || distributorId === null;
   const showsReview = isDesktop || distributorId !== null;
 
@@ -87,15 +95,15 @@ export function PlatformHomePage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         dense
-        title="Altas pendientes."
-        lead="Distribuidoras que esperan la revisión de Hornilla antes de aparecer en el buscador."
+        title={copy.title}
+        lead={copy.lead}
         aside={
           showsList ? (
             <ButtonLink to={ROUTES.account} variant="line" size="sm">
               Revisar mi cuenta
             </ButtonLink>
           ) : (
-            <ButtonLink to={ROUTES.platformHome} variant="quiet" size="sm">
+            <ButtonLink to={platformListPath(filter)} variant="quiet" size="sm">
               <ArrowLeft aria-hidden="true" strokeWidth={ICON_STROKE} />
               Volver a la lista
             </ButtonLink>
@@ -105,16 +113,13 @@ export function PlatformHomePage() {
       <div className="grid items-start gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
         {showsList && (
           <Panel dense className="lg:max-h-[calc(100dvh-11rem)] lg:overflow-y-auto lg:p-4">
-            <PendingList pending={pending} />
+            <ListFilter current={filter} />
+            <DistributorList filter={filter} list={list} />
           </Panel>
         )}
         {showsReview && (
           <Panel dense>
-            <ReviewPane
-              key={distributorId}
-              distributorId={distributorId}
-              onDecided={pending.reload}
-            />
+            <ReviewPane key={distributorId} distributorId={distributorId} onDecided={list.reload} />
           </Panel>
         )}
       </div>
