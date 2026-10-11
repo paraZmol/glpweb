@@ -99,6 +99,10 @@ central, repartidor, cliente.
 - Lanzar **qa-tester**. Si tocó reglas, pedidos, jornada o stock → **rules-breaker**. Si tocó
   auth, roles, invitaciones, dinero o datos por distribuidora → **security-auditor**. Si tocó
   una pantalla → **visual-designer** y después **ux-reviewer**.
+- **Uso real por rol**: si tocó una pantalla, un permiso o una ruta, y siempre antes de mostrarle
+  algo al usuario y antes de unir a `main` → **role-walker**. Entra como cada rol sin leer antes
+  el código, recorre todo y lo contrasta con `docs/testing/matriz-de-roles.md` (cada ruta y
+  acción contra cada rol). Debe dar USABLE.
 - La dirección visual la fija **design-director** (el usuario elige) y la construye
   **frontend-builder**. Fotos solo de `docs/design/images/` con licencia en `CREDITS.md`
   (las consigue **image-scout**); nunca URLs externas de imágenes en la app.
