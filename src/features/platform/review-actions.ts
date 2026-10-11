@@ -27,7 +27,8 @@ export function reviewActionsOf(control: Standing): ReviewAction[] {
   return REVIEW_ACTIONS.filter((action) => APPLIES[action](control));
 }
 
-const NOTE_REQUIRED = 'Escribe qué debe corregir: es lo que la distribuidora va a leer en su panel.';
+const NOTE_REQUIRED =
+  'Escribe qué debe corregir: es lo que la distribuidora va a leer en su panel.';
 const NOTE_TOO_LONG = 'La nota es demasiado larga. Resúmela.';
 
 /**
