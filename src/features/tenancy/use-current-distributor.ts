@@ -4,6 +4,7 @@ import {
   syncAcceptingOrders,
   syncMemberDistributorName,
 } from '../../data/distributors-repo';
+import { isOpenToPublic, type ListingState, listingStateOf } from '../../domain/tenancy/listing';
 import { pickCurrentMembership } from '../../domain/tenancy/membership';
 import { isWritable } from '../../domain/tenancy/status';
 import type { Distributor, Member } from '../../domain/tenancy/types';
@@ -34,19 +35,26 @@ export type CurrentDistributor =
       distributor: Distributor;
       /** False when suspended, past due or with the trial over: show it as read-only. */
       isWritable: boolean;
+      /**
+       * Where it stands with the review of the platform (PLAN 2.11): `inReview` (visitors do
+       * not see it yet), `changesRequested` (read `distributor.reviewNote`), `listed`, or
+       * `notOperating` (approved but read-only).
+       */
+      listing: ListingState;
       select: (distributorId: string) => void;
       reload: () => void;
     };
 
 /**
  * Two copies follow the distributor and nobody updates them when time passes or a name
- * changes: the public "takes orders" flag and the name kept in the member document. Whoever of
+ * changes: the public "takes orders" flag (it may operate and its listing is approved) and the
+ * name kept in the member document. Whoever of
  * the staff opens the panel puts them right. The rules only accept the true value, and a
  * failure here changes nothing the person sees, so it is not awaited.
  */
-function repairCopies(distributor: Distributor, membership: Member, writable: boolean): void {
-  if (distributor.acceptingOrders !== writable) {
-    syncAcceptingOrders(distributor.id, writable).then(forgetVisibleDistributors, () => {});
+function repairCopies(distributor: Distributor, membership: Member, isOpen: boolean): void {
+  if (distributor.acceptingOrders !== isOpen) {
+    syncAcceptingOrders(distributor.id, isOpen).then(forgetVisibleDistributors, () => {});
   }
   if (membership.distributorName !== distributor.name) {
     syncMemberDistributorName(distributor.id, membership.uid, distributor.name).catch(() => {});
@@ -57,9 +65,13 @@ function repairCopies(distributor: Distributor, membership: Member, writable: bo
 async function loadSelected(membership: Member) {
   const distributor = await getStaffDistributor(membership.distributorId);
   if (!distributor) return null;
-  const writable = isWritable(distributor, new Date());
-  repairCopies(distributor, membership, writable);
-  return { distributor, isWritable: writable };
+  const now = new Date();
+  repairCopies(distributor, membership, isOpenToPublic(distributor, now));
+  return {
+    distributor,
+    isWritable: isWritable(distributor, now),
+    listing: listingStateOf(distributor, now),
+  };
 }
 
 /** The choice made in this visit, falling back to the one remembered on this device. */
@@ -124,6 +136,7 @@ export function useCurrentDistributor(): CurrentDistributor {
     membership,
     distributor: distributor.data.distributor,
     isWritable: distributor.data.isWritable,
+    listing: distributor.data.listing,
     select,
     reload,
   };

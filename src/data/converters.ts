@@ -196,6 +196,11 @@ export const parseControl: Parser<DistributorControl> = (_id, path, data) => {
     ownerUid: read.text('ownerUid'),
     status: read.oneOf('status', DISTRIBUTOR_STATUSES),
     trialEndsAt: read.date('trialEndsAt'),
+    // A document older than the approval was never approved: it is not shown until it is.
+    listingApproved: read.flag('listingApproved', false),
+    approvedAt: read.dateOrNull('approvedAt'),
+    approvedBy: read.textOrNull('approvedBy'),
+    reviewNote: read.textOrNull('reviewNote'),
     createdAt,
     updatedAt: read.date('updatedAt', createdAt),
   };
@@ -210,6 +215,9 @@ export const parsePrivateSettings: Parser<DistributorPrivateSettings> = (_id, pa
     ownerPhone: read.text('ownerPhone', ''),
     ownerEmail: read.text('ownerEmail', ''),
     plan: read.oneOf('plan', DISTRIBUTOR_PLANS, 'trial'),
+    taxId: read.text('taxId', ''),
+    legalName: read.text('legalName', ''),
+    hydrocarbonsRegistry: read.text('hydrocarbonsRegistry', ''),
     terms: read.acceptance('terms'),
     authorityDeclaredAt: read.dateOrNull('authorityDeclaredAt'),
     createdAt,

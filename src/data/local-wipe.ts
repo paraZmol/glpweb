@@ -8,9 +8,15 @@
 //
 //   hornilla.localData    id of the session whose data may be in the local cache ("epoch").
 //                         Written at sign-in, removed by the wipe that erases that data.
-//   hornilla.pendingWipe  epoch whose wipe was promised and not finished. Written before the
-//                         wipe starts, removed when it succeeds. If it is still there when the
-//                         app starts, the wipe is done before Firestore opens the database.
+//   hornilla.pendingWipe  epoch whose wipe was promised and not finished. Written BEFORE the
+//                         Firebase Auth session is closed (`promiseWipe`), removed when the
+//                         wipe succeeds or when the sign-out fails. If it is still there when
+//                         the app starts, the wipe is done before Firestore opens the database.
+//
+// Two ways are left for a session to end without the promise: the tab dies after Firebase Auth
+// signed out in another way (another device revoked it, the account was deleted), or the
+// browser is closed in that instant. For those, the app looks at `hornilla.localData` when it
+// starts with nobody signed in (`hasSessionData`) and runs the same wipe.
 //
 // A tab erases only while holding the lock AND while `hornilla.localData` is still the epoch it
 // knew: a tab that reacts late finds another epoch (or none) and leaves the data alone.
@@ -112,6 +118,40 @@ export function noteSessionData({ storage, newEpoch }: WipeEnvironment): string 
   const epoch = newEpoch();
   write(storage, SESSION_EPOCH_KEY, epoch);
   return read(storage, SESSION_EPOCH_KEY);
+}
+
+/** The mark of the session whose data the local cache may hold; null when there is none. */
+export function sessionEpochOf({ storage }: WipeEnvironment): string | null {
+  return read(storage, SESSION_EPOCH_KEY);
+}
+
+/** Whether the local cache is marked as holding the data of a session. */
+export function hasSessionData(environment: WipeEnvironment): boolean {
+  return sessionEpochOf(environment) !== null;
+}
+
+/**
+ * Promises the wipe of the session this tab shows. Call it BEFORE closing the Firebase Auth
+ * session: if the tab dies between the two, the next start of the app still erases the data
+ * (PLAN 2.11). Returns what was promised, to hand to `withdrawWipePromise` if the sign-out
+ * fails; null when there is nothing to promise.
+ */
+export function promiseWipe(
+  { storage }: WipeEnvironment,
+  knownEpoch: string | null,
+): string | null {
+  const stored = read(storage, SESSION_EPOCH_KEY);
+  if (isSuperseded(knownEpoch, stored)) return null;
+  const promised = knownEpoch ?? stored ?? UNKNOWN_EPOCH;
+  write(storage, PENDING_WIPE_KEY, promised);
+  return read(storage, PENDING_WIPE_KEY) === promised ? promised : null;
+}
+
+/** Takes back a promise made by `promiseWipe`: the sign-out failed and the session goes on. */
+export function withdrawWipePromise({ storage }: WipeEnvironment, promised: string | null): void {
+  if (promised !== null && read(storage, PENDING_WIPE_KEY) === promised) {
+    remove(storage, PENDING_WIPE_KEY);
+  }
 }
 
 /** True when the cache no longer holds the data this tab meant to erase. */

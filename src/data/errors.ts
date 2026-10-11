@@ -63,6 +63,36 @@ export function toDataError(error: unknown): unknown {
   return error;
 }
 
+/**
+ * Gives an operation that needs the server a time limit. Without one, a write started just as
+ * the connection drops waits for as long as the connection is away and the screen never learns
+ * what became of it. Past the limit it fails with `OfflineError`.
+ * `operation` receives `hasExpired`: check it before the last step, so that work abandoned by
+ * the screen is not carried out later behind its back.
+ */
+export function withDeadline<T>(
+  limitMs: number,
+  operation: (hasExpired: () => boolean) => Promise<T>,
+): Promise<T> {
+  let expired = false;
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      expired = true;
+      reject(new OfflineError());
+    }, limitMs);
+    operation(() => expired).then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 /** Runs a Firestore operation and rethrows its failure as a domain error when there is one. */
 export async function guarded<T>(operation: () => Promise<T>): Promise<T> {
   try {

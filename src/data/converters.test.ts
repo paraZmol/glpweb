@@ -126,14 +126,49 @@ describe('parseControl', () => {
   const CONTROL = { ownerUid: 'owner-a', status: 'trial', trialEndsAt: stamp, createdAt: stamp };
   const path = 'distributors/dist-a/private/control';
 
-  it('reads the plan state of a distributor', () => {
+  it('reads the plan state of a distributor, not approved when the document predates it', () => {
     expect(parseControl('control', path, CONTROL)).toEqual({
       ownerUid: 'owner-a',
       status: 'trial',
       trialEndsAt: AT,
+      listingApproved: false,
+      approvedAt: null,
+      approvedBy: null,
+      reviewNote: null,
       createdAt: AT,
       updatedAt: AT,
     });
+  });
+
+  // PLAN 2.11
+  it('reads an approval with its signature', () => {
+    const approved = { ...CONTROL, listingApproved: true, approvedAt: stamp, approvedBy: 'admin' };
+
+    expect(parseControl('control', path, approved)).toMatchObject({
+      listingApproved: true,
+      approvedAt: AT,
+      approvedBy: 'admin',
+      reviewNote: null,
+    });
+  });
+
+  it('reads the note of a listing that was sent back', () => {
+    const sentBack = { ...CONTROL, listingApproved: false, reviewNote: 'Falta el registro.' };
+
+    expect(parseControl('control', path, sentBack)).toMatchObject({
+      listingApproved: false,
+      reviewNote: 'Falta el registro.',
+    });
+  });
+
+  it.each([
+    ['text', 'true'],
+    ['a number', 1],
+    ['null', null],
+  ])('never reads an approval written as %s as approved', (_case, listingApproved) => {
+    expect(parseControl('control', path, { ...CONTROL, listingApproved }).listingApproved).toBe(
+      false,
+    );
   });
 
   it.each([
@@ -224,6 +259,33 @@ describe('parseAddress', () => {
   it('rejects an address without a valid point', () => {
     const broken = { ...ADDRESS, location: { lat: 0 } };
     expect(() => parseAddress('a0', 'p', broken)).toThrow(CorruptDocumentError);
+  });
+});
+
+describe('parsePrivateSettings — verification data (PLAN 2.11)', () => {
+  const SETTINGS = { ownerUid: 'owner-a', createdAt: stamp };
+
+  it('reads the RUC, the legal name and the record number', () => {
+    const settings = parsePrivateSettings('settings', 'p', {
+      ...SETTINGS,
+      taxId: '20000000001',
+      legalName: 'Gas Demo A S.A.C.',
+      hydrocarbonsRegistry: '00000-074-000000',
+    });
+
+    expect(settings).toMatchObject({
+      taxId: '20000000001',
+      legalName: 'Gas Demo A S.A.C.',
+      hydrocarbonsRegistry: '00000-074-000000',
+    });
+  });
+
+  it('reads them as empty in a document older than the fields', () => {
+    expect(parsePrivateSettings('settings', 'p', SETTINGS)).toMatchObject({
+      taxId: '',
+      legalName: '',
+      hydrocarbonsRegistry: '',
+    });
   });
 });
 

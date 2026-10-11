@@ -25,6 +25,8 @@ export const paths = {
 /** Collection ids for collection-group queries. */
 export const collectionGroups = {
   members: 'members',
+  /** `private/control` and `private/settings` of every distributor. */
+  private: 'private',
 } as const;
 
 export const realtimePaths = {

@@ -13,6 +13,7 @@ import {
   isPopupUnavailable,
   toAuthError,
   toDataError,
+  withDeadline,
 } from './errors';
 
 const firebaseError = (code: string) => Object.assign(new Error(code), { code });
@@ -100,5 +101,41 @@ describe('toDataError and guarded', () => {
   it('rethrows a refused operation as a domain error', async () => {
     const refused = () => Promise.reject(firebaseError('permission-denied'));
     await expect(guarded(refused)).rejects.toBeInstanceOf(PermissionDeniedError);
+  });
+});
+
+// PLAN 2.11 (defect found by flow-tester): an operation that needs the server never waits for ever.
+describe('withDeadline', () => {
+  const never = () => new Promise<never>(() => {});
+
+  it('hands back the result of an operation that answers in time', async () => {
+    await expect(withDeadline(1_000, async () => 'saved')).resolves.toBe('saved');
+  });
+
+  it('fails with OfflineError when the operation does not answer in time', async () => {
+    await expect(withDeadline(5, never)).rejects.toBeInstanceOf(OfflineError);
+  });
+
+  it('passes on the failure of the operation itself', async () => {
+    const refused = new Error('refused');
+
+    await expect(withDeadline(1_000, () => Promise.reject(refused))).rejects.toBe(refused);
+  });
+
+  it('tells the operation that its deadline passed, so it can stop before its last step', async () => {
+    let wasExpiredAtLastStep: boolean | null = null;
+    const slow = async (hasExpired: () => boolean) => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      wasExpiredAtLastStep = hasExpired();
+    };
+
+    await expect(withDeadline(5, slow)).rejects.toBeInstanceOf(OfflineError);
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    expect(wasExpiredAtLastStep).toBe(true);
+  });
+
+  it('does not report an expiry to an operation that is on time', async () => {
+    await expect(withDeadline(1_000, async (hasExpired) => hasExpired())).resolves.toBe(false);
   });
 });

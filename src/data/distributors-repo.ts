@@ -2,6 +2,7 @@ import {
   arrayUnion,
   collection,
   collectionGroup,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -28,11 +29,14 @@ import {
 import type { DistributorProfilePatch, NewDistributor } from '../domain/tenancy/distributor-input';
 import {
   DistributorLimitError,
+  FoundingBlockedError,
   PermissionDeniedError,
   ProfileRequiredError,
   SlugTakenError,
 } from '../domain/tenancy/errors';
+import { hasReadOnlyDistributor, touchesIdentity } from '../domain/tenancy/listing';
 import { trialEndFrom } from '../domain/tenancy/status';
+import type { BusinessVerification } from '../domain/tenancy/verification-input';
 import type {
   Distributor,
   DistributorControl,
@@ -74,7 +78,11 @@ export interface FoundingRequest {
   termsVersion: string;
 }
 
-/** What anyone may read: nothing about the plan, the trial or the founder (PLAN 2.9). */
+/**
+ * What anyone may read once the listing is approved: nothing about the plan, the trial or the
+ * founder (PLAN 2.9). It is born unlisted: `acceptingOrders` stays false until a platform admin
+ * approves it (PLAN 2.11).
+ */
 function publicDocument({ distributor }: FoundingRequest) {
   return {
     name: distributor.name,
@@ -85,7 +93,7 @@ function publicDocument({ distributor }: FoundingRequest) {
     plant: { lat: distributor.plant.lat, lng: distributor.plant.lng },
     coverageRadiusKm: distributor.coverageRadiusKm,
     brandColor: distributor.brandColor,
-    acceptingOrders: true,
+    acceptingOrders: false,
     schedule: { ...DEFAULT_SCHEDULE, days: [...DEFAULT_SCHEDULE.days] },
     maxCylindersPerOrder: DEFAULT_MAX_CYLINDERS_PER_ORDER,
     brands: [],
@@ -96,7 +104,18 @@ function publicDocument({ distributor }: FoundingRequest) {
   };
 }
 
-/** Reads first (slug, then founder profile), then the six writes the rules check as one. */
+/** The control documents of the distributors the founder already owns (one read each). */
+async function ownedControls(tx: Transaction, ownedIds: readonly string[]) {
+  const snapshots = await Promise.all(
+    ownedIds.map((id) => tx.get(controlRef(id).withConverter(controlConverter))),
+  );
+  return snapshots.flatMap((snapshot) => snapshot.data() ?? []);
+}
+
+/**
+ * Reads first (slug, founder profile, then the control document of each distributor it already
+ * owns), then the six writes the rules check as one.
+ */
 async function foundInTransaction(tx: Transaction, id: string, request: FoundingRequest) {
   const { founder, distributor } = request;
   const userRef = doc(db, paths.user(founder.uid));
@@ -107,6 +126,8 @@ async function foundInTransaction(tx: Transaction, id: string, request: Founding
   if (profile.ownedDistributorIds.length >= MAX_DISTRIBUTORS_PER_ACCOUNT) {
     throw new DistributorLimitError(MAX_DISTRIBUTORS_PER_ACCOUNT);
   }
+  const owned = await ownedControls(tx, profile.ownedDistributorIds);
+  if (hasReadOnlyDistributor(owned, request.now)) throw new FoundingBlockedError();
 
   const stamps = { createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
   tx.set(distributorRef(id), publicDocument(request));
@@ -114,6 +135,7 @@ async function foundInTransaction(tx: Transaction, id: string, request: Founding
     ownerUid: founder.uid,
     status: 'trial',
     trialEndsAt: Timestamp.fromDate(trialEndFrom(request.now, TRIAL_DAYS)),
+    listingApproved: false,
     ...stamps,
   });
   tx.set(slugRef(distributor.slug), { distributorId: id, createdAt: serverTimestamp() });
@@ -132,6 +154,9 @@ async function foundInTransaction(tx: Transaction, id: string, request: Founding
     ownerPhone: distributor.ownerPhone,
     ownerEmail: founder.email,
     plan: 'trial',
+    taxId: distributor.taxId,
+    legalName: distributor.legalName,
+    hydrocarbonsRegistry: distributor.hydrocarbonsRegistry,
     terms: { version: request.termsVersion, acceptedAt: serverTimestamp() },
     authorityDeclaredAt: serverTimestamp(),
     ...stamps,
@@ -144,12 +169,32 @@ async function slugExists(slug: string): Promise<boolean> {
 }
 
 /**
+ * Why the rules refused a founding the transaction had found acceptable: another request of the
+ * same moment got there first. Two races are possible and each has its own answer (2 reads):
+ * the link was taken by somebody else, or another tab of this account founded the distributor
+ * that filled its cap. Anything else stays a plain refusal.
+ */
+async function explainRefusal({ founder, distributor }: FoundingRequest): Promise<Error | null> {
+  if (await slugExists(distributor.slug)) return new SlugTakenError(distributor.slug);
+  const userRef = doc(db, paths.user(founder.uid)).withConverter(userProfileConverter);
+  const owned = (await getDoc(userRef)).data()?.ownedDistributorIds ?? [];
+  if (owned.length >= MAX_DISTRIBUTORS_PER_ACCOUNT) {
+    return new DistributorLimitError(MAX_DISTRIBUTORS_PER_ACCOUNT);
+  }
+  return null;
+}
+
+/**
  * Founds a distributor (PLAN 2.2): public profile, control document, slug, owner member, private
- * settings and the founder's own list, atomically. Returns the new distributor id.
- * Throws `SlugTakenError`, `ProfileRequiredError`, `DistributorLimitError`, or
+ * settings and the founder's own list, atomically. Returns the new distributor id. The id is
+ * the one the SDK generates: the rules refuse any other shape (PLAN 2.11).
+ * The distributor is born unlisted and waiting for the review of a platform admin.
+ * Throws `SlugTakenError`, `ProfileRequiredError`, `DistributorLimitError` (also when another
+ * tab of the same account reached the cap at the same moment), `FoundingBlockedError`, or
  * `PermissionDeniedError` when the rules refuse it (e-mail not verified, invalid data, a device
  * clock far from real time).
- * Cost: 2 reads + 6 writes, plus 12 lookups by the rules over the 6 documents of the batch.
+ * Cost: 2 reads + 1 per distributor already owned + 6 writes, plus up to 14 lookups by the
+ * rules over the documents of the batch.
  */
 export async function createDistributor(request: FoundingRequest): Promise<string> {
   const id = doc(collection(db, paths.distributors())).id;
@@ -158,10 +203,9 @@ export async function createDistributor(request: FoundingRequest): Promise<strin
     return id;
   } catch (error) {
     const translated = toDataError(error);
-    // Losing a race for the slug surfaces as a refused write: say what really happened.
-    const lostSlugRace =
-      translated instanceof PermissionDeniedError && (await slugExists(request.distributor.slug));
-    throw lostSlugRace ? new SlugTakenError(request.distributor.slug) : translated;
+    if (!(translated instanceof PermissionDeniedError)) throw translated;
+    // Losing a race surfaces as a refused write: say what really happened.
+    throw (await explainRefusal(request).catch(() => null)) ?? translated;
   }
 }
 
@@ -170,7 +214,12 @@ export function isSlugAvailable(slug: string): Promise<boolean> {
   return guarded(async () => !(await slugExists(slug)));
 }
 
-/** The public profile, for anyone. One read; null if unknown. */
+/**
+ * The public profile. Anyone may read it while the distributor takes orders; one that does not
+ * (waiting for its review, suspended, trial over) is readable only by its staff and by platform
+ * admins, and throws `PermissionDeniedError` for everybody else (PLAN 2.11).
+ * One read (plus one by the rules for the staff of an unlisted one); null if it does not exist.
+ */
 export function getDistributor(d: string): Promise<PublicDistributor | null> {
   return guarded(async () => {
     const snapshot = await getDoc(distributorRef(d).withConverter(publicDistributorConverter));
@@ -196,16 +245,26 @@ export function getDistributorControl(d: string): Promise<DistributorControl | n
 export async function getStaffDistributor(d: string): Promise<Distributor | null> {
   const [profile, control] = await Promise.all([getDistributor(d), getDistributorControl(d)]);
   if (!profile || !control) return null;
-  const { ownerUid, status, trialEndsAt } = control;
-  return { ...profile, ownerUid, status, trialEndsAt };
+  const { ownerUid, status, trialEndsAt, listingApproved, reviewNote } = control;
+  return { ...profile, ownerUid, status, trialEndsAt, listingApproved, reviewNote };
 }
 
-/** Resolves `/d/{slug}`: slug document, then the distributor. Two reads; null if unknown. */
-export function getDistributorBySlug(slug: string): Promise<PublicDistributor | null> {
-  return guarded(async () => {
-    const target: unknown = (await getDoc(slugRef(slug))).data()?.distributorId;
-    return typeof target === 'string' ? getDistributor(target) : null;
-  });
+/**
+ * Resolves `/d/{slug}`: slug document, then the distributor. Two reads. Null when no distributor
+ * has that link AND when the one that has it is not open to the public (not approved yet,
+ * suspended, trial over): a visitor cannot tell the two apart, and learns neither its name nor
+ * its phones (PLAN 2.11). Its own staff and platform admins still get it.
+ */
+export async function getDistributorBySlug(slug: string): Promise<PublicDistributor | null> {
+  const link = await guarded(() => getDoc(slugRef(slug)));
+  const id: unknown = link.data()?.distributorId;
+  if (typeof id !== 'string') return null;
+  try {
+    return await getDistributor(id);
+  } catch (error) {
+    if (error instanceof PermissionDeniedError) return null;
+    throw error;
+  }
 }
 
 /**
@@ -237,32 +296,54 @@ function profileDocument(patch: DistributorProfilePatch): Record<string, unknown
 }
 
 /**
- * A new name goes to the public profile and, in the same batch, to the copy every member keeps
- * of it (up to the cap of the staff list; anyone beyond it corrects its own copy the next time
- * it opens the panel). Costs one read and one write per member.
+ * An edit of the name or of a phone (PLAN 2.11) is one batch: the edit itself, which also
+ * unlists the distributor; the listing back to review in the control document; and, for a new
+ * name, the copy every member keeps of it (up to the cap of the staff list; anyone beyond it
+ * corrects its own copy the next time it opens the panel).
+ * Cost: 2 writes, plus one read and one write per member when the name changes. The rules add 3
+ * lookups for the profile, 3 for the control document and 2 per member.
  */
-async function renameDistributor(d: string, document: Record<string, unknown>): Promise<void> {
-  const staff = query(collection(db, paths.members(d)), limit(MEMBERS_QUERY_LIMIT));
-  const members = await getDocs(staff);
+async function editIdentity(d: string, document: Record<string, unknown>): Promise<void> {
   const batch = writeBatch(db);
-  batch.update(distributorRef(d), document);
-  for (const member of members.docs) {
-    batch.update(member.ref, { distributorName: document.name, updatedAt: serverTimestamp() });
+  batch.update(distributorRef(d), { ...document, acceptingOrders: false });
+  batch.update(controlRef(d), {
+    listingApproved: false,
+    approvedAt: deleteField(),
+    approvedBy: deleteField(),
+    updatedAt: serverTimestamp(),
+  });
+  if (document.name !== undefined) {
+    const staff = query(collection(db, paths.members(d)), limit(MEMBERS_QUERY_LIMIT));
+    for (const member of (await getDocs(staff)).docs) {
+      batch.update(member.ref, { distributorName: document.name, updatedAt: serverTimestamp() });
+    }
   }
   await batch.commit();
 }
 
-/** Owner edit of the public profile. `patch` must come from `prepareProfilePatch`. */
-export function updateDistributorProfile(d: string, patch: DistributorProfilePatch): Promise<void> {
+/**
+ * Owner edit of the public profile. `patch` must come from `prepareProfilePatch` and carry only
+ * the fields that changed: a patch with `name`, `contactPhone` or `whatsapp` sends the listing
+ * back to review and takes the distributor out of the search until a platform admin approves it
+ * again. Resolves to true in that case.
+ */
+export async function updateDistributorProfile(
+  d: string,
+  patch: DistributorProfilePatch,
+): Promise<boolean> {
   const document = { ...profileDocument(patch), updatedAt: serverTimestamp() };
-  if (patch.name !== undefined) return guarded(() => renameDistributor(d, document));
-  return guarded(() => updateDoc(distributorRef(d), document));
+  const isBackInReview = touchesIdentity(patch);
+  await guarded(() =>
+    isBackInReview ? editIdentity(d, document) : updateDoc(distributorRef(d), document),
+  );
+  return isBackInReview;
 }
 
 /**
  * Writes the public "takes orders" flag. The rules accept it only when it equals what the
- * control document says at that moment, and only from the staff or a platform admin: this is how
- * a trial that ran out stops being listed (nobody else flips the flag when the date passes).
+ * control document says at that moment (it may operate and its listing is approved), and only
+ * from the staff or a platform admin: this is how a trial that ran out stops being listed
+ * (nobody else flips the flag when the date passes).
  */
 export function syncAcceptingOrders(d: string, acceptingOrders: boolean): Promise<void> {
   return guarded(() =>
@@ -277,7 +358,10 @@ export function syncMemberDistributorName(d: string, uid: string, name: string):
   );
 }
 
-/** Founder, co-owners and platform admins only. */
+/**
+ * The founder's contact data and the verification data of the business. The founder and
+ * platform admins only: not even a co-owner (PLAN 2.11).
+ */
 export function getDistributorPrivateSettings(
   d: string,
 ): Promise<DistributorPrivateSettings | null> {
@@ -285,6 +369,21 @@ export function getDistributorPrivateSettings(
     const ref = doc(db, paths.distributorPrivateSettings(d));
     return (await getDoc(ref.withConverter(privateSettingsConverter))).data() ?? null;
   });
+}
+
+/**
+ * Founder only, and only while the listing is not approved: corrects the verification data a
+ * platform admin sent back. `verification` must come from `prepareBusinessVerification`.
+ */
+export function updateVerificationData(d: string, verification: BusinessVerification) {
+  return guarded(() =>
+    updateDoc(doc(db, paths.distributorPrivateSettings(d)), {
+      taxId: verification.taxId,
+      legalName: verification.legalName,
+      hydrocarbonsRegistry: verification.hydrocarbonsRegistry,
+      updatedAt: serverTimestamp(),
+    }),
+  );
 }
 
 /**

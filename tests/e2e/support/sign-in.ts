@@ -15,6 +15,7 @@ export const SEED_HOME_PATH: Record<SeedUserKey, string> = {
   driverB: '/reparto',
   ownerC: '/central',
   ownerD: '/central',
+  ownerE: '/central',
   customer: '/inicio',
   admin: '/plataforma',
   unverified: '/verificar-correo',

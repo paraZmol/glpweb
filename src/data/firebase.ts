@@ -32,7 +32,7 @@ export const localCacheDatabaseName = hasIndexedDb ? firestoreDatabaseName(proje
 // A sign-out that could not erase the local cache left a mark (src/data/local-wipe.ts): the
 // database is deleted here, before Firestore opens it. If it still cannot be deleted, this page
 // load works from memory, so what the previous session left is never read.
-const startupWipe =
+export const startupWipe =
   localCacheDatabaseName === null
     ? 'none'
     : await runStartupWipe(browserWipeEnvironment(), localCacheDatabaseName);

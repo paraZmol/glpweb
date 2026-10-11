@@ -23,6 +23,9 @@ const COMPLETE: FoundingForm = {
   name: 'Gas Demo Centro',
   slug: 'gas-demo-centro',
   contactPhone: '900 000 061',
+  taxId: '20-00000000-1',
+  legalName: 'Gas Demo Centro S.A.C.',
+  hydrocarbonsRegistry: '00000-074-000008',
   latitude: '-8.1',
   longitude: '-79.03',
   acceptTerms: true,
@@ -84,9 +87,12 @@ describe('validateFoundingStep', () => {
 
     expect(Object.keys(validateFoundingStep('business', empty)).sort()).toEqual([
       'contactPhone',
+      'hydrocarbonsRegistry',
+      'legalName',
       'name',
       'ownerPhone',
       'slug',
+      'taxId',
     ]);
     expect(Object.keys(validateFoundingStep('location', empty))).toEqual(['plant']);
     expect(validateFoundingStep('brand', empty)).toEqual({});
@@ -102,6 +108,10 @@ describe('validateFoundingStep', () => {
     ['business', { slug: 'central' }, 'slug'],
     ['business', { contactPhone: '12345' }, 'contactPhone'],
     ['business', { whatsapp: '800000000' }, 'whatsapp'],
+    // PLAN 2.11: the verification data belongs to the first step.
+    ['business', { taxId: '20000000002' }, 'taxId'],
+    ['business', { legalName: '' }, 'legalName'],
+    ['business', { hydrocarbonsRegistry: '<1>' }, 'hydrocarbonsRegistry'],
     ['business', { ownerPhone: '' }, 'ownerPhone'],
     ['location', { latitude: '' }, 'plant'],
     ['location', { latitude: 'doce' }, 'plant'],

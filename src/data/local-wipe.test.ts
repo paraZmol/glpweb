@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
   firestoreDatabaseName,
+  hasSessionData,
   type KeyValueStorage,
   keysWithPrefix,
   noteSessionData,
   PENDING_WIPE_KEY,
+  promiseWipe,
   removeKeysWithPrefix,
   runStartupWipe,
   SESSION_EPOCH_KEY,
   type WipeEnvironment,
   wipeSessionData,
+  withdrawWipePromise,
 } from './local-wipe';
 
 const DATABASE = firestoreDatabaseName('demo-glpweb');
@@ -265,5 +268,120 @@ describe('runStartupWipe', () => {
 
     expect(outcomes).toEqual(['wiped', 'none']);
     expect(browser.deleted).toHaveLength(1);
+  });
+});
+
+// PLAN 2.11: the promise is made before the Firebase Auth session is closed.
+describe('promising the wipe before signing out', () => {
+  const noClose = () => Promise.resolve();
+
+  it('leaves the mark of the session about to end, before anything is erased', () => {
+    const browser = fakeBrowser();
+    const epoch = noteSessionData(browser.tab());
+
+    const promised = promiseWipe(browser.tab(), epoch);
+
+    expect(promised).toBe(epoch);
+    expect(browser.storage.getItem(PENDING_WIPE_KEY)).toBe(epoch);
+    expect(browser.deleted).toEqual([]);
+  });
+
+  it('is finished by the next start when the tab dies right after signing out', async () => {
+    const browser = fakeBrowser();
+    promiseWipe(browser.tab(), noteSessionData(browser.tab()));
+
+    // The tab is gone: no wipe ran. The app starts again.
+    expect(await runStartupWipe(browser.tab(), DATABASE)).toBe('wiped');
+
+    expect(browser.deleted).toEqual([DATABASE]);
+    expect(browser.storage.getItem(PENDING_WIPE_KEY)).toBeNull();
+    expect(hasSessionData(browser.tab())).toBe(false);
+  });
+
+  it('is taken back when the sign-out fails: the session and its data go on', async () => {
+    const browser = fakeBrowser();
+    const epoch = noteSessionData(browser.tab());
+    const promised = promiseWipe(browser.tab(), epoch);
+
+    withdrawWipePromise(browser.tab(), promised);
+
+    expect(browser.storage.getItem(PENDING_WIPE_KEY)).toBeNull();
+    expect(await runStartupWipe(browser.tab(), DATABASE)).toBe('none');
+    expect(browser.deleted).toEqual([]);
+    expect(browser.storage.getItem(SESSION_EPOCH_KEY)).toBe(epoch);
+  });
+
+  it('does not take back a promise somebody else made', () => {
+    const browser = fakeBrowser({ [PENDING_WIPE_KEY]: 'epoch-of-another-tab' });
+
+    withdrawWipePromise(browser.tab(), 'epoch-1');
+    withdrawWipePromise(browser.tab(), null);
+
+    expect(browser.storage.getItem(PENDING_WIPE_KEY)).toBe('epoch-of-another-tab');
+  });
+
+  it('promises nothing over the data of a newer session', () => {
+    const browser = fakeBrowser({ [SESSION_EPOCH_KEY]: 'epoch-newer' });
+
+    expect(promiseWipe(browser.tab(), 'epoch-older')).toBeNull();
+    expect(browser.storage.getItem(PENDING_WIPE_KEY)).toBeNull();
+  });
+
+  it('names the stored session when the tab never learned its own', () => {
+    const browser = fakeBrowser({ [SESSION_EPOCH_KEY]: 'epoch-stored' });
+
+    expect(promiseWipe(browser.tab(), null)).toBe('epoch-stored');
+  });
+
+  it('promises nothing when storage is blocked', () => {
+    const blocked: WipeEnvironment = { ...fakeBrowser().tab(), storage: null };
+
+    expect(promiseWipe(blocked, 'epoch-1')).toBeNull();
+    expect(hasSessionData(blocked)).toBe(false);
+  });
+
+  it('does not get in the way of the wipe that follows a normal sign-out', async () => {
+    const browser = fakeBrowser();
+    const epoch = noteSessionData(browser.tab());
+    promiseWipe(browser.tab(), epoch);
+
+    const outcome = await wipeSessionData(browser.tab(), {
+      databaseName: DATABASE,
+      knownEpoch: epoch,
+      closeDatabase: noClose,
+    });
+
+    expect(outcome).toBe('wiped');
+    expect(browser.storage.getItem(PENDING_WIPE_KEY)).toBeNull();
+  });
+});
+
+// PLAN 2.11: a start with nobody signed in over the mark of a session.
+describe('leftovers of a session that ended without its clean-up', () => {
+  it('are told by the mark of the session', () => {
+    const browser = fakeBrowser();
+    expect(hasSessionData(browser.tab())).toBe(false);
+
+    noteSessionData(browser.tab());
+
+    expect(hasSessionData(browser.tab())).toBe(true);
+  });
+
+  it('are erased by a tab that never saw that session, and survive a blocked attempt', async () => {
+    const browser = fakeBrowser({ [SESSION_EPOCH_KEY]: 'epoch-left' });
+    const sweep = () =>
+      wipeSessionData(browser.tab(), {
+        databaseName: DATABASE,
+        knownEpoch: 'epoch-left',
+        closeDatabase: () => Promise.resolve(),
+      });
+    browser.blockDeletion();
+
+    expect(await sweep()).toBe('deferred');
+    // The promise it left names that same session, so the next start finishes the job.
+    expect(browser.storage.getItem(PENDING_WIPE_KEY)).toBe('epoch-left');
+    browser.allowDeletion();
+    expect(await runStartupWipe(browser.tab(), DATABASE)).toBe('wiped');
+    expect(hasSessionData(browser.tab())).toBe(false);
   });
 });

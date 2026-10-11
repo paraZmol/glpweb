@@ -47,21 +47,36 @@ function requireUser(): User {
 export interface Registration {
   email: string;
   password: string;
-  displayName: string;
 }
 
-/** Creates the account, stores the name and sends the verification e-mail. */
-export function registerWithEmail({
-  email,
-  password,
-  displayName,
-}: Registration): Promise<Session> {
+/**
+ * Creates the sign-in account and sends the verification e-mail. Nothing else is stored, not
+ * even the name: until the address is verified nobody has proved it is theirs (PLAN 2.11).
+ */
+export function registerWithEmail({ email, password }: Registration): Promise<Session> {
   return translating(async () => {
     const { user } = await createUserWithEmailAndPassword(auth, email, password);
-    await updateProfile(user, { displayName });
     await sendEmailVerification(user);
     return toSession(user);
   });
+}
+
+/**
+ * Sets the name Firebase Auth keeps for the signed-in account. Only the account profile is the
+ * source of the name; this copy is what the session carries before the profile is read.
+ */
+export function setSessionDisplayName(displayName: string): Promise<void> {
+  return translating(() => updateProfile(requireUser(), { displayName }));
+}
+
+/**
+ * Google hands over a profile photo with every sign-in and Firebase Auth keeps its address in
+ * the account. The app never uses it, so it is not kept (PLAN 2.11, privacy policy §2). A
+ * failure here must not break the sign-in: the next one tries again.
+ */
+async function dropProviderPhoto(user: User): Promise<void> {
+  if (user.photoURL === null) return;
+  await updateProfile(user, { photoURL: null }).catch(() => {});
 }
 
 export function signInWithEmail(email: string, password: string): Promise<Session> {
@@ -82,6 +97,7 @@ export function signInWithGoogle(): Promise<Session | null> {
   return translating(async () => {
     try {
       const { user } = await signInWithPopup(auth, provider);
+      await dropProviderPhoto(user);
       return toSession(user);
     } catch (error) {
       if (!isPopupUnavailable(error)) throw error;
@@ -95,6 +111,7 @@ export function signInWithGoogle(): Promise<Session | null> {
 export function completeRedirectSignIn(): Promise<Session | null> {
   return translating(async () => {
     const result = await getRedirectResult(auth);
+    if (result) await dropProviderPhoto(result.user);
     return result ? toSession(result.user) : null;
   });
 }

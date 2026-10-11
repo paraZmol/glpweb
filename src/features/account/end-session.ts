@@ -1,6 +1,12 @@
 import { signOutSession } from '../../data/auth-repo';
-import { hasUnsentWrites, wipeLocalSessionData } from '../../data/session-data';
+import {
+  hasUnsentWrites,
+  promiseLocalWipe,
+  wipeLocalSessionData,
+  withdrawLocalWipePromise,
+} from '../../data/session-data';
 import { forgetLastLocation } from '../../lib/last-location';
+import { forgetPendingProfile } from '../auth/pending-profile';
 import { forgetRememberedDistributors } from '../tenancy/selection-storage';
 
 /** How long a sign-out waits for changes made without a connection to reach the server. */
@@ -34,6 +40,8 @@ async function clearLocalSessionData(): Promise<void> {
   forgetRememberedDistributors();
   // The last place searched from is a location: it does not outlive the session (PLAN 2.6).
   forgetLastLocation();
+  // What a registration typed and never turned into a profile (PLAN 2.11).
+  forgetPendingProfile();
   await wipeLocalSessionData();
 }
 
@@ -42,16 +50,22 @@ async function clearLocalSessionData(): Promise<void> {
  * Firebase Auth session, the local copy of its data and the remembered distributor. The mark
  * of the storage notice stays. AFTER `ended` THE PAGE MUST BE RELOADED (`restartApp`): the
  * connection to the database is closed for good in this tab.
- * Throws `AuthError` if Firebase could not sign out; nothing is cleared in that case.
+ * The promise to erase the local data is written BEFORE the Firebase Auth session is closed
+ * (PLAN 2.11): if the tab dies right after signing out, the next start of the app erases it.
+ * Throws `AuthError` if Firebase could not sign out; nothing is cleared in that case and the
+ * promise is taken back.
  */
 export async function endSession(options: EndSessionOptions = {}): Promise<EndSessionOutcome> {
   const isLosingChanges = !options.discardUnsent && (await hasUnsentWrites(UNSENT_CHANGES_WAIT_MS));
   if (isLosingChanges) return 'unsentChanges';
   isEnding = true;
+  let promised: string | null = null;
   try {
     await options.beforeSignOut?.();
+    promised = promiseLocalWipe();
     await signOutSession();
   } catch (error) {
+    withdrawLocalWipePromise(promised);
     isEnding = false;
     throw error;
   }
@@ -71,7 +85,8 @@ export function restartApp(path?: string): void {
 
 /**
  * The session ended without `endSession`: signed out in another tab, account disabled or
- * deleted, token revoked, or a screen that only closed Firebase Auth. The local data is cleared
+ * deleted, token revoked, a screen that only closed Firebase Auth, or (seen when the app
+ * starts) a tab that died before finishing its clean-up. The local data is cleared
  * the same way and the page reloads, which sends a private screen to "ingresar". Changes made
  * offline and never sent are lost: without a session they could not be sent anyway.
  * Called by the session store; screens do not call it.

@@ -23,7 +23,6 @@ import {
 const NEW_ACCOUNT = {
   email: 'registro-nuevo@example.com',
   password: SEED_PASSWORD,
-  displayName: 'L. Registro',
 };
 const TOO_SHORT = '123';
 
@@ -46,7 +45,8 @@ describe('auth repository against the emulator', () => {
     expect(session).toMatchObject({
       email: NEW_ACCOUNT.email,
       emailVerified: false,
-      displayName: NEW_ACCOUNT.displayName,
+      // PLAN 2.11: not even the name is stored before the e-mail is verified.
+      displayName: null,
       providerIds: ['password'],
     });
     expect(currentSession()?.uid).toBe(session.uid);

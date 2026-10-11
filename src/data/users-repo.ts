@@ -6,6 +6,7 @@ import {
   getDocs,
   limit,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -17,10 +18,10 @@ import {
 } from '../domain/tenancy/account-input';
 import type { LegalVersions } from '../domain/legal/versions';
 import { MAX_ADDRESSES_PER_USER } from '../domain/tenancy/constants';
-import { AddressLimitError } from '../domain/tenancy/errors';
+import { AddressLimitError, ProfileRequiredError } from '../domain/tenancy/errors';
 import type { Address, UserProfile } from '../domain/tenancy/types';
 import { addressConverter, userProfileConverter } from './converters';
-import { guarded } from './errors';
+import { guarded, withDeadline } from './errors';
 import { db } from './firebase';
 import { paths } from './paths';
 
@@ -45,7 +46,8 @@ function acceptanceFields({ termsVersion, privacyVersion }: LegalVersions) {
 /**
  * Creates the profile together with the acceptance of the terms and of the privacy policy: the
  * rules refuse a profile without both, so only call this after the person actually accepted
- * them. Fails with `PermissionDeniedError` if the profile already exists.
+ * them. Fails with `PermissionDeniedError` if the profile already exists, or if the e-mail of
+ * the account is not verified yet (PLAN 2.11: nothing is stored before that).
  */
 export function createUserProfile(
   uid: string,
@@ -74,13 +76,36 @@ export function acceptLegalVersions(uid: string, versions: LegalVersions): Promi
   );
 }
 
-export function updateUserProfile(uid: string, profile: PreparedUserProfile): Promise<void> {
+/** How long saving the profile waits for the server before giving up. */
+export const PROFILE_SAVE_DEADLINE_MS = 8_000;
+
+/**
+ * Saves name and phone, and only resolves once the server has them. It goes through a
+ * transaction on purpose: a plain write made while the connection is away is queued by the SDK
+ * and sent whenever the connection returns, while the screen waits without an answer. A
+ * transaction is never queued. If the server does not answer within `deadlineMs` it throws
+ * `OfflineError` and nothing is left waiting to be sent: an attempt that reaches the server
+ * after the deadline stops before writing.
+ * Throws `ProfileRequiredError` when the account has no profile. Cost: 1 read + 1 write.
+ */
+export function updateUserProfile(
+  uid: string,
+  profile: PreparedUserProfile,
+  deadlineMs: number = PROFILE_SAVE_DEADLINE_MS,
+): Promise<void> {
   return guarded(() =>
-    updateDoc(userRef(uid), {
-      displayName: profile.displayName,
-      phone: profile.phone,
-      updatedAt: serverTimestamp(),
-    }),
+    withDeadline(deadlineMs, (hasExpired) =>
+      runTransaction(db, async (tx) => {
+        const current = await tx.get(userRef(uid));
+        if (!current.exists()) throw new ProfileRequiredError();
+        if (hasExpired()) throw new Error('The save was abandoned: its deadline passed');
+        tx.update(userRef(uid), {
+          displayName: profile.displayName,
+          phone: profile.phone,
+          updatedAt: serverTimestamp(),
+        });
+      }),
+    ),
   );
 }
 

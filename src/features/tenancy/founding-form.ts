@@ -22,6 +22,10 @@ export interface FoundingForm {
   whatsapp: string;
   ownerName: string;
   ownerPhone: string;
+  /** Business verification data (PLAN 2.11): required, private, reviewed by the platform. */
+  taxId: string;
+  legalName: string;
+  hydrocarbonsRegistry: string;
   addressLine: string;
   latitude: string;
   longitude: string;
@@ -36,7 +40,16 @@ export type FoundingField = Exclude<keyof FoundingForm, 'latitude' | 'longitude'
 export type FoundingErrors = Partial<Record<FoundingField | 'form', string>>;
 
 const STEP_FIELDS: Record<FoundingStep, readonly FoundingField[]> = {
-  business: ['name', 'slug', 'contactPhone', 'whatsapp', 'ownerPhone'],
+  business: [
+    'name',
+    'slug',
+    'contactPhone',
+    'whatsapp',
+    'ownerPhone',
+    'taxId',
+    'legalName',
+    'hydrocarbonsRegistry',
+  ],
   location: ['plant', 'addressLine', 'coverageRadiusKm'],
   brand: ['brandColor'],
   review: ['acceptTerms', 'declaresAuthority'],
@@ -61,6 +74,9 @@ export function emptyFoundingForm(owner: {
     whatsapp: '',
     ownerName: owner.displayName,
     ownerPhone: owner.phone ?? '',
+    taxId: '',
+    legalName: '',
+    hydrocarbonsRegistry: '',
     addressLine: '',
     latitude: '',
     longitude: '',
@@ -94,6 +110,9 @@ export function toFoundingInput(form: FoundingForm): NewDistributorInput {
     brandColor: form.brandColor,
     ownerName: form.ownerName,
     ownerPhone: form.ownerPhone,
+    taxId: form.taxId,
+    legalName: form.legalName,
+    hydrocarbonsRegistry: form.hydrocarbonsRegistry,
   };
 }
 

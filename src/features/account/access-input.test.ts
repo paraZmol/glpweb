@@ -22,6 +22,7 @@ function readyAs(membership: Member): CurrentDistributor {
     membership,
     distributor: { id: membership.distributorId } as Distributor,
     isWritable: true,
+    listing: 'listed',
     select: () => {},
     reload,
   };

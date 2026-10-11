@@ -10,6 +10,10 @@ import { TERMS_VERSION } from '../../domain/legal/versions';
 import { EmailNotVerifiedError, InvalidInputError } from '../../domain/tenancy/errors';
 import { checkConsent, collectIssues } from '../../domain/tenancy/field-checks';
 import { normalizeSlug, type SlugIssue, validateSlug } from '../../domain/tenancy/slug';
+import {
+  type BusinessVerificationInput,
+  prepareBusinessVerification,
+} from '../../domain/tenancy/verification-input';
 import { forgetVisibleDistributors } from './visible-distributors';
 
 /** The sign-up form plus the two declarations the founder must tick (terms §2, PLAN 2.7). */
@@ -25,10 +29,16 @@ export interface FoundingInput extends NewDistributorInput {
 
 /**
  * Founds a distributor for the signed-in account (PLAN 2.2) and returns its id. The account
- * becomes its owner and the distributor starts a free trial. The acceptance of the terms and
- * the authority declaration are stored, with server time, in its private settings.
+ * becomes its owner and the distributor starts a free trial. The acceptance of the terms, the
+ * authority declaration and the verification data of the business (`taxId`, `legalName`,
+ * `hydrocarbonsRegistry`: required, never public) are stored in its private settings.
+ * THE DISTRIBUTOR IS NOT VISIBLE YET (PLAN 2.11): it is born waiting for the review of a
+ * platform admin; until then it is out of the search and `/d/{slug}` answers "not found" to
+ * everybody but its own staff. `useCurrentDistributor()` reports it as `listing: 'inReview'`.
  * Throws `EmailNotVerifiedError`, `InvalidInputError` (per-field issues), `SlugTakenError`,
- * `DistributorLimitError`, `ProfileRequiredError`, `PermissionDeniedError` or `OfflineError`.
+ * `DistributorLimitError`, `FoundingBlockedError` (the account owns a distributor that is
+ * suspended, past due or with its trial over), `ProfileRequiredError`, `PermissionDeniedError`
+ * or `OfflineError`.
  */
 export async function foundDistributor(session: Session, input: FoundingInput): Promise<string> {
   if (!canFoundDistributor(session) || session.email === null) throw new EmailNotVerifiedError();
@@ -66,18 +76,51 @@ export async function checkSlug(raw: string): Promise<SlugCheck> {
   return { status: isFree ? 'available' : 'taken', slug };
 }
 
+export interface ProfileEditOutcome {
+  /**
+   * True when the edit touched the name or a phone: the listing went back to review and the
+   * distributor is out of the search until a platform admin approves it again (PLAN 2.11).
+   */
+  isBackInReview: boolean;
+}
+
 /**
- * Owner edit of the public profile. Throws `InvalidInputError`, or `PermissionDeniedError` when
- * the account is not an owner or the distributor is read-only (suspended, trial over).
+ * Owner edit of the public profile. PASS ONLY THE FIELDS THAT CHANGED: a patch that carries
+ * `name`, `contactPhone` or `whatsapp` sends the listing back to review (see `touchesIdentity`
+ * in the domain to warn the person before saving). Throws `InvalidInputError`, or
+ * `PermissionDeniedError` when the account is not an owner or the distributor is read-only
+ * (suspended, trial over).
  */
 export async function editDistributorProfile(
   distributorId: string,
   patch: DistributorProfilePatch,
-): Promise<void> {
+): Promise<ProfileEditOutcome> {
   const prepared = prepareProfilePatch(patch);
   if (!prepared.ok) throw new InvalidInputError(prepared.issues);
-  await distributorsRepo.updateDistributorProfile(distributorId, prepared.value);
+  const isBackInReview = await distributorsRepo.updateDistributorProfile(
+    distributorId,
+    prepared.value,
+  );
   forgetVisibleDistributors();
+  return { isBackInReview };
 }
 
+/**
+ * The founder's contact data and the verification data of the business. Only the founder (and
+ * platform admins) can read it: a co-owner gets `PermissionDeniedError`.
+ */
 export const getPrivateSettings = distributorsRepo.getDistributorPrivateSettings;
+
+/**
+ * Founder only, while the listing waits for its review: corrects the RUC, the legal name or the
+ * record number a platform admin sent back. Once approved they cannot be changed from the app.
+ * Throws `InvalidInputError` or `PermissionDeniedError`.
+ */
+export async function correctVerificationData(
+  distributorId: string,
+  input: BusinessVerificationInput,
+): Promise<void> {
+  const prepared = prepareBusinessVerification(input);
+  if (!prepared.ok) throw new InvalidInputError(prepared.issues);
+  await distributorsRepo.updateVerificationData(distributorId, prepared.value);
+}

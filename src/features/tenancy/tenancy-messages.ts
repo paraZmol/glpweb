@@ -3,6 +3,7 @@ import {
   AddressLimitError,
   DistributorLimitError,
   EmailNotVerifiedError,
+  FoundingBlockedError,
   InvalidInputError,
   OfflineError,
   PermissionDeniedError,
@@ -30,6 +31,13 @@ const FIELD_MESSAGES: Record<string, string> = {
   'whatsapp:invalid': 'Escribe un celular de 9 dígitos que empiece en 9.',
   'ownerPhone:invalid': 'Escribe un celular de 9 dígitos que empiece en 9.',
   'phone:invalid': 'Escribe un celular de 9 dígitos que empiece en 9.',
+  'taxId:required': 'Escribe el RUC del negocio.',
+  'taxId:invalid': 'Revisa el RUC: son 11 dígitos y alguno no coincide.',
+  'legalName:required': 'Escribe la razón social o el nombre del titular, como figura en el RUC.',
+  'hydrocarbonsRegistry:required': 'Escribe el número de ficha del Registro de Hidrocarburos.',
+  'hydrocarbonsRegistry:invalid':
+    'Escribe el número de ficha tal como figura: solo letras, números, guiones, puntos o barras.',
+  'reviewNote:tooLong': 'La nota es demasiado larga.',
   'plant:invalid': 'Marca la ubicación de la planta en el mapa.',
   'location:invalid': 'Marca la ubicación en el mapa.',
   'brandColor:invalid': 'Elige un color válido.',
@@ -59,6 +67,9 @@ export function describeTenancyError(error: unknown): string {
   }
   if (error instanceof DistributorLimitError) {
     return `Una cuenta puede registrar hasta ${error.limit} distribuidoras.`;
+  }
+  if (error instanceof FoundingBlockedError) {
+    return 'Una de tus distribuidoras está en solo lectura. Regularízala antes de registrar otra.';
   }
   if (error instanceof AddressLimitError) {
     return `Puedes guardar hasta ${error.limit} direcciones. Borra una para agregar otra.`;

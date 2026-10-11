@@ -4,8 +4,14 @@ import { seedEmulators } from '../../tests/seed/seed';
 import { CURRENT_LEGAL_VERSIONS, PRIVACY_VERSION, TERMS_VERSION } from '../domain/legal/versions';
 import { ADDRESS_SLOT_IDS } from '../domain/tenancy/account-input';
 import { MAX_ADDRESSES_PER_USER } from '../domain/tenancy/constants';
-import { AddressLimitError, PermissionDeniedError } from '../domain/tenancy/errors';
-import { registerWithEmail, signInWithEmail, signOutSession } from './auth-repo';
+import { markEmailVerified } from '../../tests/support/emulator';
+import {
+  AddressLimitError,
+  OfflineError,
+  PermissionDeniedError,
+  ProfileRequiredError,
+} from '../domain/tenancy/errors';
+import { refreshSession, registerWithEmail, signInWithEmail, signOutSession } from './auth-repo';
 import { isPlatformAdmin } from './platform-repo';
 import {
   acceptLegalVersions,
@@ -65,17 +71,37 @@ describe('profile', () => {
     ['of the terms', { ...CURRENT_LEGAL_VERSIONS, termsVersion: '9.9' }],
     ['of the privacy policy', { ...CURRENT_LEGAL_VERSIONS, privacyVersion: '9.9' }],
   ])('refuses a profile that accepts a version %s that does not exist', async (_case, versions) => {
-    const session = await registerWithEmail({
+    const registered = await registerWithEmail({
       email: `perfil-${versions.termsVersion}-${versions.privacyVersion}@example.com`,
       password: SEED_PASSWORD,
-      displayName: 'M. Perfil',
     });
+    await markEmailVerified(registered.uid);
+    const session = (await refreshSession()) ?? registered;
     const profile = { displayName: 'M. Perfil', phone: null };
 
     await expect(createUserProfile(session.uid, profile, versions)).rejects.toBeInstanceOf(
       PermissionDeniedError,
     );
     expect(await getUserProfile(session.uid)).toBeNull();
+  });
+
+  // PLAN 2.11: nothing is stored for an e-mail nobody proved is theirs.
+  it('stores no profile and no address for an account whose e-mail is not verified', async () => {
+    const session = await registerWithEmail({
+      email: 'aun-sin-verificar@example.com',
+      password: SEED_PASSWORD,
+    });
+    const profile = { displayName: 'N. Sin Verificar', phone: null };
+
+    await expect(
+      createUserProfile(session.uid, profile, CURRENT_LEGAL_VERSIONS),
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
+    await expect(addAddress(session.uid, HOME)).rejects.toBeInstanceOf(PermissionDeniedError);
+
+    await markEmailVerified(session.uid);
+    await refreshSession();
+    await createUserProfile(session.uid, profile, CURRENT_LEGAL_VERSIONS);
+    expect(await addAddress(session.uid, HOME)).toBe('a0');
   });
 
   it('renews the acceptance without touching the rest of the profile', async () => {
@@ -101,6 +127,31 @@ describe('profile', () => {
       displayName: 'I. Cliente Editado',
       phone: '900000052',
     });
+  });
+
+  it('refuses to save the profile of an account that has none', async () => {
+    const { uid } = await registerWithEmail({
+      email: 'guarda-sin-perfil@example.com',
+      password: SEED_PASSWORD,
+    });
+
+    await expect(updateUserProfile(uid, { displayName: 'X', phone: null })).rejects.toBeInstanceOf(
+      ProfileRequiredError,
+    );
+  });
+
+  // PLAN 2.11 (defect found by flow-tester): a save never waits for ever.
+  it('gives up with OfflineError when the server does not answer within the deadline', async () => {
+    const { uid } = await signInWithEmail(SEED_USERS.customer.email, SEED_PASSWORD);
+    const before = await getUserProfile(uid);
+
+    await expect(
+      updateUserProfile(uid, { displayName: 'No Llega', phone: null }, 0),
+    ).rejects.toBeInstanceOf(OfflineError);
+
+    // The attempt that was abandoned is not carried out behind the screen's back.
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    expect((await getUserProfile(uid))?.displayName).toBe(before?.displayName);
   });
 
   it('cannot read, create or edit the profile of another account', async () => {
