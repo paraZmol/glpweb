@@ -9,8 +9,9 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   test: {
-    include: ['src/**/*.test.{ts,tsx}'],
+    // tests/scripts holds the tests of the local scripts that need no emulator.
+    include: ['src/**/*.test.{ts,tsx}', 'tests/scripts/**/*.test.ts'],
     // Repository tests need the emulators: they run with vitest.emu.config.ts.
-    exclude: ['src/**/*.emu.test.ts'],
+    exclude: ['**/*.emu.test.ts'],
   },
 });

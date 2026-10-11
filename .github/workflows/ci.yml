@@ -13,22 +13,33 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # Actions are pinned to a commit, not to a tag somebody could move (docs/PLAN.md 2.11).
+      # Each SHA is the commit its version tag pointed at in the official repository on
+      # 2026-10-11 (`git ls-remote https://github.com/actions/<name>`). To update: look the
+      # new tag up the same way and change the SHA and the comment together.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           distribution: temurin
           java-version: 21
       - run: npm ci
-      - run: npm install --global firebase-tools@15
+      # An exact version: the emulators are part of what the tests assert against.
+      - run: npm install --global firebase-tools@15.5.1
       - run: npm run check
       - run: npx playwright install --with-deps chromium
+      # Smoke test over the build that talks to nothing.
       - run: npm run e2e
+      # Every flow, against the seeded emulators. Four workers: with more, the browsers that
+      # load the app cold at the same moment time out for reasons that are not the app's.
+      - run: npx playwright test --workers=4
+        env:
+          E2E_EMULATORS: 'true'
       # Informative for now: the only findings are in @grpc/grpc-js, which the firebase package
       # pulls in for its Node build and which never reaches the browser bundle.
       - run: npm audit --omit=dev --audit-level=high
