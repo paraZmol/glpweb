@@ -1,4 +1,3 @@
-import { CornerDownRight } from 'lucide-react';
 import { useState } from 'react';
 import { BrandTheme } from '@/components/brand/brand-theme';
 import { Monogram } from '@/components/brand/monogram';
@@ -7,13 +6,12 @@ import { StateChip } from '@/components/common/state-chip';
 import { TextLink } from '@/components/common/text-link';
 import { BrandPreview } from '@/components/founding/brand-preview';
 import type { Session } from '@/domain/auth/session';
-import { DEFAULT_TIMEZONE } from '@/domain/tenancy/constants';
 import { listingStateOf } from '@/domain/tenancy/listing';
 import type { ListingReview } from '@/features/platform/platform-actions';
 import { type ReviewAction, reviewActionsOf } from '@/features/platform/review-actions';
-import { formatDateTime } from '@/lib/format-date';
-import { GLYPH_STROKE } from '@/lib/icons';
+import { useReviewAttention } from '@/features/platform/use-review-attention';
 import { distributorPath } from '@/lib/routes';
+import { ChangedNotice } from './changed-notice';
 import { DECISION_COPY } from './decision-copy';
 import { LISTING_LABELS, PLAN_LABELS } from './listing-labels';
 import {
@@ -25,6 +23,7 @@ import {
   SourceLinks,
 } from './review-data';
 import { ReviewDecision } from './review-decision';
+import { SentNote } from './sent-note';
 
 type ListingReviewViewProps = {
   review: ListingReview;
@@ -43,10 +42,18 @@ export function ListingReviewView({ review, admin, onDecided }: ListingReviewVie
   const [now] = useState(() => new Date());
   const { profile, control, distributorId } = review;
   const listing = LISTING_LABELS[listingStateOf(control, now)];
+  const actions = reviewActionsOf(control);
+  // The data on screen is live; what an approval is sent for is what the admin looked at.
+  const attention = useReviewAttention(review.version);
+  const showsChanged = attention.needsSecondLook && actions.includes('approve');
 
   const decided = () => {
     setOpen(null);
     onDecided();
+  };
+  const refused = () => {
+    setOpen(null);
+    attention.refuse();
   };
 
   return (
@@ -66,28 +73,7 @@ export function ListingReviewView({ review, admin, onDecided }: ListingReviewVie
         </div>
       </header>
       {control.reviewNote && (
-        <figure className="rounded-lg bg-muted p-3.5">
-          <figcaption className="text-[0.8125rem] font-bold text-muted-foreground">
-            Nota enviada a la distribuidora
-          </figcaption>
-          <blockquote className="mt-1 font-semibold wrap-anywhere whitespace-pre-line">
-            {control.reviewNote}
-          </blockquote>
-          {/* The note stays after a correction: it says what to look at again. */}
-          {control.correctedAt && (
-            <p className="mt-3 flex items-start gap-2 border-t pt-3 text-[0.8125rem] font-bold">
-              <CornerDownRight
-                aria-hidden="true"
-                className="mt-0.5 size-4 shrink-0 text-flame-text"
-                strokeWidth={GLYPH_STROKE}
-              />
-              <span className="tabular-nums">
-                Su titular envió correcciones el{' '}
-                {formatDateTime(control.correctedAt, DEFAULT_TIMEZONE)}: compara de nuevo los datos.
-              </span>
-            </p>
-          )}
-        </figure>
+        <SentNote note={control.reviewNote} correctedAt={control.correctedAt} />
       )}
       <div className="grid gap-6 xl:grid-cols-2">
         <ReviewSection title="Ficha pública, como se verá">
@@ -120,23 +106,28 @@ export function ListingReviewView({ review, admin, onDecided }: ListingReviewVie
             action={open}
             admin={admin}
             distributorId={distributorId}
+            seen={attention.seen}
             onCancel={() => setOpen(null)}
             onDone={decided}
+            onStale={refused}
           />
         ) : (
-          <div className="flex flex-wrap gap-3">
-            {reviewActionsOf(control).map((action) => (
-              <Button
-                key={action}
-                type="button"
-                size="sm"
-                variant={DECISION_COPY[action].variant}
-                onClick={() => setOpen(action)}
-              >
-                {DECISION_COPY[action].label}
-              </Button>
-            ))}
-          </div>
+          <>
+            {showsChanged && <ChangedNotice onAcknowledge={attention.acknowledge} />}
+            <div className="flex flex-wrap gap-3">
+              {actions.map((action) => (
+                <Button
+                  key={action}
+                  type="button"
+                  size="sm"
+                  variant={DECISION_COPY[action].variant}
+                  onClick={() => setOpen(action)}
+                >
+                  {DECISION_COPY[action].label}
+                </Button>
+              ))}
+            </div>
+          </>
         )}
       </section>
     </div>

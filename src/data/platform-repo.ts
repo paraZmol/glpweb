@@ -2,6 +2,7 @@ import {
   collectionGroup,
   deleteField,
   doc,
+  type DocumentSnapshot,
   getDoc,
   getDocs,
   limit,
@@ -11,12 +12,15 @@ import {
   runTransaction,
   serverTimestamp,
   startAfter,
+  Timestamp,
   type Transaction,
   where,
   writeBatch,
 } from 'firebase/firestore';
 import { PENDING_LISTINGS_LIMIT, PLATFORM_LIST_PAGE_SIZE } from '../domain/tenancy/constants';
+import { StaleReviewError } from '../domain/tenancy/errors';
 import { isOpenToPublic, type PlatformListFilter } from '../domain/tenancy/listing';
+import { isSameReviewVersion, type ReviewVersion } from '../domain/tenancy/review-version';
 import type {
   DistributorControl,
   DistributorPrivateSettings,
@@ -30,10 +34,19 @@ import {
 } from './converters';
 import { guarded } from './errors';
 import { db } from './firebase';
+import { type Unsubscribe, watchDocuments } from './live';
 import { collectionGroups, paths } from './paths';
 
 const controlRef = (d: string) => doc(db, paths.distributorControl(d));
 const distributorRef = (d: string) => doc(db, paths.distributor(d));
+
+/** The three documents of a review, typed, in the order `reviewOf` takes them. */
+const reviewRefs = (d: string) =>
+  [
+    distributorRef(d).withConverter(publicDistributorConverter),
+    controlRef(d).withConverter(controlConverter),
+    doc(db, paths.distributorPrivateSettings(d)).withConverter(privateSettingsConverter),
+  ] as const;
 
 /**
  * Whether the account is a platform admin. Only decides what the app shows: every admin action
@@ -142,30 +155,72 @@ export interface ListingReview {
   control: DistributorControl;
   /** The founder's contact data and what it declared about the business (RUC, record number). */
   settings: DistributorPrivateSettings;
+  /** The version of `profile` and `settings` shown here: hand it to `approveListing`. */
+  version: ReviewVersion;
+}
+
+/**
+ * The exact `updatedAt` of a stored document as a text (seconds.nanoseconds): two versions a
+ * microsecond apart must not look the same, and a `Date` only keeps milliseconds.
+ */
+function versionTextOf(snapshot: DocumentSnapshot<unknown>): string {
+  const at: unknown = snapshot.get('updatedAt');
+  if (!(at instanceof Timestamp)) return '';
+  return `${at.seconds}.${String(at.nanoseconds).padStart(9, '0')}`;
+}
+
+type ReviewSnapshots = readonly [
+  DocumentSnapshot<PublicDistributor>,
+  DocumentSnapshot<DistributorControl>,
+  DocumentSnapshot<DistributorPrivateSettings>,
+];
+
+/** Null when any of the three documents is missing. */
+function reviewOf(d: string, [profile, control, settings]: ReviewSnapshots): ListingReview | null {
+  const [profileData, controlData, settingsData] = [
+    profile.data(),
+    control.data(),
+    settings.data(),
+  ];
+  if (!profileData || !controlData || !settingsData) return null;
+  return {
+    distributorId: d,
+    profile: profileData,
+    control: controlData,
+    settings: settingsData,
+    version: { profile: versionTextOf(profile), settings: versionTextOf(settings) },
+  };
 }
 
 /**
  * Platform admin only: the public profile, the control document and the private settings of
- * one distributor. Null when any of the three is missing.
+ * one distributor, read once. Null when any of the three is missing.
  * Cost: 3 reads, plus up to 4 by the rules (2 for a profile that is not public, 1 each for the
  * other two).
  */
 export function getListingReview(d: string): Promise<ListingReview | null> {
   return guarded(async () => {
-    const settingsRef = doc(db, paths.distributorPrivateSettings(d));
-    const [profile, control, settings] = await Promise.all([
-      getDoc(distributorRef(d).withConverter(publicDistributorConverter)),
-      getDoc(controlRef(d).withConverter(controlConverter)),
-      getDoc(settingsRef.withConverter(privateSettingsConverter)),
-    ]);
-    const [profileData, controlData, settingsData] = [
-      profile.data(),
-      control.data(),
-      settings.data(),
-    ];
-    if (!profileData || !controlData || !settingsData) return null;
-    return { distributorId: d, profile: profileData, control: controlData, settings: settingsData };
+    const [profile, control, settings] = reviewRefs(d);
+    return reviewOf(d, await Promise.all([getDoc(profile), getDoc(control), getDoc(settings)]));
   });
+}
+
+/**
+ * Platform admin only: the same three documents, live, for as long as the review of that one
+ * distributor is on screen (PLAN 2.11): an edit of its owner shows at once instead of staying
+ * hidden behind what was loaded. `onChange` receives null when any of the three is missing.
+ * Only what the server confirmed is reported, never a cached copy: the admin decides on it, and
+ * `version` must be the stored one. Without a connection nothing is reported.
+ * Three listeners on single documents. Cost: what `getListingReview` costs when it starts, then
+ * one read per document that changes. Call the returned function when the screen closes.
+ */
+export function watchListingReview(
+  d: string,
+  onChange: (review: ListingReview | null) => void,
+  onError: (error: unknown) => void,
+): Unsubscribe {
+  const report = (snapshots: ReviewSnapshots) => onChange(reviewOf(d, snapshots));
+  return watchDocuments(reviewRefs(d), report, onError, { serverOnly: true });
 }
 
 /**
@@ -180,26 +235,50 @@ async function missingCopies(tx: Transaction, d: string, control: DistributorCon
   return profile ? { distributorName: profile.name, slug: profile.slug } : {};
 }
 
+export interface ApprovalRequest {
+  d: string;
+  adminUid: string;
+  /** `version` of the `ListingReview` the admin looked at. */
+  seen: ReviewVersion;
+  /** Device time, to derive the public flag. */
+  now: Date;
+}
+
 /**
- * Platform admin only: approves a listing (PLAN 2.11). The approval is signed with the admin's
- * own account and server time, the note for the owner and the mark of its correction are
- * removed, and the public flag follows in the same transaction: the distributor becomes visible
- * if it may operate.
+ * Platform admin only: approves a listing (PLAN 2.11) AS THE ADMIN SAW IT. The transaction reads
+ * the public profile and the private settings again: if either is no longer at the version in
+ * `seen`, nothing is written and it throws `StaleReviewError` — show the new data and ask again.
+ * The rules hold the same lock: the approval stores the two versions it is for
+ * (`reviewedProfileAt`, `reviewedSettingsAt`) and is refused unless they are the stored ones.
+ * The approval is signed with the admin's own account and server time, the note for the owner
+ * and the mark of its correction are removed, and the public flag follows in the same
+ * transaction: the distributor becomes visible if it may operate.
  * `now` is the device time: within seconds of the end of a trial the rules may disagree with it
  * and refuse; trying again settles it. Returns false when the distributor does not exist.
- * Cost: 1 read + 2 writes, plus 5 lookups by the rules.
+ * Cost: 3 reads + 2 writes, plus 7 lookups by the rules (4 for the control document, 3 for the
+ * public one).
  */
-export function approveListing(d: string, adminUid: string, now: Date): Promise<boolean> {
+export function approveListing({ d, adminUid, seen, now }: ApprovalRequest): Promise<boolean> {
   return guarded(() =>
     runTransaction(db, async (tx) => {
-      const control = (await tx.get(controlRef(d).withConverter(controlConverter))).data();
-      if (!control) return false;
+      const [profileRef, typedControlRef, settingsRef] = reviewRefs(d);
+      const control = (await tx.get(typedControlRef)).data();
+      const profile = await tx.get(profileRef);
+      const settings = await tx.get(settingsRef);
+      const profileData = profile.data();
+      if (!control || !profileData || !settings.exists()) return false;
+      const stored = { profile: versionTextOf(profile), settings: versionTextOf(settings) };
+      if (!isSameReviewVersion(seen, stored)) throw new StaleReviewError();
       const acceptingOrders = isOpenToPublic({ ...control, listingApproved: true }, now);
       tx.update(controlRef(d), {
-        ...(await missingCopies(tx, d, control)),
+        // A control document older than the copies of the public name and link gains them now.
+        distributorName: profileData.name,
+        slug: profileData.slug,
         listingApproved: true,
         approvedAt: serverTimestamp(),
         approvedBy: adminUid,
+        reviewedProfileAt: profile.get('updatedAt') ?? null,
+        reviewedSettingsAt: settings.get('updatedAt') ?? null,
         reviewNote: deleteField(),
         correctedAt: deleteField(),
         updatedAt: serverTimestamp(),
@@ -226,6 +305,8 @@ export function returnListingToReview(d: string, note: string): Promise<void> {
       listingApproved: false,
       approvedAt: deleteField(),
       approvedBy: deleteField(),
+      reviewedProfileAt: deleteField(),
+      reviewedSettingsAt: deleteField(),
       reviewNote: note === '' ? deleteField() : note,
       correctedAt: deleteField(),
       updatedAt: serverTimestamp(),

@@ -1,5 +1,6 @@
 import type { Session } from '../../domain/auth/session';
 import { prepareReviewNote } from '../../domain/tenancy/listing';
+import type { ReviewVersion } from '../../domain/tenancy/review-version';
 import type { DistributorControl } from '../../domain/tenancy/types';
 import {
   approveDistributor,
@@ -55,17 +56,20 @@ export interface ReviewRequest {
   distributorId: string;
   /** Only read by `requestChanges`. */
   note: string;
+  /** Only read by `approve`: the version of the listing the admin looked at. */
+  seen: ReviewVersion;
 }
 
 /**
  * Carries out one decision. Nothing here is optimistic: it resolves once the server has it.
- * Throws `ListingGoneError`, `InvalidInputError`, `PermissionDeniedError` or `OfflineError`.
+ * Throws `ListingGoneError`, `InvalidInputError`, `PermissionDeniedError`, `OfflineError` or,
+ * for an approval of a listing that changed since `seen`, `StaleReviewError`.
  */
 export async function runReviewAction(request: ReviewRequest): Promise<void> {
-  const { action, admin, distributorId, note } = request;
+  const { action, admin, distributorId, note, seen } = request;
   if (action === 'requestChanges') return returnDistributorToReview(distributorId, note);
   const found = await {
-    approve: () => approveDistributor(admin, distributorId),
+    approve: () => approveDistributor(admin, distributorId, seen),
     suspend: () => suspendDistributor(distributorId),
     reactivate: () => reactivateDistributor(distributorId),
   }[action]();

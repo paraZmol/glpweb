@@ -62,6 +62,12 @@ rules_version = '2';
 //   listingApproved: bool — false at founding; only a platform admin sets it to true, and then
 //     approvedAt (= request.time) and approvedBy (= its uid) are required; an owner may only set
 //     it back to false. While false, approvedAt and approvedBy are absent.
+//   reviewedProfileAt, reviewedSettingsAt: timestamps — WHAT was approved: the `updatedAt` the
+//     public profile and the private settings had when the admin looked at them. An approval is
+//     accepted only if both equal what is stored at that moment, so a listing edited after the
+//     review screen was opened cannot be approved from it (every write of those two documents
+//     moves its updatedAt to request.time). Written with the approval and removed with it;
+//     optional only in documents approved before the fields existed.
 //   reviewNote: optional string 1..300, only while listingApproved is false; platform admin only
 //   correctedAt: optional timestamp, only next to a reviewNote — "the owner answered the note".
 //     Only an owner writes it, always = request.time and only in a request that also edits the
@@ -133,6 +139,10 @@ service cloud.firestore {
 
     function controlPath(d) {
       return /databases/$(database)/documents/distributors/$(d)/private/control;
+    }
+
+    function settingsPath(d) {
+      return /databases/$(database)/documents/distributors/$(d)/private/settings;
     }
 
     // Same condition as isWritable() in src/domain/tenancy/status.ts, over the control document.
@@ -378,7 +388,8 @@ service cloud.firestore {
         ])
         && data.keys().hasOnly([
           'ownerUid', 'status', 'trialEndsAt', 'listingApproved', 'approvedAt', 'approvedBy',
-          'reviewNote', 'correctedAt', 'distributorName', 'slug', 'createdAt', 'updatedAt'
+          'reviewedProfileAt', 'reviewedSettingsAt', 'reviewNote', 'correctedAt',
+          'distributorName', 'slug', 'createdAt', 'updatedAt'
         ])
         && data.ownerUid is string
         && data.status in ['trial', 'active', 'pastDue', 'suspended']
@@ -397,11 +408,13 @@ service cloud.firestore {
         && !('correctedAt' in data);
     }
 
-    // Not approved: nothing claims an approval; a note for the owner is optional, and the mark
-    // of its correction exists only next to a note.
+    // Not approved: nothing claims an approval, nor says which version was approved; a note for
+    // the owner is optional, and the mark of its correction exists only next to a note.
     function isPendingShape(data) {
       return !('approvedAt' in data)
         && !('approvedBy' in data)
+        && !('reviewedProfileAt' in data)
+        && !('reviewedSettingsAt' in data)
         && (!('reviewNote' in data) || isText(data.reviewNote, 1, 300))
         && (!('correctedAt' in data) || ('reviewNote' in data && data.correctedAt is timestamp));
     }
@@ -680,7 +693,7 @@ service cloud.firestore {
           && request.resource.data.distributorName == getAfter(distributorPath(d)).data.name
           && request.resource.data.slug == getAfter(distributorPath(d)).data.slug
           && getAfter(/databases/$(database)/documents/distributors/$(d)/members/$(request.auth.uid)).data.role == 'owner'
-          && getAfter(/databases/$(database)/documents/distributors/$(d)/private/settings).data.ownerUid == request.auth.uid
+          && getAfter(settingsPath(d)).data.ownerUid == request.auth.uid
           && ownsNoReadOnlyDistributor(
             getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.ownedDistributorIds
           );
@@ -697,7 +710,8 @@ service cloud.firestore {
         }
 
         // Platform admin: status and the review of the listing (approve, or send back with a
-        // note). An approval is signed: by the admin doing it, at request.time. It never writes
+        // note). An approval is signed: by the admin doing it, at request.time, and for the
+        // version of the public profile and of the private settings it looked at. It never writes
         // the correction mark of the owner: it keeps it untouched or removes it, and a new note
         // removes it.
         // Owner of the distributor: may only send its own listing back to review (it does so
@@ -707,24 +721,27 @@ service cloud.firestore {
         // that opens or closes the distributor carries both documents; and the copies of the
         // public name and link can only be written as they stand in the public profile.
         // Reads added by rules: 2 for a platform admin (exists platformAdmins, getAfter
-        // distributor), 3 for an owner (exists platformAdmins, get member, getAfter distributor),
-        // 4 when the owner marks a correction of the private settings (getAfter settings).
+        // distributor) and 4 when it approves (get distributor, get settings: the versions it
+        // says it reviewed), 3 for an owner (exists platformAdmins, get member, getAfter
+        // distributor), 4 when the owner marks a correction of the private settings (getAfter
+        // settings).
         allow update: if isValidControl(request.resource.data)
           && request.resource.data.updatedAt == request.time
           && (
             (
               isPlatformAdmin()
               && onlyChanges([
-                'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewNote',
-                'correctedAt', 'distributorName', 'slug', 'updatedAt'
+                'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewedProfileAt',
+                'reviewedSettingsAt', 'reviewNote', 'correctedAt', 'distributorName', 'slug',
+                'updatedAt'
               ])
               && approvalIsSigned()
               && leavesCorrectionMarkAlone()
             )
             || (
               onlyChanges([
-                'listingApproved', 'approvedAt', 'approvedBy', 'correctedAt', 'distributorName',
-                'slug', 'updatedAt'
+                'listingApproved', 'approvedAt', 'approvedBy', 'reviewedProfileAt',
+                'reviewedSettingsAt', 'correctedAt', 'distributorName', 'slug', 'updatedAt'
               ])
               && request.resource.data.listingApproved == false
               && hasRole(d, ['owner'])
@@ -749,7 +766,7 @@ service cloud.firestore {
           return request.resource.data.correctedAt == request.time
             && (
               getAfter(distributorPath(d)).data.updatedAt == request.time
-              || getAfter(/databases/$(database)/documents/distributors/$(d)/private/settings).data.updatedAt == request.time
+              || getAfter(settingsPath(d)).data.updatedAt == request.time
             );
         }
 
@@ -762,11 +779,24 @@ service cloud.firestore {
 
         function approvalIsSigned() {
           return request.resource.data.listingApproved == false
-            || unchanged(['listingApproved', 'approvedAt', 'approvedBy'])
+            || unchanged([
+              'listingApproved', 'approvedAt', 'approvedBy', 'reviewedProfileAt',
+              'reviewedSettingsAt'
+            ])
             || (
               request.resource.data.approvedAt == request.time
               && request.resource.data.approvedBy == request.auth.uid
+              && approvesWhatWasReviewed()
             );
+        }
+
+        // The approval names the version of each document the admin had in front of it, and both
+        // must still be the stored ones. get(), not getAfter(): this same request moves the
+        // updatedAt of the public profile when it opens it to visitors. An approval without the
+        // two marks fails here (a missing field is an error, and an error denies).
+        function approvesWhatWasReviewed() {
+          return request.resource.data.reviewedProfileAt == get(distributorPath(d)).data.updatedAt
+            && request.resource.data.reviewedSettingsAt == get(settingsPath(d)).data.updatedAt;
         }
       }
 

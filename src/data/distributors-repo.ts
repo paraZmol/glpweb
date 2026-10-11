@@ -57,6 +57,7 @@ import {
 } from './converters';
 import { guarded, toDataError } from './errors';
 import { db } from './firebase';
+import { type Unsubscribe, watchDocuments } from './live';
 import { collectionGroups, paths } from './paths';
 
 const distributorRef = (d: string) => doc(db, paths.distributor(d));
@@ -251,9 +252,51 @@ export function getDistributorControl(d: string): Promise<DistributorControl | n
  */
 export async function getStaffDistributor(d: string): Promise<Distributor | null> {
   const [profile, control] = await Promise.all([getDistributor(d), getDistributorControl(d)]);
-  if (!profile || !control) return null;
+  return profile && control ? staffDistributorOf(profile, control) : null;
+}
+
+function staffDistributorOf(profile: PublicDistributor, control: DistributorControl): Distributor {
   const { ownerUid, status, trialEndsAt, listingApproved, reviewNote, correctedAt } = control;
   return { ...profile, ownerUid, status, trialEndsAt, listingApproved, reviewNote, correctedAt };
+}
+
+/** A distributor as one account of its staff sees it right now. */
+export interface LiveStaffDistributor {
+  distributor: Distributor;
+  /** The account's own member document as it stands; null if it is gone. */
+  member: Member | null;
+}
+
+/**
+ * The same as `getStaffDistributor`, live, plus the account's own member document: a decision of
+ * the platform (approval, note, suspension) and a change of the account's role reach an open
+ * panel without reloading it (PLAN 2.11). `onChange` receives null when the distributor does
+ * not exist. Three listeners on single documents; only while a screen of the staff is open.
+ * Cost: 3 reads when it starts (plus up to 2 by the rules unless the caller is the founder),
+ * then one read per document that changes. Call the returned function when the screen closes.
+ */
+export function watchStaffDistributor(
+  d: string,
+  uid: string,
+  onChange: (live: LiveStaffDistributor | null) => void,
+  onError: (error: unknown) => void,
+): Unsubscribe {
+  const refs = [
+    distributorRef(d).withConverter(publicDistributorConverter),
+    controlRef(d).withConverter(controlConverter),
+    memberRef(d, uid).withConverter(memberConverter),
+  ] as const;
+  const report = (profile?: PublicDistributor, control?: DistributorControl, member?: Member) =>
+    onChange(
+      profile && control
+        ? { distributor: staffDistributorOf(profile, control), member: member ?? null }
+        : null,
+    );
+  return watchDocuments(
+    refs,
+    ([profile, control, member]) => report(profile.data(), control.data(), member.data()),
+    onError,
+  );
 }
 
 /**
@@ -342,6 +385,9 @@ function controlChangeOf({ document, isBackInReview, answersNote }: ProfileEdit)
     listingApproved: false,
     approvedAt: deleteField(),
     approvedBy: deleteField(),
+    // An approval names the version it was for: it leaves with the approval (rules demand it).
+    reviewedProfileAt: deleteField(),
+    reviewedSettingsAt: deleteField(),
   };
   return {
     ...(isBackInReview ? backToReview : {}),

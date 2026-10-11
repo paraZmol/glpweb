@@ -5,6 +5,8 @@ import { InlineAlert } from '@/components/common/inline-alert';
 import { FieldError } from '@/components/common/text-field';
 import type { Session } from '@/domain/auth/session';
 import { REVIEW_NOTE_MAX_LENGTH } from '@/domain/tenancy/constants';
+import { StaleReviewError } from '@/domain/tenancy/errors';
+import type { ReviewVersion } from '@/domain/tenancy/review-version';
 import {
   ListingGoneError,
   type ReviewAction,
@@ -21,8 +23,12 @@ type ReviewDecisionProps = {
   action: ReviewAction;
   admin: Session;
   distributorId: string;
+  /** The version of the listing the admin looked at: an approval is sent for it. */
+  seen: ReviewVersion;
   onCancel: () => void;
   onDone: () => void;
+  /** The approval was refused because the listing changed meanwhile: nothing was decided. */
+  onStale: () => void;
 };
 
 /**
@@ -33,8 +39,10 @@ export function ReviewDecision({
   action,
   admin,
   distributorId,
+  seen,
   onCancel,
   onDone,
+  onStale,
 }: ReviewDecisionProps) {
   const id = useId();
   const copy = DECISION_COPY[action];
@@ -50,10 +58,11 @@ export function ReviewDecision({
     if (problem) return;
     void run(async () => {
       try {
-        await runReviewAction({ action, admin, distributorId, note });
+        await runReviewAction({ action, admin, distributorId, note, seen });
         toast.success(copy.done);
         onDone();
       } catch (error) {
+        if (error instanceof StaleReviewError) return onStale();
         setFailure(error instanceof ListingGoneError ? GONE : describeTenancyError(error));
       }
     });

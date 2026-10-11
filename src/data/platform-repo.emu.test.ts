@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SEED_DISTRIBUTORS, SEED_PASSWORD, SEED_USERS, type SeedUser } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
+import { approveAsSeen } from '../../tests/support/approve-as-seen';
 import { PermissionDeniedError } from '../domain/tenancy/errors';
 import { signInWithEmail, signOutSession } from './auth-repo';
 import {
@@ -11,7 +12,6 @@ import {
   updateDistributorProfile,
 } from './distributors-repo';
 import {
-  approveListing,
   getListingReview,
   listPendingListings,
   returnListingToReview,
@@ -103,7 +103,7 @@ describe('deciding on a listing', () => {
   it('approves it: signed, without the note, visible and in the search', async () => {
     const admin = await signInAs(ADMIN);
 
-    expect(await approveListing(PENDING.id, admin.uid, new Date())).toBe(true);
+    expect(await approveAsSeen(PENDING.id, admin.uid)).toBe(true);
 
     expect(await getDistributorControl(PENDING.id)).toMatchObject({
       listingApproved: true,
@@ -123,7 +123,7 @@ describe('deciding on a listing', () => {
   it('answers false for a distributor that does not exist', async () => {
     const admin = await signInAs(ADMIN);
 
-    expect(await approveListing('no-existe', admin.uid, new Date())).toBe(false);
+    expect(await approveAsSeen('no-existe', admin.uid)).toBe(false);
   });
 
   it('withdraws an approval: the page closes and the listing waits again', async () => {
@@ -147,7 +147,7 @@ describe('deciding on a listing', () => {
     const admin = await signInAs(ADMIN);
     await returnListingToReview(SUSPENDED.id, '');
 
-    expect(await approveListing(SUSPENDED.id, admin.uid, new Date())).toBe(true);
+    expect(await approveAsSeen(SUSPENDED.id, admin.uid)).toBe(true);
 
     expect((await getDistributor(SUSPENDED.id))?.acceptingOrders).toBe(false);
     await signOutSession();
@@ -160,10 +160,10 @@ describe('deciding on a listing', () => {
   ])('refuses an approval or a return from %s', async (_who, user) => {
     const session = await signInAs(user);
 
-    await expect(approveListing(PENDING.id, session.uid, new Date())).rejects.toBeInstanceOf(
+    await expect(approveAsSeen(PENDING.id, session.uid)).rejects.toBeInstanceOf(
       PermissionDeniedError,
     );
-    await expect(approveListing(PENDING.id, ADMIN.uid, new Date())).rejects.toBeInstanceOf(
+    await expect(approveAsSeen(PENDING.id, ADMIN.uid)).rejects.toBeInstanceOf(
       PermissionDeniedError,
     );
     await expect(returnListingToReview(A.id, 'x')).rejects.toBeInstanceOf(PermissionDeniedError);
@@ -176,7 +176,7 @@ describe('deciding on a listing', () => {
     await signInAs(ADMIN);
     expect(await pendingIds()).toContain(A.id);
     const admin = await signInAs(ADMIN);
-    await approveListing(A.id, admin.uid, new Date());
+    await approveAsSeen(A.id, admin.uid);
     expect(await pendingIds()).not.toContain(A.id);
   });
 });

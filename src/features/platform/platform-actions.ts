@@ -2,6 +2,7 @@ import * as platformRepo from '../../data/platform-repo';
 import type { Session } from '../../domain/auth/session';
 import { InvalidInputError } from '../../domain/tenancy/errors';
 import { prepareReviewNote, statusAfterReactivation } from '../../domain/tenancy/listing';
+import type { ReviewVersion } from '../../domain/tenancy/review-version';
 import { forgetVisibleDistributors } from '../tenancy/visible-distributors';
 
 // Operations of the platform panel (PLAN 2.11). Every one of them is for a platform admin: the
@@ -37,17 +38,32 @@ export const listDistributors = platformRepo.listDistributors;
  * Everything to decide on one listing: what visitors will see, where it stands, and what the
  * founder declared (RUC, legal name, record number of the Registro de Hidrocarburos, contact).
  * Null when the distributor does not exist. Cost: 3 reads, plus up to 4 by the rules.
+ * `review.version` says which version of the data it is: hand it to `approveDistributor`.
  */
 export const getListingReview = platformRepo.getListingReview;
 
 /**
- * Approves a listing: the distributor becomes visible if it may operate. The approval is signed
- * with the admin's own account and server time. Resolves to false when the distributor does not
- * exist. IT SAYS ONLY THAT THE PLATFORM LOOKED AT WHAT WAS DECLARED: screens must never present
- * the distributor as "verificada".
+ * The same, live: `onChange` runs with the review (or null) now and whenever its owner or the
+ * platform changes one of the three documents. Returns how to stop; `useListingReview` wraps it.
  */
-export async function approveDistributor(admin: Session, distributorId: string): Promise<boolean> {
-  const found = await platformRepo.approveListing(distributorId, admin.uid, new Date());
+export const watchListingReview = platformRepo.watchListingReview;
+
+/**
+ * Approves a listing: the distributor becomes visible if it may operate. The approval is signed
+ * with the admin's own account and server time, and it is for the data the admin looked at:
+ * `seen` is the `version` of the review that was on screen. If the public profile or the private
+ * settings changed since, nothing is approved and it throws `StaleReviewError`: show the new
+ * data and let the admin decide again. Resolves to false when the distributor does not exist.
+ * IT SAYS ONLY THAT THE PLATFORM LOOKED AT WHAT WAS DECLARED: screens must never present the
+ * distributor as "verificada".
+ */
+export async function approveDistributor(
+  admin: Session,
+  distributorId: string,
+  seen: ReviewVersion,
+): Promise<boolean> {
+  const request = { d: distributorId, adminUid: admin.uid, seen, now: new Date() };
+  const found = await platformRepo.approveListing(request);
   forgetVisibleDistributors();
   return found;
 }

@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { EMULATOR_HOST, EMULATOR_PROJECT_ID, emulatorPorts } from '../../scripts/lane-ports.mjs';
 import { SEED_DISTRIBUTORS, SEED_PASSWORD, SEED_USERS, type SeedUser } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
+import { approveAsSeen } from '../../tests/support/approve-as-seen';
 import { PermissionDeniedError } from '../domain/tenancy/errors';
 import { listingStateOf } from '../domain/tenancy/listing';
 import { signInWithEmail, signOutSession } from './auth-repo';
@@ -15,7 +16,6 @@ import {
   updateVerificationData,
 } from './distributors-repo';
 import {
-  approveListing,
   listDistributors,
   listPendingListings,
   type PageCursor,
@@ -257,7 +257,7 @@ describe('answering a note of the platform', () => {
   it('clears the note and the mark when the admin approves', async () => {
     const admin = await signInAs(ADMIN);
 
-    expect(await approveListing(PENDING.id, admin.uid, new Date())).toBe(true);
+    expect(await approveAsSeen(PENDING.id, admin.uid)).toBe(true);
 
     expect(await getDistributorControl(PENDING.id)).toMatchObject({
       listingApproved: true,
@@ -308,7 +308,7 @@ describe('a control document older than the name and the link', () => {
   it('gains them when the admin decides on it', async () => {
     const admin = await signInAs(ADMIN);
 
-    expect(await approveListing(A.id, admin.uid, new Date())).toBe(true);
+    expect(await approveAsSeen(A.id, admin.uid)).toBe(true);
 
     expect(await getDistributorControl(A.id)).toMatchObject({
       listingApproved: true,

@@ -37,18 +37,20 @@ export function ReviewPane({ distributorId, filter, onDecided }: ReviewPaneProps
   const { session } = useAccount();
   const navigate = useNavigate();
   const review = useListingReview(distributorId);
-  const hasDecided = useRef(false);
+  const isPlaced = useRef(false);
   const control = review.status === 'ready' ? review.data?.control : undefined;
   const ownList = control && !isInPlatformList(control, filter) ? platformListOf(control) : null;
 
   // A distributor opened by its address (or from a list it has left since) is not in the list
   // the address names: the panel moves to the list it is in, so the title, the lead and the rows
-  // beside it speak of what is open. Not after a decision taken here: whoever works through the
-  // pending ones stays among them.
+  // beside it speak of what is open. Judged once, when it first shows: the review is live, and
+  // neither a decision taken here nor an edit of its owner that arrives meanwhile moves the
+  // admin to another list (whoever works through the pending ones stays among them).
   useEffect(() => {
-    if (ownList === null || hasDecided.current) return;
-    void navigate({ search: searchOf(ownList) }, { replace: true });
-  }, [ownList, navigate]);
+    if (control === undefined || isPlaced.current) return;
+    isPlaced.current = true;
+    if (ownList !== null) void navigate({ search: searchOf(ownList) }, { replace: true });
+  }, [control, ownList, navigate]);
 
   if (distributorId === null) {
     return (
@@ -78,7 +80,7 @@ export function ReviewPane({ distributorId, filter, onDecided }: ReviewPaneProps
     );
   }
   const decided = () => {
-    hasDecided.current = true;
+    // Listening again from scratch also resets what counts as "looked at" in the review.
     review.reload();
     onDecided();
   };

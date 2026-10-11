@@ -7,6 +7,7 @@ import {
   type SeedUser,
 } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
+import { approveAsSeen } from '../../tests/support/approve-as-seen';
 import { markEmailVerified } from '../../tests/support/emulator';
 import { CURRENT_LEGAL_VERSIONS, TERMS_VERSION } from '../domain/legal/versions';
 import { MAX_DISTRIBUTORS_PER_ACCOUNT, TRIAL_DAYS } from '../domain/tenancy/constants';
@@ -36,7 +37,7 @@ import {
   updateDistributorProfile,
   updateVerificationData,
 } from './distributors-repo';
-import { approveListing, setDistributorStatus } from './platform-repo';
+import { setDistributorStatus } from './platform-repo';
 import { createUserProfile, getUserProfile } from './users-repo';
 
 const { a: A, b: B, c: SUSPENDED, d: EXPIRED, e: PENDING } = SEED_DISTRIBUTORS;
@@ -359,7 +360,7 @@ describe('updateDistributorProfile', () => {
     ['the WhatsApp number', { whatsapp: '900000025' }],
   ])('sends the listing back to review when the owner changes %s', async (_case, change) => {
     await signInAs(SEED_USERS.admin);
-    await approveListing(B.id, SEED_USERS.admin.uid, new Date());
+    await approveAsSeen(B.id, SEED_USERS.admin.uid);
     await signInAs(SEED_USERS.ownerB);
 
     expect(await updateDistributorProfile(B.id, change)).toBe(true);

@@ -70,6 +70,16 @@ export class AddressLimitError extends DomainError {
   }
 }
 
+/**
+ * The listing changed after the platform admin opened its review: the approval was for a version
+ * that is no longer the stored one, so nothing was approved (PLAN 2.11).
+ */
+export class StaleReviewError extends DomainError {
+  constructor(options?: ErrorOptions) {
+    super('The listing changed while it was being reviewed', options);
+  }
+}
+
 /** The security rules refused the operation (wrong role, suspended distributor, expired trial). */
 export class PermissionDeniedError extends DomainError {
   constructor(options?: ErrorOptions) {

@@ -41,6 +41,7 @@ import {
   foundDistributor,
   type FoundingOptions,
   newDistributorId,
+  reviewedMarks,
   seedDoc,
   seededControlDoc,
   seedProfile,
@@ -80,15 +81,20 @@ interface ApprovalOptions {
   acceptingOrders?: boolean | null;
 }
 
-/** What a platform admin sends to approve: the signed approval and the public flag. */
-function approve(db: Db, d: string, options: ApprovalOptions = {}): Promise<void> {
+/**
+ * What a platform admin sends to approve: the signed approval, for the listing as it is stored
+ * (firebase/tests/approval-as-reviewed.rules.test.ts attacks that part), and the public flag.
+ */
+async function approve(db: Db, d: string, options: ApprovalOptions = {}): Promise<void> {
   const uid = options.uid ?? ADMIN_UID;
   const acceptingOrders = options.acceptingOrders === undefined ? true : options.acceptingOrders;
+  const reviewed = await reviewedMarks(env, d);
   const batch = writeBatch(db);
   batch.update(controlOf(db, d), {
     listingApproved: true,
     approvedAt: serverTimestamp(),
     approvedBy: uid,
+    ...reviewed,
     reviewNote: deleteField(),
     ...stamp,
   });
@@ -175,14 +181,21 @@ describe('approving a listing — platform admin only', () => {
     ['with an extra field', { approvedAt: serverTimestamp(), approvedBy: ADMIN_UID, vip: true }],
   ])('blocks an approval %s', async (_case, signature) => {
     const db = admin();
+    const reviewed = await reviewedMarks(env, PENDING);
     const batch = writeBatch(db);
-    batch.update(controlOf(db, PENDING), { listingApproved: true, ...signature, ...stamp });
+    batch.update(controlOf(db, PENDING), {
+      listingApproved: true,
+      ...reviewed,
+      ...signature,
+      ...stamp,
+    });
     batch.update(profileOf(db, PENDING), { acceptingOrders: true, ...stamp });
 
     await assertFails(batch.commit());
   });
 
   it('blocks an approval that changes the founder or the trial with it', async () => {
+    const reviewed = await reviewedMarks(env, PENDING);
     for (const change of [{ ownerUid: ADMIN_UID }, { trialEndsAt: daysFromNow(365) }]) {
       const db = admin();
       const batch = writeBatch(db);
@@ -190,6 +203,7 @@ describe('approving a listing — platform admin only', () => {
         listingApproved: true,
         approvedAt: serverTimestamp(),
         approvedBy: ADMIN_UID,
+        ...reviewed,
         ...change,
         ...stamp,
       });
@@ -321,10 +335,12 @@ describe('the control document of a listing that waits — who else may touch it
 
   it('blocks an approval that never says who signed it, even once approved', async () => {
     const db = admin();
+    const reviewed = await reviewedMarks(env, PENDING);
     const batch = writeBatch(db);
     batch.update(controlOf(db, PENDING), {
       listingApproved: true,
       approvedAt: serverTimestamp(),
+      ...reviewed,
       ...stamp,
     });
     batch.update(profileOf(db, PENDING), { acceptingOrders: true, ...stamp });

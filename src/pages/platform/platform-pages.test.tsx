@@ -50,6 +50,7 @@ const reviewOf = (control: Partial<DistributorControl> = {}): ListingReview => (
   profile: publicDistributorOf({ acceptingOrders: false }),
   control: controlOf(control),
   settings: SETTINGS,
+  version: { profile: '1760214600.000000000', settings: '1760214600.000000000' },
 });
 
 const review = (control: Partial<DistributorControl> = {}) =>

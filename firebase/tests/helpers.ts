@@ -8,6 +8,7 @@ import {
   arrayUnion,
   deleteField,
   doc,
+  getDoc,
   serverTimestamp,
   setDoc,
   Timestamp,
@@ -347,8 +348,32 @@ export function backToReview(): Record<string, unknown> {
     listingApproved: false,
     approvedAt: deleteField(),
     approvedBy: deleteField(),
+    reviewedProfileAt: deleteField(),
+    reviewedSettingsAt: deleteField(),
     updatedAt: serverTimestamp(),
   };
+}
+
+/**
+ * What an approval says it reviewed (PLAN 2.11): the `updatedAt` of the public profile and of
+ * the private settings as they are stored right now, read with the rules disabled. It is what a
+ * platform admin has on screen when nobody edited the listing since it opened the review.
+ */
+export async function reviewedMarks(
+  env: RulesTestEnvironment,
+  d: string,
+): Promise<{ reviewedProfileAt: unknown; reviewedSettingsAt: unknown }> {
+  let marks = { reviewedProfileAt: null as unknown, reviewedSettingsAt: null as unknown };
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    const profile = await getDoc(doc(db, `distributors/${d}`));
+    const settings = await getDoc(doc(db, `distributors/${d}/private/settings`));
+    marks = {
+      reviewedProfileAt: profile.get('updatedAt') ?? null,
+      reviewedSettingsAt: settings.get('updatedAt') ?? null,
+    };
+  });
+  return marks;
 }
 
 /**

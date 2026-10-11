@@ -41,6 +41,7 @@ import {
   type FoundingOptions,
   memberDoc,
   newDistributorId,
+  reviewedMarks,
   seedDoc,
   seedProfile,
   seedWorld,
@@ -591,6 +592,7 @@ describe('the correction mark — what the platform admin does with it', () => {
       listingApproved: true,
       approvedAt: serverTimestamp(),
       approvedBy: ADMIN_UID,
+      ...(await reviewedMarks(env, PENDING)),
       reviewNote: deleteField(),
       ...stamp,
     };
