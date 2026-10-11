@@ -1,8 +1,11 @@
 // role-walker
 // What a person found in the first minutes of using the built app, role by role, on the pass
 // of 2026-10-11 (docs/testing/matriz-de-roles.md). Each test describes the behaviour a person
-// expects and is marked `test.fail` with the reason while the app does not do it yet: the day
-// the app is fixed the test turns "unexpectedly passing" and the mark is removed.
+// expects. The ones the app does not do yet are marked `test.fail` with the reason: the day the
+// app is fixed the test turns "unexpectedly passing" and the mark is removed. Fixed since then
+// (their tests stay as plain tests): the back button in the sign-up of a distributor, the
+// storage notice over "Guardar cambios", the answer of /restablecer, the 404 page with a session
+// and the password of spaces.
 import { expect, type Page } from '@playwright/test';
 import { type Actors, DESKTOP, PHONE, test } from '../support/actors';
 import { createTestAccount, readDocument, uniqueTag } from '../support/emulator-admin';
@@ -57,10 +60,6 @@ test.describe('sign-up of a distributor: what is typed survives the browser', ()
   test('the back button of the browser returns to the previous step with its data', async ({
     page,
   }, testInfo) => {
-    test.fail(
-      true,
-      'role-walker 2026-10-11: the steps are not in the history; "back" leaves the wizard (to /inicio) and everything typed is lost, and "forward" returns to an empty first step',
-    );
     const tag = uniqueTag(testInfo);
     const account = await createTestAccount(tag);
     await signInWithPassword(page, account.email, '/inicio');
@@ -157,10 +156,6 @@ test.describe('review of a listing with two people at once', () => {
     actors,
     browser,
   }, testInfo) => {
-    test.fail(
-      true,
-      'role-walker 2026-10-11: on a first visit at 390 px the notice sits on top of "Guardar cambios" at the end of /central/ficha; the tap lands on the notice until "Entendido" is pressed. The same notice covers "Usar mi ubicación" on the first view of the home and "Cerrar sesión" on /cuenta at 1440 px',
-    );
     const { account } = await foundedOffice(actors, uniqueTag(testInfo));
     // A phone that never saw the app: the notice is on the screen.
     const context = await browser.newContext(PHONE);
@@ -190,10 +185,6 @@ test.describe('small things a person meets on the way', () => {
   test('asking to reset the password of an unknown address answers like a known one', async ({
     page,
   }, testInfo) => {
-    test.fail(
-      true,
-      'role-walker 2026-10-11: an address without an account gets "El correo o la contraseña no coinciden." on /restablecer, while a known one gets "Revisa tu correo. Si hay una cuenta con…"',
-    );
     await page.goto('/restablecer');
     await page
       .getByLabel('Correo', { exact: true })
@@ -208,10 +199,6 @@ test.describe('small things a person meets on the way', () => {
   test('the "not found" page does not offer "Ingresar" to somebody already signed in', async ({
     page,
   }) => {
-    test.fail(
-      true,
-      'role-walker 2026-10-11: with a session open, the 404 page still shows the "Ingresar" button next to "Ir al inicio"',
-    );
     await signInAsSeedUser(page, 'customer');
 
     await page.goto('/una-pagina-que-no-existe');
@@ -222,10 +209,6 @@ test.describe('small things a person meets on the way', () => {
 
   // PLAN 2.1. BAJO.
   test('the registration refuses a password made only of spaces', async ({ page }, testInfo) => {
-    test.fail(
-      true,
-      'role-walker 2026-10-11: eight spaces pass "Mínimo 8 caracteres" and the account is created',
-    );
     await page.goto('/registro');
     await page.getByLabel('Nombre', { exact: true }).fill('Z. Prueba');
     await page

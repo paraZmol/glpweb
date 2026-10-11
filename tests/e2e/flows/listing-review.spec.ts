@@ -8,6 +8,7 @@ import {
   type SeedActor,
   test,
 } from '../support/actors';
+import { SEED_DISTRIBUTORS } from '../../seed/data';
 import { createTestAccount, readDocument, uniqueTag } from '../support/emulator-admin';
 import { foundDistributor, FOUNDING_PLANT, FOUNDING_VERIFICATION } from '../support/founding';
 import { signInWithPassword } from '../support/sign-in';
@@ -324,3 +325,33 @@ test('the admin asks for changes with a note, the founder corrects the data, and
   await expectPage(visitor.page, listing, true);
   expect([...owner.errors, ...admin.errors, ...visitor.errors]).toEqual([]);
 });
+
+// PLAN 2.11. role-walker 2026-10-11: an approved or suspended distributor opened by its address
+// showed under "Altas pendientes.", next to the list of the pending ones.
+const OPENED_BY_ADDRESS = [
+  [SEED_DISTRIBUTORS.a, 'aprobadas', 'Distribuidoras aprobadas.', 'Aprobadas'],
+  [SEED_DISTRIBUTORS.c, 'suspendidas', 'Distribuidoras suspendidas.', 'Suspendidas'],
+] as const;
+
+for (const [distributor, param, title, tab] of OPENED_BY_ADDRESS) {
+  test(`a distributor opened by its address shows under its own list: ${param}`, async ({
+    actors,
+  }) => {
+    const admin = await actors.openSeed('admin');
+
+    await admin.page.goto(`/plataforma/altas/${distributor.id}`);
+
+    await expect(admin.page).toHaveURL(
+      new RegExp(`/plataforma/altas/${distributor.id}\\?estado=${param}$`),
+    );
+    await expect(heading(admin.page)).toHaveText(title);
+    await expect(admin.page.getByRole('link', { name: tab, exact: true })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    await expect(
+      admin.page.getByRole('heading', { name: distributor.name, exact: true }),
+    ).toBeVisible();
+    expect(admin.errors).toEqual([]);
+  });
+}

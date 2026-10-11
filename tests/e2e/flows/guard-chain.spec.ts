@@ -55,6 +55,8 @@ test('an unverified account cannot go past the verification step by typing an ad
 
   await expect(page).toHaveURL(/\/inicio$/);
   await expect(heading(page)).toContainText('Hola, Z.');
+  // The name ends in a full stop of its own: the greeting does not add a second one.
+  await expect(heading(page)).not.toContainText('Z..');
   // And the step is gone for good: its address now leads home.
   await page.goto('/verificar-correo');
   await expect(page).toHaveURL(/\/inicio$/);
