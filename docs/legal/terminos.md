@@ -11,7 +11,10 @@
 > Hornilla está en construcción. Esta versión preliminar es la que se muestra en la aplicación y
 > la que queda registrada, con su número y su fecha, cuando alguien la acepta. Antes de abrir
 > Hornilla al público se publicará una versión revisada por un profesional y se pedirá aceptarla
-> de nuevo para seguir usando la aplicación.
+> de nuevo para seguir usando la aplicación. Hoy la aplicación permite crear una cuenta, registrar
+> una distribuidora, buscar las distribuidoras que llegan a un punto y ver su página; los
+> pedidos, los precios, las promociones y el seguimiento todavía no funcionan, y las secciones 4,
+> 5 y 6 describen cómo funcionarán.
 
 ## 1. Qué es Hornilla
 Hornilla es una plataforma que conecta a personas que quieren comprar gas doméstico (GLP) con
@@ -24,10 +27,16 @@ Titular de la plataforma: [razón social], RUC [número], [domicilio]. Contacto:
 - **Clientes**: personas de 18 años o más que piden gas.
 - **Distribuidoras**: negocios que publican su catálogo, reciben pedidos y gestionan su reparto.
   Quien registra una distribuidora declara que puede representarla y que el negocio cuenta con
-  las autorizaciones que la ley exige para comercializar GLP.
+  las autorizaciones que la ley exige para comercializar GLP. Hornilla puede pedirle que lo
+  acredite y dejar de mostrar a la distribuidora mientras no lo haga.
 - **Personal de la distribuidora**: repartidores y central, invitados por la distribuidora.
 
 Todas las personas que crean una cuenta declaran tener 18 años o más.
+
+Hoy una distribuidora aparece en el buscador en cuanto se registra, con los datos que ella misma
+escribe. **Que una distribuidora aparezca en Hornilla no significa que Hornilla haya comprobado
+su identidad, sus autorizaciones ni sus datos de contacto.** Si crees que una ficha suplanta a
+otro negocio o tiene datos falsos, avisa a Hornilla (sección 8).
 
 ## 3. Cuenta
 Cada persona es responsable de la veracidad de sus datos y de cuidar su contraseña. Hornilla puede
@@ -63,9 +72,11 @@ Nada de lo anterior limita los derechos que la ley reconoce a los consumidores.
 5. El cliente puede cancelar sin costo mientras el pedido no haya sido asignado.
 
 ## 6. Ubicación
-Para mostrar distribuidoras cercanas y seguir un pedido, Hornilla usa la ubicación del cliente
-(solo cuando la comparte) y la del repartidor (solo durante su jornada). El detalle está en la
-Política de privacidad.
+Para mostrar qué distribuidoras llegan hasta ti, la aplicación usa el punto que le des: la
+ubicación de tu dispositivo, solo si tocas "Usar mi ubicación" y lo permites, o unas coordenadas
+escritas a mano. Ese punto se queda en tu dispositivo. Cuando existan los pedidos y el seguimiento,
+se usará también la dirección de entrega del cliente y la ubicación del repartidor (solo durante
+su jornada). El detalle está en la Política de privacidad.
 
 ## 7. Seguridad del gas
 El GLP es un producto peligroso. Su instalación, uso y almacenamiento son responsabilidad de quien
@@ -75,8 +86,9 @@ fuego, ventilar, cerrar la válvula y llamar a los bomberos (116).
 ## 8. Reclamos
 - Sobre un pedido, un precio o una promoción: ante la distribuidora, que debe contar con su
   Libro de Reclamaciones.
-- Para avisar a Hornilla de un precio o una promoción engañosos: a [correo de contacto]. El botón
-  para reportarlo dentro de la aplicación se añadirá junto con las promociones.
+- Para avisar a Hornilla de un precio o una promoción engañosos, o de una ficha que suplanta a
+  otro negocio o tiene datos falsos: a [correo de contacto]. El botón para reportarlo dentro de
+  la aplicación se añadirá junto con las promociones.
 - Sobre el funcionamiento de la plataforma: a [correo de contacto]. Hornilla contará con su propio
   Libro de Reclamaciones virtual antes de abrir al público; todavía no está disponible en la
   aplicación.
@@ -94,13 +106,16 @@ Al terminar el periodo de prueba sin un plan activo, o si Hornilla suspende a la
 su panel queda en solo lectura: no puede recibir pedidos ni cambiar sus datos hasta regularizar
 su situación. También deja de mostrarse en el buscador; cuando la causa es el fin de la prueba,
 eso ocurre en cuanto alguien de su personal abre el panel o Hornilla revisa la ficha, y hasta
-entonces puede seguir apareciendo aunque ya no reciba pedidos.
+entonces puede seguir apareciendo aunque ya no reciba pedidos. Su página propia sigue visible
+para quien tenga el enlace, con sus datos de contacto y el aviso de que no está recibiendo
+pedidos, sin indicar el motivo.
 
 La ficha de la distribuidora es pública: cualquiera puede ver su nombre, su enlace, el teléfono y
 el WhatsApp del negocio, su dirección y la ubicación de su planta, su zona de reparto, su horario,
-sus marcas y precios, si atiende pedidos en este momento y la fecha en que se registró. Su
-situación con Hornilla (prueba, plan, pagos o suspensión) no es pública. El detalle está en la
-Política de privacidad.
+sus marcas y precios, su tope de balones por pedido, si atiende pedidos en este momento y las
+fechas en que se registró y en que cambió su ficha por última vez. El registro avisa de los
+principales antes de crear la distribuidora. Su situación con Hornilla (prueba, plan, pagos o
+suspensión) no es pública. El detalle está en la Política de privacidad.
 
 ## 11. Cambios
 Hornilla puede actualizar estos términos. Los cambios importantes se avisan en la aplicación y
@@ -110,6 +125,12 @@ requieren aceptación para seguir usándola.
 Estos términos se rigen por las leyes de la República del Perú.
 
 ## Historial de cambios
+- 0.1, cuarta redacción (2026-10-10): segunda revisión de cumplimiento. La nota inicial dice qué
+  funciona hoy; se aclara que aparecer en Hornilla no significa haber sido verificada y que
+  Hornilla puede pedir a la distribuidora que acredite lo que declara; la sección de ubicación
+  describe el punto de búsqueda de hoy; los avisos a Hornilla incluyen las fichas que suplantan
+  a otro negocio; se precisa que la página de una distribuidora que no recibe pedidos sigue
+  visible y qué más datos de la ficha son públicos.
 - 0.1, tercera redacción (2026-10-10): la ficha pública ya no muestra el estado de la
   distribuidora en Hornilla, solo si atiende pedidos; se precisa cuándo deja de aparecer en el
   buscador una distribuidora cuya prueba terminó.
