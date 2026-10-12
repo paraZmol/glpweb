@@ -43,15 +43,24 @@ test('home: "Usar mi ubicación" is free, and it searches', async ({ page, conte
   await page.goto('/');
   const locate = page.getByRole('button', { name: 'Usar mi ubicación' });
 
-  // The notice opens the first view; the button is reached under it, with nothing over it.
+  // The notice opens the first view and does not push the way in out of it: the whole button
+  // shows without scrolling, at 390 × 844 too (ux-reviewer, 2026-10-12), with nothing over it.
   await expect(notice(page)).toBeInViewport();
+  await expect(locate).toBeInViewport({ ratio: 1 });
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
   await expectUncovered(page, locate);
   await locate.click();
 
   await expect(page.getByRole('heading', { name: 'Llegan a tu punto' })).toBeVisible();
   // Reading it is the only thing that takes it away.
   await expect(notice(page)).toBeVisible();
-  await notice(page).getByRole('button', { name: 'Entendido' }).click();
+  const understood = notice(page).getByRole('button', { name: 'Entendido' });
+  // Compact to the eye, but a finger still gets its 44 px (ui-system §3).
+  const touchHeight = await understood.evaluate((element) =>
+    parseFloat(getComputedStyle(element, '::before').height),
+  );
+  expect(touchHeight).toBeGreaterThanOrEqual(44);
+  await understood.click();
   await expect(notice(page)).toHaveCount(0);
 });
 

@@ -15,7 +15,7 @@ function HeroPhoto() {
   return (
     <div className="relative lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:ml-10">
       <BurnerRing className="-right-11 -bottom-10 hidden size-56 lg:block" />
-      <div className="relative aspect-[4/3.7] overflow-hidden rounded-2xl bg-muted lg:aspect-auto lg:h-130 lg:rounded-3xl lg:shadow-float">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted lg:aspect-auto lg:h-130 lg:rounded-3xl lg:shadow-float">
         <img
           src={kettlePhoto}
           alt="Tetera sobre una hornilla encendida con llama azul"
@@ -30,7 +30,9 @@ function HeroPhoto() {
 /**
  * Home of Hornilla for everybody, with or without a session (PLAN 2.6): say where you are and
  * see which distributors reach you. Phone: stamp, headline, photo and the "Entregar en" card riding
- * on it. Desktop: headline and card on the left, photo on the right, results on a soft band.
+ * on it; the photo is 4:3 and the card rides high so that "Usar mi ubicación" stays in the first
+ * view of a 390 × 844 phone, also with the storage notice open. Desktop: headline and card on the
+ * left, photo on the right, results on a soft band.
  */
 export function HomePage() {
   usePageTitle('');
@@ -57,7 +59,7 @@ export function HomePage() {
         <HeroPhoto />
         <LocationField
           delivery={delivery}
-          className="relative z-10 mx-3 -mt-12 lg:col-start-1 lg:row-start-2 lg:m-0 lg:max-w-xl lg:self-start"
+          className="relative z-10 mx-3 -mt-16 lg:col-start-1 lg:row-start-2 lg:m-0 lg:max-w-xl lg:self-start"
         />
       </div>
       <div className="lg:bg-surface-soft">

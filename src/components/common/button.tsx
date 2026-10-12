@@ -27,8 +27,13 @@ const VARIANTS = {
     'bg-transparent text-foreground underline underline-offset-4 hover:bg-muted [&>span]:underline [&>span]:underline-offset-4',
 } as const;
 
+// A finger needs 44 px (ui-system §3). The small size keeps its 40 px look and reaches them with
+// an invisible area around it, so it grows nowhere: not on a phone, not on a desktop.
+const TOUCH_AREA =
+  'before:absolute before:inset-x-0 before:top-1/2 before:h-11 before:-translate-y-1/2';
+
 const SIZES = {
-  sm: 'h-10 gap-1.5 px-4 text-[0.9375rem]',
+  sm: `h-10 gap-1.5 px-4 text-[0.9375rem] ${TOUCH_AREA}`,
   md: 'h-12 gap-2 px-5 text-[1.0625rem]',
   lg: 'h-14 gap-2 px-7 text-[1.1875rem]',
 } as const;

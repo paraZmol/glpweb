@@ -34,14 +34,16 @@ export function StorageNotice() {
           exit={variants.exit}
           className="bg-flame-soft text-foreground"
         >
-          <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-2 lg:px-8">
-            <p className="min-w-0 flex-1 text-[0.8125rem] leading-snug sm:text-sm">
-              Hornilla guarda en tu dispositivo solo lo necesario para funcionar
-              <span className="hidden sm:inline">
-                : tu sesión, una copia de tus datos recientes, tus preferencias y el último punto
-                desde el que buscaste
-              </span>
-              . Sin publicidad ni rastreo.{' '}
+          <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-1 lg:px-8 lg:py-2">
+            <p className="min-w-0 flex-1 text-[0.8125rem] leading-4 lg:text-sm lg:leading-snug">
+              {/* A phone gets the short one: the strip must not push the home out of its first
+                  view. Both say the same as docs/legal/cookies.md; the detail is one tap away. */}
+              <span className="lg:hidden">Guardamos solo lo necesario. Sin rastreo.</span>
+              <span className="hidden lg:inline">
+                Hornilla guarda en tu dispositivo solo lo necesario para funcionar: tu sesión, una
+                copia de tus datos recientes, tus preferencias y el último punto desde el que
+                buscaste. Sin publicidad ni rastreo.
+              </span>{' '}
               <Link
                 to={ROUTES.cookies}
                 className="font-semibold whitespace-nowrap underline underline-offset-4"
@@ -49,7 +51,13 @@ export function StorageNotice() {
                 Ver qué se guarda
               </Link>
             </p>
-            <Button variant="ink" size="sm" onClick={dismiss} className="shrink-0">
+            {/* Compact to the eye; the small size brings its own 44 px touch area. */}
+            <Button
+              variant="ink"
+              size="sm"
+              onClick={dismiss}
+              className="h-8 shrink-0 px-3.5 text-sm lg:h-10 lg:px-4 lg:text-[0.9375rem]"
+            >
               Entendido
             </Button>
           </div>

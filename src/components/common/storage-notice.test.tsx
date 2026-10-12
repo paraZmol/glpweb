@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { renderStatic, tags, textOf } from '../../../tests/support/render-static';
+import { count, renderStatic, tags, textOf } from '../../../tests/support/render-static';
 import { hasSeenStorageNotice, rememberStorageNoticeSeen } from '../../lib/storage-notice';
 
 function fakeStorage(): Storage {
@@ -38,7 +38,10 @@ describe('storage notice', () => {
     const notice = html.slice(html.indexOf(NOTICE));
 
     expect(html).toContain(NOTICE);
+    // The long wording of a desktop and the short one of a phone: CSS shows one of them.
     expect(textOf(notice)).toContain('solo lo necesario para funcionar');
+    expect(textOf(notice)).toContain('Guardamos solo lo necesario. Sin rastreo.');
+    expect(count(notice, /<a\b/g)).toBe(1);
     expect(tags(notice, 'a').some((tag) => tag.includes('href="/cookies"'))).toBe(true);
     expect(textOf(notice)).toContain('Entendido');
   });
