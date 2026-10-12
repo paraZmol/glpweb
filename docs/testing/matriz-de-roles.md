@@ -92,7 +92,7 @@ siempre a `/verificar-correo` y ST a `/aceptar-terminos` antes que a cualquier �
 | Ver el estado de la ficha y la nota de la plataforma en `/central` (en vivo: cambia sin recargar) | — | — | — | — | — | ve | ve | ve lo suyo | ve | — |
 | Copiar el enlace público | — | — | — | — | — | puede | puede | puede lo suyo | no ve | — |
 | Editar la ficha pública (`/central/ficha`) | — | — | — | — | — | no ve | puede | puede la suya; rechaza la de A | rechaza (solo lectura) | — |
-| Cambiar nombre, teléfono o WhatsApp de una aprobada | — | — | — | — | — | no ve | puede, y vuelve a revisión | — | rechaza | — |
+| Cambiar nombre, teléfono, WhatsApp, dirección o ubicación de la planta de una aprobada | — | — | — | — | — | no ve | puede, y vuelve a revisión | — | rechaza | — |
 | Corregir RUC, razón social o registro tras una nota | — | — | — | — | — | no ve | puede (quien fundó) | — | rechaza | — |
 | Abrir las listas y la ficha de revisión | — | — | — | no ve | no ve | no ve | no ve | no ve | no ve | puede |
 | Aprobar · Pedir cambios (nota) · Suspender · Reactivar | — | — | — | no ve | no ve | no ve | no ve | no ve | no ve | puede |
@@ -120,6 +120,9 @@ Lo que cada rol consigue llamando a la base con su propia sesión, sin pasar por
 | Poner `acceptingOrders` o `listingApproved` a mano | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza (solo con la decisión completa) |
 | Aprobar sin decir qué versión se revisó, o para una versión que ya no es la guardada | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 | Editar la ficha o `private/settings` sin mover su `updatedAt` | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
+| Cambiar la dirección o la planta de una aprobada sin devolverla a revisión | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
+| Marcar "correcciones enviadas" sin corregir nada (lote que solo mueve `updatedAt` o el indicador) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
+| Reescribir `acceptingOrders` con el valor que ya tiene (mueve la versión que nombra una aprobación) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | puede, junto a su decisión |
 | Cambiar el estado (`status`) de una distribuidora a mano | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza (solo con la decisión completa) |
 | Darse un rol en `members` · cambiar el rol de otro · borrar un miembro | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 | Darse super admin (`platformAdmins/{yo}`) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |

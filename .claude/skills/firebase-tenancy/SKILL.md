@@ -88,7 +88,7 @@ skill `glp-domain`: la válida pasa, las inválidas fallan. Un cambio de reglas 
 `firebase deploy --only firestore:rules,database,hosting` es una acción hacia afuera: confirmar
 con el usuario. Nunca desplegar reglas con tests en rojo. Índices en `firestore.indexes.json`.
 
-## 10. Decisiones posteriores (al día: 2026-10-11)
+## 10. Decisiones posteriores (al día: 2026-10-12)
 Cuando esta sección y los §2–§3 chocan, manda esta. La fuente exacta es la cabecera de
 `firebase/firestore.rules` (modelo de datos campo por campo) y `docs/PLAN.md` §11.
 
@@ -112,17 +112,27 @@ Cuando esta sección y los §2–§3 chocan, manda esta. La fuente exacta es la 
   aprobada" (`isOpenData(control)`), comprobado con `getAfter` en los dos sentidos: quien cambia
   el control debe dejar la ficha de acuerdo en el mismo lote. Nunca se usa para autorizar una
   escritura; puede quedar desfasado cuando vence una prueba y lo corrige quien abre el panel.
+  **El personal solo puede escribirlo cuando cambia de valor** (`flipsTheFlag`): reescribirlo
+  igual movería `updatedAt`, la versión que nombra una aprobación, y cualquier repartidor podría
+  dejar obsoleta una revisión abierta. El super admin sí puede, junto a su decisión.
 - **Lectura pública de la ficha**: `allow get` solo si `acceptingOrders == true` (o el documento
   no existe). Sin aprobar, suspendida o con la prueba vencida solo la leen su personal activo y
   el super admin; `/d/{slug}` responde "no encontrada". Las reglas no filtran campos: la única
   forma de no entregar teléfono ni WhatsApp es no entregar el documento. `allow list` exige
   `where('acceptingOrders', '==', true)` y `limit <= 50`.
-- **Cambiar nombre, teléfono o WhatsApp devuelve la ficha a revisión**: esa edición debe dejar
-  `acceptingOrders: false` y, con `getAfter`, el control con `listingApproved: false`. Si cambia
-  el nombre, además `control.distributorName` igual al nombre nuevo.
+- **Cambiar nombre, teléfono, WhatsApp, dirección o ubicación de la planta devuelve la ficha a
+  revisión** (`IDENTITY_FIELDS` en `src/domain/tenancy/listing.ts`, misma lista en
+  `changesIdentity()`): esa edición debe dejar `acceptingOrders: false` y, con `getAfter`, el
+  control con `listingApproved: false`. Si cambia el nombre, además `control.distributorName`
+  igual al nombre nuevo. El radio de reparto (tope 50 km) y el horario no: son ajustes
+  rutinarios (riesgo aceptado, PLAN §9).
 - **Nota y corrección.** El super admin devuelve una ficha con `reviewNote`. Cuando quien es
   dueño corrige (ficha pública o `private/settings`), el mismo lote marca
-  `correctedAt == request.time`. La marca solo existe junto a una nota, quien es dueño no puede
+  `correctedAt == request.time`. **La marca exige un cambio de contenido en ese lote**
+  (`corrects()`: compara `getAfter` con `get`): la ficha en algo más que `acceptingOrders` y
+  `updatedAt`, o settings en algo más que `updatedAt`; mover solo la fecha no corrige nada.
+  Coste: 4 consultas de reglas si la corrección está en la ficha, 6 si está en settings. La
+  marca solo existe junto a una nota, quien es dueño no puede
   quitarla ni tocar la nota, el super admin no puede escribirla y debe quitarla al cambiar la
   nota o aprobar. **No concede nada**: ninguna regla la lee. Estados para las pantallas
   (`listingStateOf`): `inReview`, `changesRequested`, `correctionsSent`, `listed`,
@@ -181,6 +191,21 @@ verificar. Sustituye el orden anterior (sesión → términos → correo).
   cambia un documento que leen con `get` (el rol): por eso se escucha también el `members`
   propio. Mostrar un dato en vivo **no** es haberlo revisado: la pantalla separa "lo que se
   muestra" de "lo que se vio" (`useReviewAttention`).
+- **Perder un rol con un oyente abierto** (medido contra el emulador el 2026-10-12,
+  `src/data/role-revocation.emu.test.ts`; falta confirmarlo en el servicio real). Al borrar
+  `platformAdmins/{uid}`: toda petición nueva se rechaza al instante (leer, listar, escribir,
+  abrir otro oyente). El oyente que ya estaba abierto **no recibe ningún aviso** —lo último que
+  entregó sigue en pantalla— pero **no entrega nada más**: las reglas se vuelven a evaluar con
+  el primer cambio de un documento escuchado, y ese cambio lo cierra con `permission-denied` en
+  lugar de llegar. Dos trampas al probarlo: un `getDoc` o un segundo oyente sobre un documento
+  que ya tiene un oyente abierto se responden desde ese oyente, sin pasar por las reglas.
+  `grant-platform-admin.mjs --revoke` revoca además los tokens: la sesión cae al renovar el
+  suyo (como mucho una hora).
+- **Límite de 1 000 expresiones por evaluación.** La regla `update` de `/distributors/{d}`
+  está al borde (medido el 2026-10-12: la edición completa con 8 marcas admite unas 10
+  comparaciones más y no 12). Una escritura que se pasa del límite se rechaza aunque fuera
+  legítima. Antes de añadirle condiciones: validar solo lo que cambia o partir el documento
+  (PLAN §9).
 - **Datos locales.** Cerrar sesión borra la caché de Firestore y las claves `hornilla.*` salvo
   `storageNoticeSeen` (`src/data/local-wipe.ts`, `src/features/account/end-session.ts`).
 - **Emuladores.** Solo a través de `scripts/emulators.mjs` (carril con `E2E_LANE=N`); nunca
