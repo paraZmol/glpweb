@@ -81,3 +81,10 @@ export function searchOf(filter: PlatformListFilter): string {
 export function platformListPath(filter: PlatformListFilter): string {
   return `${ROUTES.platformHome}${searchOf(filter)}`;
 }
+
+/** Told to a listing opened from a row: "back" returns to that list as it was left. */
+export const FROM_LIST_STATE = { fromList: true } as const;
+
+export function isFromList(state: unknown): boolean {
+  return typeof state === 'object' && state !== null && 'fromList' in state;
+}

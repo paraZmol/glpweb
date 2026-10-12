@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { BrandTheme } from '@/components/brand/brand-theme';
 import { Monogram } from '@/components/brand/monogram';
 import { Button } from '@/components/common/button';
@@ -9,9 +9,14 @@ import type { Session } from '@/domain/auth/session';
 import { listingStateOf } from '@/domain/tenancy/listing';
 import type { ListingReview } from '@/features/platform/platform-actions';
 import { type ReviewAction, reviewActionsOf } from '@/features/platform/review-actions';
+import {
+  isSameStanding,
+  reviewedContentOf,
+  standingOf,
+} from '@/features/platform/reviewed-content';
 import { useReviewAttention } from '@/features/platform/use-review-attention';
 import { distributorPath } from '@/lib/routes';
-import { ChangedNotice } from './changed-notice';
+import { ChangedNotice, StandingChangedNotice } from './changed-notice';
 import { DECISION_COPY } from './decision-copy';
 import { LISTING_LABELS, PLAN_LABELS } from './listing-labels';
 import {
@@ -30,13 +35,15 @@ type ListingReviewViewProps = {
   admin: Session;
   /** After a decision: read the listing and the list again. */
   onDecided: () => void;
+  /** Said under its name: where the distributor went when it left the list on screen. */
+  moved?: ReactNode;
 };
 
 /**
  * One listing with everything a platform admin looks at (PLAN 2.11): what visitors will see,
  * what the founder declared, who to contact and the decisions that apply.
  */
-export function ListingReviewView({ review, admin, onDecided }: ListingReviewViewProps) {
+export function ListingReviewView({ review, admin, onDecided, moved }: ListingReviewViewProps) {
   const [open, setOpen] = useState<ReviewAction | null>(null);
   // Judged once when the listing is shown: the state does not flip under the reader.
   const [now] = useState(() => new Date());
@@ -44,8 +51,12 @@ export function ListingReviewView({ review, admin, onDecided }: ListingReviewVie
   const listing = LISTING_LABELS[listingStateOf(control, now)];
   const actions = reviewActionsOf(control);
   // The data on screen is live; what an approval is sent for is what the admin looked at.
-  const attention = useReviewAttention(review.version);
+  const attention = useReviewAttention(review.version, reviewedContentOf(review));
   const showsChanged = attention.needsSecondLook && actions.includes('approve');
+  // This view starts again after each decision taken here: a standing that moves under it was
+  // moved by somebody else. When the data changed too, that notice already says to look again.
+  const [openedAs] = useState(() => standingOf(control));
+  const showsStandingChanged = !showsChanged && !isSameStanding(openedAs, control);
 
   const decided = () => {
     setOpen(null);
@@ -72,6 +83,7 @@ export function ListingReviewView({ review, admin, onDecided }: ListingReviewVie
           </div>
         </div>
       </header>
+      {moved}
       {control.reviewNote && (
         <SentNote note={control.reviewNote} correctedAt={control.correctedAt} />
       )}
@@ -114,6 +126,7 @@ export function ListingReviewView({ review, admin, onDecided }: ListingReviewVie
         ) : (
           <>
             {showsChanged && <ChangedNotice onAcknowledge={attention.acknowledge} />}
+            {showsStandingChanged && <StandingChangedNotice />}
             <div className="flex flex-wrap gap-3">
               {actions.map((action) => (
                 <Button

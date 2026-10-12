@@ -14,7 +14,13 @@ import type { PlatformDistributors } from '@/features/platform/use-platform-dist
 import { formatDateTime } from '@/lib/format-date';
 import { ICON_STROKE } from '@/lib/icons';
 import { distributorPath, platformListingPath } from '@/lib/routes';
-import { FILTER_COPY, LISTING_LABELS, PLAN_LABELS, searchOf } from './listing-labels';
+import {
+  FILTER_COPY,
+  FROM_LIST_STATE,
+  LISTING_LABELS,
+  PLAN_LABELS,
+  searchOf,
+} from './listing-labels';
 
 const SKELETON_ROWS = 3;
 
@@ -29,6 +35,7 @@ function DistributorRow({ listed, filter, now }: RowProps) {
     <li>
       <NavLink
         to={{ pathname: platformListingPath(distributorId), search: searchOf(filter) }}
+        state={FROM_LIST_STATE}
         className="flex items-center gap-3 rounded-lg px-3 py-3 transition-colors motion-fast hover:bg-muted aria-[current=page]:bg-muted aria-[current=page]:inset-ring-[1.5px] aria-[current=page]:inset-ring-border"
       >
         <div className="min-w-0 flex-1">

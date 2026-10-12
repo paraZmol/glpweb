@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { Bone, LoadingRegion } from '@/components/common/skeleton';
 import { EmptyState, ErrorState } from '@/components/common/state-views';
 import {
@@ -9,6 +9,7 @@ import {
 } from '@/domain/tenancy/listing';
 import { useAccount } from '@/features/account/account-context';
 import { useListingReview } from '@/features/platform/use-listing-review';
+import { MovedNotice } from './changed-notice';
 import { searchOf } from './listing-labels';
 import { ListingReviewView } from './listing-review';
 
@@ -36,8 +37,8 @@ type ReviewPaneProps = {
 export function ReviewPane({ distributorId, filter, onDecided }: ReviewPaneProps) {
   const { session } = useAccount();
   const navigate = useNavigate();
+  const { state } = useLocation();
   const review = useListingReview(distributorId);
-  const isPlaced = useRef(false);
   const control = review.status === 'ready' ? review.data?.control : undefined;
   const ownList = control && !isInPlatformList(control, filter) ? platformListOf(control) : null;
 
@@ -45,12 +46,21 @@ export function ReviewPane({ distributorId, filter, onDecided }: ReviewPaneProps
   // the address names: the panel moves to the list it is in, so the title, the lead and the rows
   // beside it speak of what is open. Judged once, when it first shows: the review is live, and
   // neither a decision taken here nor an edit of its owner that arrives meanwhile moves the
-  // admin to another list (whoever works through the pending ones stays among them).
+  // admin to another list (whoever works through the pending ones stays among them): the review
+  // says where it went instead (`MovedNotice`).
+  const [placedIn, setPlacedIn] = useState<PlatformListFilter | null>(null);
+  if (control !== undefined && placedIn === null) setPlacedIn(ownList ?? filter);
+  const isMoved = useRef(false);
   useEffect(() => {
-    if (control === undefined || isPlaced.current) return;
-    isPlaced.current = true;
-    if (ownList !== null) void navigate({ search: searchOf(ownList) }, { replace: true });
-  }, [control, ownList, navigate]);
+    if (placedIn === null || isMoved.current) return;
+    isMoved.current = true;
+    // The entry keeps its state: it says whether "back" returns to the list.
+    if (placedIn !== filter) {
+      void navigate({ search: searchOf(placedIn) }, { replace: true, state });
+    }
+    // Once, when the distributor is placed: later changes of the list are the admin's own.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [placedIn]);
 
   if (distributorId === null) {
     return (
@@ -84,5 +94,17 @@ export function ReviewPane({ distributorId, filter, onDecided }: ReviewPaneProps
     review.reload();
     onDecided();
   };
-  return <ListingReviewView review={review.data} admin={session} onDecided={decided} />;
+  // Only while the screen is still on the list it was placed in: after following the link of
+  // the notice the title and the rows speak of the new list.
+  const hasLeftList = ownList !== null && placedIn === filter;
+  return (
+    <ListingReviewView
+      review={review.data}
+      admin={session}
+      onDecided={decided}
+      moved={
+        hasLeftList && <MovedNotice distributorId={distributorId} from={filter} to={ownList} />
+      }
+    />
+  );
 }

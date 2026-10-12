@@ -22,12 +22,18 @@ export function isSameReviewVersion(one: ReviewVersion, other: ReviewVersion): b
  */
 export interface ReviewAttention {
   seen: ReviewVersion;
+  /**
+   * What the reviewed data said at `seen`, as one opaque text: two versions with the same
+   * content show the admin nothing new (a suspension stamps the public profile without
+   * changing a word of it).
+   */
+  content: string;
   /** An approval was refused because the listing had changed. */
   wasRefused: boolean;
 }
 
-export function startReviewAttention(shown: ReviewVersion): ReviewAttention {
-  return { seen: shown, wasRefused: false };
+export function startReviewAttention(shown: ReviewVersion, content: string): ReviewAttention {
+  return { seen: shown, content, wasRefused: false };
 }
 
 /** Whether to tell the admin that the listing changed while it was being reviewed. */
@@ -40,6 +46,22 @@ export function refuseStaleReview(attention: ReviewAttention): ReviewAttention {
 }
 
 /** The admin says it looked at what is on the screen now. */
-export function acknowledgeReview(shown: ReviewVersion): ReviewAttention {
-  return startReviewAttention(shown);
+export function acknowledgeReview(shown: ReviewVersion, content: string): ReviewAttention {
+  return startReviewAttention(shown, content);
+}
+
+/**
+ * A version that moved while the reviewed data still says exactly what the admin looked at
+ * (somebody suspended or reactivated the distributor, a copy was put right): there is nothing
+ * new to look at, so what was seen follows it. Never after a refused approval, and never when
+ * one reviewed word differs: then only `acknowledgeReview` moves it.
+ */
+export function followUnreviewedChange(
+  attention: ReviewAttention,
+  shown: ReviewVersion,
+  content: string,
+): ReviewAttention {
+  const hasNothingNew = !attention.wasRefused && attention.content === content;
+  if (!hasNothingNew || isSameReviewVersion(attention.seen, shown)) return attention;
+  return { ...attention, seen: shown };
 }

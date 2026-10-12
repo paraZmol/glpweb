@@ -5,6 +5,8 @@ import { PermissionDeniedError } from '../../domain/tenancy/errors';
 import type { DistributorControl, DistributorPrivateSettings } from '../../domain/tenancy/types';
 import type { ListedDistributor, ListingReview } from '../../features/platform/platform-actions';
 import type { PlatformDistributors } from '../../features/platform/use-platform-distributors';
+import { reviewedContentOf } from '../../features/platform/reviewed-content';
+import { MovedNotice } from './changed-notice';
 import { DistributorList } from './distributor-list';
 import { ListFilter } from './list-filter';
 import { filterOf, platformListPath, searchOf } from './listing-labels';
@@ -292,5 +294,62 @@ describe('review of one listing', () => {
     for (const control of [{}, { listingApproved: true }, { status: 'suspended' } as const]) {
       expect(textOf(review(control))).not.toMatch(/verificad[ao]|autorizad[ao]/i);
     }
+  });
+});
+
+// B4 (role-walker 2026-10-12): what counts as "the listing changed" for the admin who reviews.
+describe('reviewedContentOf', () => {
+  const opened = reviewOf();
+
+  it('is the same after a suspension: it only stamps the profile and closes it to orders', () => {
+    const suspended: ListingReview = {
+      ...opened,
+      profile: {
+        ...opened.profile,
+        acceptingOrders: !opened.profile.acceptingOrders,
+        updatedAt: new Date('2026-10-12T10:00:00Z'),
+      },
+      settings: { ...opened.settings, updatedAt: new Date('2026-10-12T10:00:00Z') },
+      control: controlOf({ status: 'suspended' }),
+    };
+
+    expect(reviewedContentOf(suspended)).toBe(reviewedContentOf(opened));
+  });
+
+  type Edit = { profile?: Partial<ListingReview['profile']>; settings?: Partial<typeof SETTINGS> };
+  const EDITS: [string, Edit][] = [
+    ['the name', { profile: { name: 'Gas Demo Sur' } }],
+    ['a phone', { profile: { contactPhone: '900000012' } }],
+    ['the address', { profile: { addressLine: 'Av. Demo 456' } }],
+    ['the plant', { profile: { plant: { lat: -12.06, lng: -77.04 } } }],
+    ['the colour', { profile: { brandColor: '#1757d6' } }],
+    ['the schedule', { profile: { schedule: { days: [1], opensAt: '08:00', closesAt: '12:00' } } }],
+    ['the tax number', { settings: { taxId: '20000000002' } }],
+    ['the legal name', { settings: { legalName: 'Otra S.A.C.' } }],
+    ['the record number', { settings: { hydrocarbonsRegistry: '00000-074-000002' } }],
+    ['the phone of the holder', { settings: { ownerPhone: '900000072' } }],
+  ];
+  it.each(EDITS)('differs when %s changes', (_what, patch) => {
+    const edited: ListingReview = {
+      ...opened,
+      profile: { ...opened.profile, ...patch.profile },
+      settings: { ...opened.settings, ...patch.settings },
+    };
+
+    expect(reviewedContentOf(edited)).not.toBe(reviewedContentOf(opened));
+  });
+});
+
+describe('a distributor that left the list it was opened from', () => {
+  it('says where it is now, with the way to that list keeping it open', () => {
+    const html = renderStatic(
+      <MovedNotice distributorId="abcdefghij0123456789" from="inReview" to="approved" />,
+      { path: '/plataforma/altas/abcdefghij0123456789' },
+    );
+
+    expect(textOf(html)).toContain(
+      'Ya no está en la lista «En revisión»: ahora figura en Aprobadas',
+    );
+    expect(html).toContain('href="/plataforma/altas/abcdefghij0123456789?estado=aprobadas"');
   });
 });

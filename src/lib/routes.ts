@@ -43,6 +43,15 @@ export function platformListingPath(distributorId: string): string {
   return `${LISTING_PREFIX}${encodeURIComponent(distributorId)}`;
 }
 
+/**
+ * Addresses that are one screen: the platform panel keeps its list (the pages loaded, where it
+ * was scrolled) while a distributor is open beside it or over it, so moving between the two is
+ * not a change of screen (`PageTransition` keys by this).
+ */
+export function screenKeyOf(pathname: string): string {
+  return pathname.startsWith(LISTING_PREFIX) ? ROUTES.platformHome : pathname;
+}
+
 export const AREA_HOME: Record<AppArea, string> = {
   customer: ROUTES.customerHome,
   driver: ROUTES.driverHome,

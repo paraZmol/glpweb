@@ -9,6 +9,7 @@ import {
   registerPathFrom,
   ROUTES,
   safeReturnPath,
+  screenKeyOf,
   signInPathFrom,
   transitionDirection,
 } from './routes';
@@ -88,6 +89,20 @@ describe('transitionDirection', () => {
     ['/central', '/central', 'fade'],
   ])('%s → %s is %s', (from, to, expected) => {
     expect(transitionDirection(from, to)).toBe(expected);
+  });
+});
+
+// B3 (role-walker 2026-10-12): the platform list and the distributor open over it are one
+// screen, so what "Cargar más" loaded is still there after opening one.
+describe('screenKeyOf', () => {
+  it.each([
+    ['/plataforma', '/plataforma'],
+    ['/plataforma/altas/abcdefghij0123456789', '/plataforma'],
+    ['/central', '/central'],
+    ['/central/ficha', '/central/ficha'],
+    ['/d/gas-demo-norte', '/d/gas-demo-norte'],
+  ])('%s belongs to the screen %s', (pathname, expected) => {
+    expect(screenKeyOf(pathname)).toBe(expected);
   });
 });
 

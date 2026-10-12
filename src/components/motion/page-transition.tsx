@@ -3,7 +3,7 @@ import * as m from 'motion/react-m';
 import { useState } from 'react';
 import { useLocation, useOutlet } from 'react-router';
 import { pageVariants } from '@/lib/motion';
-import { type TransitionDirection, transitionDirection } from '@/lib/routes';
+import { screenKeyOf, type TransitionDirection, transitionDirection } from '@/lib/routes';
 
 /** Remembers the previous path to know whether we went into a detail, back, or sideways. */
 function useDirection(pathname: string): TransitionDirection {
@@ -31,7 +31,7 @@ export function PageTransition({ className }: { className?: string }) {
   return (
     <AnimatePresence mode="wait" initial={false}>
       <m.div
-        key={pathname}
+        key={screenKeyOf(pathname)}
         className={className}
         initial={variants.initial}
         animate={variants.animate}
