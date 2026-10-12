@@ -33,7 +33,7 @@ describe('account links of the public header', () => {
         email: 'persona@example.com',
         emailVerified: true,
         displayName: 'Persona Demo',
-        providerIds: ['password'],
+        providerIds: ['google.com'],
       },
     };
 

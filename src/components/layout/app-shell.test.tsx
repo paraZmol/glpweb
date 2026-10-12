@@ -144,7 +144,7 @@ describe('RequireAccess', () => {
   it.each([
     ['a signed-out visitor', accountOf({ session: { status: 'signedOut' } }), 'customer'],
     [
-      'an unverified account',
+      'a session without a confirmed e-mail',
       accountOf({
         session: { status: 'signedIn', session: { ...SESSION, emailVerified: false } },
       }),
@@ -156,6 +156,27 @@ describe('RequireAccess', () => {
   ] as const)('never shows the screen to %s', (_who, account, gate) => {
     expect(textOf(guard(gate, account))).not.toContain('pantalla protegida');
   });
+
+  // PLAN 2.1: Google confirms the e-mail, so this session should not exist. If it does, it
+  // gets no screen and no step to complete: what happened and the way out.
+  it.each(['customer', 'office', 'platform', 'acceptTerms', 'home'] as const)(
+    'tells a session without a confirmed e-mail to sign out and try again, on %s',
+    (gate) => {
+      const unconfirmed = accountOf({
+        session: { status: 'signedIn', session: { ...SESSION, emailVerified: false } },
+        current: OWNER.current,
+        platformAdmin: { status: 'ready', data: true, reload: () => {} },
+      });
+      const html = guard(gate, unconfirmed);
+
+      expect(html).toContain('role="alert"');
+      expect(textOf(html)).toContain('No pudimos confirmar tu correo con Google.');
+      expect(textOf(html)).toContain('Cierra sesión e inténtalo de nuevo.');
+      expect(tags(html, 'button')).toHaveLength(1);
+      expect(textOf(html)).toContain('Cerrar sesión');
+      expect(textOf(html)).not.toContain('pantalla protegida');
+    },
+  );
 
   it('explains a failed load and offers to retry or to sign out', () => {
     const failed = accountOf({

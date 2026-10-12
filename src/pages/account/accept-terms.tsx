@@ -32,8 +32,8 @@ const OFFLINE_TEXT = 'Sin conexión: para registrar tu aceptación necesitas int
 type Errors = ConsentErrors & ProfileErrors;
 
 /**
- * Pending step: the account, with its e-mail verified, has not accepted the current terms or
- * privacy policy (PLAN 2.7, 2.9, 2.11). A new account also confirms its name and phone here:
+ * Pending step: the account has not accepted the current terms or privacy policy (PLAN 2.7,
+ * 2.9, 2.11). A new account also confirms the name Google gave and adds its phone here:
  * the profile is created with the acceptance, never before. Nothing is recorded until the
  * person ticks BOTH boxes and presses the button; then the guard moves on.
  */

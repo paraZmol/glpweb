@@ -28,22 +28,19 @@ function failureOf(error: unknown): Failure {
   return { text, withContactLink: false };
 }
 
-const DEFAULT_LABEL = 'No acepto: eliminar mi cuenta';
+const LABEL = 'No quiero continuar: eliminar mi cuenta';
 
 type DiscardAccountProps = {
   uid: string;
   disabled: boolean;
-  /** How the way out is called on the step that shows it. */
-  label?: string;
 };
 
 /**
- * "No acepto: eliminar mi cuenta" (PLAN 2.9): the way out for somebody who does not accept the
- * terms, and for somebody who registered and does not want to go on (PLAN 2.11). Only for an
- * account without a profile. It asks once more before deleting, because it cannot be undone.
+ * "No acepto: eliminar mi cuenta" (PLAN 2.9): the way out for somebody who signed in for the
+ * first time and does not accept the terms. Only for an account without a profile. It asks once more before deleting, because it cannot be undone.
  * When it works the session ends and the app restarts by itself, signed out.
  */
-export function DiscardAccount({ uid, disabled, label = DEFAULT_LABEL }: DiscardAccountProps) {
+export function DiscardAccount({ uid, disabled }: DiscardAccountProps) {
   const navigate = useNavigate();
   const { isRunning, run } = useAsyncAction();
   const [isConfirming, setConfirming] = useState(false);
@@ -82,7 +79,7 @@ export function DiscardAccount({ uid, disabled, label = DEFAULT_LABEL }: Discard
           disabled={disabled}
           onClick={() => setConfirming(true)}
         >
-          {label}
+          {LABEL}
         </Button>
       </div>
     );
@@ -116,8 +113,8 @@ export function DiscardAccount({ uid, disabled, label = DEFAULT_LABEL }: Discard
       }
     >
       <p className="mt-1 text-muted-foreground">
-        Se borra tu cuenta de Hornilla y no se puede deshacer. Podrás registrarte de nuevo con este
-        mismo correo.
+        Se borra tu cuenta de Hornilla y no se puede deshacer. Podrás volver a entrar con esta misma
+        cuenta de Google cuando quieras.
       </p>
     </ConfirmPanel>
   );

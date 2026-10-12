@@ -1,27 +1,21 @@
-import { type FormEvent, useRef, useState } from 'react';
-import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router';
-import { FormStatus, OrDivider } from '@/components/account/form-parts';
+import { useState } from 'react';
+import { Navigate, useLocation, useSearchParams } from 'react-router';
+import { FormStatus } from '@/components/account/form-parts';
 import { GoogleButton } from '@/components/account/google-button';
 import { Highlight } from '@/components/brand/highlight';
-import { Button } from '@/components/common/button';
 import { InlineAlert } from '@/components/common/inline-alert';
-import { PasswordField } from '@/components/common/password-field';
-import { TextField } from '@/components/common/text-field';
 import { TextLink } from '@/components/common/text-link';
 import { AuthFrame } from '@/components/layout/auth-frame';
 import { SIGN_IN_REQUIRED } from '@/components/layout/require-access';
-import { signIn } from '@/features/auth/auth-actions';
-import {
-  hasErrors,
-  type SignInErrors,
-  signInErrorsOf,
-  validateSignIn,
-} from '@/features/auth/auth-forms';
 import { useSession } from '@/features/auth/use-session';
 import { usePageTitle } from '@/lib/page-title';
-import { registerPathFrom, RETURN_PARAM, ROUTES, safeReturnPath } from '@/lib/routes';
-import { useAsyncAction } from '@/lib/use-async-action';
-import { useFocusFirstInvalid } from '@/lib/use-focus-first-invalid';
+import {
+  registerPathFrom,
+  RETURN_PARAM,
+  ROUTES,
+  safeReturnPath,
+  signInPathFrom,
+} from '@/lib/routes';
 import { useOnlineStatus } from '@/lib/use-online-status';
 
 const OFFLINE_TEXT = 'Sin conexión: para ingresar necesitas internet.';
@@ -32,27 +26,61 @@ function cameFromGuard(state: unknown): boolean {
     : false;
 }
 
-export function SignInPage() {
-  usePageTitle('Ingresar');
+type EntryMode = 'signIn' | 'register';
+
+/**
+ * The two addresses say the same thing to two kinds of visitor: with Google as the only way
+ * in (PLAN 2.1) the first sign-in is what creates the account, so there is no form to tell
+ * them apart. Only the words change.
+ */
+const COPY = {
+  signIn: {
+    pageTitle: 'Ingresar',
+    title: 'Ingresa a',
+    lead: 'Tus pedidos, tus direcciones y tu distribuidora te esperan.',
+    otherQuestion: '¿Primera vez por aquí?',
+    otherLabel: 'Crear cuenta',
+  },
+  register: {
+    pageTitle: 'Crear cuenta',
+    title: 'Crea tu cuenta en',
+    lead: 'Entras con tu cuenta de Google: no hay contraseña que crear. La misma cuenta te sirve como cliente y para trabajar con tu distribuidora. Sigue: confirmar tus datos y aceptar los términos.',
+    otherQuestion: '¿Ya tienes cuenta?',
+    otherLabel: 'Ingresar',
+  },
+} as const;
+
+/**
+ * `/ingresar` and `/registro` (PLAN 2.1): "Continuar con Google" and nothing else. Where the
+ * visitor was going (`desde`) is kept through the sign-in and, for a new account, through the
+ * terms step.
+ */
+function EntryPage({ mode }: { mode: EntryMode }) {
+  const copy = COPY[mode];
+  usePageTitle(copy.pageTitle);
   const session = useSession();
   const location = useLocation();
+  const isOnline = useOnlineStatus();
   const [searchParams] = useSearchParams();
+  const [error, setError] = useState<string>();
   const target = safeReturnPath(searchParams.get(RETURN_PARAM));
   const after = target ?? ROUTES.appEntry;
 
   if (session.status === 'signedIn') return <Navigate to={after} replace />;
 
+  const otherPath = mode === 'signIn' ? registerPathFrom(target) : signInPathFrom(target ?? '');
+
   return (
     <AuthFrame
       title={
         <>
-          Ingresa a <Highlight>Hornilla.</Highlight>
+          {copy.title} <Highlight>Hornilla.</Highlight>
         </>
       }
-      lead="Tus pedidos, tus direcciones y tu distribuidora te esperan."
+      lead={copy.lead}
       footer={
         <p>
-          ¿Primera vez por aquí? <TextLink to={registerPathFrom(target)}>Crear cuenta</TextLink>
+          {copy.otherQuestion} <TextLink to={otherPath}>{copy.otherLabel}</TextLink>
         </p>
       }
     >
@@ -61,75 +89,25 @@ export function SignInPage() {
           Ingresa para continuar.
         </InlineAlert>
       )}
-      <SignInForm after={after} />
+      <div className="flex flex-col gap-5">
+        <GoogleButton after={after} disabled={!isOnline} onError={setError} />
+        <FormStatus error={error} isOnline={isOnline} offlineText={OFFLINE_TEXT} />
+        {/* Entering accepts nothing: a new account accepts, by choice, on the next step. */}
+        <p className="text-[0.9375rem] text-muted-foreground">
+          Los{' '}
+          <TextLink to={ROUTES.terms} newTab>
+            Términos y condiciones
+          </TextLink>{' '}
+          y la{' '}
+          <TextLink to={ROUTES.privacy} newTab>
+            Política de privacidad
+          </TextLink>{' '}
+          se aceptan en el paso siguiente, la primera vez que ingresas.
+        </p>
+      </div>
     </AuthFrame>
   );
 }
 
-function SignInForm({ after }: { after: string }) {
-  const navigate = useNavigate();
-  const isOnline = useOnlineStatus();
-  const { isRunning, run } = useAsyncAction();
-  const formRef = useRef<HTMLFormElement>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState<SignInErrors>({});
-  useFocusFirstInvalid(formRef, errors);
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    const problems = validateSignIn({ email, password });
-    setErrors(problems);
-    if (hasErrors(problems) || !isOnline) return;
-    void run(async () => {
-      try {
-        await signIn(email, password);
-        await navigate(after, { replace: true });
-      } catch (error) {
-        setErrors(signInErrorsOf(error));
-      }
-    });
-  };
-
-  return (
-    <>
-      <GoogleButton
-        after={after}
-        disabled={!isOnline || isRunning}
-        onError={(form) => setErrors({ form })}
-      />
-      <OrDivider>o con tu correo</OrDivider>
-      <form ref={formRef} noValidate onSubmit={submit} className="flex flex-col gap-5">
-        <TextField
-          label="Correo"
-          name="email"
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          autoCapitalize="none"
-          spellCheck={false}
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          error={errors.email}
-        />
-        <div>
-          <PasswordField
-            label="Contraseña"
-            name="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            error={errors.password}
-          />
-          <p className="mt-2 text-[0.9375rem]">
-            <TextLink to={ROUTES.resetPassword}>¿Olvidaste tu contraseña?</TextLink>
-          </p>
-        </div>
-        <FormStatus error={errors.form} isOnline={isOnline} offlineText={OFFLINE_TEXT} />
-        <Button type="submit" loading={isRunning} loadingLabel="Ingresando…" disabled={!isOnline}>
-          Ingresar
-        </Button>
-      </form>
-    </>
-  );
-}
+export const SignInPage = () => <EntryPage mode="signIn" />;
+export const RegisterPage = () => <EntryPage mode="register" />;

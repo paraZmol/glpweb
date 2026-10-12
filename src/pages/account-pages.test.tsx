@@ -10,10 +10,8 @@ import { count, renderStatic, tags, textOf } from '../../tests/support/render-st
 import { AppShell } from '../components/layout/app-shell';
 import { GateShell } from '../components/layout/gate-shell';
 import type { AppArea } from '../domain/auth/access';
-import { verificationSentState } from '../lib/resend-wait';
 import { AREA_HOME, JUST_FOUNDED_STATE, ROUTES } from '../lib/routes';
 import { AcceptTermsPage } from './account/accept-terms';
-import { VerifyEmailPage } from './account/verify-email';
 import { AccountPage } from './customer/account';
 import { CustomerHomePage } from './customer/home';
 import { CustomerOrdersPage } from './customer/orders';
@@ -41,7 +39,7 @@ function inArea(
 const inGate = (page: React.ReactElement, path: string, account = accountOf()) =>
   renderStatic(page, { path, shell: <GateShell />, account });
 
-describe('pending steps of an account (PLAN 2.1, 2.7)', () => {
+describe('pending step of an account (PLAN 2.1, 2.7)', () => {
   const FRESH = accountOf({
     profile: { status: 'ready', data: { profile: null, needsTermsAcceptance: true }, reload },
   });
@@ -104,29 +102,23 @@ describe('pending steps of an account (PLAN 2.1, 2.7)', () => {
       'Si una distribuidora no cumple un precio o una promoción, el reclamo se le hace a ella; Hornilla no responde por esa oferta. Esto no te quita los derechos que la ley te da como consumidor.',
     );
     expect(text).toContain(
-      'Términos versión 0.3 y Política de privacidad versión 0.3, preliminares y en revisión.',
+      'Términos versión 0.4 y Política de privacidad versión 0.4, preliminares y en revisión.',
     );
   });
 
-  // PLAN 2.11: "No acepto" always has a real way out.
+  // PLAN 2.11: whoever does not accept always has a real way out.
   it('lets a new account delete itself, and sends an account with data to ask for it', () => {
     const fresh = inGate(<AcceptTermsPage />, ROUTES.acceptTerms, FRESH);
     const renewal = inGate(<AcceptTermsPage />, ROUTES.acceptTerms);
     const contactLinks = (html: string) =>
       tags(html, 'a').filter((tag) => tag.includes('href="/contacto"'));
 
-    expect(textOf(fresh)).toContain('No acepto: eliminar mi cuenta');
+    expect(textOf(fresh)).toContain('No quiero continuar: eliminar mi cuenta');
     expect(textOf(fresh)).not.toContain('¿Eliminar tu cuenta?');
     expect(contactLinks(fresh)).toHaveLength(0);
     expect(textOf(renewal)).toContain('No acepto: pedir que eliminen mi cuenta');
-    expect(textOf(renewal)).not.toContain('No acepto: eliminar mi cuenta');
+    expect(textOf(renewal)).not.toContain('eliminar mi cuenta');
     expect(contactLinks(renewal)).toHaveLength(1);
-  });
-
-  it('lets an account that has not verified its e-mail leave by deleting itself', () => {
-    const text = textOf(inGate(<VerifyEmailPage />, ROUTES.verifyEmail));
-
-    expect(text).toContain('No quiero continuar: eliminar mi cuenta');
   });
 
   it('says that only the privacy policy changed when the terms are already accepted', () => {
@@ -158,39 +150,14 @@ describe('pending steps of an account (PLAN 2.1, 2.7)', () => {
     expect(legal.every((tag) => tag.includes('target="_blank"'))).toBe(true);
   });
 
-  it('shows where the verification e-mail went and the two ways on', () => {
-    const text = textOf(inGate(<VerifyEmailPage />, ROUTES.verifyEmail));
+  // PLAN 2.1: the name comes from Google, for the person to confirm; nothing was typed before.
+  it('offers a new account the name Google gave and an empty phone', () => {
+    const html = inGate(<AcceptTermsPage />, ROUTES.acceptTerms, FRESH);
 
-    expect(text).toContain(SESSION.email);
-    expect(text).toContain('Ya lo verifiqué');
-    expect(text).toContain('Reenviar correo');
-    expect(text).toContain('Cerrar sesión');
-  });
-
-  it('makes only a person who has just registered wait before asking for another e-mail', () => {
-    const justRegistered = renderStatic(<VerifyEmailPage />, {
-      path: ROUTES.verifyEmail,
-      state: verificationSentState(Date.now()),
-      shell: <GateShell />,
-      account: accountOf(),
-    });
-    const later = inGate(<VerifyEmailPage />, ROUTES.verifyEmail);
-
-    expect(textOf(justRegistered)).toContain('Reenviar en 1:00');
-    expect(textOf(later)).not.toMatch(/Reenviar en \d/);
-  });
-
-  // role-walker 2026-10-11: a reload started the minute again.
-  it('goes on with what is left of the wait when the screen is opened again', () => {
-    const TWENTY_SECONDS_MS = 20_000;
-    const reloaded = renderStatic(<VerifyEmailPage />, {
-      path: ROUTES.verifyEmail,
-      state: verificationSentState(Date.now() - TWENTY_SECONDS_MS),
-      shell: <GateShell />,
-      account: accountOf(),
-    });
-
-    expect(textOf(reloaded)).toContain('Reenviar en 0:40');
+    expect(named(html, 'displayName')).toContain(`value="${SESSION.displayName}"`);
+    expect(named(html, 'phone')).toContain('value=""');
+    expect(textOf(html)).toContain('Ya ingresaste con Google.');
+    expect(textOf(html)).toContain('Cerrar sesión');
   });
 });
 
