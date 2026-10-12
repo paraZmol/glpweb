@@ -1,15 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  canFoundDistributor,
-  hasSessionEnded,
-  isAcceptablePassword,
-  isBlankPassword,
-  isValidEmail,
-  leftDataBehind,
-  MIN_PASSWORD_LENGTH,
-  normalizeEmail,
-  type Session,
-} from './session';
+import { canFoundDistributor, hasSessionEnded, leftDataBehind, type Session } from './session';
 
 describe('leftDataBehind (PLAN 2.11)', () => {
   const START = { isFirstState: true, isSignedIn: false, hasLocalSessionData: true };
@@ -27,59 +17,13 @@ describe('leftDataBehind (PLAN 2.11)', () => {
   });
 });
 
-describe('normalizeEmail', () => {
-  it('trims and lowercases', () => {
-    expect(normalizeEmail('  Persona@Example.COM ')).toBe('persona@example.com');
-  });
-});
-
-describe('isValidEmail', () => {
-  it.each(['a@example.com', 'a.b+c@example.org'])('accepts %s', (email) => {
-    expect(isValidEmail(email)).toBe(true);
-  });
-
-  it.each(['', 'a', 'a@', '@example.com', 'a@example', 'a b@example.com', 'a@@example.com'])(
-    'rejects "%s"',
-    (email) => {
-      expect(isValidEmail(email)).toBe(false);
-    },
-  );
-
-  it('rejects an address longer than a mailbox can be', () => {
-    expect(isValidEmail(`${'a'.repeat(250)}@example.com`)).toBe(false);
-  });
-});
-
-describe('isAcceptablePassword', () => {
-  it('accepts the minimum length', () => {
-    expect(isAcceptablePassword('x'.repeat(MIN_PASSWORD_LENGTH))).toBe(true);
-  });
-
-  it.each(['', 'x'.repeat(MIN_PASSWORD_LENGTH - 1), 'x'.repeat(5000)])('rejects length %#', (p) => {
-    expect(isAcceptablePassword(p)).toBe(false);
-  });
-
-  // role-walker 2026-10-11: eight spaces passed the minimum length and the account was created.
-  it.each([' '.repeat(MIN_PASSWORD_LENGTH), '\t'.repeat(12), ' \n '.repeat(4)])(
-    'rejects a password of nothing but blanks: %j',
-    (p) => {
-      expect(isBlankPassword(p)).toBe(true);
-      expect(isAcceptablePassword(p)).toBe(false);
-    },
-  );
-
-  it('accepts spaces inside a password: a phrase is a good password', () => {
-    expect(isAcceptablePassword('mi gas de hoy')).toBe(true);
-  });
-});
-
 describe('canFoundDistributor', () => {
   const session: Session = {
     uid: 'u1',
     email: 'a@example.com',
     emailVerified: true,
     displayName: null,
-    providerIds: ['password'],
+    providerIds: ['google.com'],
   };
 
   it('needs a verified e-mail', () => {

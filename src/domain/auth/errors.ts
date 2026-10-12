@@ -5,10 +5,6 @@ import { DomainError } from '../tenancy/errors';
  * by the production build), so it is safe to switch on or to log.
  */
 export const AUTH_ERROR_CODES = [
-  'emailAlreadyInUse',
-  'invalidCredentials',
-  'invalidEmail',
-  'weakPassword',
   'tooManyAttempts',
   'network',
   'cancelled',
@@ -33,24 +29,6 @@ export function isAuthError(error: unknown, code?: AuthErrorCode): error is Auth
   return error instanceof AuthError && (code === undefined || error.code === code);
 }
 
-export class EmailAlreadyInUseError extends AuthError {
-  constructor(options?: ErrorOptions) {
-    super('emailAlreadyInUse', options);
-  }
-}
-
-export class InvalidCredentialsError extends AuthError {
-  constructor(options?: ErrorOptions) {
-    super('invalidCredentials', options);
-  }
-}
-
-export class WeakPasswordError extends AuthError {
-  constructor(options?: ErrorOptions) {
-    super('weakPassword', options);
-  }
-}
-
 export class TooManyAttemptsError extends AuthError {
   constructor(options?: ErrorOptions) {
     super('tooManyAttempts', options);
@@ -64,9 +42,6 @@ export class SignInCancelledError extends AuthError {
 }
 
 const NAMED_ERRORS: Partial<Record<AuthErrorCode, new (options?: ErrorOptions) => AuthError>> = {
-  emailAlreadyInUse: EmailAlreadyInUseError,
-  invalidCredentials: InvalidCredentialsError,
-  weakPassword: WeakPasswordError,
   tooManyAttempts: TooManyAttemptsError,
   cancelled: SignInCancelledError,
 };

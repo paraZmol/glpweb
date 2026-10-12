@@ -35,7 +35,6 @@ export const DEFAULT_CURRENCY = 'PEN';
 export const DEFAULT_TIMEZONE = 'America/Lima';
 
 export const DISPLAY_NAME_MAX_LENGTH = 80;
-export const EMAIL_MAX_LENGTH = 254;
 
 export const MAX_ADDRESSES_PER_USER = 10;
 export const ADDRESS_LABEL_MAX_LENGTH = 40;

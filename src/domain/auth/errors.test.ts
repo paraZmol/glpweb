@@ -3,19 +3,13 @@ import {
   AUTH_ERROR_CODES,
   AuthError,
   authErrorFor,
-  EmailAlreadyInUseError,
-  InvalidCredentialsError,
   isAuthError,
   SignInCancelledError,
   TooManyAttemptsError,
-  WeakPasswordError,
 } from './errors';
 
 describe('authErrorFor', () => {
   it.each([
-    ['emailAlreadyInUse', EmailAlreadyInUseError],
-    ['invalidCredentials', InvalidCredentialsError],
-    ['weakPassword', WeakPasswordError],
     ['tooManyAttempts', TooManyAttemptsError],
     ['cancelled', SignInCancelledError],
   ] as const)('builds the named class for %s', (code, expectedClass) => {
