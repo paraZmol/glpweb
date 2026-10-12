@@ -8,8 +8,9 @@ rules_version = '2';
 // Data model (every listed field is required unless marked optional; no other field is accepted).
 // Every text is stored trimmed: white space at either end is refused.
 //
-// /users/{uid}                     private to the account; written only once its e-mail is
-//                                  verified (nothing is stored for an address nobody proved)
+// /users/{uid}                     private to the account; written only for a verified e-mail
+//                                  (nothing is stored for an address nobody proved) and created
+//                                  only by a session that signed in with Google
 //   displayName: string 1..80 · phone: null | '9' + 8 digits
 //   ownedDistributorIds: list ≤ 3 — grows only inside a founding batch (caps distributors/account)
 //   terms: { version: an allowed terms version, acceptedAt: timestamp = request.time when it
@@ -19,9 +20,10 @@ rules_version = '2';
 //   createdAt, updatedAt: timestamp (= request.time when written; createdAt immutable)
 //
 // /users/{uid}/acceptances/{id}    history of acceptances: proof of every version the account
-//                                  accepted. {id} is document + '-' + version (terms-0.3).
-//                                  Created by the account only, with a verified e-mail and in the
-//                                  same request that writes that acceptance in the profile;
+//                                  accepted. {id} is document + '-' + version (terms-0.4).
+//                                  Created by the account only, signed in with Google and with
+//                                  a verified e-mail, in the same request that writes that
+//                                  acceptance in the profile;
 //                                  never updated or deleted from the app. Read by the account
 //                                  and by platform admins.
 //   document: 'terms' | 'privacy' · version: an allowed version of that text
@@ -115,6 +117,13 @@ service cloud.firestore {
 
     function emailVerified() {
       return signedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Sign-in is with Google only (PLAN 2.1). The app offers no other way in and the project
+    // has no other provider enabled; this is the same decision written where a client cannot
+    // skip it. The e-mail check stays beside it on purpose: neither one stands in for the other.
+    function signedInWithGoogle() {
+      return emailVerified() && request.auth.token.firebase.sign_in_provider == 'google.com';
     }
 
     // The role always comes from the member document, never from the client or the token.
@@ -275,12 +284,12 @@ service cloud.firestore {
     // Acceptance of the terms (docs/legal). Same list as TERMS_VERSIONS in
     // src/domain/legal/versions.ts.
     function acceptedTermsVersions() {
-      return ['0.3'];
+      return ['0.4'];
     }
 
     // Same list as PRIVACY_VERSIONS in src/domain/legal/versions.ts.
     function acceptedPrivacyVersions() {
-      return ['0.3'];
+      return ['0.4'];
     }
 
     function isAcceptance(acceptance, versions) {
@@ -462,10 +471,10 @@ service cloud.firestore {
       // Reads added by rules: 0.
       allow get: if isSelf(uid);
 
-      // A profile carries the consents: it exists only for an account that proved its e-mail
-      // (PLAN 2.11).
+      // A profile carries the consents: it exists only for a verified e-mail, and only for a
+      // session that came in through Google (PLAN 2.1, 2.11).
       allow create: if isSelf(uid)
-        && emailVerified()
+        && signedInWithGoogle()
         && isValidUserProfile(request.resource.data)
         && request.resource.data.ownedDistributorIds.size() == 0
         // Reads added by rules: 2 (getAfter of the two history entries).
@@ -542,8 +551,10 @@ service cloud.firestore {
         // The other half of logsAcceptance(): no line without the acceptance it proves, written
         // in the profile by this same request.
         // Reads added by rules: 1 (getAfter profile).
+        // Through Google only, like the profile: accepting a new version writes a line here, so
+        // no session of another kind can renew a consent either.
         allow create: if isSelf(uid)
-          && emailVerified()
+          && signedInWithGoogle()
           && isAcceptanceEntry(request.resource.data)
           && entryId == acceptanceEntryId(
             request.resource.data.document, request.resource.data.version)

@@ -34,6 +34,19 @@ const MUTANTS = [
     'request.auth.token.platformAdmin == true',
   ],
   ['H04', 'emailVerified always true', 'request.auth.token.email_verified == true', 'true'],
+  // PLAN 2.1: sign-in is with Google only.
+  [
+    'I01',
+    'signedInWithGoogle ignores how the session came in',
+    " && request.auth.token.firebase.sign_in_provider == 'google.com'",
+    '',
+  ],
+  [
+    'I02',
+    'signedInWithGoogle ignores the e-mail',
+    'return emailVerified() && request.auth.token.firebase',
+    'return signedIn() && request.auth.token.firebase',
+  ],
   ['H05', 'trial never expires', 'control.trialEndsAt > request.time', 'true'],
   [
     'H06',
@@ -329,8 +342,14 @@ const MUTANTS = [
   [
     'U22',
     'profile created by an unverified account',
-    'allow create: if isSelf(uid)\n        && emailVerified()\n        && isValidUserProfile',
+    'allow create: if isSelf(uid)\n        && signedInWithGoogle()\n        && isValidUserProfile',
     'allow create: if isSelf(uid)\n        && isValidUserProfile',
+  ],
+  [
+    'I03',
+    'profile created by a verified session that did not come in through Google',
+    'allow create: if isSelf(uid)\n        && signedInWithGoogle()\n        && isValidUserProfile',
+    'allow create: if isSelf(uid)\n        && emailVerified()\n        && isValidUserProfile',
   ],
   [
     'U23',
@@ -384,14 +403,20 @@ const MUTANTS = [
   [
     'A06',
     'history entry created by another account',
-    'allow create: if isSelf(uid)\n          && emailVerified()\n          && isAcceptanceEntry',
-    'allow create: if emailVerified()\n          && isAcceptanceEntry',
+    'allow create: if isSelf(uid)\n          && signedInWithGoogle()\n          && isAcceptanceEntry',
+    'allow create: if signedInWithGoogle()\n          && isAcceptanceEntry',
   ],
   [
     'A07',
     'history entry created by an unverified account',
-    'allow create: if isSelf(uid)\n          && emailVerified()\n          && isAcceptanceEntry',
+    'allow create: if isSelf(uid)\n          && signedInWithGoogle()\n          && isAcceptanceEntry',
     'allow create: if isSelf(uid)\n          && isAcceptanceEntry',
+  ],
+  [
+    'I04',
+    'history entry created by a verified session that did not come in through Google',
+    'allow create: if isSelf(uid)\n          && signedInWithGoogle()\n          && isAcceptanceEntry',
+    'allow create: if isSelf(uid)\n          && emailVerified()\n          && isAcceptanceEntry',
   ],
   [
     'A08',

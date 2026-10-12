@@ -47,6 +47,7 @@ import {
   seedWorld,
   termsDoc,
   unverified,
+  verifiedThrough,
   userDoc,
   verified,
   WORLD,
@@ -80,6 +81,24 @@ describe('/users/{uid} — create', () => {
   // PLAN 2.11: nothing is stored, consents included, for an address nobody proved is theirs.
   it('blocks an account whose e-mail is not verified from creating its profile', async () => {
     await assertFails(createProfile(unverified(env, NEWCOMER), NEWCOMER, userDoc()));
+  });
+
+  // PLAN 2.1: sign-in is with Google only, and a profile exists only for a verified e-mail.
+  it.each(['password', 'custom', 'anonymous', 'emailLink', 'facebook.com'])(
+    'blocks a verified session that came in through %s from creating its profile',
+    async (provider) => {
+      const db = verifiedThrough(env, NEWCOMER, provider);
+
+      await assertFails(createProfile(db, NEWCOMER, userDoc()));
+    },
+  );
+
+  it('blocks a verified session whose token does not say how it came in', async () => {
+    const db = env
+      .authenticatedContext(NEWCOMER, { email: 'newcomer@example.com', email_verified: true })
+      .firestore();
+
+    await assertFails(createProfile(db, NEWCOMER, userDoc()));
   });
 
   it('blocks an account without an e-mail claim at all', async () => {
