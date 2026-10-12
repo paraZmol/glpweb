@@ -6,7 +6,6 @@ import {
   withdrawLocalWipePromise,
 } from '../../data/session-data';
 import { forgetLastLocation } from '../../lib/last-location';
-import { forgetPendingProfile } from '../auth/pending-profile';
 import { forgetRememberedDistributors } from '../tenancy/selection-storage';
 
 /** How long a sign-out waits for changes made without a connection to reach the server. */
@@ -40,8 +39,6 @@ async function clearLocalSessionData(): Promise<void> {
   forgetRememberedDistributors();
   // The last place searched from is a location: it does not outlive the session (PLAN 2.6).
   forgetLastLocation();
-  // What a registration typed and never turned into a profile (PLAN 2.11).
-  forgetPendingProfile();
   await wipeLocalSessionData();
 }
 
