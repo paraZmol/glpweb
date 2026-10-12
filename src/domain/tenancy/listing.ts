@@ -1,0 +1,122 @@
+import { REVIEW_NOTE_MAX_LENGTH } from './constants';
+import { checkText, type Validated } from './field-checks';
+import { isWritable } from './status';
+import type { DistributorControl, DistributorStatus } from './types';
+
+type ListingInput = Pick<DistributorControl, 'status' | 'trialEndsAt' | 'listingApproved'>;
+
+/**
+ * The value the public `acceptingOrders` flag must carry (PLAN 2.11): the distributor may
+ * operate AND a platform admin approved its listing. It is also what makes the public profile
+ * readable by visitors. firebase/firestore.rules repeats it (`isOpenData`).
+ */
+export function isOpenToPublic(control: ListingInput, now: Date): boolean {
+  return control.listingApproved && isWritable(control, now);
+}
+
+/**
+ * Where a distributor stands with the review of its listing, for its own panel:
+ * - `inReview`: waiting for a platform admin (a new one, or one that changed what identifies it);
+ * - `changesRequested`: sent back with a note the owner should read;
+ * - `correctionsSent`: the owner answered that note with a correction and waits again; the note
+ *   stays until a platform admin decides;
+ * - `listed`: approved and operating, so visitors see it;
+ * - `notOperating`: approved, but suspended, past due or with the trial over.
+ */
+export type ListingState =
+  'inReview' | 'changesRequested' | 'correctionsSent' | 'listed' | 'notOperating';
+
+type ReviewTrail = Pick<DistributorControl, 'listingApproved' | 'reviewNote' | 'correctedAt'>;
+
+export function listingStateOf(control: ListingInput & ReviewTrail, now: Date): ListingState {
+  if (control.listingApproved) return isWritable(control, now) ? 'listed' : 'notOperating';
+  if (!control.reviewNote) return 'inReview';
+  return control.correctedAt ? 'correctionsSent' : 'changesRequested';
+}
+
+/**
+ * Whether an edit by the owner answers a note of the platform: the listing waits with a note.
+ * The edit then carries the correction mark (`correctedAt`) in the same request. The rules hold
+ * the same condition (the mark is refused anywhere else).
+ */
+export function answersReviewNote(control: Omit<ReviewTrail, 'correctedAt'>): boolean {
+  return !control.listingApproved && Boolean(control.reviewNote);
+}
+
+/**
+ * The filters of the platform's list of distributors. `approved` includes the approved ones
+ * that are suspended; `suspended` includes the suspended ones that were never approved.
+ */
+export const PLATFORM_LIST_FILTERS = ['inReview', 'approved', 'suspended'] as const;
+export type PlatformListFilter = (typeof PLATFORM_LIST_FILTERS)[number];
+
+type ListedControl = Pick<DistributorControl, 'status' | 'listingApproved'>;
+
+/** Whether a distributor shows in one list of the platform. The repository asks the same. */
+export function isInPlatformList(control: ListedControl, filter: PlatformListFilter): boolean {
+  if (filter === 'suspended') return control.status === 'suspended';
+  return control.listingApproved === (filter === 'approved');
+}
+
+/**
+ * The list a distributor is looked for in when nothing says which: a suspended one among the
+ * suspended (it is where it can be reactivated), else by whether its listing is approved.
+ */
+export function platformListOf(control: ListedControl): PlatformListFilter {
+  if (control.status === 'suspended') return 'suspended';
+  return control.listingApproved ? 'approved' : 'inReview';
+}
+
+/**
+ * What a customer uses to recognise, reach and place the business: its name, its phones, its
+ * address and where its plant is. Changing any of them after the approval sends the listing back
+ * to review: otherwise an approved distributor could turn into somebody else overnight, write
+ * another phone in its address line or move to a city nobody reviewed it for. The delivery
+ * radius and the schedule are routine adjustments and do not (PLAN §9). The rules hold the same
+ * list.
+ */
+export const IDENTITY_FIELDS = [
+  'name',
+  'contactPhone',
+  'whatsapp',
+  'addressLine',
+  'plant',
+] as const;
+
+export function touchesIdentity(patch: object): boolean {
+  return IDENTITY_FIELDS.some((field) => field in patch);
+}
+
+/**
+ * An account whose distributor is read-only (suspended, past due or with the trial over) cannot
+ * found another one: a new one would be thirty fresh days of trial. A distributor that is only
+ * waiting for its review does not block.
+ */
+export function hasReadOnlyDistributor(
+  controls: readonly Pick<DistributorControl, 'status' | 'trialEndsAt'>[],
+  now: Date,
+): boolean {
+  return controls.some((control) => !isWritable(control, now));
+}
+
+/**
+ * The status a suspended or past-due distributor returns to when a platform admin reactivates
+ * it: back on its trial while the trial still runs, otherwise `active` (the admin is saying it
+ * is in good standing).
+ */
+export function statusAfterReactivation(
+  control: Pick<DistributorControl, 'trialEndsAt'>,
+  now: Date,
+): DistributorStatus {
+  return control.trialEndsAt.getTime() > now.getTime() ? 'trial' : 'active';
+}
+
+/**
+ * The note a platform admin leaves for the owner when it sends a listing back. Optional: an
+ * empty note is valid and means "no note". The rules hold the same bound.
+ */
+export function prepareReviewNote(raw: string): Validated<string> {
+  const note = raw.trim();
+  const code = checkText(note, 0, REVIEW_NOTE_MAX_LENGTH);
+  return code ? { ok: false, issues: [{ field: 'reviewNote', code }] } : { ok: true, value: note };
+}

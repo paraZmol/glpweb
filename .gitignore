@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-e2e-*/
 dev-dist/
 .env
 .env.*
@@ -9,6 +10,7 @@ dev-dist/
 .firebase/
 *-debug.log
 firebase-export-*/
+firebase.lane-*.json
 serviceAccount*.json
 *service-account*.json
 
@@ -26,3 +28,9 @@ Thumbs.db
 
 # Design mock-up screenshots: regenerate with each capturas.mjs
 docs/design/propuestas/*/capturas/
+
+# Local notes that must never be published
+.private/
+
+# Agent worktrees
+.claude/worktrees/

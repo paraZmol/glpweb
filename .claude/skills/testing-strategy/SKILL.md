@@ -52,8 +52,15 @@ Cada actor es un `browser.newContext()` propio; las esperas son sobre lo que se 
 - Hora fija inyectada en dominio; en navegador `page.clock` cuando el tiempo importa.
 - Ubicación: `context.setGeolocation` + permiso; rutas y teselas externas interceptadas
   (`page.route`) con respuestas grabadas: los tests no dependen de internet ni de OSM/OSRM.
-- **Carriles**: agentes en paralelo usan `E2E_LANE=N` (puerto y carpeta de salida propios) y un
-  `projectId` de emulador propio (`demo-glpweb-N`) para no pisarse los datos.
+- **Carriles**: agentes en paralelo usan `E2E_LANE=N` (0 a 9). Cada carril tiene sus propios
+  emuladores (puertos desplazados, tabla en `CLAUDE.md`), su puerto de vista previa y su carpeta
+  de salida, así que los datos no se pisan aunque el `projectId` sea el mismo (`demo-glpweb`).
+  Los emuladores se lanzan con `scripts/emulators.mjs` (lo hacen `npm run check`,
+  `test:rules` y `emulators`), que los cierra al terminar. Tests, semilla y utilidades leen los
+  puertos de `scripts/lane-ports.mjs`: nunca se escribe un puerto a mano. Los tests de reglas
+  usan además un `projectId` por archivo (`demo-glpweb-<algo>`).
+- **E2E con datos**: `E2E_EMULATORS=true npm run e2e` arranca los emuladores del carril, carga la
+  semilla y sirve un build que apunta a ellos. Sin esa variable se sirve el build normal.
 
 ## 5. Nombres y forma
 - Nombre = comportamiento en una frase: `rejects delivery without payment`.

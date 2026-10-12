@@ -11,7 +11,7 @@
     "react/react-in-jsx-scope": "off",
     "import/no-unassigned-import": "off"
   },
-  "ignorePatterns": ["dist", "node_modules", "src/components/ui", ".claude", "docs"],
+  "ignorePatterns": ["dist", "dist-e2e-*", "node_modules", "src/components/ui", ".claude", "docs"],
   "overrides": [
     {
       "files": [

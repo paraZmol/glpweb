@@ -2,10 +2,17 @@
 export const paths = {
   user: (uid: string) => `users/${uid}`,
   userAddresses: (uid: string) => `users/${uid}/addresses`,
+  userAddress: (uid: string, slot: string) => `users/${uid}/addresses/${slot}`,
+  userAcceptances: (uid: string) => `users/${uid}/acceptances`,
+  userAcceptance: (uid: string, entryId: string) => `users/${uid}/acceptances/${entryId}`,
   platformAdmin: (uid: string) => `platformAdmins/${uid}`,
   slug: (slug: string) => `slugs/${slug}`,
+  distributors: () => 'distributors',
   distributor: (d: string) => `distributors/${d}`,
+  distributorControl: (d: string) => `distributors/${d}/private/control`,
+  distributorPrivateSettings: (d: string) => `distributors/${d}/private/settings`,
   members: (d: string) => `distributors/${d}/members`,
+  member: (d: string, uid: string) => `distributors/${d}/members/${uid}`,
   invites: (d: string) => `distributors/${d}/invites`,
   helpers: (d: string) => `distributors/${d}/helpers`,
   vehicles: (d: string) => `distributors/${d}/vehicles`,
@@ -15,6 +22,13 @@ export const paths = {
   orders: (d: string) => `distributors/${d}/orders`,
   orderHistory: (d: string, orderId: string) => `distributors/${d}/orders/${orderId}/history`,
   shifts: (d: string) => `distributors/${d}/shifts`,
+} as const;
+
+/** Collection ids for collection-group queries. */
+export const collectionGroups = {
+  members: 'members',
+  /** `private/control` and `private/settings` of every distributor. */
+  private: 'private',
 } as const;
 
 export const realtimePaths = {

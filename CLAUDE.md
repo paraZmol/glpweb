@@ -22,7 +22,8 @@ central, repartidor, cliente.
 - **Firebase plan gratis (Spark)**: Auth (correo + Google), Firestore, Realtime Database (solo
   posiciones en vivo), Hosting, FCM. **Prohibido** depender de Cloud Functions, Storage, SMS o
   cualquier cosa que pida plan de pago o tarjeta.
-- **Mapas**: Leaflet + OpenStreetMap, rutas OSRM, detrás de `MapProvider`. Nunca Google Maps SDK.
+- **Mapas**: detrás de `MapProvider`; primera opción MapLibre GL + OpenFreeMap, respaldo Leaflet +
+  OpenStreetMap (se decide en el paso 6.0), rutas OSRM. Nunca Google Maps SDK.
 - **Servidor mínimo**: Cloudflare Worker gratis en `worker/` (desde la fase 7).
 - **Pruebas**: Vitest, Firebase Emulator + `@firebase/rules-unit-testing`, Playwright.
 - Proyecto Firebase real: `glpweb-app` (https://glpweb-app.web.app). Emuladores: `demo-glpweb`.
@@ -34,6 +35,19 @@ central, repartidor, cliente.
 - Desarrollo y tests siempre contra **emuladores**; nunca escribir datos de prueba en el
   proyecto Firebase real.
 - Desplegar reglas o hosting al proyecto real es una acción hacia afuera: confirmar antes.
+- **Carriles** (`E2E_LANE=N`, de 0 a 9; 0 por defecto): cada carril tiene sus propios puertos de
+  emuladores y de vista previa, así dos agentes corren `npm run check`, `npm run emulators` o
+  `npm run e2e` a la vez sin pisarse. Los emuladores se lanzan siempre con
+  `scripts/emulators.mjs` (lo hacen los scripts de npm): se niega a arrancar si el carril está
+  ocupado y al terminar cierra los emuladores de su carril, también si algo falla. Cada emulador
+  sube 10 por carril; la vista previa sube 1 (fuente: `scripts/lane-ports.mjs`).
+
+  | Carril | Auth | Firestore | Firestore WS | Database | Hosting | UI | Hub | Logging | Vista previa |
+  |---|---|---|---|---|---|---|---|---|---|
+  | 0 | 9099 | 8080 | 9150 | 9000 | 5000 | 4000 | 4400 | 4500 | 4173 |
+  | 1 | 9109 | 8090 | 9160 | 9010 | 5010 | 4010 | 4410 | 4510 | 4174 |
+  | 3 | 9129 | 8110 | 9180 | 9030 | 5030 | 4030 | 4430 | 4530 | 4176 |
+  | N | 9099+10N | 8080+10N | 9150+10N | 9000+10N | 5000+10N | 4000+10N | 4400+10N | 4500+10N | 4173+N |
 
 ## Reglas de arquitectura
 1. **Aislamiento entre distribuidoras**: todo dato de negocio vive bajo `/distributors/{d}/…`.
@@ -85,6 +99,10 @@ central, repartidor, cliente.
 - Lanzar **qa-tester**. Si tocó reglas, pedidos, jornada o stock → **rules-breaker**. Si tocó
   auth, roles, invitaciones, dinero o datos por distribuidora → **security-auditor**. Si tocó
   una pantalla → **visual-designer** y después **ux-reviewer**.
+- **Uso real por rol**: si tocó una pantalla, un permiso o una ruta, y siempre antes de mostrarle
+  algo al usuario y antes de unir a `main` → **role-walker**. Entra como cada rol sin leer antes
+  el código, recorre todo y lo contrasta con `docs/testing/matriz-de-roles.md` (cada ruta y
+  acción contra cada rol). Debe dar USABLE.
 - La dirección visual la fija **design-director** (el usuario elige) y la construye
   **frontend-builder**. Fotos solo de `docs/design/images/` con licencia en `CREDITS.md`
   (las consigue **image-scout**); nunca URLs externas de imágenes en la app.
@@ -94,6 +112,12 @@ central, repartidor, cliente.
   dependencia o animación nueva → **perf-a11y-auditor**.
 - **Movimiento**: cargar `motion-system` antes de añadir cargas, transiciones o animaciones.
   Ninguna pantalla en blanco al cargar; duraciones y curvas solo por fichas.
+- **Oferta y textos de venta**: antes de diseñar productos, precios, promociones o textos que el
+  cliente lee para comprar → **marketing-advisor** (deja su recomendación en `docs/marketing/`).
+- **Legal**: si tocó registro, datos personales o de ubicación, promociones o precios visibles,
+  permisos, o una dependencia que envíe datos a terceros → **legal-compliance**. Prohibido añadir
+  analítica, publicidad o cualquier rastreo sin pasar antes por el plan: `docs/legal/cookies.md`
+  promete que no los hay. Los documentos de `docs/legal/` se actualizan en el mismo cambio.
 - **Antes de unir a `main`**: **regression-guard** debe dar APTO.
 - **Antes de cada `git push` y de cada despliegue**: **publish-guard** debe dar PUBLICABLE. Es
   exclusivo para que no se divulgue nada en el repo público. Además corre solo

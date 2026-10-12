@@ -1,9 +1,959 @@
 rules_version = '2';
 
-// Deny by default. Collections are opened one by one, operation by operation, each with a
-// test in firebase/tests (see .claude/skills/firebase-tenancy).
+// ===============================================================================================
+// Hornilla (glpWEB) — Firestore security rules. There is no server: these rules ARE the backend.
+// Deny by default; each collection is opened operation by operation and has tests in
+// firebase/tests. Limits mirror src/domain/tenancy/constants.ts (the tests read those constants).
+//
+// Data model (every listed field is required unless marked optional; no other field is accepted).
+// Every text is stored trimmed: white space at either end is refused.
+//
+// /users/{uid}                     private to the account; written only once its e-mail is
+//                                  verified (nothing is stored for an address nobody proved)
+//   displayName: string 1..80 · phone: null | '9' + 8 digits
+//   ownedDistributorIds: list ≤ 3 — grows only inside a founding batch (caps distributors/account)
+//   terms: { version: an allowed terms version, acceptedAt: timestamp = request.time when it
+//     is written } — required from creation, never removed. It can only be written in a request
+//     that also creates its entry in the history below, so each version is accepted once.
+//   privacy: the same shape for the privacy policy, with its own list of allowed versions
+//   createdAt, updatedAt: timestamp (= request.time when written; createdAt immutable)
+//
+// /users/{uid}/acceptances/{id}    history of acceptances: proof of every version the account
+//                                  accepted. {id} is document + '-' + version (terms-0.3).
+//                                  Created by the account only, with a verified e-mail and in the
+//                                  same request that writes that acceptance in the profile;
+//                                  never updated or deleted from the app. Read by the account
+//                                  and by platform admins.
+//   document: 'terms' | 'privacy' · version: an allowed version of that text
+//   acceptedAt: timestamp = request.time
+//
+// /users/{uid}/addresses/{slot}    private to the account; slot is a0..a9 (caps addresses at 10);
+//                                  created only once the profile (and its consents) exists
+//   label: string 1..40 · addressLine: string 1..160 · reference: string 0..160
+//   location: { lat: -90..90, lng: -180..180 } · createdAt, updatedAt
+//
+// /platformAdmins/{uid}            written only by a local Admin SDK script
+//
+// /slugs/{slug}                    public get, no list; immutable
+//   distributorId: string · createdAt
+//
+// /distributors/{d}                PUBLIC WHILE IT TAKES ORDERS: every field can then be read by
+//                                  anyone, so it holds only what a customer needs. No plan, no
+//                                  trial date, no account id. While `acceptingOrders` is false
+//                                  (not approved yet, suspended, trial over) only its staff and
+//                                  platform admins read it. {d} is a Firestore automatic id.
+//   name: string 2..60 with at least one letter or digit · slug (immutable)
+//   contactPhone, whatsapp: '9' + 8 digits · addressLine: string 0..160
+//   plant: { lat, lng } · coverageRadiusKm: number 1..50 · brandColor: '#rrggbb' lowercase
+//   acceptingOrders: bool — derived: whoever writes it must write exactly "the control document
+//     says this distributor is writable right now AND its listing is approved". It is what the
+//     search filters by and what opens the document to visitors. Nobody flips it when a trial
+//     runs out, so it can stay true after the trial ended until the staff or a platform admin
+//     corrects it; no rule that guards a write trusts it (they all read the control document).
+//     Changing name, contactPhone, whatsapp, addressLine or plant sends the listing back to
+//     review: that edit must leave acceptingOrders false and the control document with
+//     listingApproved false. Staff may only write the flag when its value really changes.
+//   schedule: { days: list 1..7 of 0..6 without repeats, opensAt: 'HH:MM', closesAt: 'HH:MM' }
+//   maxCylindersPerOrder: int 1..20 · brands: list ≤ 8 of string 1..30
+//   priceFromCents: null | int 1..99900 · currency: 'PEN' · createdAt (immutable), updatedAt
+//
+// /distributors/{d}/private/control    staff of {d} and platform admins only; read by the rules
+//   ownerUid (founder, immutable) · status: trial | active | pastDue | suspended (only a
+//   platform admin changes it) · trialEndsAt: timestamp (immutable from the app)
+//   listingApproved: bool — false at founding; only a platform admin sets it to true, and then
+//     approvedAt (= request.time) and approvedBy (= its uid) are required; an owner may only set
+//     it back to false. While false, approvedAt and approvedBy are absent.
+//   reviewedProfileAt, reviewedSettingsAt: timestamps — WHAT was approved: the `updatedAt` the
+//     public profile and the private settings had when the admin looked at them. An approval is
+//     accepted only if both equal what is stored at that moment, so a listing edited after the
+//     review screen was opened cannot be approved from it (every write of those two documents
+//     moves its updatedAt to request.time). Written with the approval and removed with it;
+//     optional only in documents approved before the fields existed.
+//   reviewNote: optional string 1..300, only while listingApproved is false; platform admin only
+//   correctedAt: optional timestamp, only next to a reviewNote — "the owner answered the note".
+//     Only an owner writes it, always = request.time and only in a request that also changes
+//     the content of the public profile or of the private settings (a write that only moves
+//     updatedAt or the public flag corrects nothing). A platform admin can only remove it, and
+//     must do so whenever it changes the note. It approves nothing: no rule reads it to grant
+//     anything.
+//   distributorName, slug: copies of the public name and link, so the platform lists need one
+//     read per distributor. Required at founding; whoever may update this document can only
+//     write them equal to the public profile, and nobody removes them. A rename of the public
+//     profile must leave distributorName equal to the new name in the same request. Optional
+//     only for documents older than the fields.
+//   createdAt (immutable; = request.time only in the founding batch), updatedAt
+//
+// /distributors/{d}/private/settings   the founder and platform admins only
+//   ownerUid (immutable) · ownerName: string 1..80 · ownerPhone · ownerEmail (= token e-mail,
+//   immutable) · plan: 'trial' (immutable from the app) · createdAt, updatedAt
+//   taxId: RUC, 11 digits with a known prefix · legalName: string 2..120
+//   hydrocarbonsRegistry: string 4..40 of A-Z 0-9 space . / - — the three are editable by the
+//     founder only while the listing is not approved
+//   terms: { version, acceptedAt } and authorityDeclaredAt: both = request.time at founding,
+//     immutable (the founder accepted the terms and declared it may represent the business)
+//
+// /distributors/{d}/members/{uid}
+//   uid (= document id) · distributorId (= d) · role: owner | dispatcher | driver
+//   active: bool · displayName: string 1..80
+//   distributorName: string 2..60 — copy of the public name, so the selector of distributors
+//     needs no extra read; it can only ever be written equal to the public name
+//   createdAt (immutable), updatedAt
+//
+// Billed reads added by the rules (get / exists / getAfter) are noted on each `allow`.
+// ===============================================================================================
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------------------- identity ----
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function emailVerified() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+
+    // The role always comes from the member document, never from the client or the token.
+    function member(d) {
+      return get(/databases/$(database)/documents/distributors/$(d)/members/$(request.auth.uid)).data;
+    }
+
+    function hasRole(d, roles) {
+      return signedIn() && member(d).active == true && member(d).role in roles;
+    }
+
+    function isPlatformAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/platformAdmins/$(request.auth.uid));
+    }
+
+    // ------------------------------------------------------------------------- tenant state ----
+    function isStaff(d) {
+      return hasRole(d, ['owner', 'dispatcher', 'driver']);
+    }
+
+    function distributorPath(d) {
+      return /databases/$(database)/documents/distributors/$(d);
+    }
+
+    function controlPath(d) {
+      return /databases/$(database)/documents/distributors/$(d)/private/control;
+    }
+
+    function settingsPath(d) {
+      return /databases/$(database)/documents/distributors/$(d)/private/settings;
+    }
+
+    // Same condition as isWritable() in src/domain/tenancy/status.ts, over the control document.
+    function isWritableData(control) {
+      return control.status == 'active'
+        || (control.status == 'trial' && control.trialEndsAt > request.time);
+    }
+
+    function writable(d) {
+      return isWritableData(get(controlPath(d)).data);
+    }
+
+    // Same condition as isOpenToPublic() in src/domain/tenancy/listing.ts: the only value the
+    // public `acceptingOrders` flag may be written with. A control document older than the
+    // approval field counts as not approved.
+    function isOpenData(control) {
+      return control.get('listingApproved', false) == true && isWritableData(control);
+    }
+
+    // True only inside the batch that creates distributor `d` with the caller as founder: the
+    // control document gets createdAt = request.time on create and never again.
+    function foundedNow(d) {
+      let control = getAfter(controlPath(d)).data;
+      return control.ownerUid == request.auth.uid && control.createdAt == request.time;
+    }
+
+    // ------------------------------------------------------------------------------- diffs ----
+    function unchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    function onlyChanges(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    function hasExactly(data, fields) {
+      return data.keys().hasAll(fields) && data.keys().hasOnly(fields);
+    }
+
+    function stampedNow(data) {
+      return data.createdAt == request.time && data.updatedAt == request.time;
+    }
+
+    // ---------------------------------------------------------------------- field validators ----
+    // Stored text is always trimmed (the forms trim before validating): a value made of white
+    // space, or padded with it, is refused, so a "required" text cannot be blank. The class is
+    // what String.prototype.trim() removes in JavaScript; trim() of the rules leaves non-breaking
+    // and other Unicode spaces in place.
+    function isText(value, min, max) {
+      return value is string && value.size() >= min && value.size() <= max
+        && !value.matches('(?s)^[\\s\\x0b\\pZ\\x{feff}].*')
+        && !value.matches('(?s).*[\\s\\x0b\\pZ\\x{feff}]$');
+    }
+
+    // The public name of a distributor carries at least one letter or digit: punctuation, emoji
+    // or invisible characters alone are not a name (same check as checkName in
+    // src/domain/tenancy/distributor-input.ts).
+    function isBusinessName(value) {
+      return isText(value, 2, 60) && value.matches('(?s).*[\\pL\\pN].*');
+    }
+
+    function isPhone(value) {
+      return value is string && value.matches('^9[0-9]{8}$');
+    }
+
+    function isGeoPoint(point) {
+      return point is map
+        && hasExactly(point, ['lat', 'lng'])
+        && point.lat is number && point.lat >= -90 && point.lat <= 90
+        && point.lng is number && point.lng >= -180 && point.lng <= 180;
+    }
+
+    function isDocId(value) {
+      return value is string && value.matches('^[A-Za-z0-9_-]{1,64}$');
+    }
+
+    // What the Firestore SDK generates. The search returns "the first 50" in id order: an id
+    // chosen by the client could be made to sort first, a random one cannot.
+    function isDistributorId(value) {
+      return value is string && value.matches('^[A-Za-z0-9]{20}$');
+    }
+
+    // Same shape and prefixes as isValidRuc in src/domain/tenancy/tax-id.ts. The check digit is
+    // verified by the form only: it guards against typos, not against lies.
+    function isTaxId(value) {
+      return value is string && value.matches('^(10|15|16|17|20)[0-9]{9}$');
+    }
+
+    // Same pattern as REGISTRY_PATTERN in src/domain/tenancy/verification-input.ts.
+    function isRegistryNumber(value) {
+      return value is string && value.size() >= 4 && value.size() <= 40
+        && value.matches('^[A-Z0-9]([A-Z0-9 ./-]*[A-Z0-9])?$');
+    }
+
+    function isSlug(value) {
+      return value is string
+        && value.size() >= 3 && value.size() <= 40
+        && value.matches('^[a-z0-9]+(-[a-z0-9]+)*$')
+        // Same fragments as RESERVED_SLUG_FRAGMENTS in src/domain/tenancy/slug.ts.
+        && !value.matches('.*(hornilla|glpweb).*')
+        // Same list as RESERVED_SLUGS in src/domain/tenancy/slug.ts.
+        && !(value in [
+          'admin', 'api', 'app', 'd', 'www', 'plataforma', 'platform', 'ingresar', 'registro',
+          'registrarse', 'salir', 'login', 'logout', 'signup', 'cuenta', 'perfil', 'pedido',
+          'pedidos', 'repartidor', 'central', 'oficina', 'panel', 'buscar', 'inicio', 'ayuda',
+          'soporte', 'contacto', 'precios', 'planes', 'terminos', 'privacidad', 'hornilla',
+          'glpweb', 'assets', 'static', 'null', 'undefined'
+        ]);
+    }
+
+    function isTimeOfDay(value) {
+      return value is string && value.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$');
+    }
+
+    function isSchedule(schedule) {
+      return schedule is map
+        && hasExactly(schedule, ['days', 'opensAt', 'closesAt'])
+        && schedule.days is list
+        && schedule.days.size() >= 1 && schedule.days.size() <= 7
+        && schedule.days.hasOnly([0, 1, 2, 3, 4, 5, 6])
+        // No day twice (same check as checkSchedule in src/domain/tenancy/distributor-input.ts).
+        && schedule.days.toSet().size() == schedule.days.size()
+        && isTimeOfDay(schedule.opensAt)
+        && isTimeOfDay(schedule.closesAt);
+    }
+
+    // Acceptance of the terms (docs/legal). Same list as TERMS_VERSIONS in
+    // src/domain/legal/versions.ts.
+    function acceptedTermsVersions() {
+      return ['0.3'];
+    }
+
+    // Same list as PRIVACY_VERSIONS in src/domain/legal/versions.ts.
+    function acceptedPrivacyVersions() {
+      return ['0.3'];
+    }
+
+    function isAcceptance(acceptance, versions) {
+      return acceptance is map
+        && hasExactly(acceptance, ['version', 'acceptedAt'])
+        && acceptance.version in versions
+        && acceptance.acceptedAt is timestamp;
+    }
+
+    function isTermsAcceptance(terms) {
+      return isAcceptance(terms, acceptedTermsVersions());
+    }
+
+    function isPrivacyAcceptance(privacy) {
+      return isAcceptance(privacy, acceptedPrivacyVersions());
+    }
+
+    // One line of the history of acceptances: which text, which of its versions, when.
+    function isAcceptanceEntry(entry) {
+      return hasExactly(entry, ['document', 'version', 'acceptedAt'])
+        && ((entry.document == 'terms' && entry.version in acceptedTermsVersions())
+          || (entry.document == 'privacy' && entry.version in acceptedPrivacyVersions()))
+        && entry.acceptedAt is timestamp;
+    }
+
+    function acceptanceEntryId(text, version) {
+      return text + '-' + version;
+    }
+
+    // An acceptance written in the profile counts only when this same request leaves its line
+    // in the history, stamped now. The line is found by its id and is never edited, so a
+    // version that is already in the history cannot be accepted (dated) again. Call it only
+    // after the acceptance was validated: its version becomes part of a document path.
+    function logsAcceptance(uid, text, acceptance) {
+      let entryId = acceptanceEntryId(text, acceptance.version);
+      let entry = getAfter(/databases/$(database)/documents/users/$(uid)/acceptances/$(entryId));
+      return acceptance.acceptedAt == request.time
+        && entry.data.acceptedAt == request.time;
+    }
+
+    // Rules cannot loop: the list is capped at 8 and each position is checked by hand.
+    function isBrandAt(brands, index) {
+      return brands.size() <= index || isText(brands[index], 1, 30);
+    }
+
+    function isBrandList(brands) {
+      return brands is list && brands.size() <= 8
+        && isBrandAt(brands, 0) && isBrandAt(brands, 1) && isBrandAt(brands, 2)
+        && isBrandAt(brands, 3) && isBrandAt(brands, 4) && isBrandAt(brands, 5)
+        && isBrandAt(brands, 6) && isBrandAt(brands, 7);
+    }
+
+    // -------------------------------------------------------------------- document validators ----
+    function isValidUserProfile(data) {
+      return hasExactly(data, [
+          'displayName', 'phone', 'ownedDistributorIds', 'terms', 'privacy', 'createdAt',
+          'updatedAt'
+        ])
+        && isTermsAcceptance(data.terms)
+        && isPrivacyAcceptance(data.privacy)
+        && isText(data.displayName, 1, 80)
+        && (data.phone == null || isPhone(data.phone))
+        && data.ownedDistributorIds is list && data.ownedDistributorIds.size() <= 3
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidAddress(data) {
+      return hasExactly(data, ['label', 'addressLine', 'reference', 'location', 'createdAt', 'updatedAt'])
+        && isText(data.label, 1, 40)
+        && isText(data.addressLine, 1, 160)
+        && isText(data.reference, 0, 160)
+        && isGeoPoint(data.location)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidDistributor(data) {
+      return hasExactly(data, [
+          'name', 'slug', 'contactPhone', 'whatsapp', 'addressLine', 'plant',
+          'coverageRadiusKm', 'brandColor', 'acceptingOrders', 'schedule',
+          'maxCylindersPerOrder', 'brands', 'priceFromCents', 'currency', 'createdAt', 'updatedAt'
+        ])
+        && isBusinessName(data.name)
+        && data.slug is string
+        && isPhone(data.contactPhone)
+        && isPhone(data.whatsapp)
+        && isText(data.addressLine, 0, 160)
+        && isGeoPoint(data.plant)
+        && data.coverageRadiusKm is number
+        && data.coverageRadiusKm >= 1 && data.coverageRadiusKm <= 50
+        && data.brandColor is string && data.brandColor.matches('^#[0-9a-f]{6}$')
+        && data.acceptingOrders is bool
+        && isSchedule(data.schedule)
+        && data.maxCylindersPerOrder is int
+        && data.maxCylindersPerOrder >= 1 && data.maxCylindersPerOrder <= 20
+        && isBrandList(data.brands)
+        && (data.priceFromCents == null
+          || (data.priceFromCents is int && data.priceFromCents >= 1 && data.priceFromCents <= 99900))
+        && data.currency == 'PEN'
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidControl(data) {
+      return data.keys().hasAll([
+          'ownerUid', 'status', 'trialEndsAt', 'listingApproved', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerUid', 'status', 'trialEndsAt', 'listingApproved', 'approvedAt', 'approvedBy',
+          'reviewedProfileAt', 'reviewedSettingsAt', 'reviewNote', 'correctedAt',
+          'distributorName', 'slug', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerUid is string
+        && data.status in ['trial', 'active', 'pastDue', 'suspended']
+        && data.trialEndsAt is timestamp
+        && data.listingApproved is bool
+        && (data.listingApproved ? isApprovedShape(data) : isPendingShape(data))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Approved: says when and by whom, and carries no note for the owner nor an answer to one.
+    function isApprovedShape(data) {
+      return data.approvedAt is timestamp
+        && data.approvedBy is string
+        && !('reviewNote' in data)
+        && !('correctedAt' in data);
+    }
+
+    // Not approved: nothing claims an approval, nor says which version was approved; a note for
+    // the owner is optional, and the mark of its correction exists only next to a note.
+    function isPendingShape(data) {
+      return !('approvedAt' in data)
+        && !('approvedBy' in data)
+        && !('reviewedProfileAt' in data)
+        && !('reviewedSettingsAt' in data)
+        && (!('reviewNote' in data) || isText(data.reviewNote, 1, 300))
+        && (!('correctedAt' in data) || ('reviewNote' in data && data.correctedAt is timestamp));
+    }
+
+    function isValidPrivateSettings(data) {
+      return hasExactly(data, [
+          'ownerUid', 'ownerName', 'ownerPhone', 'ownerEmail', 'plan', 'taxId', 'legalName',
+          'hydrocarbonsRegistry', 'terms', 'authorityDeclaredAt', 'createdAt', 'updatedAt'
+        ])
+        && isTaxId(data.taxId)
+        && isText(data.legalName, 2, 120)
+        && isRegistryNumber(data.hydrocarbonsRegistry)
+        && isTermsAcceptance(data.terms)
+        && data.authorityDeclaredAt is timestamp
+        && data.ownerUid is string
+        && isText(data.ownerName, 1, 80)
+        && isPhone(data.ownerPhone)
+        && isText(data.ownerEmail, 3, 254)
+        && data.plan in ['trial']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMember(data, d, memberUid) {
+      return hasExactly(data, [
+          'uid', 'distributorId', 'role', 'active', 'displayName', 'distributorName',
+          'createdAt', 'updatedAt'
+        ])
+        && data.uid == memberUid
+        && data.distributorId == d
+        && data.role in ['owner', 'dispatcher', 'driver']
+        && data.active is bool
+        && isText(data.displayName, 1, 80)
+        && isText(data.distributorName, 2, 60)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // ================================================================================ users ====
+    // The profile holds no role and no platform flag: the field whitelist rejects them.
+    match /users/{uid} {
+      // Reads added by rules: 0.
+      allow get: if isSelf(uid);
+
+      // A profile carries the consents: it exists only for an account that proved its e-mail
+      // (PLAN 2.11).
+      allow create: if isSelf(uid)
+        && emailVerified()
+        && isValidUserProfile(request.resource.data)
+        && request.resource.data.ownedDistributorIds.size() == 0
+        // Reads added by rules: 2 (getAfter of the two history entries).
+        && logsAcceptance(uid, 'terms', request.resource.data.terms)
+        && logsAcceptance(uid, 'privacy', request.resource.data.privacy)
+        && stampedNow(request.resource.data);
+
+      // Reads added by rules: 0 for a profile edit, 1 (getAfter) inside a founding batch, 1
+      // (getAfter of its history entry) for each text accepted.
+      allow update: if isSelf(uid)
+        && emailVerified()
+        && isValidUserProfile(request.resource.data)
+        && unchanged(['createdAt'])
+        && request.resource.data.updatedAt == request.time
+        // A text is accepted now and leaves its line in the history, or it is not touched; the
+        // validator already forbids removing an acceptance. A profile older than `privacy`
+        // gains it the same way.
+        && (unchanged(['terms']) || logsAcceptance(uid, 'terms', request.resource.data.terms))
+        && (unchanged(['privacy'])
+          || logsAcceptance(uid, 'privacy', request.resource.data.privacy))
+        && (unchanged(['ownedDistributorIds']) || recordsFounding());
+
+      // No delete: it would reset ownedDistributorIds and with it the cap per account.
+
+      // The list may only grow by one id, at the end, and that id must be a distributor this
+      // same request creates with the caller as founder.
+      function recordsFounding() {
+        let before = resource.data.ownedDistributorIds;
+        let after = request.resource.data.ownedDistributorIds;
+        return after.size() == before.size() + 1
+          && after.hasAll(before)
+          && isDocId(after[before.size()])
+          && foundedNow(after[before.size()]);
+      }
+
+      match /addresses/{slot} {
+        // Fixed slots instead of automatic ids: the only way rules can cap the count.
+        function isSlot() {
+          return slot.matches('^a[0-9]$');
+        }
+
+        allow get: if isSelf(uid);
+        allow list: if isSelf(uid) && request.query.limit <= 10;
+
+        // An address is personal data: it is stored only for an account that has a profile,
+        // which cannot exist without the accepted terms and privacy policy.
+        // Reads added by rules: 1 (exists profile) on create, 0 otherwise.
+        allow create: if isSelf(uid)
+          && emailVerified()
+          && isSlot()
+          && isValidAddress(request.resource.data)
+          && stampedNow(request.resource.data)
+          && exists(/databases/$(database)/documents/users/$(uid));
+
+        allow update: if isSelf(uid)
+          && emailVerified()
+          && isValidAddress(request.resource.data)
+          && unchanged(['createdAt'])
+          && request.resource.data.updatedAt == request.time;
+
+        allow delete: if isSelf(uid);
+      }
+
+      // History of acceptances: the proof that the account accepted each version, and when.
+      match /acceptances/{entryId} {
+        function mayRead() {
+          return isSelf(uid) || isPlatformAdmin();
+        }
+
+        // Reads added by rules: 0 for the account itself, 1 (exists admin) for anyone else.
+        allow get: if mayRead();
+        allow list: if mayRead() && request.query.limit <= 50;
+
+        // The other half of logsAcceptance(): no line without the acceptance it proves, written
+        // in the profile by this same request.
+        // Reads added by rules: 1 (getAfter profile).
+        allow create: if isSelf(uid)
+          && emailVerified()
+          && isAcceptanceEntry(request.resource.data)
+          && entryId == acceptanceEntryId(
+            request.resource.data.document, request.resource.data.version)
+          && request.resource.data.acceptedAt == request.time
+          && profileAccepts(request.resource.data);
+
+        // No update and no delete: a proof that its holder can rewrite proves nothing.
+
+        function profileAccepts(entry) {
+          let held = getAfter(/databases/$(database)/documents/users/$(uid)).data[entry.document];
+          return held.version == entry.version && held.acceptedAt == request.time;
+        }
+      }
+    }
+
+    // ======================================================================= platformAdmins ====
+    // Granted only with scripts/grant-platform-admin.mjs (Admin SDK). No write from the app.
+    match /platformAdmins/{uid} {
+      allow get: if isSelf(uid);
+    }
+
+    // ================================================================================ slugs ====
+    match /slugs/{slug} {
+      // Public: /d/{slug} must resolve for visitors. No list, so slugs cannot be enumerated.
+      allow get: if true;
+
+      // Only inside the founding batch of the distributor it points to. An existing slug makes
+      // this write an update, which nobody is allowed: that is what makes slugs unique.
+      // Reads added by rules: 2 (getAfter control, getAfter distributor).
+      allow create: if emailVerified()
+        && isSlug(slug)
+        && hasExactly(request.resource.data, ['distributorId', 'createdAt'])
+        && isDocId(request.resource.data.distributorId)
+        && request.resource.data.createdAt == request.time
+        && foundedNow(request.resource.data.distributorId)
+        && getAfter(distributorPath(request.resource.data.distributorId)).data.slug == slug;
+    }
+
+    // ========================================================================= distributors ====
+    match /distributors/{d} {
+      // Public while it takes orders (see the data model above): nothing private lives here.
+      // One that does not take orders — waiting for its review, suspended, trial over — hands
+      // its name and phones only to its own staff and to platform admins (PLAN 2.11). A missing
+      // document reads as "not found" rather than as a refusal.
+      // Reads added by rules: 0 while it takes orders or does not exist; otherwise 1 for its
+      // staff (get member), 2 for a platform admin, and 1–2 before refusing anybody else who is
+      // signed in (0 for an anonymous visitor).
+      allow get: if resource == null
+        || resource.data.acceptingOrders == true
+        || isStaff(d)
+        || isPlatformAdmin();
+
+      // The search page: bounded, and only distributors that take orders. The query must carry
+      // `where('acceptingOrders', '==', true)` and `limit(n ≤ 50)`.
+      // Reads added by rules: 0.
+      allow list: if request.query.limit <= 50
+        && resource.data.acceptingOrders == true;
+
+      // Founding batch (PLAN 2.2): distributor + control + slug + owner member + private
+      // settings + the founder's ownedDistributorIds, all or nothing. This document vouches for
+      // the slug; the control document vouches for everything else.
+      // Reads added by rules: 2 (getAfter slug, getAfter control).
+      // It is born unlisted: a platform admin approves it before visitors see it (PLAN 2.11).
+      allow create: if emailVerified()
+        && isDistributorId(d)
+        && isValidDistributor(request.resource.data)
+        && request.resource.data.acceptingOrders == false
+        && stampedNow(request.resource.data)
+        && isSlug(request.resource.data.slug)
+        // The catalogue does not exist yet; these are filled from it later.
+        && request.resource.data.brands.size() == 0
+        && request.resource.data.priceFromCents == null
+        && getAfter(/databases/$(database)/documents/slugs/$(request.resource.data.slug)).data.distributorId == d
+        && foundedNow(d);
+
+      // Owner: profile whitelist only, and only while the distributor is writable. An edit of
+      // what identifies the business (name, phones, address, plant) sends the listing back to
+      // review: the same request must leave it unlisted here and not approved in the control
+      // document.
+      // Staff or platform admin: bring `acceptingOrders` in line with the control document, in
+      // either direction. It can only ever be written as the truth, so it needs no more trust.
+      // The staff may only do it when the value really changes: every write moves `updatedAt`,
+      // which is the version an approval names, so a write that changes nothing would let any
+      // driver make an open review go stale. A platform admin may rewrite it as it is next to
+      // its own decision.
+      // A new name must also reach the copy the control document keeps of it.
+      // Reads added by rules: 2 (owner: get member, get control · staff: getAfter control, get
+      // member), 3 lookups for an owner edit of what identifies the business (the third is a
+      // getAfter of the same control document) and 3 for a platform admin (the member lookup
+      // fails first). A write of the staff that changes nothing costs 2 before it is refused
+      // (getAfter control, exists platformAdmins).
+      allow update: if isValidDistributor(request.resource.data)
+        && request.resource.data.updatedAt == request.time
+        && (
+          // The correction of the flag comes first: it is the cheaper branch to rule out.
+          (
+            onlyChanges(['acceptingOrders', 'updatedAt'])
+            && request.resource.data.acceptingOrders == isOpenData(getAfter(controlPath(d)).data)
+            && ((flipsTheFlag() && isStaff(d)) || isPlatformAdmin())
+          )
+          || (
+            onlyChanges([
+              'name', 'contactPhone', 'whatsapp', 'addressLine', 'plant', 'coverageRadiusKm',
+              'brandColor', 'schedule', 'maxCylindersPerOrder', 'brands', 'priceFromCents',
+              'acceptingOrders', 'updatedAt'
+            ])
+            && hasRole(d, ['owner'])
+            && writable(d)
+            && (changesIdentity() ? returnsToReview() : unchanged(['acceptingOrders']))
+          )
+        );
+
+      // No delete from the app.
+
+      // Same list as IDENTITY_FIELDS in src/domain/tenancy/listing.ts: who the business is, how
+      // it is reached and where it is. The radius and the schedule are routine adjustments.
+      function changesIdentity() {
+        return request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['name', 'contactPhone', 'whatsapp', 'addressLine', 'plant']);
+      }
+
+      function flipsTheFlag() {
+        return request.resource.data.acceptingOrders != resource.data.acceptingOrders;
+      }
+
+      function returnsToReview() {
+        let control = getAfter(controlPath(d)).data;
+        return request.resource.data.acceptingOrders == false
+          && control.get('listingApproved', false) == false
+          && (
+            unchanged(['name'])
+            || control.get('distributorName', null) == request.resource.data.name
+          );
+      }
+
+      // ----------------------------------------------------------------- private/control ----
+      match /private/control {
+        // Reads added by rules: 0 for the founder, 1 for the rest of the staff, 2 for a
+        // platform admin.
+        allow get: if signedIn()
+          && (resource.data.ownerUid == request.auth.uid || isStaff(d) || isPlatformAdmin());
+
+        // The anchor of the founding batch: it proves the other four pieces exist and belong to
+        // the caller. trialEndsAt: the client cannot write "server time + 30 days", so the rule
+        // accepts a window instead: more than 29 days and at most 30 days + 1 hour after
+        // request.time. The upper bound is the one that matters (nobody grants itself a longer
+        // trial); the lower bound tolerates a device clock that runs up to a day behind.
+        // An account that owns a read-only distributor (suspended, past due, trial over) founds
+        // no other one: it would be thirty fresh days of trial (PLAN 2.11).
+        // Reads added by rules: 4 (getAfter distributor, member, settings, founder profile),
+        // plus 1 per distributor the account already owns (get control; at most 2).
+        allow create: if emailVerified()
+          && isValidControl(request.resource.data)
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.status == 'trial'
+          && request.resource.data.listingApproved == false
+          && !('reviewNote' in request.resource.data)
+          && request.resource.data.trialEndsAt > request.time + duration.value(29, 'd')
+          && request.resource.data.trialEndsAt <= request.time + duration.value(721, 'h')
+          && stampedNow(request.resource.data)
+          && getAfter(distributorPath(d)).data.createdAt == request.time
+          && request.resource.data.distributorName == getAfter(distributorPath(d)).data.name
+          && request.resource.data.slug == getAfter(distributorPath(d)).data.slug
+          && getAfter(/databases/$(database)/documents/distributors/$(d)/members/$(request.auth.uid)).data.role == 'owner'
+          && getAfter(settingsPath(d)).data.ownerUid == request.auth.uid
+          && ownsNoReadOnlyDistributor(
+            getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.ownedDistributorIds
+          );
+
+        // `owned` is the founder's list once the batch is applied: the users rule guarantees the
+        // new distributor is its last entry, so the earlier ones are the positions before it.
+        // Rules cannot loop: the cap is 3, which leaves two earlier positions to check by hand.
+        function ownsNoReadOnlyDistributor(owned) {
+          return d in owned && isOperatingAt(owned, 0) && isOperatingAt(owned, 1);
+        }
+
+        function isOperatingAt(owned, index) {
+          return owned.size() <= index + 1 || isWritableData(get(controlPath(owned[index])).data);
+        }
+
+        // Platform admin: status and the review of the listing (approve, or send back with a
+        // note). An approval is signed: by the admin doing it, at request.time, and for the
+        // version of the public profile and of the private settings it looked at. It never writes
+        // the correction mark of the owner: it keeps it untouched or removes it, and a new note
+        // removes it.
+        // Owner of the distributor: may only send its own listing back to review (it does so
+        // when it edits what identifies the business) and mark that it answered a note with a
+        // correction.
+        // The mark approves nothing and the note stays where the admin left it.
+        // In both cases the public flag must agree once the request is applied, so a change
+        // that opens or closes the distributor carries both documents; and the copies of the
+        // public name and link can only be written as they stand in the public profile.
+        // Reads added by rules: 2 for a platform admin (exists platformAdmins, getAfter
+        // distributor) and 4 when it approves (get distributor, get settings: the versions it
+        // says it reviewed), 3 for an owner (exists platformAdmins, get member, getAfter
+        // distributor); marking a correction adds the stored public profile (get distributor: 4)
+        // and, when the correction is not there, the private settings before and after (get and
+        // getAfter settings: 6).
+        allow update: if isValidControl(request.resource.data)
+          && request.resource.data.updatedAt == request.time
+          && (
+            (
+              isPlatformAdmin()
+              && onlyChanges([
+                'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewedProfileAt',
+                'reviewedSettingsAt', 'reviewNote', 'correctedAt', 'distributorName', 'slug',
+                'updatedAt'
+              ])
+              && approvalIsSigned()
+              && leavesCorrectionMarkAlone()
+            )
+            || (
+              onlyChanges([
+                'listingApproved', 'approvedAt', 'approvedBy', 'reviewedProfileAt',
+                'reviewedSettingsAt', 'correctedAt', 'distributorName', 'slug', 'updatedAt'
+              ])
+              && request.resource.data.listingApproved == false
+              && hasRole(d, ['owner'])
+              && (unchanged(['correctedAt']) || marksCorrection())
+            )
+          )
+          && getAfter(distributorPath(d)).data.acceptingOrders == isOpenData(request.resource.data)
+          && copyHolds('distributorName', getAfter(distributorPath(d)).data.name)
+          && copyHolds('slug', getAfter(distributorPath(d)).data.slug);
+
+        // The mark of a correction survives a write of the admin only if neither it nor the note
+        // it answers changed: a new note is a new question.
+        function leavesCorrectionMarkAlone() {
+          return !('correctedAt' in request.resource.data)
+            || unchanged(['correctedAt', 'reviewNote']);
+        }
+
+        // "Corrected now", and only together with a correction of what the platform reviews: the
+        // public profile or the private settings, changed by this same request. A write that
+        // only moves `updatedAt`, or the public flag, corrects nothing. (The shape already
+        // demands a note beside it and a listing that is not approved.)
+        function marksCorrection() {
+          return request.resource.data.correctedAt == request.time
+            && isWritableData(resource.data)
+            && (
+              corrects(distributorPath(d), ['acceptingOrders', 'updatedAt'])
+              || corrects(settingsPath(d), ['updatedAt'])
+            );
+        }
+
+        // Whether this request changes that document in something else than `hollow`, the
+        // fields that carry none of its content.
+        function corrects(path, hollow) {
+          return !getAfter(path).data.diff(get(path).data).affectedKeys().hasOnly(hollow);
+        }
+
+        // A copy of the public profile: when present it is the truth; once there, it stays.
+        function copyHolds(field, truth) {
+          return field in request.resource.data
+            ? request.resource.data[field] == truth
+            : !(field in resource.data);
+        }
+
+        function approvalIsSigned() {
+          return request.resource.data.listingApproved == false
+            || unchanged([
+              'listingApproved', 'approvedAt', 'approvedBy', 'reviewedProfileAt',
+              'reviewedSettingsAt'
+            ])
+            || (
+              request.resource.data.approvedAt == request.time
+              && request.resource.data.approvedBy == request.auth.uid
+              && approvesWhatWasReviewed()
+            );
+        }
+
+        // The approval names the version of each document the admin had in front of it, and both
+        // must still be the stored ones. get(), not getAfter(): this same request moves the
+        // updatedAt of the public profile when it opens it to visitors. An approval without the
+        // two marks fails here (a missing field is an error, and an error denies).
+        function approvesWhatWasReviewed() {
+          return request.resource.data.reviewedProfileAt == get(distributorPath(d)).data.updatedAt
+            && request.resource.data.reviewedSettingsAt == get(settingsPath(d)).data.updatedAt;
+        }
+      }
+
+      // ---------------------------------------------------------------- private/settings ----
+      match /private/settings {
+        // The founder's own contact data and the tax number of the business: not even a
+        // co-owner reads them (PLAN 2.11).
+        // Reads added by rules: 0 for the founder, 1 for a platform admin.
+        allow get: if signedIn()
+          && (resource.data.ownerUid == request.auth.uid || isPlatformAdmin());
+
+        // Reads added by rules: 1 (getAfter control).
+        allow create: if emailVerified()
+          && isValidPrivateSettings(request.resource.data)
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.ownerEmail == request.auth.token.email
+          && request.resource.data.plan == 'trial'
+          && request.resource.data.terms.acceptedAt == request.time
+          && request.resource.data.authorityDeclaredAt == request.time
+          && stampedNow(request.resource.data)
+          && foundedNow(d);
+
+        // The verification data can be corrected only while the listing is not approved: what a
+        // platform admin approved does not change behind its back.
+        // Reads added by rules: 1 (get control).
+        allow update: if signedIn()
+          && resource.data.ownerUid == request.auth.uid
+          && isValidPrivateSettings(request.resource.data)
+          && onlyChanges([
+            'ownerName', 'ownerPhone', 'taxId', 'legalName', 'hydrocarbonsRegistry', 'updatedAt'
+          ])
+          && request.resource.data.updatedAt == request.time
+          && settingsEditAllowed(get(controlPath(d)).data);
+
+        function settingsEditAllowed(control) {
+          return isWritableData(control)
+            && (
+              unchanged(['taxId', 'legalName', 'hydrocarbonsRegistry'])
+              || control.get('listingApproved', false) == false
+            );
+        }
+      }
+
+      // ------------------------------------------------------------------------- members ----
+      match /members/{memberUid} {
+        // Reads added by rules: 0 for the own document, 1 otherwise.
+        allow get: if isSelf(memberUid) || hasRole(d, ['owner', 'dispatcher']);
+
+        // Reads added by rules: 1.
+        allow list: if request.query.limit <= 100 && hasRole(d, ['owner', 'dispatcher']);
+
+        // One way in, and no other: the founder's own member, as owner, inside the founding
+        // batch. Nobody creates a member document for itself or for anyone else outside it.
+        // Invitations (phase 3) will add the second, equally explicit, way: the invited account
+        // creates its own member with exactly the role of a valid invitation.
+        // Reads added by rules: 2 (getAfter distributor, getAfter control).
+        allow create: if isSelf(memberUid)
+          && emailVerified()
+          && isValidMember(request.resource.data, d, memberUid)
+          && stampedNow(request.resource.data)
+          && request.resource.data.role == 'owner'
+          && request.resource.data.active == true
+          && carriesPublicName()
+          && foundedNow(d);
+
+        // An owner changes others, never itself, and never the founder: the acting owner and
+        // the founder always stay, so a distributor cannot be left without an owner.
+        // Reads added by rules: 2 (get member, get control).
+        //
+        // Second kind of update: refreshing the copy of the distributor's name. Any member may
+        // do it on its own document and an owner on anyone's (the rename batch), because the
+        // only value accepted is the public name as it stands once the request is applied.
+        // Reads added by rules: 1 (getAfter distributor) on the own document, 2 for an owner.
+        allow update: if signedIn()
+          && isValidMember(request.resource.data, d, memberUid)
+          && request.resource.data.updatedAt == request.time
+          && (
+            (
+              memberUid != request.auth.uid
+              && onlyChanges(['role', 'active', 'displayName', 'updatedAt'])
+              && hasRole(d, ['owner'])
+              && writableAndNotFounder(memberUid)
+            )
+            || (
+              onlyChanges(['distributorName', 'updatedAt'])
+              && carriesPublicName()
+              && (isSelf(memberUid) || hasRole(d, ['owner']))
+            )
+          );
+
+        // No delete: staff is deactivated (`active: false`), so history keeps its author.
+
+        function writableAndNotFounder(uid) {
+          let control = get(controlPath(d)).data;
+          return isWritableData(control) && control.ownerUid != uid;
+        }
+
+        function carriesPublicName() {
+          return request.resource.data.distributorName == getAfter(distributorPath(d)).data.name;
+        }
+      }
+
+      // invites, helpers, vehicles, products, plantStock, customers, orders, shifts: closed
+      // until their phase opens them.
+    }
+
+    // "My memberships" (selector of distributors): a collection-group query that must filter
+    // by the caller's own uid and carry a limit. Billed as one read per membership found.
+    match /{path=**}/members/{memberUid} {
+      allow list: if signedIn()
+        && request.query.limit <= 20
+        && resource.data.uid == request.auth.uid;
+    }
+
+    // The lists of the platform panel: collection-group queries over the control documents.
+    // Each must carry a limit and one of three filters: `listingApproved == false` (waiting for
+    // review), `listingApproved == true` (approved) or `status == 'suspended'`. Only control
+    // documents have those fields, so the settings documents never match. A query without a
+    // filter on one of them is refused (a filter that names both values of `listingApproved`
+    // is accepted: it is two of these lists in one bounded query).
+    // Reads added by rules: 1 per query (exists platformAdmins).
+    match /{path=**}/private/{document} {
+      allow list: if request.query.limit <= 50
+        && (
+          resource.data.listingApproved == false
+          || resource.data.listingApproved == true
+          || resource.data.status == 'suspended'
+        )
+        && isPlatformAdmin();
+    }
+
+    // Anything not matched above is denied.
     match /{document=**} {
       allow read, write: if false;
     }

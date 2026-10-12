@@ -1,5 +1,6 @@
 node_modules
 dist
+dist-e2e-*
 package-lock.json
 test-results*
 playwright-report
@@ -8,3 +9,4 @@ playwright-report
 docs
 CLAUDE.md
 src/components/ui
+firebase.lane-*.json
