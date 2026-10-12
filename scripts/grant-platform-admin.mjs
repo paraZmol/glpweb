@@ -26,8 +26,21 @@
 //
 // What it writes: /platformAdmins/{uid} = { createdAt, grantedBy: 'script' }. The rules only
 // check that the document exists.
+//
+// What --revoke does, and what stays open after it (security audit of phase 2, B3):
+//   - it deletes /platformAdmins/{uid}: from that moment every NEW request of the account is
+//     judged without the role (reads, writes, lists and every listener started afterwards);
+//   - it revokes the refresh tokens of the account (`revokeRefreshTokens`): its sessions on
+//     every device end the next time they try to renew their ID token, at most one hour later.
+//   THE WINDOW: a listener that was already open keeps delivering changes, because the rules of
+//   a listener are not evaluated again when a document they read with exists() changes
+//   (measured against the emulator in src/data/role-revocation.emu.test.ts). An account with the
+//   review of a listing on screen keeps seeing that one listing, RUC included, until its ID
+//   token runs out (up to one hour) or the tab closes. It can decide nothing: every write is a
+//   new request. If that hour matters, disable the account in the Firebase console as well.
 import { pathToFileURL } from 'node:url';
 import {
+  isMissingAccount,
   loadAdminSdk,
   readArguments,
   requireUid,
@@ -35,14 +48,30 @@ import {
   runAsScript,
 } from './admin-common.mjs';
 
+const STILL_OPEN =
+  'Its sessions end within the hour. A review screen it already had open keeps showing that ' +
+  'listing until then: see the header of this script.';
+
+/** Ends the sessions of the account; one that no longer exists has none to end. */
+async function endSessions(sdk, uid) {
+  try {
+    await sdk.getAuth().revokeRefreshTokens(uid);
+  } catch (error) {
+    if (!isMissingAccount(error)) throw error;
+  }
+}
+
 /**
  * Grants the role to `uid`, or takes it away with `revoke`. Refuses to grant to an account that
  * does not exist or never proved its e-mail. Returns what it did: 'granted' or 'revoked'.
+ * Revoking removes the role first (that is what the rules read) and then ends the sessions of
+ * the account; see the header for what an open screen still receives.
  */
 export async function grantPlatformAdmin(sdk, uid, { revoke = false } = {}) {
   const reference = sdk.getFirestore().doc(`platformAdmins/${uid}`);
   if (revoke) {
     await reference.delete();
+    await endSessions(sdk, uid);
     return 'revoked';
   }
   const account = await sdk.getAuth().getUser(uid);
@@ -67,6 +96,7 @@ async function main(argv) {
   const outcome = await grantPlatformAdmin(sdk, uid, { revoke: options.revoke });
   const verb = outcome === 'granted' ? 'Granted' : 'Revoked';
   process.stdout.write(`${verb} platform admin for ${uid} on ${target.label}.\n`);
+  if (outcome === 'revoked') process.stdout.write(`${STILL_OPEN}\n`);
 }
 
 const isCommandLine =
