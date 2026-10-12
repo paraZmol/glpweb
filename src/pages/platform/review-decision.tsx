@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/common/button';
+import { ConfirmPanel } from '@/components/common/confirm-panel';
 import { InlineAlert } from '@/components/common/inline-alert';
 import { FieldError } from '@/components/common/text-field';
 import type { Session } from '@/domain/auth/session';
@@ -69,10 +70,26 @@ export function ReviewDecision({
   };
 
   return (
-    <div role="group" aria-labelledby={`${id}-title`} className="rounded-lg bg-muted p-4">
-      <p id={`${id}-title`} className="font-heading text-lg font-bold">
-        {copy.title}
-      </p>
+    <ConfirmPanel
+      title={copy.title}
+      actions={
+        <>
+          <Button type="button" variant="line" size="sm" disabled={isRunning} onClick={onCancel}>
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            variant="ink"
+            size="sm"
+            loading={isRunning}
+            loadingLabel={copy.loading}
+            onClick={confirm}
+          >
+            {copy.confirm}
+          </Button>
+        </>
+      }
+    >
       <p className="mt-1 text-muted-foreground">{copy.body}</p>
       {needsNote && (
         <div className="mt-3">
@@ -107,21 +124,6 @@ export function ReviewDecision({
           {failure}
         </InlineAlert>
       )}
-      <div className="mt-4 flex flex-wrap gap-3">
-        <Button
-          type="button"
-          variant="ink"
-          size="sm"
-          loading={isRunning}
-          loadingLabel={copy.loading}
-          onClick={confirm}
-        >
-          {copy.confirm}
-        </Button>
-        <Button type="button" variant="line" size="sm" disabled={isRunning} onClick={onCancel}>
-          Cancelar
-        </Button>
-      </div>
-    </div>
+    </ConfirmPanel>
   );
 }

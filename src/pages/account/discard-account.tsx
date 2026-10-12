@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/common/button';
+import { ConfirmPanel } from '@/components/common/confirm-panel';
 import { InlineAlert } from '@/components/common/inline-alert';
 import { TextLink } from '@/components/common/text-link';
 import { isAuthError } from '@/domain/auth/errors';
@@ -88,35 +89,36 @@ export function DiscardAccount({ uid, disabled, label = DEFAULT_LABEL }: Discard
   }
 
   return (
-    <div role="group" aria-labelledby="descartar-cuenta" className="rounded-lg bg-muted p-4">
-      <p id="descartar-cuenta" className="font-heading text-lg font-bold text-foreground">
-        ¿Eliminar tu cuenta?
-      </p>
+    <ConfirmPanel
+      title="¿Eliminar tu cuenta?"
+      actions={
+        <>
+          <Button
+            type="button"
+            variant="line"
+            size="sm"
+            disabled={isRunning}
+            onClick={() => setConfirming(false)}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            variant="ink"
+            size="sm"
+            loading={isRunning}
+            loadingLabel="Eliminando tu cuenta…"
+            onClick={discard}
+          >
+            Sí, eliminar mi cuenta
+          </Button>
+        </>
+      }
+    >
       <p className="mt-1 text-muted-foreground">
         Se borra tu cuenta de Hornilla y no se puede deshacer. Podrás registrarte de nuevo con este
         mismo correo.
       </p>
-      <div className="mt-4 flex flex-wrap gap-3">
-        <Button
-          type="button"
-          variant="ink"
-          size="sm"
-          loading={isRunning}
-          loadingLabel="Eliminando tu cuenta…"
-          onClick={discard}
-        >
-          Sí, eliminar mi cuenta
-        </Button>
-        <Button
-          type="button"
-          variant="line"
-          size="sm"
-          disabled={isRunning}
-          onClick={() => setConfirming(false)}
-        >
-          Cancelar
-        </Button>
-      </div>
-    </div>
+    </ConfirmPanel>
   );
 }
