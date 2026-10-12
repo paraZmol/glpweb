@@ -4,12 +4,14 @@
 // constant here, and the new value in `acceptedTermsVersions()` or `acceptedPrivacyVersions()`
 // of firebase/firestore.rules (a rules test fails while they disagree).
 
-export const TERMS_VERSION = '0.2';
-export const PRIVACY_VERSION = '0.2';
+export const TERMS_VERSION = '0.3';
+export const PRIVACY_VERSION = '0.3';
 
 /**
  * Every terms version an account may hold; the last one is the current one. 0.1 is gone on
  * purpose: it covered six different wordings, so it proves nothing, and nobody real accepted it.
+ * 0.2 left the list when 0.3 was published (2026-10-12) for the second reason: no real account
+ * existed yet. Once one does, an older version stays here for as long as accounts hold it.
  */
 export const TERMS_VERSIONS = [TERMS_VERSION] as const;
 

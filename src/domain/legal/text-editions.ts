@@ -41,12 +41,22 @@ export const LEGAL_TEXT_EDITIONS: Record<LegalTextId, readonly LegalTextEdition[
       publishedOn: '2026-10-11',
       sha256: '9287fa2f05e1dd03b6d877fb1eee7ecb8ff6c12230c00a7bc50fa9d896ac556b',
     },
+    {
+      version: '0.3',
+      publishedOn: '2026-10-12',
+      sha256: '35eb957fc0b3bdf5b8fcb36f1aba61fb2e935bbef372398dfc7f731efcac1679',
+    },
   ],
   privacy: [
     {
       version: '0.2',
       publishedOn: '2026-10-11',
       sha256: 'a02ab353835b6822258bec78c6d8219f01ce152980b7f61ce44673937a9c6d66',
+    },
+    {
+      version: '0.3',
+      publishedOn: '2026-10-12',
+      sha256: 'd1a5f7669344c7a3474e412d19c6a0d97995bb54d3db20754bfcbab038d654f3',
     },
   ],
   cookies: [

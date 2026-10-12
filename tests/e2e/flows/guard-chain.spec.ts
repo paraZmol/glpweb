@@ -18,7 +18,8 @@ test.skip(
 
 const TERMS_BOX = /Acepto los Términos y condiciones/;
 const PRIVACY_BOX = /Leí la Política de privacidad/;
-const CURRENT_VERSION = '0.2';
+const CURRENT_TERMS = '0.3';
+const CURRENT_PRIVACY = '0.3';
 /** Every signed-in address somebody could type to skip a pending step. */
 const WAYS_AROUND = ['/inicio', '/pedidos', '/cuenta', '/distribuidora/nueva', '/central', '/app'];
 
@@ -98,8 +99,8 @@ for (const [profile, title] of PENDING_ACCEPTANCES) {
     await expect(page).toHaveURL(/\/inicio$/);
     await expect(heading(page)).toContainText('Hola');
     expect(await readDocument(`users/${account.uid}`)).toMatchObject({
-      terms: { version: CURRENT_VERSION },
-      privacy: { version: CURRENT_VERSION },
+      terms: { version: CURRENT_TERMS },
+      privacy: { version: CURRENT_PRIVACY },
     });
     await page.goto('/aceptar-terminos');
     await expect(page).toHaveURL(/\/inicio$/);
@@ -135,8 +136,8 @@ test('an account with nothing done goes through the e-mail, then the terms, then
 
   await expect(page).toHaveURL(/\/inicio$/);
   expect(await readDocument(`users/${account.uid}`)).toMatchObject({
-    terms: { version: CURRENT_VERSION },
-    privacy: { version: CURRENT_VERSION },
+    terms: { version: CURRENT_TERMS },
+    privacy: { version: CURRENT_PRIVACY },
   });
 });
 

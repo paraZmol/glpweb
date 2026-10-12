@@ -1,6 +1,6 @@
 # Política de privacidad de Hornilla
 
-> **BORRADOR v0.2 (2026-10-11) — pendiente de revisión por un profesional antes del lanzamiento**
+> **BORRADOR v0.3 (2026-10-12) — pendiente de revisión por un profesional antes del lanzamiento**
 > (Ley N.º 29733 de Protección de Datos Personales y su reglamento). Los datos entre corchetes se
 > completan cuando exista la razón social. Mientras queden corchetes en las secciones 1 y 7 no
 > debe registrarse a personas reales: sin responsable identificado y sin un correo que funcione,
@@ -39,8 +39,8 @@ Si una distribuidora es de una persona y no de una empresa, el teléfono, la dir
 ubicación que publique son los suyos y quedan a la vista de todos: conviene usar los del negocio.
 El registro lo avisa antes de crear la distribuidora. La ficha deja de poder verse, también con
 su enlace, mientras la distribuidora no reciba pedidos: porque Hornilla todavía no la aprobó,
-porque cambió su nombre o sus teléfonos y espera una nueva revisión, o porque está suspendida o
-terminó su prueba. Dos precisiones: cuando la causa es el fin de la prueba, la ficha deja de
+porque cambió su nombre, sus teléfonos, su dirección o la ubicación de su planta y espera una
+nueva revisión, o porque está suspendida o terminó su prueba. Dos precisiones: cuando la causa es el fin de la prueba, la ficha deja de
 verse en cuanto alguien de su personal abre el panel o la administración la revisa, no en el
 instante en que vence; y que un enlace ya está ocupado puede comprobarlo cualquiera aunque la
 ficha no se muestre (el registro lo necesita para no repetir enlaces), sin ver ningún otro dato.
@@ -172,6 +172,10 @@ terminar.
 Los cambios importantes se avisan en la aplicación.
 
 ## Historial de cambios
+- 0.3 (2026-10-12): la ficha de una distribuidora deja de poder verse también cuando cambia su
+  dirección o la ubicación de su planta, hasta una nueva revisión (antes solo al cambiar su
+  nombre o sus teléfonos). No cambia qué datos se guardan ni quién los ve. La 0.2 deja de poder
+  aceptarse.
 - 0.2 (2026-10-11): se añade a la tabla el historial de aceptaciones (una anotación por cada
   versión aceptada, que no se cambia ni se borra desde la aplicación y que puede leer la
   administración de Hornilla); la base legal dice que al cambiar un solo texto se pide aceptar

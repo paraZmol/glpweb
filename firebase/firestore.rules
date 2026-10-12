@@ -19,7 +19,7 @@ rules_version = '2';
 //   createdAt, updatedAt: timestamp (= request.time when written; createdAt immutable)
 //
 // /users/{uid}/acceptances/{id}    history of acceptances: proof of every version the account
-//                                  accepted. {id} is document + '-' + version (terms-0.2).
+//                                  accepted. {id} is document + '-' + version (terms-0.3).
 //                                  Created by the account only, with a verified e-mail and in the
 //                                  same request that writes that acceptance in the profile;
 //                                  never updated or deleted from the app. Read by the account
@@ -275,12 +275,12 @@ service cloud.firestore {
     // Acceptance of the terms (docs/legal). Same list as TERMS_VERSIONS in
     // src/domain/legal/versions.ts.
     function acceptedTermsVersions() {
-      return ['0.2'];
+      return ['0.3'];
     }
 
     // Same list as PRIVACY_VERSIONS in src/domain/legal/versions.ts.
     function acceptedPrivacyVersions() {
-      return ['0.2'];
+      return ['0.3'];
     }
 
     function isAcceptance(acceptance, versions) {

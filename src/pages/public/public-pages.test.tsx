@@ -197,6 +197,12 @@ describe('legal pages (PLAN 2.7)', () => {
     ['/privacidad', <PrivacyPage key="p" />, 'Política de privacidad de Hornilla', 'privacy'],
     ['/cookies', <CookiesPage key="c" />, 'Cookies y almacenamiento en tu dispositivo', 'cookies'],
   ] as const;
+  // The date in the header of each document (docs/legal), as the page writes it.
+  const PUBLISHED = {
+    terms: '12 de octubre de 2026',
+    privacy: '12 de octubre de 2026',
+    cookies: '11 de octubre de 2026',
+  } as const;
 
   it.each(PAGES)('%s shows its document under the draft banner', (path, page, title, id) => {
     const html = inPublicShell(page, path);
@@ -207,7 +213,7 @@ describe('legal pages (PLAN 2.7)', () => {
     expect(text).toContain('Borrador en revisión.');
     expect(text).toMatch(/es la que rige mientras Hornilla está en prueba/);
     expect(text).toContain('te pediremos aceptarla de nuevo.');
-    expect(text).toContain(`Versión ${CURRENT_TEXT_VERSIONS[id]} · 11 de octubre de 2026`);
+    expect(text).toContain(`Versión ${CURRENT_TEXT_VERSIONS[id]} · ${PUBLISHED[id]}`);
   });
 
   it.each(PAGES)('%s renders text only: no markup from the document', (path, page) => {

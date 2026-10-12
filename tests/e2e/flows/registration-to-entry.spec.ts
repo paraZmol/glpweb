@@ -12,7 +12,8 @@ test.skip(
 
 const TERMS_BOX = /Acepto los Términos y condiciones/;
 const PRIVACY_BOX = /Leí la Política de privacidad/;
-const CURRENT_VERSION = '0.2';
+const CURRENT_TERMS = '0.3';
+const CURRENT_PRIVACY = '0.3';
 const NEW_NAME = 'Y. Registro';
 /** Follows the fake pattern 9000000xx of the seed. */
 const NEW_PHONE = '900000097';
@@ -82,8 +83,8 @@ test('a new person registers, verifies the e-mail, accepts the terms and lands o
     displayName: NEW_NAME,
     phone: NEW_PHONE,
     ownedDistributorIds: [],
-    terms: { version: CURRENT_VERSION },
-    privacy: { version: CURRENT_VERSION },
+    terms: { version: CURRENT_TERMS },
+    privacy: { version: CURRENT_PRIVACY },
   });
   expect(await page.evaluate(() => sessionStorage.getItem('hornilla.pendingProfile'))).toBeNull();
   await expect(heading(page)).toContainText('Hola, Y.');

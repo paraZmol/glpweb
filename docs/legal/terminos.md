@@ -1,6 +1,6 @@
 # Términos y condiciones de Hornilla
 
-> **BORRADOR v0.2 (2026-10-11) — pendiente de revisión por un profesional antes del lanzamiento.**
+> **BORRADOR v0.3 (2026-10-12) — pendiente de revisión por un profesional antes del lanzamiento.**
 > Los datos entre corchetes se completan cuando exista la razón social. Este texto se muestra en
 > la aplicación marcado como borrador en revisión (paso 2.7 del plan) y su número de versión queda
 > registrado con cada aceptación. Mientras queden corchetes en la sección 1 no debe registrarse a
@@ -40,9 +40,9 @@ datos de contacto, su RUC, su razón social o el nombre de su titular y su núme
 Registro de Hidrocarburos. Puede compararlos con las consultas públicas de SUNAT y de Osinergmin.
 Si algo no coincide, Hornilla puede devolver la ficha con una nota, que lee el personal de la
 distribuidora, y la ficha sigue sin mostrarse hasta que se corrija y se revise de nuevo. Si
-después de aprobada la distribuidora cambia su nombre, su teléfono o su WhatsApp, deja de
-mostrarse hasta una nueva revisión; su dirección, la ubicación de su planta, su zona de reparto y
-su horario puede cambiarlos sin que se revise otra vez.
+después de aprobada la distribuidora cambia su nombre, su teléfono, su WhatsApp, su dirección o
+la ubicación de su planta, deja de mostrarse hasta una nueva revisión; su zona de reparto y su
+horario puede cambiarlos sin que se revise otra vez.
 
 **Esa revisión se hace sobre lo que la distribuidora declara y en el momento en que lo declara.
 No es una certificación, una garantía ni una recomendación: Hornilla no garantiza que esos datos
@@ -162,6 +162,9 @@ requieren aceptación para seguir usándola.
 Estos términos se rigen por las leyes de la República del Perú.
 
 ## Historial de cambios
+- 0.3 (2026-10-12): la dirección de una distribuidora y la ubicación de su planta pasan a ser
+  datos que, si cambian después de la aprobación, hacen que la ficha deje de mostrarse hasta una
+  nueva revisión (sección 2). Antes podían cambiarse sin revisión. La 0.2 deja de poder aceptarse.
 - 0.2 (2026-10-11): desde esta versión cada cambio de este texto lleva número nuevo, de modo que
   un número de versión corresponde a un solo texto. El contenido es el de la sexta redacción de
   la 0.1; solo cambia la nota inicial, que ahora lo dice así. La 0.1 deja de poder aceptarse.
