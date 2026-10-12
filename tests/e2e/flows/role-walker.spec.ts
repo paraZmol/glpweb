@@ -6,9 +6,17 @@
 // (their tests stay as plain tests): the back button in the sign-up of a distributor, the
 // storage notice over "Guardar cambios", the answer of /restablecer, the 404 page with a session
 // and the password of spaces.
+// The groups marked "second pass" come from the pass of 2026-10-12, over the history of the
+// sign-up wizard, the live review of the platform and the live office.
 import { expect, type Page } from '@playwright/test';
-import { type Actors, DESKTOP, PHONE, test } from '../support/actors';
-import { createTestAccount, readDocument, uniqueTag } from '../support/emulator-admin';
+import { SEED_DISTRIBUTORS } from '../../seed/data';
+import { type Actors, DESKTOP, type Device, PHONE, test } from '../support/actors';
+import {
+  createTestAccount,
+  readDocument,
+  uniqueTag,
+  writeDocument,
+} from '../support/emulator-admin';
 import { foundDistributor, FOUNDING_PATH, FOUNDING_VERIFICATION } from '../support/founding';
 import { signInAsSeedUser, signInWithPassword } from '../support/sign-in';
 import { dismissStorageNotice } from '../support/storage-notice';
@@ -45,11 +53,11 @@ async function reachSecondStep(page: Page, name: string, slug: string): Promise<
 }
 
 /** An account of its own that founded a distributor through the screen, standing on its office. */
-async function foundedOffice(actors: Actors, tag: string) {
+async function foundedOffice(actors: Actors, tag: string, device: Device = DESKTOP) {
   const account = await createTestAccount(tag);
   const name = `Gas Recorrido ${tag}`;
   const slug = `recorrido-${tag}`;
-  const owner = await actors.open(DESKTOP);
+  const owner = await actors.open(device);
   await signInWithPassword(owner.page, account.email, '/inicio');
   await foundDistributor(owner.page, { name, slug });
   const link = await readDocument(`slugs/${slug}`);
@@ -254,5 +262,191 @@ test.describe('small things a person meets on the way', () => {
       'true',
     );
     await expect(page).toHaveURL(/\/registro$/);
+  });
+});
+
+test.describe('second pass: the sign-up wizard and the history of the browser', () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissStorageNotice(page);
+  });
+
+  // PLAN 2.2. MEDIO: the office is where a new owner waits for the review, and reloading it is
+  // the first thing a person who waits does. After that, "back" shows the first step empty, as
+  // if nothing had been registered; typing the same link again answers "ya lo usa otra
+  // distribuidora". Without the reload the screen "<name> ya está creada" comes up, as it should.
+  test('after founding and reloading the office, "back" does not offer an empty wizard', async ({
+    page,
+  }, testInfo) => {
+    test.fail(
+      true,
+      'role-walker 2026-10-12: the memory of the finished sign-up does not survive a reload, so "back" lands on an empty first step',
+    );
+    const tag = uniqueTag(testInfo);
+    const account = await createTestAccount(tag);
+    await signInWithPassword(page, account.email, '/inicio');
+    await foundDistributor(page, { name: `Gas Vuelta ${tag}`, slug: `vuelta-${tag}` });
+
+    await page.reload();
+    await expect(heading(page)).toHaveText(`Hoy en Gas Vuelta ${tag}.`);
+    await page.goBack();
+
+    await expect(page).toHaveURL(new RegExp(`${FOUNDING_PATH}$`));
+    await expect(page.getByText(/ya está creada/)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByLabel('Nombre de la distribuidora')).toHaveCount(0);
+  });
+
+  // PLAN 2.2. BAJO: a double click on "Continuar" (a habit on a desktop) moves one step, as it
+  // should, but leaves two entries of the history for it: the first "back" seems to do nothing.
+  test('after a double click on "Continuar", one "back" returns to the previous step', async ({
+    page,
+  }, testInfo) => {
+    test.fail(
+      true,
+      'role-walker 2026-10-12: the double click pushes the next step twice; the first "back" stays on the same step',
+    );
+    const tag = uniqueTag(testInfo);
+    const account = await createTestAccount(tag);
+    await signInWithPassword(page, account.email, '/inicio');
+    await page.goto(FOUNDING_PATH);
+    await page.getByLabel('Nombre de la distribuidora').fill(`Gas Doble ${tag}`);
+    await page.getByLabel('Enlace de tu página').fill(`doble-${tag}`);
+    await expect(page.getByText('Está libre.')).toBeVisible();
+    await page.getByLabel('Teléfono del negocio').fill(BUSINESS_PHONE);
+    await page.getByLabel(FOUNDING_VERIFICATION.taxIdLabel).fill(FOUNDING_VERIFICATION.taxId);
+    await page
+      .getByLabel(FOUNDING_VERIFICATION.legalNameLabel)
+      .fill(FOUNDING_VERIFICATION.legalName);
+    await page.getByLabel(FOUNDING_VERIFICATION.registryLabel).fill(FOUNDING_VERIFICATION.registry);
+
+    await page.getByRole('button', { name: 'Continuar' }).dblclick();
+    await expect(heading(page)).toContainText('tu planta.');
+    await page.goBack();
+
+    await expect(page.getByLabel('Nombre de la distribuidora')).toHaveValue(`Gas Doble ${tag}`, {
+      timeout: 5_000,
+    });
+  });
+});
+
+test.describe('second pass: the review and the office, live', () => {
+  test.skip(({ isMobile }) => isMobile, 'Each actor opens its own device: runs once, on desktop');
+
+  // PLAN 2.11. MEDIO: the question "¿Aprobar esta ficha?" is the pause before the only brake on
+  // a false listing. On a desktop its button "Sí, aprobar" appears under the pointer, where
+  // "Aprobar" was: the second click of a double click answers the question nobody read.
+  // "Suspender" does not have this problem: its confirmation lands somewhere else.
+  test('a double click on "Aprobar" does not approve before the question is read', async ({
+    actors,
+  }, testInfo) => {
+    test.fail(
+      true,
+      'role-walker 2026-10-12: at 1440 px "Sí, aprobar" replaces "Aprobar" under the pointer and the double click approves',
+    );
+    const { id } = await foundedOffice(actors, uniqueTag(testInfo));
+    const admin = await actors.openSeed('admin');
+    await admin.page.goto(`/plataforma/altas/${id}`);
+    await expect(admin.page.getByRole('button', { name: 'Aprobar' })).toBeVisible();
+
+    await admin.page.getByRole('button', { name: 'Aprobar' }).dblclick();
+
+    await expect(admin.page.getByRole('button', { name: 'Sí, aprobar' })).toBeVisible({
+      timeout: 5_000,
+    });
+    const control = await readDocument(`distributors/${id}/private/control`);
+    expect(control?.listingApproved, 'approved by a double click').not.toBe(true);
+  });
+
+  // PLAN 2.11 (M1 of the audit). MEDIO: changing the address of an approved listing takes it
+  // out of the finder, and the question that says so, with its two buttons, opens below the
+  // visible part of the screen: at 1440 px only its title shows, at 390 px it is under the
+  // navigation bar. Pressing "Guardar cambios" seems to do nothing.
+  for (const [label, device] of [
+    ['phone', PHONE],
+    ['desktop', DESKTOP],
+  ] as const) {
+    test(`the question before sending an approved listing back to review is on the screen (${label})`, async ({
+      actors,
+    }, testInfo) => {
+      test.fail(
+        true,
+        'role-walker 2026-10-12: "Guardar y enviar a revisión" renders below the fold and nothing scrolls to it',
+      );
+      const { id, owner } = await foundedOffice(actors, uniqueTag(testInfo), device);
+      const admin = await actors.openSeed('admin');
+      await admin.page.goto(`/plataforma/altas/${id}`);
+      await admin.page.getByRole('button', { name: 'Aprobar' }).click();
+      await admin.page.getByRole('button', { name: 'Sí, aprobar' }).click();
+      await expect(owner.page.getByText('Visible en el buscador', { exact: true })).toBeVisible();
+      await owner.page.goto('/central/ficha');
+      await owner.page.getByLabel('Dirección de la planta').fill('Av. Ensayo 703');
+
+      await owner.page.getByRole('button', { name: 'Guardar cambios' }).click();
+
+      const confirm = owner.page.getByRole('button', { name: 'Guardar y enviar a revisión' });
+      await expect(confirm).toBeVisible();
+      await expect(confirm).toBeInViewport({ ratio: 1, timeout: 5_000 });
+    });
+  }
+});
+
+test.describe('second pass: a suspended distributor', () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissStorageNotice(page);
+  });
+
+  // PLAN 5.4 ("solo lectura"). MEDIO: the form says "está en solo lectura" on top and then lets
+  // its owner change every field and press "Guardar cambios"; only after the question about the
+  // review does it answer "No tienes permiso para hacer esto, o la distribuidora está en solo
+  // lectura". Nothing is saved (the rules refuse), but the screen invited the work.
+  test('the listing form of a suspended distributor does not offer to save', async ({ page }) => {
+    test.fail(
+      true,
+      'role-walker 2026-10-12: every field and "Guardar cambios" stay enabled on a read-only distributor',
+    );
+    await signInAsSeedUser(page, 'ownerC');
+    await page.goto('/central/ficha');
+    await expect(page.getByLabel('Nombre de la distribuidora')).toHaveValue(
+      SEED_DISTRIBUTORS.c.name,
+    );
+
+    await expect(page.getByRole('button', { name: 'Guardar cambios' })).not.toBeEnabled({
+      timeout: 5_000,
+    });
+  });
+
+  // PLAN 5.4. BAJO today (the driver has nothing to do until phase 5), but the panel is the
+  // only place where a driver would learn why nothing arrives: the office says "Suspendida" to
+  // the owner and to the dispatcher, and the driver's screen says nothing, with or without a
+  // reload.
+  test('the panel of a driver says that the distributor is suspended', async ({
+    page,
+  }, testInfo) => {
+    test.fail(
+      true,
+      'role-walker 2026-10-12: /reparto of a suspended distributor shows "Sin jornada abierta" and no word about the suspension',
+    );
+    const account = await createTestAccount(uniqueTag(testInfo));
+    const now = new Date();
+    await writeDocument(`distributors/${SEED_DISTRIBUTORS.c.id}/members/${account.uid}`, {
+      uid: account.uid,
+      distributorId: SEED_DISTRIBUTORS.c.id,
+      role: 'driver',
+      active: true,
+      displayName: account.displayName,
+      distributorName: SEED_DISTRIBUTORS.c.name,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await signInWithPassword(page, account.email, '/reparto');
+
+    await expect(heading(page)).toBeVisible();
+    // Not the name of the seeded distributor ("Gas Demo Suspendida"): a sentence about its state.
+    await expect(
+      page
+        .getByRole('main')
+        .getByText(/suspendió|solo lectura/i)
+        .first(),
+    ).toBeVisible({ timeout: 5_000 });
   });
 });

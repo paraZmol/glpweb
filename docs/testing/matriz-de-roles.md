@@ -67,7 +67,7 @@ siempre a `/verificar-correo` y ST a `/aceptar-terminos` antes que a cualquier �
 | `/distribuidora/nueva` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | ve | ve | ve | ve (hasta 3) | ve (hasta 3) | ve el aviso "por ahora no puedes registrar otra" | ve |
 | `/reparto` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | ve | → su área | → su área | → su área | → su área | → su área |
 | `/central` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | → su área | ve (la de A) | ve (la de A) | ve (la de B, nada de A) | ve, con aviso de solo lectura | → su área |
-| `/central/ficha` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | → su área | ve "la edita quien es titular" | ve | ve (la de B) | ve, solo lectura | → su área |
+| `/central/ficha` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | → su área | ve "la edita quien es titular" | ve | ve (la de B) | ve, con aviso de solo lectura (**hoy el formulario sigue editable**: ver §4b) | → su área |
 | `/plataforma` y sus tres listas (`?estado=`) | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | → su área | → su área | → su área | → su área | → su área | ve |
 | `/plataforma/altas/{id}` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | → su área | → su área | → su área | → su área | → su área | ve, bajo la lista a la que pertenece (y "no existe" si el id no existe) |
 | Cualquier otra ruta | ve "no existe" con "Ingresar" | ve "no existe" con "Ir a mi inicio" | igual | igual | igual | igual | igual | igual | igual | igual |
@@ -88,15 +88,23 @@ siempre a `/verificar-correo` y ST a `/aceptar-terminos` antes que a cualquier �
 | Editar nombre y celular en `/cuenta` | — | — | — | puede | puede | puede | puede | puede | puede | puede |
 | Cambiar el correo en `/cuenta` | — | — | — | no ve | no ve | no ve | no ve | no ve | no ve | no ve |
 | Cerrar sesión (borra lo guardado en el dispositivo) | — | puede | puede | puede | puede | puede | puede | puede | puede | puede |
-| Registrar una distribuidora (4 pasos; Atrás y Adelante del navegador recorren los pasos) | — | — | — | puede | puede | puede | puede (tope 3) | puede (tope 3) | no ve (bloqueado) | puede |
+| Registrar una distribuidora (4 pasos; Atrás y Adelante del navegador recorren los pasos; salir con "Salir" y volver conserva lo escrito; otra cuenta en la misma pestaña no ve nada de la anterior) | — | — | — | puede | puede | puede | puede (tope 3) | puede (tope 3) | no ve (bloqueado) | puede |
 | Ver el estado de la ficha y la nota de la plataforma en `/central` (en vivo: cambia sin recargar) | — | — | — | — | — | ve | ve | ve lo suyo | ve | — |
 | Copiar el enlace público | — | — | — | — | — | puede | puede | puede lo suyo | no ve | — |
 | Editar la ficha pública (`/central/ficha`) | — | — | — | — | — | no ve | puede | puede la suya; rechaza la de A | rechaza (solo lectura) | — |
-| Cambiar nombre, teléfono, WhatsApp, dirección o ubicación de la planta de una aprobada | — | — | — | — | — | no ve | puede, y vuelve a revisión | — | rechaza | — |
+| Cambiar nombre, teléfono, WhatsApp, dirección o ubicación de la planta de una aprobada | — | — | — | — | — | no ve | puede, con pregunta antes de guardar; vuelve a revisión y deja de verse en el buscador y en `/d/{slug}` | — | rechaza | — |
+| Cambiar radio, horario o color de una aprobada | — | — | — | — | — | no ve | puede, sin volver a revisión | — | rechaza | — |
+| Enviar la corrección sin cambiar nada ("Corregir mis datos") | — | — | — | — | — | no ve | ve "No cambiaste nada todavía"; nada se marca | — | rechaza | — |
+| Elegir otra de sus distribuidoras en el selector (cabecera) | — | — | — | — | — | — | puede; con la ficha a medio editar descarta lo escrito y no guarda nada en la otra | — | — | — |
+| Registrar una cuarta distribuidora | — | — | — | — | — | — | ve "Ya registraste 3 distribuidoras" en `/cuenta` y en `/distribuidora/nueva` | — | — | — |
+| Ver que la distribuidora quedó suspendida, con el panel abierto | — | — | — | — | **no ve** (ver §4b) | ve, sin recargar | ve, sin recargar | — | — | — |
+| Perder el rol con el panel abierto (cambia de rol, se desactiva o baja de titular) | — | — | — | — | → su área nueva, con aviso | → su área nueva, con aviso | la ficha pasa a "la edita quien es titular" | — | — | — |
 | Corregir RUC, razón social o registro tras una nota | — | — | — | — | — | no ve | puede (quien fundó) | — | rechaza | — |
 | Abrir las listas y la ficha de revisión | — | — | — | no ve | no ve | no ve | no ve | no ve | no ve | puede |
 | Aprobar · Pedir cambios (nota) · Suspender · Reactivar | — | — | — | no ve | no ve | no ve | no ve | no ve | no ve | puede |
-| Aprobar una ficha que su titular editó con la revisión abierta | — | — | — | — | — | — | — | — | — | rechaza, con aviso; puede tras "Ya revisé los datos nuevos" |
+| Aprobar una ficha que su titular editó con la revisión abierta | — | — | — | — | — | — | — | — | — | rechaza, con aviso; puede tras "Ya revisé los datos nuevos" (y vuelve a rechazar si llega otra edición después) |
+| Decidir a la vez que otro super admin (dos sesiones en la misma ficha) | — | — | — | — | — | — | — | — | — | puede; la otra pantalla se actualiza sola |
+| Cargar más de 20 en cada lista ("Cargar más") | — | — | — | — | — | — | — | — | — | puede, sin repetidos; la lista vuelve a 20 al abrir una ficha |
 | Abrir Reparto / Central / Plataforma desde `/cuenta` | — | — | — | no ve | ve Reparto | ve Central | ve Central | ve Central | ve Central | ve Plataforma |
 | Leer el aviso de almacenamiento de la primera visita (franja arriba; no tapa ningún control) | ve | ve | ve | ve | ve | ve | ve | ve | ve | ve |
 | Cambiar de tema claro/oscuro | sigue al dispositivo | igual | igual | igual | igual | igual | igual | igual | igual | igual |
@@ -114,6 +122,7 @@ Lo que cada rol consigue llamando a la base con su propia sesión, sin pasar por
 | Leer `private/settings` de A (RUC, titular) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | puede (quien fundó) | rechaza | rechaza | puede |
 | Listar los miembros de A | rechaza | rechaza | rechaza | rechaza | rechaza | puede | puede | rechaza | rechaza | rechaza |
 | Leer el perfil de otra persona · listar `users` | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
+| Leer el historial de aceptaciones de otra persona (`users/{uid}/acceptances`) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | **puede** (celda nueva: falta decidir si es lo querido) |
 | Leer `platformAdmins` | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | puede el suyo |
 | Listar `slugs` · consultas de grupo (`members`, `private`) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 | Escribir la ficha de A sin pasar por la app | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza (forma inválida) | rechaza | rechaza | rechaza |
@@ -138,17 +147,33 @@ Se anotan aquí con el motivo; una celda no recorrida no se da por buena.
   puede abrir ventanas. Queda para la prueba manual de la fase.
 - **Seguir el enlace del correo** (verificación y nueva contraseña): la página del enlace es del
   servicio de ingreso, no de la app; se prueba que el correo sale y el regreso a la app.
-- **Tope de 3 distribuidoras por cuenta** y **paginación de las listas de la plataforma** (más de
-  20): los cubren `founding-limit.spec.ts` y los tests de repositorio; el recorrido no los repite.
-- **Cuenta con varias distribuidoras** (selector): no hay cuenta de semilla con dos membresías.
-- **Repartidor y central de una distribuidora suspendida o en revisión**: la semilla solo tiene
-  titular en C, D y E.
-- **Rol retirado o cambiado con la sesión abierta**: todavía no hay pantalla que cambie el rol
-  de un miembro (fase 3). La reacción de `/central` y `/reparto` está construida y su decisión
-  tiene test unitario (`hasStandingChanged`), pero no se ha recorrido en el navegador.
+- **Repartidor y central de una distribuidora en revisión o con la prueba vencida**: la semilla
+  solo tiene titular en D y E. De una suspendida sí se recorrieron (personal escrito por la
+  prueba, igual que lo escribe la semilla).
+- **Cambio de rol hecho desde una pantalla**: no existe hasta la fase 3. La reacción de
+  `/central` y `/reparto` se recorrió cambiando el documento de membresía por fuera.
+- **Aviso "La ficha cambió" en la ficha de revisión a 390 px con el teclado abierto** y **gesto
+  "atrás" de un celular real**: el recorrido usa el historial del navegador, que es lo que el
+  gesto dispara; el gesto mismo es del agente `field-tester`.
 - **Sin conexión** y **app instalada**: son del agente `field-tester`.
 - **Recargar la pestaña a mitad del alta de distribuidora**: sigue vaciando lo escrito (el
   borrador vive solo en memoria); su test queda con `test.fail` en `role-walker.spec.ts`.
+
+## 4b. Celdas que hoy no cumplen lo que dice la matriz
+
+Cada una tiene su test con `test.fail` en `tests/e2e/flows/role-walker.spec.ts`.
+
+- **`/central/ficha` de una suspendida o vencida** (DS): la matriz dice "solo lectura"; la
+  pantalla muestra el aviso y deja todos los campos y "Guardar cambios" activos. Las reglas
+  rechazan y la pantalla responde "No tienes permiso para hacer esto, o la distribuidora está en
+  solo lectura"; nada se guarda.
+- **`/reparto` de una suspendida** (RE): no dice nada de la suspensión, ni en vivo ni al recargar.
+- **Pregunta "¿Guardar y volver a revisión?"** (DU): sus botones quedan fuera de la parte visible
+  de la pantalla a 390 y a 1440 px.
+- **Doble clic en "Aprobar"** (SA, 1440 px): aprueba sin que la pregunta llegue a leerse.
+- **Alta de distribuidora**: recargar a mitad vacía lo escrito; recargar la central recién creada
+  y pulsar Atrás muestra el paso 1 vacío; doble clic en "Continuar" deja dos entradas del
+  historial.
 
 ## 5. Historial
 
@@ -156,3 +181,4 @@ Se anotan aquí con el motivo; una celda no recorrida no se da por buena.
 |---|---|---|
 | 2026-10-11 | Primera pasada: todo lo construido en las fases 0 a 2 (incluido 2.11) | `fase-2/cuentas-y-distribuidoras` |
 | 2026-10-11 | Arreglos de la primera pasada (no es una pasada nueva): historial del alta, aviso de almacenamiento, `/restablecer`, página "no existe", contraseña en blanco, título de las listas de plataforma, coordenadas con coma. Quedan con `test.fail`: recargar a mitad del alta, aprobar datos que la plataforma no vio, panel del titular que no se entera de la decisión | `fase-2/cuentas-y-distribuidoras` |
+| 2026-10-12 | Segunda pasada, sobre lo que se quiere unir a `main`: confirmados los 7 arreglos de la primera; alta con Atrás y Adelante en combinación, ficha de revisión en vivo (ediciones seguidas, dos super admins), panel en vivo (suspensión con la ficha a medio editar, cambio de rol), cambio de dirección de una aprobada, corrección sin cambios, franja del aviso en cada área en claro y oscuro, tope de 3 desde la pantalla, selector con tres distribuidoras, listas de más de 20, intento directo de la sección 3 con la sesión de cada rol. Fallos nuevos: 4 medios y 2 bajos (§4b) | `fase-2/cuentas-y-distribuidoras` |
