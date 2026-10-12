@@ -7,12 +7,18 @@
 // storage notice over "Guardar cambios", the answer of /restablecer, the 404 page with a session
 // and the password of spaces.
 // The groups marked "second pass" come from the pass of 2026-10-12, over the history of the
-// sign-up wizard, the live review of the platform and the live office.
+// sign-up wizard, the live review of the platform and the live office. Fixed since (plain tests
+// now): the double click on "Aprobar" and on "Continuar", the question before sending a listing
+// back to review, the read-only listing form, the driver's panel of a suspended distributor,
+// the notices of the platform, the welcome of the office and the long lists of the platform.
+// Still open, both waiting for a decision on storage (docs/legal/cookies.md): a reload in the
+// middle of the wizard, and "back" after founding and reloading the office.
 import { expect, type Page } from '@playwright/test';
 import { SEED_DISTRIBUTORS } from '../../seed/data';
 import { type Actors, DESKTOP, type Device, PHONE, test } from '../support/actors';
 import {
   createTestAccount,
+  deleteDocument,
   readDocument,
   uniqueTag,
   writeDocument,
@@ -36,7 +42,21 @@ const OTHER_PHONE = '900000096';
 const OTHER_PHONE_SHOWN = /900\s?000\s?096/;
 const LISTING_CHANGED =
   'La ficha cambió mientras la revisabas. Revisa los datos nuevos antes de aprobar.';
+const STANDING_CHANGED = 'Otra persona de Hornilla cambió el estado de esta ficha.';
 const REVIEW_NOTE = 'El nombre no coincide con la razón social declarada.';
+const WELCOME = /ya está en Hornilla\. Empezaron tus 30 días de prueba gratis/;
+const LEFT_UNSAVED = /pasó a solo lectura mientras editabas\. Lo que escribiste sigue a la vista/;
+
+/** The rows of the list of the platform panel that is on screen. */
+const listRows = (page: Page) =>
+  page.getByRole('main').getByRole('listitem').filter({ hasText: 'Identificador' });
+
+/** Where the usable part of the screen ends: the top of the bottom bar, or the viewport. */
+async function clearBottomOf(page: Page): Promise<number> {
+  const bar = await page.getByRole('navigation', { name: 'Principal' }).boundingBox();
+  const viewport = page.viewportSize()?.height ?? 0;
+  return bar && bar.y > viewport / 2 ? bar.y : viewport;
+}
 
 /** Fills the first step of the sign-up of a distributor and leaves the wizard on the second. */
 async function reachSecondStep(page: Page, name: string, slug: string): Promise<void> {
@@ -160,6 +180,8 @@ test.describe('review of a listing with two people at once', () => {
   }, testInfo) => {
     const { id, owner } = await foundedOffice(actors, uniqueTag(testInfo));
     const admin = await actors.openSeed('admin');
+    // B5: the welcome says "aparecerá en el buscador cuando Hornilla revise sus datos".
+    await expect(owner.page.getByText(WELCOME)).toBeVisible();
     await admin.page.goto(`/plataforma/altas/${id}`);
     await admin.page.getByRole('button', { name: 'Aprobar' }).click();
     await admin.page.getByRole('button', { name: 'Sí, aprobar' }).click();
@@ -168,6 +190,8 @@ test.describe('review of a listing with two people at once', () => {
     // The owner never left the office and never reloaded it.
     await expect(owner.page.getByRole('button', { name: 'Copiar enlace' })).toBeVisible();
     await expect(owner.page.getByText('Visible en el buscador', { exact: true })).toBeVisible();
+    // ...and the welcome does not stand next to the state it announced as still to come.
+    await expect(owner.page.getByText(WELCOME)).toHaveCount(0);
     await expect(owner.page.getByText('En revisión', { exact: true })).toHaveCount(0);
 
     // The same for a note: it reaches the open office with its text.
@@ -186,6 +210,9 @@ test.describe('review of a listing with two people at once', () => {
     await expect(admin.page.getByText('Distribuidora suspendida.')).toBeVisible();
 
     await expect(owner.page.getByText('Hornilla suspendió tu distribuidora').first()).toBeVisible();
+    await owner.page.reload();
+    await expect(owner.page.getByText('Hornilla suspendió tu distribuidora').first()).toBeVisible();
+    await expect(owner.page.getByText(WELCOME)).toHaveCount(0);
     expect([...owner.errors, ...admin.errors]).toEqual([]);
   });
 
@@ -300,10 +327,6 @@ test.describe('second pass: the sign-up wizard and the history of the browser', 
   test('after a double click on "Continuar", one "back" returns to the previous step', async ({
     page,
   }, testInfo) => {
-    test.fail(
-      true,
-      'role-walker 2026-10-12: the double click pushes the next step twice; the first "back" stays on the same step',
-    );
     const tag = uniqueTag(testInfo);
     const account = await createTestAccount(tag);
     await signInWithPassword(page, account.email, '/inicio');
@@ -334,14 +357,11 @@ test.describe('second pass: the review and the office, live', () => {
   // PLAN 2.11. MEDIO: the question "¿Aprobar esta ficha?" is the pause before the only brake on
   // a false listing. On a desktop its button "Sí, aprobar" appears under the pointer, where
   // "Aprobar" was: the second click of a double click answers the question nobody read.
-  // "Suspender" does not have this problem: its confirmation lands somewhere else.
+  // Fixed: the answers of every question sit at the other edge and ignore the pointer for an
+  // instant after they appear (`ConfirmPanel`).
   test('a double click on "Aprobar" does not approve before the question is read', async ({
     actors,
   }, testInfo) => {
-    test.fail(
-      true,
-      'role-walker 2026-10-12: at 1440 px "Sí, aprobar" replaces "Aprobar" under the pointer and the double click approves',
-    );
     const { id } = await foundedOffice(actors, uniqueTag(testInfo));
     const admin = await actors.openSeed('admin');
     await admin.page.goto(`/plataforma/altas/${id}`);
@@ -354,7 +374,31 @@ test.describe('second pass: the review and the office, live', () => {
     });
     const control = await readDocument(`distributors/${id}/private/control`);
     expect(control?.listingApproved, 'approved by a double click').not.toBe(true);
+    // The question is still answerable once it has been on screen for a moment.
+    await admin.page.getByRole('button', { name: 'Sí, aprobar' }).click();
+    await expect(admin.page.getByText('Ficha aprobada.')).toBeVisible();
   });
+
+  // The same for every decision that cannot be taken back with one more click.
+  for (const [open, confirm, done] of [
+    ['Suspender', 'Sí, suspender', 'Distribuidora suspendida.'],
+    ['Reactivar', 'Sí, reactivar', 'Distribuidora reactivada.'],
+  ] as const) {
+    test(`a double click on "${open}" does not answer its question`, async ({ actors }) => {
+      const admin = await actors.openSeed('admin');
+      // Seeded: A operates, C is suspended. Nothing is decided here, so they stay as they are.
+      const seeded = open === 'Suspender' ? SEED_DISTRIBUTORS.a : SEED_DISTRIBUTORS.c;
+      await admin.page.goto(`/plataforma/altas/${seeded.id}`);
+      await expect(admin.page.getByRole('button', { name: open })).toBeVisible();
+
+      await admin.page.getByRole('button', { name: open }).dblclick();
+
+      await expect(admin.page.getByRole('button', { name: confirm })).toBeVisible();
+      await expect(admin.page.getByText(done)).toHaveCount(0);
+      const control = await readDocument(`distributors/${seeded.id}/private/control`);
+      expect(control?.status).toBe(seeded.status);
+    });
+  }
 
   // PLAN 2.11 (M1 of the audit). MEDIO: changing the address of an approved listing takes it
   // out of the finder, and the question that says so, with its two buttons, opens below the
@@ -367,10 +411,6 @@ test.describe('second pass: the review and the office, live', () => {
     test(`the question before sending an approved listing back to review is on the screen (${label})`, async ({
       actors,
     }, testInfo) => {
-      test.fail(
-        true,
-        'role-walker 2026-10-12: "Guardar y enviar a revisión" renders below the fold and nothing scrolls to it',
-      );
       const { id, owner } = await foundedOffice(actors, uniqueTag(testInfo), device);
       const admin = await actors.openSeed('admin');
       await admin.page.goto(`/plataforma/altas/${id}`);
@@ -385,8 +425,97 @@ test.describe('second pass: the review and the office, live', () => {
       const confirm = owner.page.getByRole('button', { name: 'Guardar y enviar a revisión' });
       await expect(confirm).toBeVisible();
       await expect(confirm).toBeInViewport({ ratio: 1, timeout: 5_000 });
+      // Whole on the screen means its title too, and nothing of it under the bottom bar.
+      const question = owner.page.getByRole('group', { name: '¿Guardar y volver a revisión?' });
+      await expect(question).toBeInViewport({ ratio: 1 });
+      await expect(question).toBeFocused();
+      const box = await question.boundingBox();
+      expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(
+        await clearBottomOf(owner.page),
+      );
+      // And it still answers: the listing goes back to review.
+      await confirm.click();
+      await expect(owner.page).toHaveURL(/\/central$/);
+      await expect(owner.page.getByText('En revisión', { exact: true })).toBeVisible();
     });
   }
+
+  // B4. Suspending stamps the public profile without changing a word of it: the admin who had
+  // the listing open read "La ficha cambió mientras la revisabas" over data that was the same.
+  test('a suspension by another admin is not announced as a change of the listing', async ({
+    actors,
+  }, testInfo) => {
+    const { id } = await foundedOffice(actors, uniqueTag(testInfo));
+    const reviewer = await actors.openSeed('admin');
+    const other = await actors.openSeed('admin');
+    await reviewer.page.goto(`/plataforma/altas/${id}`);
+    await expect(reviewer.page.getByRole('button', { name: 'Aprobar' })).toBeVisible();
+
+    await other.page.goto(`/plataforma/altas/${id}`);
+    await other.page.getByRole('button', { name: 'Suspender' }).click();
+    await other.page.getByRole('button', { name: 'Sí, suspender' }).click();
+    await expect(other.page.getByText('Distribuidora suspendida.')).toBeVisible();
+
+    await expect(reviewer.page.getByText(STANDING_CHANGED)).toBeVisible();
+    await expect(reviewer.page.getByText(LISTING_CHANGED)).toHaveCount(0);
+    await expect(reviewer.page.getByRole('button', { name: 'Reactivar' })).toBeVisible();
+    // Whoever decided does not read that somebody else did.
+    await expect(other.page.getByText(STANDING_CHANGED)).toHaveCount(0);
+    // The data is the one that was looked at: the approval goes through without a second look.
+    await reviewer.page.getByRole('button', { name: 'Aprobar' }).click();
+    await reviewer.page.getByRole('button', { name: 'Sí, aprobar' }).click();
+    await expect(reviewer.page.getByText('Ficha aprobada.')).toBeVisible();
+    expect([...reviewer.errors, ...other.errors]).toEqual([]);
+  });
+
+  // B4. On a phone the open distributor is a screen of its own: it kept the title of the list
+  // ("Altas pendientes.") over a listing that had just been approved.
+  test('on a phone an approved listing is not left under the title of the pending ones', async ({
+    actors,
+  }, testInfo) => {
+    const { id, name } = await foundedOffice(actors, uniqueTag(testInfo));
+    const admin = await actors.open(PHONE);
+    await signInAsSeedUser(admin.page, 'admin');
+    await admin.page.goto(`/plataforma/altas/${id}`);
+    await expect(heading(admin.page)).toHaveText('Revisar una distribuidora.');
+    await expect(admin.page.getByRole('heading', { name, exact: true })).toBeVisible();
+
+    await admin.page.getByRole('button', { name: 'Aprobar' }).click();
+    await admin.page.getByRole('button', { name: 'Sí, aprobar' }).click();
+    await expect(admin.page.getByText('Ficha aprobada.')).toBeVisible();
+
+    await expect(heading(admin.page)).toHaveText('Revisar una distribuidora.');
+    await expect(admin.page.getByText('Altas pendientes.')).toHaveCount(0);
+    await expect(admin.page.getByText(/Ya no está en la lista «En revisión»/)).toBeVisible();
+    await expect(admin.page.getByText('Aprobada y visible', { exact: true })).toBeVisible();
+    expect(admin.errors).toEqual([]);
+  });
+
+  // M3, live: the suspension arrives while its owner is typing in the form.
+  test('a suspension that arrives in the middle of an edit keeps what was typed, as read-only', async ({
+    actors,
+  }, testInfo) => {
+    const { id, owner } = await foundedOffice(actors, uniqueTag(testInfo), PHONE);
+    const admin = await actors.openSeed('admin');
+    await owner.page.goto('/central/ficha');
+    const address = owner.page.getByLabel('Dirección de la planta');
+    await address.fill('Av. Ensayo 705');
+    await expect(owner.page.getByRole('button', { name: 'Guardar cambios' })).toBeEnabled();
+
+    await admin.page.goto(`/plataforma/altas/${id}`);
+    await admin.page.getByRole('button', { name: 'Suspender' }).click();
+    await admin.page.getByRole('button', { name: 'Sí, suspender' }).click();
+    await expect(admin.page.getByText('Distribuidora suspendida.')).toBeVisible();
+
+    await expect(owner.page.getByRole('button', { name: 'Guardar cambios' })).toHaveCount(0);
+    await expect(address).toBeDisabled();
+    await expect(address).toHaveValue('Av. Ensayo 705');
+    await expect(owner.page.getByText(LEFT_UNSAVED)).toBeVisible();
+    await expect(owner.page.getByText('Hornilla suspendió tu distribuidora').first()).toBeVisible();
+    const stored = await readDocument(`distributors/${id}`);
+    expect(stored?.addressLine).not.toBe('Av. Ensayo 705');
+    expect([...owner.errors, ...admin.errors]).toEqual([]);
+  });
 });
 
 test.describe('second pass: a suspended distributor', () => {
@@ -398,21 +527,38 @@ test.describe('second pass: a suspended distributor', () => {
   // its owner change every field and press "Guardar cambios"; only after the question about the
   // review does it answer "No tienes permiso para hacer esto, o la distribuidora está en solo
   // lectura". Nothing is saved (the rules refuse), but the screen invited the work.
-  test('the listing form of a suspended distributor does not offer to save', async ({ page }) => {
-    test.fail(
-      true,
-      'role-walker 2026-10-12: every field and "Guardar cambios" stay enabled on a read-only distributor',
-    );
-    await signInAsSeedUser(page, 'ownerC');
-    await page.goto('/central/ficha');
-    await expect(page.getByLabel('Nombre de la distribuidora')).toHaveValue(
-      SEED_DISTRIBUTORS.c.name,
-    );
+  // Fixed: read-only shows the listing as data, with no button to save at all. The same for a
+  // trial that ran out (D), which is read-only for another reason.
+  for (const [key, distributor, why] of [
+    ['ownerC', SEED_DISTRIBUTORS.c, /Hornilla suspendió tu distribuidora/],
+    ['ownerD', SEED_DISTRIBUTORS.d, /está en solo lectura: no se pueden guardar cambios/],
+  ] as const) {
+    test(`the listing form of a read-only distributor does not offer to save (${key})`, async ({
+      page,
+    }) => {
+      await signInAsSeedUser(page, key);
+      await page.goto('/central/ficha');
+      await expect(page.getByLabel('Nombre de la distribuidora')).toHaveValue(distributor.name);
 
-    await expect(page.getByRole('button', { name: 'Guardar cambios' })).not.toBeEnabled({
-      timeout: 5_000,
+      await expect(heading(page)).toHaveText('Tu ficha.');
+      await expect(page.getByText(why).first()).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Guardar cambios' })).toHaveCount(0);
+      for (const label of [
+        'Nombre de la distribuidora',
+        'Teléfono del negocio',
+        'WhatsApp del negocio',
+        'Dirección de la planta',
+        'Abre a las',
+        'O escribe tu color',
+      ]) {
+        await expect(page.getByLabel(label, { exact: true })).toBeDisabled();
+      }
+      await expect(page.getByRole('button', { name: 'Lunes' })).toBeDisabled();
+      await expect(
+        page.getByRole('button', { name: 'Ampliar el radio un kilómetro' }),
+      ).toBeDisabled();
     });
-  });
+  }
 
   // PLAN 5.4. BAJO today (the driver has nothing to do until phase 5), but the panel is the
   // only place where a driver would learn why nothing arrives: the office says "Suspendida" to
@@ -421,10 +567,6 @@ test.describe('second pass: a suspended distributor', () => {
   test('the panel of a driver says that the distributor is suspended', async ({
     page,
   }, testInfo) => {
-    test.fail(
-      true,
-      'role-walker 2026-10-12: /reparto of a suspended distributor shows "Sin jornada abierta" and no word about the suspension',
-    );
     const account = await createTestAccount(uniqueTag(testInfo));
     const now = new Date();
     await writeDocument(`distributors/${SEED_DISTRIBUTORS.c.id}/members/${account.uid}`, {
@@ -448,5 +590,113 @@ test.describe('second pass: a suspended distributor', () => {
         .getByText(/suspendió|solo lectura/i)
         .first(),
     ).toBeVisible({ timeout: 5_000 });
+    // In words a driver can act on, and again after a reload.
+    await expect(page.getByText(/No depende de ti: avísale a quien es titular/)).toBeVisible();
+    await page.reload();
+    await expect(page.getByText(/Hornilla suspendió Gas Demo Suspendida/)).toBeVisible();
+  });
+});
+
+test.describe('second pass: the welcome of the office and the long lists of the platform', () => {
+  test.beforeEach(async ({ page }) => {
+    await dismissStorageNotice(page);
+  });
+
+  // B5. The green strip stayed for the whole session, also next to "Suspendida".
+  test('the welcome after founding can be closed and does not come back with a reload', async ({
+    page,
+  }, testInfo) => {
+    const tag = uniqueTag(testInfo);
+    const account = await createTestAccount(tag);
+    await signInWithPassword(page, account.email, '/inicio');
+    await foundDistributor(page, { name: `Gas Saludo ${tag}`, slug: `saludo-${tag}` });
+    await expect(page.getByText(WELCOME)).toBeVisible();
+
+    await page.getByRole('button', { name: 'Entendido' }).click();
+
+    await expect(page.getByText(WELCOME)).toHaveCount(0);
+    await expect(page.getByText('En revisión', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(heading(page)).toHaveText(`Hoy en Gas Saludo ${tag}.`);
+    await expect(page.getByText(WELCOME)).toHaveCount(0);
+  });
+
+  // B3. PLAN 2.11: the lists are paged by 20. Opening a distributor after "Cargar más" threw
+  // the list back to its first 20 rows, at the top.
+  test.describe('a list of the platform with more than one page', () => {
+    const EXTRA = 22;
+    // Dated far ahead: last in every list (oldest first), so no other test meets them early.
+    const FOUNDED = new Date('2099-01-01T15:00:00Z');
+    let paths: string[] = [];
+
+    test.beforeEach(async ({ page }, testInfo) => {
+      const tag = uniqueTag(testInfo);
+      paths = Array.from(
+        { length: EXTRA },
+        (_unused, index) => `distributors/e2e-lista-${tag}-${index}/private/control`,
+      );
+      await Promise.all(
+        paths.map((path, index) =>
+          writeDocument(path, {
+            ownerUid: 'e2e-nadie',
+            status: 'suspended',
+            trialEndsAt: FOUNDED,
+            listingApproved: true,
+            distributorName: `Gas Lista ${tag} ${index}`,
+            slug: `lista-${tag}-${index}`,
+            createdAt: new Date(FOUNDED.getTime() + index),
+            updatedAt: FOUNDED,
+          }),
+        ),
+      );
+      await signInAsSeedUser(page, 'admin');
+      await page.goto('/plataforma?estado=suspendidas');
+      await expect(listRows(page)).toHaveCount(20);
+      await page.getByRole('button', { name: 'Cargar más' }).click();
+      await expect(listRows(page)).not.toHaveCount(20);
+    });
+
+    test.afterEach(async () => {
+      await Promise.all(paths.map(deleteDocument));
+    });
+
+    test('desktop: the list beside the open distributor keeps every row loaded', async ({
+      page,
+      isMobile,
+    }) => {
+      test.skip(isMobile, 'The list stays beside the distributor only on a desktop');
+      const rows = listRows(page);
+      const loaded = await rows.count();
+      await rows.last().scrollIntoViewIfNeeded();
+
+      await rows.last().getByRole('link').click();
+
+      await expect(page).toHaveURL(/\/plataforma\/altas\/.+estado=suspendidas$/);
+      await expect(rows.last().getByRole('link')).toHaveAttribute('aria-current', 'page');
+      await expect(rows).toHaveCount(loaded);
+      expect(loaded).toBeGreaterThan(20);
+      await expect(rows.last()).toBeInViewport();
+    });
+
+    test('phone: back from the distributor, the list is as long and as far down as it was left', async ({
+      page,
+      isMobile,
+    }) => {
+      test.skip(!isMobile, 'The distributor takes the whole screen only on a phone');
+      const rows = listRows(page);
+      const loaded = await rows.count();
+      await rows.last().scrollIntoViewIfNeeded();
+      const scrolledTo = await page.evaluate(() => window.scrollY);
+
+      await rows.last().getByRole('link').click();
+      await expect(heading(page)).toHaveText('Revisar una distribuidora.');
+      await page.getByRole('button', { name: 'Volver a la lista' }).click();
+
+      await expect(heading(page)).toHaveText('Distribuidoras suspendidas.');
+      await expect(rows).toHaveCount(loaded);
+      expect(loaded).toBeGreaterThan(20);
+      expect(scrolledTo).toBeGreaterThan(0);
+      await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrolledTo);
+    });
   });
 });

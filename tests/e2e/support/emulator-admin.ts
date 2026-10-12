@@ -85,6 +85,12 @@ export async function writeDocument(path: string, data: Record<string, unknown>)
   await mustSucceed(response, `Firestore emulator PATCH ${path}`);
 }
 
+/** Removes a document a test wrote for itself. Nothing happens when it is not there. */
+export async function deleteDocument(path: string): Promise<void> {
+  const response = await adminRequest(documentUrl(path), 'DELETE');
+  await mustSucceed(response, `Firestore emulator DELETE ${path}`);
+}
+
 /** What the database holds at `path` right now, or null when there is no such document. */
 export async function readDocument(path: string): Promise<Record<string, unknown> | null> {
   const response = await adminRequest(documentUrl(path), 'GET');
