@@ -65,6 +65,30 @@ describe('firebase.json — hosting', () => {
     expect(scripts).not.toMatch(/unsafe-inline|unsafe-eval|\*|data:|blob:/);
   });
 
+  // PLAN 2.1: Google is the only way in, so a policy that forgets what its window needs would
+  // lock everybody out the day it is enforced. The window is opened by a script of Google and
+  // answers through a hidden frame of the auth domain the app is configured with.
+  it('lets the Google sign-in work: its script, the frame of the auth domain, the two services', () => {
+    const policy = headerOf('Content-Security-Policy-Report-Only') ?? '';
+    const directive = (name: string) =>
+      policy
+        .split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith(`${name} `)) ?? '';
+    const [, authDomain = ''] =
+      /authDomain: '([^']+)'/.exec(readFileSync('src/data/firebase-config.ts', 'utf8')) ?? [];
+
+    expect(authDomain).not.toBe('');
+    expect(directive('frame-src').split(' ')).toContain(`https://${authDomain}`);
+    expect(directive('script-src').split(' ')).toContain('https://apis.google.com');
+    expect(directive('connect-src').split(' ')).toEqual(
+      expect.arrayContaining([
+        'https://identitytoolkit.googleapis.com',
+        'https://securetoken.googleapis.com',
+      ]),
+    );
+  });
+
   it('keeps the headers that were already there', () => {
     expect(headerOf('X-Content-Type-Options')).toBe('nosniff');
     expect(headerOf('X-Frame-Options')).toBe('DENY');
