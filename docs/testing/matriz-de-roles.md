@@ -67,7 +67,7 @@ siempre a `/verificar-correo` y ST a `/aceptar-terminos` antes que a cualquier �
 | `/distribuidora/nueva` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | ve | ve | ve | ve (hasta 3) | ve (hasta 3) | ve el aviso "por ahora no puedes registrar otra" | ve |
 | `/reparto` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | ve | → su área | → su área | → su área | → su área | → su área |
 | `/central` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | → su área | ve (la de A) | ve (la de A) | ve (la de B, nada de A) | ve, con aviso de solo lectura | → su área |
-| `/central/ficha` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | → su área | ve "la edita quien es titular" | ve | ve (la de B) | ve, con aviso de solo lectura (**hoy el formulario sigue editable**: ver §4b) | → su área |
+| `/central/ficha` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | → su área | ve "la edita quien es titular" | ve | ve (la de B) | ve como solo lectura: campos deshabilitados, sin "Guardar cambios", con el aviso | → su área |
 | `/plataforma` y sus tres listas (`?estado=`) | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | → su área | → su área | → su área | → su área | → su área | ve |
 | `/plataforma/altas/{id}` | → ingresar | → `/verificar-correo` | → `/aceptar-terminos` | → su área | → su área | → su área | → su área | → su área | → su área | ve, bajo la lista a la que pertenece (y "no existe" si el id no existe) |
 | Cualquier otra ruta | ve "no existe" con "Ingresar" | ve "no existe" con "Ir a mi inicio" | igual | igual | igual | igual | igual | igual | igual | igual |
@@ -97,7 +97,7 @@ siempre a `/verificar-correo` y ST a `/aceptar-terminos` antes que a cualquier �
 | Enviar la corrección sin cambiar nada ("Corregir mis datos") | — | — | — | — | — | no ve | ve "No cambiaste nada todavía"; nada se marca | — | rechaza | — |
 | Elegir otra de sus distribuidoras en el selector (cabecera) | — | — | — | — | — | — | puede; con la ficha a medio editar descarta lo escrito y no guarda nada en la otra | — | — | — |
 | Registrar una cuarta distribuidora | — | — | — | — | — | — | ve "Ya registraste 3 distribuidoras" en `/cuenta` y en `/distribuidora/nueva` | — | — | — |
-| Ver que la distribuidora quedó suspendida, con el panel abierto | — | — | — | — | **no ve** (ver §4b) | ve, sin recargar | ve, sin recargar | — | — | — |
+| Ver que la distribuidora quedó suspendida, con el panel abierto | — | — | — | — | ve, sin recargar (aviso: no depende de quien reparte, que avise a su titular) | ve, sin recargar | ve, sin recargar | — | — | — |
 | Perder el rol con el panel abierto (cambia de rol, se desactiva o baja de titular) | — | — | — | — | → su área nueva, con aviso | → su área nueva, con aviso | la ficha pasa a "la edita quien es titular" | — | — | — |
 | Corregir RUC, razón social o registro tras una nota | — | — | — | — | — | no ve | puede (quien fundó) | — | rechaza | — |
 | Abrir las listas y la ficha de revisión | — | — | — | no ve | no ve | no ve | no ve | no ve | no ve | puede |
@@ -161,19 +161,20 @@ Se anotan aquí con el motivo; una celda no recorrida no se da por buena.
 
 ## 4b. Celdas que hoy no cumplen lo que dice la matriz
 
-Cada una tiene su test con `test.fail` en `tests/e2e/flows/role-walker.spec.ts`.
+Cada una tiene su test con `test.fail` en `tests/e2e/flows/role-walker.spec.ts`. Quedan dos, las
+dos del alta de distribuidora y las dos a la espera de una decisión sobre almacenamiento
+(guardar el borrador o la marca de "alta terminada" fuera de la memoria pasa por
+`docs/legal/cookies.md`):
 
-- **`/central/ficha` de una suspendida o vencida** (DS): la matriz dice "solo lectura"; la
-  pantalla muestra el aviso y deja todos los campos y "Guardar cambios" activos. Las reglas
-  rechazan y la pantalla responde "No tienes permiso para hacer esto, o la distribuidora está en
-  solo lectura"; nada se guarda.
-- **`/reparto` de una suspendida** (RE): no dice nada de la suspensión, ni en vivo ni al recargar.
-- **Pregunta "¿Guardar y volver a revisión?"** (DU): sus botones quedan fuera de la parte visible
-  de la pantalla a 390 y a 1440 px.
-- **Doble clic en "Aprobar"** (SA, 1440 px): aprueba sin que la pregunta llegue a leerse.
-- **Alta de distribuidora**: recargar a mitad vacía lo escrito; recargar la central recién creada
-  y pulsar Atrás muestra el paso 1 vacío; doble clic en "Continuar" deja dos entradas del
-  historial.
+- **Recargar a mitad del alta** vacía lo escrito (el borrador vive solo en memoria).
+- **Recargar la central recién creada y pulsar Atrás** muestra el paso 1 del alta vacío.
+
+Arregladas el 2026-10-12 (sus tests quedaron como tests normales): la ficha de una suspendida o
+vencida ya es de solo lectura, también si la suspensión llega con la ficha a medio editar;
+`/reparto` avisa de la suspensión en vivo y al recargar; la pregunta "¿Guardar y volver a
+revisión?" queda entera a la vista; ninguna confirmación (aprobar, pedir cambios, suspender,
+reactivar, volver a revisión, eliminar la cuenta) se responde con un doble clic; el doble clic en
+"Continuar" deja una sola entrada del historial.
 
 ## 5. Historial
 
@@ -182,3 +183,4 @@ Cada una tiene su test con `test.fail` en `tests/e2e/flows/role-walker.spec.ts`.
 | 2026-10-11 | Primera pasada: todo lo construido en las fases 0 a 2 (incluido 2.11) | `fase-2/cuentas-y-distribuidoras` |
 | 2026-10-11 | Arreglos de la primera pasada (no es una pasada nueva): historial del alta, aviso de almacenamiento, `/restablecer`, página "no existe", contraseña en blanco, título de las listas de plataforma, coordenadas con coma. Quedan con `test.fail`: recargar a mitad del alta, aprobar datos que la plataforma no vio, panel del titular que no se entera de la decisión | `fase-2/cuentas-y-distribuidoras` |
 | 2026-10-12 | Segunda pasada, sobre lo que se quiere unir a `main`: confirmados los 7 arreglos de la primera; alta con Atrás y Adelante en combinación, ficha de revisión en vivo (ediciones seguidas, dos super admins), panel en vivo (suspensión con la ficha a medio editar, cambio de rol), cambio de dirección de una aprobada, corrección sin cambios, franja del aviso en cada área en claro y oscuro, tope de 3 desde la pantalla, selector con tres distribuidoras, listas de más de 20, intento directo de la sección 3 con la sesión de cada rol. Fallos nuevos: 4 medios y 2 bajos (§4b) | `fase-2/cuentas-y-distribuidoras` |
+| 2026-10-12 | Arreglos de la segunda pasada (no es una pasada nueva): confirmaciones que no se responden con doble clic, pregunta de vuelta a revisión a la vista, ficha de solo lectura (también en vivo), aviso de suspensión en `/reparto`, una sola entrada del historial por paso del alta, avisos de plataforma (cambio de estado frente a cambio de datos, título en celular), bienvenida de la central que se cierra, listas de plataforma que conservan lo cargado. Quedan con `test.fail` las dos de §4b | `fase-2/cuentas-y-distribuidoras` |

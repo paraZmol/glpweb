@@ -407,12 +407,37 @@ Detalle, capturas y pendientes en `docs/design/DIRECCION.md`. Resumen de composi
 
 | Pantalla | Celular (390) | Escritorio (1440) |
 |---|---|---|
-| Inicio del cliente | titular con resalte, foto 4:3.7 con sello ají, tarjeta "Entregar en" montada sobre la foto, "Lo de siempre", filtros en chips, lista de distribuidoras, barra inferior | dos columnas: titular + buscador en píldora / foto de radio 44 con foto cuadrada, tarjeta flotante y aro; debajo lista en rejilla + mapa de cobertura fijo de 440 px |
+| Inicio del cliente | titular con resalte, foto 4:3 con sello ají, tarjeta "Entregar en" montada sobre la foto, "Lo de siempre", filtros en chips, lista de distribuidoras, barra inferior | dos columnas: titular + buscador en píldora / foto de radio 44 con foto cuadrada, tarjeta flotante y aro; debajo lista en rejilla + mapa de cobertura fijo de 440 px |
 | Portada para dueños | promesa, foto con tarjeta flotante "Pedido nuevo", "así se ve tu página" con celular de muestra y muestras de color, 3 pasos, mapa en vivo, repartidor y caja, barrio, precio, pie | lo mismo en dos columnas alternas; 3 pasos en fila; mapa de 600 px con tarjeta flotante |
 | Página de la distribuidora | foto de 330 px con velo, monograma y nombre encima, franja de tres datos montada, chips, productos en lista (balón a la izquierda), cobertura, horario, barra fija "Pedir" | nombre a 76 px a la izquierda, foto a la derecha con aro; productos en rejilla de 3; resumen "Tu pedido" fijo de 364 px |
 | Seguimiento | mapa a pantalla completa, hoja inferior con chip de estado, "Tu gas llega en 8 min" con resalte, línea de tiempo de 5 pasos, repartidor con Llamar y WhatsApp, resumen del pedido | mapa a pantalla completa y panel flotante de 452 px a la izquierda con lo mismo más "Ten a la mano" y cancelar |
 | Monitor de la central | cabecera, indicadores en carrusel, mapa con chips de estado, cola con pestañas, botón flotante, barra inferior | lateral, 6 indicadores en fila, mapa con lista de repartidores flotante, cola a la derecha |
 | Repartidor: pedido en curso | mapa arriba con indicación en píldora de tinta, panel con dirección a 32 px, referencia, cliente con llamar y WhatsApp, caja de cobro con contorno de tinta, "Ya llegué" | mapa a la izquierda y panel de 540 px a la derecha, con "Después de este" |
+
+Piezas que acompañan a todas las pantallas:
+- **Franja del aviso de almacenamiento** (`StorageNotice`): la primera visita, una franja en
+  `flame-soft` **en el flujo** de la página, encima del marco de cada área. Celular: 40 px de
+  alto, una línea corta ("Guardamos solo lo necesario. Sin rastreo.") con su enlace y el botón
+  "Entendido"; escritorio: el texto completo en una o dos líneas. **Nunca flotante** ni fija
+  sobre el borde inferior: flotando tapaba el control que quedara debajo ("Guardar cambios",
+  "Usar mi ubicación", la barra de decisión de la plataforma). Empuja la pantalla, no la cubre.
+- **Botones `sm`**: 40 px a la vista (32 dentro de la franja del aviso) y **44 px de área de
+  toque**, con una zona invisible centrada sobre el botón (`before:` de 44 px de alto). No
+  crecen ni en celular ni en escritorio; dos botones `sm` apilados necesitan al menos 4 px de
+  separación para que sus áreas no se pisen.
+- **Pregunta de confirmación** (`ConfirmPanel`): el segundo paso de todo lo que no se puede
+  deshacer o sale hacia afuera (aprobar, pedir cambios, suspender, reactivar, guardar y volver
+  a revisión, eliminar la cuenta). Ocupa el lugar del botón que la abrió, en `bg-muted` de
+  radio 16, con título en Gabarito 700 a 18 px y lo que cuesta la respuesta debajo. Al abrirse
+  se desplaza hasta quedar entera a la vista (libre de la barra inferior) y toma el foco. Sus
+  respuestas van **alineadas a la derecha**, primero la que vuelve atrás (línea) y al final la
+  que confirma (tinta): nunca donde estaba el botón que la abrió. Durante 600 ms ignoran el
+  puntero, de modo que el segundo clic de un doble clic no responde nada. Ninguna confirmación
+  se escribe a mano fuera de esta pieza.
+- **Solo lectura** (distribuidora suspendida, con pago pendiente o prueba vencida): los
+  formularios muestran sus campos deshabilitados con lo guardado (o lo escrito, si llegó a
+  medio editar), sin botón de guardar, bajo el aviso que dice por qué. Nunca un botón que las
+  reglas van a rechazar.
 
 ## 15. Lista de verificación
 1. ¿Ningún hex en el componente y ningún `text-primary` usado como texto?
@@ -428,6 +453,7 @@ Detalle, capturas y pendientes en `docs/design/DIRECCION.md`. Resumen de composi
 11. Repartidor: ¿botón crítico de 72 px en tinta, texto secundario a 12:1, contornos de 2 px?
 12. ¿Fotos del banco, con proporción fija, velo si llevan texto y texto alternativo neutro?
 13. ¿Cargando, vacío, error y sin conexión diseñados? ¿Foco visible con el teclado?
+    ¿Solo lectura sin botones que las reglas rechazan? ¿Confirmaciones con `ConfirmPanel`?
 14. ¿El texto dice "Hornilla" y nunca "glpWEB"?
 
 ## Decisiones posteriores
