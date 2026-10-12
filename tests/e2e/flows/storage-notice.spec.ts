@@ -26,12 +26,15 @@ async function expectUncovered(page: Page, control: Locator): Promise<void> {
   await expect(notice(page)).toBeVisible();
   await control.scrollIntoViewIfNeeded();
   await expect(control).toBeInViewport();
-  const isOnTop = await control.evaluate((element) => {
-    const box = element.getBoundingClientRect();
-    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-    return hit !== null && element.contains(hit);
-  });
-  expect(isOnTop, 'something lies over the control').toBe(true);
+  const isOnTop = () =>
+    control.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return hit !== null && element.contains(hit);
+    });
+  // The answers of a question ignore the pointer for an instant after it appears (so a double
+  // click does not answer it): what matters is that the control ends up reachable.
+  await expect.poll(isOnTop, { message: 'something lies over the control' }).toBe(true);
 }
 
 test('home: "Usar mi ubicación" is free, and it searches', async ({ page, context }) => {

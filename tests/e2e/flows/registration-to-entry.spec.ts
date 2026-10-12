@@ -178,5 +178,10 @@ test('"No quiero continuar" deletes the account that has not verified its e-mail
   await expect(heading(page)).toContainText('Pide tu gas');
   expect(await findAuthAccount(email)).toBeNull();
   await expectDeviceCleared(page);
-  expect(await page.evaluate(() => sessionStorage.getItem('hornilla.pendingProfile'))).toBeNull();
+  // The app restarts by itself after the session ends: a read that lands on that reload is
+  // asked again, like `expectDeviceCleared` does.
+  await expect(async () => {
+    const pending = await page.evaluate(() => sessionStorage.getItem('hornilla.pendingProfile'));
+    expect(pending).toBeNull();
+  }).toPass();
 });
