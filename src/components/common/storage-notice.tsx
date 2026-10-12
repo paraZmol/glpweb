@@ -41,8 +41,8 @@ export function StorageNotice() {
               <span className="lg:hidden">Guardamos solo lo necesario. Sin rastreo.</span>
               <span className="hidden lg:inline">
                 Hornilla guarda en tu dispositivo solo lo necesario para funcionar: tu sesión, una
-                copia de tus datos recientes, tus preferencias y el último punto desde el que
-                buscaste. Sin publicidad ni rastreo.
+                copia de tus datos recientes, la distribuidora que elegiste y el último punto desde
+                el que buscaste. Sin publicidad ni rastreo.
               </span>{' '}
               <Link
                 to={ROUTES.cookies}

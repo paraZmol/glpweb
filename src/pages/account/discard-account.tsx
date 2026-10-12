@@ -93,7 +93,8 @@ export function DiscardAccount({ uid, disabled, label = DEFAULT_LABEL }: Discard
         ¿Eliminar tu cuenta?
       </p>
       <p className="mt-1 text-muted-foreground">
-        Se borra tu cuenta de Hornilla. Podrás registrarte de nuevo con este mismo correo.
+        Se borra tu cuenta de Hornilla y no se puede deshacer. Podrás registrarte de nuevo con este
+        mismo correo.
       </p>
       <div className="mt-4 flex flex-wrap gap-3">
         <Button
