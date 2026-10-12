@@ -90,12 +90,16 @@ export function VerifyEmailPage() {
           <strong className="inline-block max-w-full align-bottom wrap-anywhere text-foreground">
             {session.email}
           </strong>
-          . Ábrelo y vuelve aquí: así sabemos que la cuenta es tuya.
+          . Ábrelo y vuelve aquí: así sabemos que la cuenta es tuya. Después te pediremos aceptar
+          los términos.
         </>
       }
       footer={
         <div className="flex flex-col gap-3 text-muted-foreground">
-          <p>¿No llega? Mira en la carpeta de correo no deseado.</p>
+          <p>
+            ¿No llega? Espera unos minutos y mira en correo no deseado. Si escribiste mal el correo,
+            elimina la cuenta y regístrate de nuevo con el correcto.
+          </p>
           <DiscardAccount
             uid={session.uid}
             disabled={!isOnline || checking.isRunning || resending.isRunning}

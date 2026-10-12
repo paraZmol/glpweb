@@ -113,6 +113,10 @@ export function RegisterPage() {
         >
           Crear cuenta
         </Button>
+        {/* The whole way in one line, so nobody expects to be done after this button. */}
+        <p className="-mt-2 text-center text-sm text-muted-foreground">
+          Sigue: verificar tu correo y aceptar los términos.
+        </p>
       </form>
     </AuthFrame>
   );

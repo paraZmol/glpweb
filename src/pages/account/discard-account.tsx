@@ -12,8 +12,9 @@ import { ROUTES } from '@/lib/routes';
 import { useAsyncAction } from '@/lib/use-async-action';
 
 const IN_USE_TEXT = 'Tu cuenta ya tiene datos guardados, así que no se puede eliminar desde aquí.';
+// It names the button of the header as that header (`GateShell`) writes it.
 const RECENT_LOGIN_TEXT =
-  'Por seguridad, antes de eliminar la cuenta tienes que ingresar otra vez. Cierra sesión arriba, vuelve a ingresar y repite este paso.';
+  'Por seguridad, antes de eliminar la cuenta tienes que ingresar otra vez. Toca "Cerrar sesión" (arriba), vuelve a ingresar y repite este paso.';
 
 type Failure = { text: string; withContactLink: boolean };
 
@@ -92,7 +93,7 @@ export function DiscardAccount({ uid, disabled, label = DEFAULT_LABEL }: Discard
         ¿Eliminar tu cuenta?
       </p>
       <p className="mt-1 text-muted-foreground">
-        Se borra tu cuenta de Hornilla y no se puede deshacer. Puedes crear otra cuando quieras.
+        Se borra tu cuenta de Hornilla. Podrás registrarte de nuevo con este mismo correo.
       </p>
       <div className="mt-4 flex flex-wrap gap-3">
         <Button
