@@ -272,8 +272,9 @@ export interface LiveStaffDistributor {
  * the platform (approval, note, suspension) and a change of the account's role reach an open
  * panel without reloading it (PLAN 2.11). `onChange` receives null when the distributor does
  * not exist. Three listeners on single documents; only while a screen of the staff is open.
- * Cost: 3 reads when it starts (plus up to 2 by the rules unless the caller is the founder),
- * then one read per document that changes. Call the returned function when the screen closes.
+ * Cost: 3 reads when it starts, plus up to 2 by the rules (one for a public profile that is not
+ * open to visitors, one for the control document unless the caller is the founder), then one
+ * read per document that changes. Call the returned function when the screen closes.
  */
 export function watchStaffDistributor(
   d: string,

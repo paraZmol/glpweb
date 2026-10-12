@@ -33,8 +33,9 @@ export function useIsDistributorWatched(): boolean {
  * document and the member document of the account live — a decision of the platform, a
  * suspension or a change of role reach the screen without reloading it (PLAN 2.11).
  * Cost while mounted: 3 listeners on single documents (3 reads to start, plus up to 2 by the
- * rules unless the account is the founder; then one read per document that changes). They close
- * when the last screen that asked for them goes away.
+ * rules: one while the public profile is not open to visitors, one for the control document
+ * unless the account is the founder; then one read per document that changes). They close when
+ * the last screen that asked for them goes away.
  */
 export function useLiveDistributor(): void {
   useEffect(() => {
