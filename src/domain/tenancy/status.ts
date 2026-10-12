@@ -1,4 +1,4 @@
-import type { DistributorControl } from './types';
+import type { DistributorControl, DistributorStatus } from './types';
 
 type WritableInput = Pick<DistributorControl, 'status' | 'trialEndsAt'>;
 
@@ -12,6 +12,14 @@ export function isWritable(distributor: WritableInput, now: Date): boolean {
   if (distributor.status === 'active') return true;
   if (distributor.status !== 'trial') return false;
   return distributor.trialEndsAt.getTime() > now.getTime();
+}
+
+/**
+ * A suspension is a decision of the platform, not something the plan fixes (PLAN 2.11): the
+ * screens say who decided it and whom to ask, instead of "regulariza el plan".
+ */
+export function isSuspendedByPlatform(status: DistributorStatus): boolean {
+  return status === 'suspended';
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TRIAL_DAYS } from './constants';
-import { isWritable, trialDaysLeft, trialEndFrom } from './status';
+import { isSuspendedByPlatform, isWritable, trialDaysLeft, trialEndFrom } from './status';
 import { DISTRIBUTOR_STATUSES } from './types';
 
 const NOW = new Date('2026-03-10T15:00:00Z');
@@ -23,6 +23,17 @@ describe('isWritable', () => {
   it('covers every status', () => {
     const covered = ['active', 'trial', 'pastDue', 'suspended'];
     expect([...DISTRIBUTOR_STATUSES].sort()).toEqual([...covered].sort());
+  });
+});
+
+describe('isSuspendedByPlatform', () => {
+  it.each([
+    ['suspended', true],
+    ['pastDue', false],
+    ['trial', false],
+    ['active', false],
+  ] as const)('%s → %s', (status, expected) => {
+    expect(isSuspendedByPlatform(status)).toBe(expected);
   });
 });
 

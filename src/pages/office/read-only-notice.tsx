@@ -1,9 +1,8 @@
 import { TextLink } from '@/components/common/text-link';
-import type { DistributorStatus } from '@/domain/tenancy/types';
+import { isSuspendedByPlatform } from '@/domain/tenancy/status';
 import { ROUTES } from '@/lib/routes';
 
-/** A suspension is a decision of the platform, not something the plan fixes (PLAN 2.11). */
-export const isSuspended = (status: DistributorStatus) => status === 'suspended';
+export const isSuspended = isSuspendedByPlatform;
 
 /**
  * What a suspended distributor reads wherever its office says it is read-only: who decided it

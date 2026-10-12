@@ -22,7 +22,11 @@ import { OfficeHomePage } from './office/home';
 import { PlatformHomePage } from './platform/home';
 
 const reload = () => {};
-const OWNER = accountOf({ current: workingAs([memberOf('owner')]) });
+const READY_OWNER = workingAs([memberOf('owner')]) as Extract<
+  ReturnType<typeof workingAs>,
+  { status: 'ready' }
+>;
+const OWNER = accountOf({ current: READY_OWNER });
 const DRIVER = accountOf({ current: workingAs([memberOf('driver')]) });
 
 function inArea(
@@ -277,6 +281,28 @@ describe('home of each area: an empty state that says what is going on', () => {
     expect(tags(html, 'a').some((tag) => tag.includes(`href="${ROUTES.account}"`))).toBe(true);
   });
 
+  // B1 (role-walker 2026-10-12): the driver's panel said nothing about a suspension.
+  it.each([
+    ['suspended', 'Distribuidora suspendida.', 'Hornilla suspendió Gas Demo Norte: está en solo'],
+    ['pastDue', 'Distribuidora en solo lectura.', 'Gas Demo Norte está en solo lectura'],
+  ] as const)('tells the driver of a %s distributor why nothing arrives', (status, title, why) => {
+    const working = workingAs([memberOf('driver')], { status });
+    const account = accountOf({
+      current: working.status === 'ready' ? { ...working, isWritable: false } : working,
+    });
+    const text = textOf(inArea('driver', <DriverHomePage />, account));
+
+    expect(text).toContain(title);
+    expect(text).toContain(why);
+    expect(text).toContain('No depende de ti: avísale a quien es titular de la distribuidora.');
+    // The driver cannot fix it: no word about paying, no link to the claims of the owner.
+    expect(text).not.toMatch(/regularizar|Contacto y reclamos/);
+  });
+
+  it('says nothing about read-only to the driver of a distributor that operates', () => {
+    expect(textOf(inArea('driver', <DriverHomePage />, DRIVER))).not.toContain('solo lectura');
+  });
+
   it('greets the customer by first name and draws the cylinder in one colour', () => {
     const html = inArea('customer', <CustomerHomePage />);
 
@@ -313,18 +339,33 @@ describe('home of each area: an empty state that says what is going on', () => {
     );
   });
 
-  it('welcomes the owner only right after founding', () => {
-    const justFounded = renderStatic(<OfficeHomePage />, {
-      path: AREA_HOME.office,
-      state: JUST_FOUNDED_STATE,
-      shell: <AppShell area="office" />,
-      account: OWNER,
-    });
+  // B5 (role-walker 2026-10-12): the welcome is true only while the first review is pending.
+  const justFoundedAs = (patch: Partial<Extract<typeof OWNER.current, { status: 'ready' }>>) =>
+    textOf(
+      renderStatic(<OfficeHomePage />, {
+        path: AREA_HOME.office,
+        state: JUST_FOUNDED_STATE,
+        shell: <AppShell area="office" />,
+        account: accountOf({ current: { ...READY_OWNER, ...patch } }),
+      }),
+    );
 
-    expect(textOf(justFounded)).toContain('Gas Demo Norte ya está en Hornilla.');
+  it('welcomes the owner only right after founding, with a way to close it', () => {
+    const justFounded = justFoundedAs({ listing: 'inReview' });
+
+    expect(justFounded).toContain('Gas Demo Norte ya está en Hornilla.');
+    expect(justFounded).toContain('Entendido');
     expect(textOf(inArea('office', <OfficeHomePage />, OWNER))).not.toContain(
       'ya está en Hornilla',
     );
+  });
+
+  it.each([
+    ['listed', { listing: 'listed' }],
+    ['sent back with a note', { listing: 'changesRequested' }],
+    ['suspended before its review', { listing: 'inReview', isWritable: false }],
+  ] as const)('does not keep the welcome next to a distributor that is %s', (_case, patch) => {
+    expect(justFoundedAs(patch)).not.toContain('ya está en Hornilla');
   });
 
   it('tells the office how many days of trial are left', () => {

@@ -1,4 +1,3 @@
-import { useLocation } from 'react-router';
 import { InlineAlert } from '@/components/common/inline-alert';
 import { Bone, LoadingRegion } from '@/components/common/skeleton';
 import { EmptyState } from '@/components/common/state-views';
@@ -7,7 +6,7 @@ import { ROLE_LABELS } from '@/components/layout/role-labels';
 import type { Distributor } from '@/domain/tenancy/types';
 import { useAccount } from '@/features/account/account-context';
 import { usePageTitle } from '@/lib/page-title';
-import { isJustFounded } from '@/lib/routes';
+import { FoundedWelcome } from './founded-welcome';
 import { ListingStatus } from './listing-status';
 import { PlanChip } from './plan-chip';
 import { isSuspended, SuspendedNotice } from './read-only-notice';
@@ -57,7 +56,6 @@ function OfficeHomeSkeleton() {
 export function OfficeHomePage() {
   usePageTitle('Monitor');
   const { current, session } = useAccount();
-  const location = useLocation();
   if (current.status !== 'ready') return <OfficeHomeSkeleton />;
   const { distributor, membership, isWritable, listing } = current;
   const isOwner = membership.role === 'owner';
@@ -73,12 +71,10 @@ export function OfficeHomePage() {
         lead="Pedidos, repartidores y stock de tu distribuidora, en un solo lugar."
         aside={<PlanChip distributor={distributor} />}
       />
-      {isJustFounded(location.state) && (
-        <InlineAlert tone="success">
-          {distributor.name} ya está en Hornilla. Empezaron tus 30 días de prueba gratis: puedes
-          configurarla desde ahora, y aparecerá en el buscador cuando Hornilla revise sus datos.
-        </InlineAlert>
-      )}
+      <FoundedWelcome
+        name={distributor.name}
+        isWaitingFirstReview={isWritable && listing === 'inReview'}
+      />
       {showsReadOnly && (
         <InlineAlert tone="info">
           {isHeldByPlatform ? (
@@ -95,9 +91,16 @@ export function OfficeHomePage() {
             listing={listing}
             isOwner={isOwner}
             isFounder={distributor.ownerUid === session.uid}
+            isWritable={isWritable}
             onCorrected={current.reload}
           />
-          {isOwner && <SetupChecklist distributor={distributor} isListed={listing === 'listed'} />}
+          {isOwner && (
+            <SetupChecklist
+              distributor={distributor}
+              isListed={listing === 'listed'}
+              canEdit={isWritable}
+            />
+          )}
           <Panel dense>
             <EmptyState
               title="Todavía no entra ningún pedido."
