@@ -6,6 +6,7 @@ import { BrandPreview } from '@/components/founding/brand-preview';
 import { RadiusStepper } from '@/components/founding/radius-stepper';
 import { ADDRESS_LINE_MAX_LENGTH, DISTRIBUTOR_NAME_MAX_LENGTH } from '@/domain/tenancy/constants';
 import {
+  type IdentityInput,
   type ProfileEditErrors,
   type ProfileEditForm,
   toggleDay,
@@ -23,13 +24,23 @@ type ProfileFieldsProps = {
   form: ProfileEditForm;
   errors: ProfileEditErrors;
   set: SetProfileField;
-  /** Said under the name and the phones as soon as one of them differs from what is stored. */
+  /** What changing the name, a phone or the address costs; null while none of them differs. */
   identityNotice: string | null;
+  /** The field it is said under: the one being edited, so it is read where the eyes are. */
+  noticeAt: IdentityInput | null;
+  /** Read-only distributor: every field shows what is stored (or was typed) and takes nothing. */
+  disabled: boolean;
 };
 
-function Group({ title, children }: { title: string; children: ReactNode }) {
+// Native buttons inside a disabled fieldset are off, but only look it if something says so.
+const DISABLED_LOOK =
+  '[&:disabled_button]:pointer-events-none [&:disabled_button]:opacity-60 [&:disabled_output]:opacity-60';
+
+type GroupProps = { title: string; disabled: boolean; children: ReactNode };
+
+function Group({ title, disabled, children }: GroupProps) {
   return (
-    <fieldset className="flex flex-col gap-5">
+    <fieldset disabled={disabled} className={`flex min-w-0 flex-col gap-5 ${DISABLED_LOOK}`}>
       <legend className="mb-4 font-heading text-lg font-bold">{title}</legend>
       {children}
     </fieldset>
@@ -40,10 +51,15 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
  * The fields of the public profile an owner may edit (PLAN 2.11), in three subjects: who it is
  * (changing it sends the listing back to review), where and when it delivers, and its colour.
  */
-export function ProfileFields({ form, errors, set, identityNotice }: ProfileFieldsProps) {
+export function ProfileFields(props: ProfileFieldsProps) {
+  const { form, errors, set, identityNotice, noticeAt, disabled } = props;
+  const noticeUnder = (field: IdentityInput) =>
+    identityNotice !== null && noticeAt === field ? (
+      <InlineAlert tone="info">{identityNotice}</InlineAlert>
+    ) : null;
   return (
     <>
-      <Group title="Nombre y contacto">
+      <Group title="Nombre y contacto" disabled={disabled}>
         <TextField
           label="Nombre de la distribuidora"
           name="name"
@@ -53,6 +69,7 @@ export function ProfileFields({ form, errors, set, identityNotice }: ProfileFiel
           onChange={(event) => set('name', event.target.value)}
           error={errors.name}
         />
+        {noticeUnder('name')}
         <TextField
           {...PHONE_FIELD}
           label="Teléfono del negocio"
@@ -62,6 +79,7 @@ export function ProfileFields({ form, errors, set, identityNotice }: ProfileFiel
           error={errors.contactPhone}
           hint="Celular de 9 dígitos. Es público."
         />
+        {noticeUnder('contactPhone')}
         <TextField
           {...PHONE_FIELD}
           label="WhatsApp del negocio"
@@ -71,9 +89,9 @@ export function ProfileFields({ form, errors, set, identityNotice }: ProfileFiel
           error={errors.whatsapp}
           hint="Celular de 9 dígitos. Es público."
         />
-        {identityNotice && <InlineAlert tone="info">{identityNotice}</InlineAlert>}
+        {noticeUnder('whatsapp')}
       </Group>
-      <Group title="Dónde y cuándo atiendes">
+      <Group title="Dónde y cuándo atiendes" disabled={disabled}>
         <TextField
           label="Dirección de la planta"
           name="addressLine"
@@ -84,6 +102,7 @@ export function ProfileFields({ form, errors, set, identityNotice }: ProfileFiel
           error={errors.addressLine}
           hint="Es pública. La ubicación en el mapa se podrá mover cuando llegue el mapa."
         />
+        {noticeUnder('addressLine')}
         <RadiusStepper
           value={form.coverageRadiusKm}
           onChange={(radiusKm) => set('coverageRadiusKm', radiusKm)}
@@ -98,7 +117,7 @@ export function ProfileFields({ form, errors, set, identityNotice }: ProfileFiel
           onChangeTime={(field, value) => set(field, value)}
         />
       </Group>
-      <Group title="Color">
+      <Group title="Color" disabled={disabled}>
         <BrandColorField
           color={form.brandColor}
           error={errors.brandColor}

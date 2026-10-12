@@ -5,6 +5,7 @@ import { InvalidInputError, PermissionDeniedError } from '../../domain/tenancy/e
 import { touchesIdentity } from '../../domain/tenancy/listing';
 import {
   hasChanges,
+  identityNoticeFieldOf,
   profileEditErrorsOf,
   profileEditFormOf,
   profilePatchOf,
@@ -126,5 +127,32 @@ describe('profileEditErrorsOf', () => {
     expect(profileEditErrorsOf(new PermissionDeniedError()).form).toBe(
       'No tienes permiso para hacer esto, o la distribuidora está en solo lectura.',
     );
+  });
+});
+
+// ux-reviewer 2026-10-12: the cost of an edit is said under the field being edited, not under
+// a group the address is not in.
+describe('identityNoticeFieldOf', () => {
+  it('says nothing while the name, the phones and the address are as stored', () => {
+    expect(identityNoticeFieldOf({}, null)).toBeNull();
+    expect(
+      identityNoticeFieldOf({ coverageRadiusKm: 8, brandColor: '#1757d6' }, 'name'),
+    ).toBeNull();
+  });
+
+  it.each(['name', 'contactPhone', 'whatsapp', 'addressLine'] as const)(
+    'points at %s when it is the one edited last',
+    (field) => {
+      const patch = { name: 'Gas Demo Centro', [field]: 'otro valor' };
+
+      expect(identityNoticeFieldOf(patch, field)).toBe(field);
+    },
+  );
+
+  it('falls back to the first changed field when the last edited one was put back', () => {
+    expect(identityNoticeFieldOf({ addressLine: 'Av. Demo 456' }, 'name')).toBe('addressLine');
+    expect(
+      identityNoticeFieldOf({ whatsapp: '900000013', addressLine: 'Av. Demo 456' }, null),
+    ).toBe('whatsapp');
   });
 });

@@ -27,6 +27,8 @@ type VerificationFieldsProps = {
   values: BusinessVerificationInput;
   errors: Partial<Record<keyof BusinessVerificationInput, string>>;
   onChange: (field: keyof BusinessVerificationInput, value: string) => void;
+  /** Read-only distributor: the three fields show their values and take nothing. */
+  disabled?: boolean;
 };
 
 /**
@@ -35,9 +37,13 @@ type VerificationFieldsProps = {
  * wizard and by the owner when a platform admin asks for a correction. They are set apart from
  * the public fields and say, next to them, that they are never published.
  */
-export function VerificationFields({ values, errors, onChange }: VerificationFieldsProps) {
+export function VerificationFields(props: VerificationFieldsProps) {
+  const { values, errors, onChange, disabled = false } = props;
   return (
-    <fieldset className="flex flex-col gap-5 rounded-xl border-[1.5px] border-border p-4 lg:p-5">
+    <fieldset
+      disabled={disabled}
+      className="flex min-w-0 flex-col gap-5 rounded-xl border-[1.5px] border-border p-4 lg:p-5"
+    >
       <legend className="sr-only">Datos para la revisión de Hornilla</legend>
       <p className="flex items-start gap-2.5 text-[0.9375rem]">
         <LockKeyhole

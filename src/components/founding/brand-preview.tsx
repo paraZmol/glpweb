@@ -38,7 +38,7 @@ export function BrandPreview({ color, name, stacked = false, className }: BrandP
 
   return (
     <div className={className}>
-      <div className={cn('grid gap-3', !stacked && 'sm:grid-cols-2')}>
+      <div className={cn('grid grid-cols-1 gap-3', !stacked && 'sm:grid-cols-2')}>
         {SAMPLES.map(({ scope, label }) => (
           <figure key={scope} className={scope}>
             <BrandTheme color={color}>

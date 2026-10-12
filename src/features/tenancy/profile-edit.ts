@@ -4,6 +4,7 @@ import {
   prepareProfilePatch,
 } from '../../domain/tenancy/distributor-input';
 import { InvalidInputError } from '../../domain/tenancy/errors';
+import { touchesIdentity } from '../../domain/tenancy/listing';
 import type { PublicDistributor } from '../../domain/tenancy/types';
 import { describeTenancyError, fieldMessagesOf } from './tenancy-messages';
 
@@ -94,6 +95,27 @@ export function profilePatchOf(
     patch.schedule = { days: [...form.days], opensAt: form.opensAt, closesAt: form.closesAt };
   }
   return patch;
+}
+
+/** The fields of the form whose change sends an approved listing back to review. */
+export const IDENTITY_INPUTS = ['name', 'contactPhone', 'whatsapp', 'addressLine'] as const;
+export type IdentityInput = (typeof IDENTITY_INPUTS)[number];
+
+export function isIdentityInput(field: string): field is IdentityInput {
+  return (IDENTITY_INPUTS as readonly string[]).includes(field);
+}
+
+/**
+ * The field under which the form says what an edit costs: the one edited last if it differs
+ * from what is stored, else the first that does. Null while the patch leaves the identity alone.
+ */
+export function identityNoticeFieldOf(
+  patch: DistributorProfilePatch,
+  lastEdited: IdentityInput | null,
+): IdentityInput | null {
+  if (!touchesIdentity(patch)) return null;
+  if (lastEdited !== null && lastEdited in patch) return lastEdited;
+  return IDENTITY_INPUTS.find((field) => field in patch) ?? null;
 }
 
 export function hasChanges(patch: DistributorProfilePatch): boolean {

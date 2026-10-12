@@ -56,24 +56,31 @@ type SetupChecklistProps = {
   distributor: PublicDistributor;
   /** Whether visitors can open its page already (PLAN 2.11). */
   isListed: boolean;
+  /** False on a read-only distributor: its profile can be looked at, not changed. */
+  canEdit?: boolean;
 };
 
 /**
  * "Completa tu distribuidora" (PLAN 2.2): what the owner has done and what comes next. The
  * catalogue and the staff arrive with phase 3: they are listed, and said to be on their way.
  */
-export function SetupChecklist({ distributor, isListed }: SetupChecklistProps) {
+export function SetupChecklist(props: SetupChecklistProps) {
+  const { distributor, isListed, canEdit = true } = props;
   return (
     <Panel dense>
       <h2 className="text-lg font-bold">Completa tu distribuidora</h2>
       <ul className="mt-1 flex flex-col divide-y">
         <Task
           title="Datos, enlace y color"
-          detail="Lo que escribiste al registrarla. Puedes cambiarlo, salvo el enlace."
+          detail={
+            canEdit
+              ? 'Lo que escribiste al registrarla. Puedes cambiarlo, salvo el enlace.'
+              : 'Lo que escribiste al registrarla. En solo lectura no se puede cambiar.'
+          }
           isDone
           action={
             <ButtonLink to={ROUTES.officeProfile} variant="line" size="sm" className="shrink-0">
-              Editar ficha
+              {canEdit ? 'Editar ficha' : 'Ver ficha'}
             </ButtonLink>
           }
         />

@@ -1,15 +1,11 @@
-import { Copy, ExternalLink } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Link } from 'react-router';
-import { toast } from 'sonner';
-import { Button } from '@/components/common/button';
 import { StateChip, type SystemState } from '@/components/common/state-chip';
 import { TextLink } from '@/components/common/text-link';
 import { Panel } from '@/components/layout/page-header';
 import type { ListingState } from '@/domain/tenancy/listing';
 import type { Distributor } from '@/domain/tenancy/types';
-import { ICON_STROKE } from '@/lib/icons';
-import { distributorPath, ROUTES } from '@/lib/routes';
+import { ROUTES } from '@/lib/routes';
+import { PublicLink } from './public-link';
 import { isSuspended, SuspendedNotice } from './read-only-notice';
 import { VerificationCorrection } from './verification-correction';
 
@@ -42,37 +38,6 @@ const STATES: Record<ListingState, { chip: string; state: SystemState; text: str
   },
 };
 
-function publicUrlOf(slug: string): string {
-  const origin = typeof window === 'undefined' ? '' : window.location.origin;
-  return `${origin}${distributorPath(slug)}`;
-}
-
-/** The link customers use, to open it or to copy it and share it. */
-function PublicLink({ slug }: { slug: string }) {
-  const url = publicUrlOf(slug);
-  const copy = () => {
-    navigator.clipboard.writeText(url).then(
-      () => toast.success('Enlace copiado.'),
-      () => toast.error('No pudimos copiarlo. Selecciónalo y cópialo a mano.'),
-    );
-  };
-  return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      <Link
-        to={distributorPath(slug)}
-        className="inline-flex min-w-0 items-center gap-1.5 rounded-md font-semibold wrap-anywhere text-primary-text underline underline-offset-4"
-      >
-        <ExternalLink aria-hidden="true" className="size-4 shrink-0" strokeWidth={ICON_STROKE} />
-        {url}
-      </Link>
-      <Button type="button" variant="line" size="sm" onClick={copy}>
-        <Copy aria-hidden="true" strokeWidth={ICON_STROKE} />
-        Copiar enlace
-      </Button>
-    </div>
-  );
-}
-
 type ListingStatusProps = {
   distributor: Distributor;
   listing: ListingState;
@@ -80,6 +45,8 @@ type ListingStatusProps = {
   isOwner: boolean;
   /** Only whoever founded it can read and correct the verification data. */
   isFounder: boolean;
+  /** False on a read-only distributor: nothing here offers a change the rules would refuse. */
+  isWritable?: boolean;
   /** After the founder corrected its data: the state of the listing changed. */
   onCorrected?: () => void;
 };
@@ -89,22 +56,28 @@ const hasNote = (listing: ListingState) =>
   listing === 'changesRequested' || listing === 'correctionsSent';
 
 function actionsOf(props: ListingStatusProps): ReactNode {
-  const { distributor, listing, isOwner, isFounder, onCorrected } = props;
+  const { distributor, listing, isOwner, isFounder, isWritable = true, onCorrected } = props;
   if (listing === 'listed') return <PublicLink slug={distributor.slug} />;
   if (!hasNote(listing) || !isOwner) return null;
   return (
     <>
       {isFounder ? (
-        <VerificationCorrection distributorId={distributor.id} onCorrected={onCorrected} />
+        <VerificationCorrection
+          distributorId={distributor.id}
+          readOnly={!isWritable}
+          onCorrected={onCorrected}
+        />
       ) : (
         <p className="text-muted-foreground">
           El RUC, la razón social y el registro los corrige quien registró la distribuidora.
         </p>
       )}
-      <p className="text-muted-foreground">
-        Si lo que hay que corregir es el nombre, un teléfono o la dirección,{' '}
-        <TextLink to={ROUTES.officeProfile}>edita tu ficha</TextLink>.
-      </p>
+      {isWritable && (
+        <p className="text-muted-foreground">
+          Si lo que hay que corregir es el nombre, un teléfono o la dirección,{' '}
+          <TextLink to={ROUTES.officeProfile}>edita tu ficha</TextLink>.
+        </p>
+      )}
     </>
   );
 }

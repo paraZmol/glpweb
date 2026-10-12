@@ -19,10 +19,21 @@ import { BACK_TO_REVIEW } from './profile-edit-form';
 const hrefs = (html: string) => tags(html, 'a').map((tag) => /href="([^"]+)"/.exec(tag)?.[1]);
 const names = (html: string) => tags(html, 'input').map((tag) => /name="([^"]+)"/.exec(tag)?.[1]);
 
-function status(listing: ListingState, patch: Partial<Distributor> = {}, isFounder = true): string {
+function status(
+  listing: ListingState,
+  patch: Partial<Distributor> = {},
+  isFounder = true,
+  isWritable = true,
+): string {
   const distributor = distributorOf('d-norte', patch);
   return renderStatic(
-    <ListingStatus distributor={distributor} listing={listing} isOwner isFounder={isFounder} />,
+    <ListingStatus
+      distributor={distributor}
+      listing={listing}
+      isOwner
+      isFounder={isFounder}
+      isWritable={isWritable}
+    />,
   );
 }
 
@@ -74,6 +85,24 @@ describe('listing status of the office', () => {
 
     expect(text).not.toContain('Corregir mis datos');
     expect(text).toContain('los corrige quien registró la distribuidora');
+  });
+
+  // M3 (role-walker 2026-10-12): the rules refuse every write of a read-only distributor.
+  it('does not offer a correction the rules would refuse while it is read-only', () => {
+    const html = status(
+      'changesRequested',
+      { listingApproved: false, reviewNote: 'Revisa el RUC.', status: 'suspended' },
+      true,
+      false,
+    );
+    const text = textOf(html);
+
+    expect(text).toContain('Revisa el RUC.');
+    expect(text).not.toContain('Corregir mis datos');
+    expect(text).toContain(
+      'Mientras tu distribuidora esté en solo lectura no se pueden corregir estos datos.',
+    );
+    expect(hrefs(html)).not.toContain(ROUTES.officeProfile);
   });
 
   it('gives a listed distributor its public link, to open it and to copy it', () => {
@@ -232,6 +261,38 @@ describe('edit the public profile (PLAN 2.11)', () => {
     expect(textOf(suspended)).toContain('Hornilla suspendió tu distribuidora');
     expect(textOf(suspended)).not.toContain('regularizar el plan');
     expect(hrefs(suspended)).toContain(ROUTES.contact);
+  });
+
+  // M3 (role-walker 2026-10-12): the form said "solo lectura" and then let everything be typed
+  // and "Guardar cambios" be pressed.
+  it('shows a read-only listing as data: every group disabled and nothing to save with', () => {
+    const working = workingAs([memberOf('owner')], { status: 'suspended' });
+    const account = accountOf({
+      current: working.status === 'ready' ? { ...working, isWritable: false } : working,
+    });
+    const readOnly = inOffice(<EditProfilePage />, account, ROUTES.officeProfile);
+    const fieldsets = tags(readOnly, 'fieldset');
+
+    expect(textOf(readOnly)).toContain('Tu ficha.');
+    expect(textOf(readOnly)).not.toContain('Edita tu ficha.');
+    expect(textOf(readOnly)).not.toContain('Guardar cambios');
+    expect(count(readOnly, /type="submit"/)).toBe(0);
+    expect(fieldsets).toHaveLength(3);
+    expect(fieldsets.every((tag) => /\sdisabled(=""|\s|>)/.test(tag))).toBe(true);
+    expect(readOnly).toContain('value="Gas Demo Norte"');
+    // The writable form has none of that.
+    expect(tags(html, 'fieldset').some((tag) => /\sdisabled(=""|\s|>)/.test(tag))).toBe(false);
+  });
+
+  it('calls the way into the profile "Ver ficha" while nothing in it can be changed', () => {
+    const working = workingAs([memberOf('owner')], { status: 'pastDue' });
+    const account = accountOf({
+      current: working.status === 'ready' ? { ...working, isWritable: false } : working,
+    });
+    const said = textOf(inOffice(<OfficeHomePage />, account));
+
+    expect(said).toContain('Ver ficha');
+    expect(said).not.toContain('Editar ficha');
   });
 
   it('says once that a suspended, approved distributor is held by Hornilla', () => {

@@ -73,8 +73,12 @@ export function EditProfilePage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         dense
-        title="Edita tu ficha."
-        lead="Lo que ven tus clientes en el buscador y en tu página. El enlace no se puede cambiar."
+        title={isWritable ? 'Edita tu ficha.' : 'Tu ficha.'}
+        lead={
+          isWritable
+            ? 'Lo que ven tus clientes en el buscador y en tu página. El enlace no se puede cambiar.'
+            : 'Lo que ven tus clientes en el buscador y en tu página cuando tu distribuidora opera.'
+        }
         aside={<BackToOffice />}
       />
       {!isWritable && (
@@ -86,11 +90,12 @@ export function EditProfilePage() {
           )}
         </InlineAlert>
       )}
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,36rem)_minmax(0,1fr)] lg:gap-8">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,36rem)_minmax(0,1fr)] lg:gap-8">
         <Panel dense>
           <ProfileEditFormPanel
             key={distributor.id}
             distributor={distributor}
+            readOnly={!isWritable}
             onPreview={setPreview}
             onSaved={leave}
           />
