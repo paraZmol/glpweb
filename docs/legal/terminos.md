@@ -1,6 +1,6 @@
 # Términos y condiciones de Hornilla
 
-> **BORRADOR v0.3 (2026-10-12) — pendiente de revisión por un profesional antes del lanzamiento.**
+> **BORRADOR v0.4 (2026-10-12) — pendiente de revisión por un profesional antes del lanzamiento.**
 > Los datos entre corchetes se completan cuando exista la razón social. Este texto se muestra en
 > la aplicación marcado como borrador en revisión (paso 2.7 del plan) y su número de versión queda
 > registrado con cada aceptación. Mientras queden corchetes en la sección 1 no debe registrarse a
@@ -11,8 +11,8 @@
 > Hornilla está en construcción. Esta versión preliminar es la que se muestra en la aplicación y
 > la que queda registrada, con su número y su fecha, cuando alguien la acepta. Antes de abrir
 > Hornilla al público se publicará una versión revisada por un profesional y se pedirá aceptarla
-> de nuevo para seguir usando la aplicación. Hoy la aplicación permite crear una cuenta, registrar
-> una distribuidora, buscar las distribuidoras que llegan a un punto y ver su página; los
+> de nuevo para seguir usando la aplicación. Hoy la aplicación permite ingresar con una cuenta de
+> Google, registrar una distribuidora, buscar las distribuidoras que llegan a un punto y ver su página; los
 > pedidos, los precios, las promociones y el seguimiento todavía no funcionan, y las secciones 4,
 > 5 y 6 describen cómo funcionarán.
 
@@ -28,16 +28,18 @@ Titular de la plataforma: [razón social], RUC [número], [domicilio]. Contacto:
 - **Distribuidoras**: negocios que publican su catálogo, reciben pedidos y gestionan su reparto.
   Quien registra una distribuidora declara que puede representarla y que el negocio cuenta con
   las autorizaciones que la ley exige para comercializar GLP, e indica su RUC, su razón social o
-  el nombre de su titular y su número de ficha del Registro de Hidrocarburos. Hornilla puede
-  pedirle que lo acredite y dejar de mostrar a la distribuidora mientras no lo haga.
+  el nombre de su titular y su número de registro de Osinergmin (Registro de Hidrocarburos).
+  Hornilla puede pedirle que lo acredite y dejar de mostrar a la distribuidora mientras no lo
+  haga.
 - **Personal de la distribuidora**: repartidores y central, invitados por la distribuidora.
 
 Todas las personas que crean una cuenta declaran tener 18 años o más.
 
 Una distribuidora no se muestra en cuanto se registra. Antes de que aparezca en el buscador y de
 que su página pueda verse, una persona de Hornilla revisa los datos que declaró: su nombre, sus
-datos de contacto, su RUC, su razón social o el nombre de su titular y su número de ficha del
-Registro de Hidrocarburos. Puede compararlos con las consultas públicas de SUNAT y de Osinergmin.
+datos de contacto, su RUC, su razón social o el nombre de su titular y su número de registro de
+Osinergmin (Registro de Hidrocarburos). Puede compararlos con las consultas públicas de SUNAT y
+de Osinergmin.
 Si algo no coincide, Hornilla puede devolver la ficha con una nota, que lee el personal de la
 distribuidora, y la ficha sigue sin mostrarse hasta que se corrija y se revise de nuevo. Si
 después de aprobada la distribuidora cambia su nombre, su teléfono, su WhatsApp, su dirección o
@@ -57,16 +59,17 @@ Hornilla puede retirar la aprobación de una ficha, suspender a una distribuidor
 el canal de la sección 8.
 
 ## 3. Cuenta
-Cada persona es responsable de la veracidad de sus datos y de cuidar su contraseña. Hornilla puede
-suspender una cuenta que incumpla estos términos, suplante a otra persona o use la plataforma
-para fines distintos a pedir o vender gas.
+A Hornilla se ingresa solo con una cuenta de Google: no hay registro con correo y contraseña, y
+Hornilla no guarda ninguna contraseña. Cada persona es responsable de la veracidad de sus datos y
+de cuidar el acceso a su cuenta de Google. Hornilla puede suspender una cuenta que incumpla estos
+términos, suplante a otra persona o use la plataforma para fines distintos a pedir o vender gas.
 
-La cuenta se completa después de verificar el correo. Al crearla Hornilla guarda solo el correo y
-la contraseña cifrada; el nombre, el celular y la aceptación de estos términos se guardan en el
-paso siguiente, cuando el correo ya está verificado y la persona marca las dos casillas. Quien
-ingresa con Google no pasa por la verificación (Google ya la hizo) y su nombre llega con su
-cuenta de Google, pero su perfil y su aceptación se guardan igual solo en ese paso. Quien no
-quiera continuar puede eliminar su cuenta en esas mismas pantallas.
+La primera vez que alguien ingresa, Google entrega a Hornilla su correo, ya confirmado por
+Google, su nombre y su foto de perfil (la foto no se usa: ver la Política de privacidad). La
+cuenta se completa en el paso siguiente: la persona confirma o corrige su nombre, puede añadir su
+celular y marca las dos casillas. Solo entonces se guardan su perfil y su aceptación de estos
+términos. Quien no quiera continuar puede eliminar su cuenta en esa misma pantalla, y puede
+volver a ingresar más adelante con la misma cuenta de Google.
 
 Una misma cuenta puede registrar hasta 3 distribuidoras, y no puede registrar otra mientras una
 de las suyas esté suspendida, con un pago pendiente o con el periodo de prueba terminado.
@@ -148,11 +151,11 @@ su nombre, su enlace, el teléfono y el WhatsApp del negocio, su dirección y la
 planta, su zona de reparto, su horario, sus marcas y precios, su tope de balones por pedido y las
 fechas en que se registró y en que cambió su ficha por última vez. El registro avisa de los
 principales antes de crear la distribuidora. Su situación con Hornilla (revisión, prueba, plan,
-pagos o suspensión), su RUC, su razón social y su número de ficha del Registro de Hidrocarburos
-no son públicos: el RUC, la razón social y el número de ficha los ven solo quien registró la
-distribuidora y la administración de Hornilla. Una vez aprobada la ficha, esos tres datos ya no
-pueden cambiarse desde la aplicación: se corrigen por el canal de la sección 8. El detalle está
-en la Política de privacidad.
+pagos o suspensión), su RUC, su razón social y su número de registro de Osinergmin (Registro de
+Hidrocarburos) no son públicos: los ven solo quien registró la distribuidora y la administración
+de Hornilla. Mientras la ficha está aprobada, esos tres datos no pueden cambiarse desde la
+aplicación: se corrigen por el canal de la sección 8. El detalle está en la Política de
+privacidad.
 
 ## 11. Cambios
 Hornilla puede actualizar estos términos. Los cambios importantes se avisan en la aplicación y
@@ -162,6 +165,13 @@ requieren aceptación para seguir usándola.
 Estos términos se rigen por las leyes de la República del Perú.
 
 ## Historial de cambios
+- 0.4 (2026-10-12): a Hornilla se ingresa solo con una cuenta de Google; desaparecen el registro
+  con correo y contraseña, el correo de verificación y el restablecimiento de contraseña, y
+  Hornilla no guarda ninguna contraseña (sección 3). El dato que antes se llamaba "número de ficha
+  del Registro de Hidrocarburos" pasa a llamarse "número de registro de Osinergmin (Registro de
+  Hidrocarburos)": es el mismo dato (secciones 2 y 10). La sección 10 dice que el RUC, la razón
+  social y ese número no pueden cambiarse desde la aplicación mientras la ficha está aprobada. La
+  0.3 deja de poder aceptarse.
 - 0.3 (2026-10-12): la dirección de una distribuidora y la ubicación de su planta pasan a ser
   datos que, si cambian después de la aprobación, hacen que la ficha deje de mostrarse hasta una
   nueva revisión (sección 2). Antes podían cambiarse sin revisión. La 0.2 deja de poder aceptarse.

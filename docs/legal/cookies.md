@@ -1,6 +1,6 @@
 # Cookies y almacenamiento en tu dispositivo
 
-> **BORRADOR v0.2 (2026-10-11) — pendiente de revisión por un profesional antes del lanzamiento.**
+> **BORRADOR v0.3 (2026-10-12) — pendiente de revisión por un profesional antes del lanzamiento.**
 
 Hornilla guarda en tu navegador solo lo necesario para funcionar. **No usa cookies de publicidad
 ni de seguimiento, ni herramientas de analítica de terceros.**
@@ -9,10 +9,9 @@ ni de seguimiento, ni herramientas de analítica de terceros.**
 
 | Qué | Para qué | Cuánto dura |
 |---|---|---|
-| Sesión iniciada | No pedirte la contraseña cada vez | Hasta que cierres sesión |
+| Sesión iniciada | No pedirte ingresar con Google cada vez | Hasta que cierres sesión |
 | Copia local de tus datos recientes (tu perfil, las distribuidoras que consultaste y, cuando existan, tus direcciones) | Abrir rápido, funcionar con mala señal y gastar menos datos | Hasta que cierres sesión: al cerrarla se borra de este dispositivo. Si el navegador no deja borrarla en ese momento, se borra la próxima vez que abras Hornilla, antes de usarla. Si usas Hornilla sin cuenta, la copia solo contiene fichas públicas de distribuidoras y dura hasta que borres los datos del sitio |
 | Último punto desde el que buscaste distribuidoras: sus coordenadas, redondeadas a tres decimales (unos cien metros), la fecha y la hora en que se guardó y si las dio tu dispositivo o las escribiste. Se guarda aunque no tengas cuenta | Mostrarte otra vez quién llega hasta ahí sin volver a preguntártelo | Hasta que toques "Olvidar esta ubicación", busques desde otro punto (que lo reemplaza) o cierres sesión. Con cuenta o sin ella, caduca a los 30 días de haberse guardado: volver a ver la lista no renueva ese plazo. Pasado el plazo se borra la siguiente vez que abres el buscador de Hornilla; si no vuelves a abrirlo, queda sin usar hasta que borres los datos del sitio |
-| Nombre y celular que escribiste al crear tu cuenta, junto con el identificador interno de esa cuenta. Se guardan solo en la pestaña en la que te registraste | No pedírtelos otra vez cuando, ya verificado tu correo, aceptas los términos: hasta entonces Hornilla no los guarda en tu cuenta | Hasta que aceptas los términos, eliminas la cuenta sin aceptarlos, cierras sesión o cierras esa pestaña. Otras pestañas no los ven, salvo una que dupliques a partir de ella |
 | Distribuidora elegida, junto con el identificador interno de tu cuenta (solo si trabajas en una distribuidora) | Abrir tu panel en la última distribuidora que elegiste | Hasta que elijas otra o cierres sesión |
 | Marca interna de la sesión en este dispositivo (un código al azar, que no te identifica) | Saber qué copia local hay que borrar al cerrar sesión y terminar de borrarla si quedó pendiente | Hasta que se borra la copia local |
 | Marca de que ya viste el aviso de almacenamiento | No mostrártelo cada vez | Hasta que borres los datos del sitio. Cerrar sesión no la borra |
@@ -23,13 +22,12 @@ El último punto de búsqueda se queda en tu dispositivo: no se guarda en tu cue
 Hornilla. La lista de distribuidoras se descarga igual para todos y es tu navegador el que calcula
 cuáles llegan hasta ese punto.
 
-Técnicamente se usan el almacenamiento local, el almacenamiento de sesión de la pestaña (solo para
-el nombre y el celular del registro) y la base de datos interna del navegador. Hornilla no crea
-cookies propias. El servicio de Google que aloja las cuentas y los datos (Firebase) guarda en
+Técnicamente se usan el almacenamiento local y la base de datos interna del navegador. Hornilla
+no crea cookies propias ni guarda nada suyo en el almacenamiento de sesión de la pestaña. El servicio de Google que aloja las cuentas y los datos (Firebase) guarda en
 esas mismas áreas sus propios registros técnicos, por ejemplo para coordinar varias pestañas
 abiertas o para terminar el ingreso con Google cuando el navegador no deja abrir una ventana;
-Hornilla no los usa para publicidad ni para seguirte. Si eliges "Continuar con Google", se abre una
-ventana de Google, que usa sus propias cookies para reconocer tu cuenta de Google según su política;
+Hornilla no los usa para publicidad ni para seguirte. Al tocar "Continuar con Google", que es la
+única forma de ingresar, se abre una ventana de Google, que usa sus propias cookies para reconocer tu cuenta de Google según su política;
 Hornilla no las lee.
 
 ## Lo que se añadirá más adelante
@@ -43,8 +41,8 @@ Todavía no existen. Esta página se actualizará antes de activarlos:
 - Tocar "Cambiar" y luego "Olvidar esta ubicación" en el buscador borra el último punto de
   búsqueda, tengas o no cuenta.
 - Cerrar sesión borra de este dispositivo la sesión iniciada, la copia local de tus datos, la
-  distribuidora elegida, el último punto de búsqueda y el nombre y el celular del registro que
-  estuvieran pendientes, también en las otras pestañas de Hornilla que tengas abiertas. Solo queda
+  distribuidora elegida y el último punto de búsqueda, también en las otras pestañas de
+  Hornilla que tengas abiertas. Solo queda
   la marca de que ya viste el aviso de almacenamiento. Si el navegador se cierra justo en ese
   momento, lo que falte se borra la próxima vez que abras Hornilla en ese dispositivo.
 - Si hiciste cambios sin conexión que todavía no se enviaron, al cerrar sesión la aplicación te
@@ -68,6 +66,10 @@ con enlace a esta página, y no un panel de consentimiento. **Si en el futuro se
 publicidad, antes se pedirá tu consentimiento expreso** y esta página se actualizará.
 
 ## Historial de cambios
+- 0.3 (2026-10-12): a Hornilla se ingresa solo con una cuenta de Google. Sale de la tabla el
+  nombre y el celular que antes esperaban en la pestaña entre el registro y la aceptación de los
+  términos: ya no existe ese registro, y Hornilla deja de usar el almacenamiento de sesión de la
+  pestaña. La sesión iniciada evita volver a ingresar con Google, no escribir una contraseña.
 - 0.2 (2026-10-11): desde esta versión cada cambio de este texto lleva número nuevo. El
   contenido es el de la séptima redacción de la 0.1.
 - 0.1, séptima redacción (2026-10-11): tercera revisión de cumplimiento. Se precisa que el
