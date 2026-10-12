@@ -53,7 +53,9 @@ export function NewDistributorPage() {
   const { availability } = useFoundingAvailability();
   if (wizard.isBlocked || availability === 'blocked') return <FoundingBlocked />;
   if (availability === 'limitReached' && !wizard.isSubmitting) return <FoundingLimit />;
-  if (wizard.isDone) return <FoundingDone onStartOver={wizard.startOver} />;
+  if (wizard.isDone) {
+    return <FoundingDone name={wizard.foundedName} onStartOver={wizard.startOver} />;
+  }
 
   const { step, position, errors, form } = wizard;
   const isLast = position.index === FOUNDING_STEPS.length - 1;

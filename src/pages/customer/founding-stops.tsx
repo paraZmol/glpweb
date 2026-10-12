@@ -53,24 +53,37 @@ export const FoundingLimit = () => <FoundingStop stop="limitReached" />;
  */
 export const FoundingBlocked = () => <FoundingStop stop="blocked" />;
 
+type FoundingDoneProps = {
+  /** The name the distributor was founded with, when this tab still knows it. */
+  name: string | null;
+  onStartOver: () => void;
+};
+
 /**
  * A step of a sign-up that already founded its distributor, reached again with the back button
  * (PLAN 2.2). The form is not shown: an empty wizard here would look ready to found a second
- * one by accident. Whoever does want another one says so.
+ * one by accident. Whoever does want another one says so, through a quiet link: the office is
+ * where this screen sends people.
  */
-export function FoundingDone({ onStartOver }: { onStartOver: () => void }) {
+export function FoundingDone({ name, onStartOver }: FoundingDoneProps) {
   return (
     <div className="mx-auto w-full max-w-xl flex-1 px-4 py-10">
       <EmptyState
         className="rounded-xl bg-card p-6 shadow-card"
-        title="Tu distribuidora ya está creada."
+        title={`${name ?? 'Tu distribuidora'} ya está creada.`}
         description="Este registro terminó y lo que escribiste ya no está aquí. Sigue desde tu central: ahí cambias su ficha cuando quieras."
         action={
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col items-start gap-2">
             <ButtonLink to={ROUTES.officeHome} variant="ink">
               Ir a mi central
             </ButtonLink>
-            <Button type="button" variant="line" onClick={onStartOver}>
+            <Button
+              type="button"
+              variant="quiet"
+              size="sm"
+              className="-ml-4 text-muted-foreground"
+              onClick={onStartOver}
+            >
               Registrar otra distribuidora
             </Button>
           </div>

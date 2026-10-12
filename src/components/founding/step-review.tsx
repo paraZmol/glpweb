@@ -1,50 +1,54 @@
-import { SearchCheck } from 'lucide-react';
 import { CheckboxField } from '@/components/common/checkbox-field';
 import { InlineAlert } from '@/components/common/inline-alert';
 import { TextLink } from '@/components/common/text-link';
-import { formatCoordinates } from '@/domain/geo/coordinates';
 import { formatPhone } from '@/domain/tenancy/contact-links';
 import { normalizeSlug } from '@/domain/tenancy/slug';
-import { type FoundingForm, plantOf } from '@/features/tenancy/founding-form';
-import { ICON_STROKE } from '@/lib/icons';
+import type { FoundingForm } from '@/features/tenancy/founding-form';
 import { distributorPath, ROUTES } from '@/lib/routes';
 import type { StepProps } from './step-business';
 
+/** Said when the plant has a point but no address: raw coordinates tell a person nothing. */
+const PLANT_WITHOUT_ADDRESS = 'Ubicación marcada';
+
 function summaryOf(form: FoundingForm): [term: string, value: string][] {
-  const plant = formatCoordinates(plantOf(form));
-  const address = form.addressLine.trim();
   return [
     ['Nombre', form.name.trim()],
     ['Enlace', distributorPath(normalizeSlug(form.slug))],
     ['Teléfono', formatPhone(form.contactPhone)],
     ['WhatsApp', formatPhone(form.whatsapp.trim() || form.contactPhone)],
-    ['Planta', address ? `${address} (${plant})` : plant],
+    ['Planta', form.addressLine.trim() || PLANT_WITHOUT_ADDRESS],
     ['Cobertura', `${form.coverageRadiusKm} km desde la planta`],
   ];
 }
 
 // Reviewed by `legal-compliance` (PLAN 2.11): change them together with docs/legal. The summary
 // above them holds public data only, which is what makes the first sentence true.
-export const PUBLIC_NOTICE =
-  'Todo lo de este resumen será público, también el teléfono, el WhatsApp, la dirección y la ubicación de la planta. Tu celular personal, tu RUC, tu razón social y tu número de ficha no.';
-export const WHAT_COMES_NEXT =
-  'Tu distribuidora se crea ahora y puedes configurarla de inmediato. Aparecerá en el buscador cuando Hornilla revise sus datos. Los 30 días de prueba corren desde hoy, también durante la revisión. Revisar no es certificar: lo que declaras sigue siendo tu responsabilidad.';
-export const TRIAL_NOTE =
-  '30 días de prueba gratis desde hoy. No pedimos tarjeta y no hay ningún cobro al terminar. El precio de cada plan se informa antes de contratarlo; si al terminar la prueba no tienes un plan, tu panel queda en solo lectura y tu página deja de verse.';
+const PUBLIC_NOTICE =
+  'Es público: nombre, enlace, teléfono, WhatsApp, dirección y ubicación de la planta. No es público: tu celular, tu RUC, tu razón social y tu número de registro.';
+// Every idea the legal review asked for stays: created now, listed after a review that is not a
+// certification, and the trial with what happens when it ends. "30 días" is said once.
+const WHAT_COMES_NEXT = [
+  'Tu distribuidora se crea ahora y puedes configurarla de inmediato.',
+  'Aparece en el buscador cuando Hornilla revise sus datos. Revisar no es certificar: lo que declaras sigue siendo tu responsabilidad.',
+  '30 días de prueba gratis desde hoy, también durante la revisión. No pedimos tarjeta y no hay ningún cobro al terminar. El precio de cada plan se informa antes de contratarlo; si al terminar la prueba no tienes un plan, tu panel queda en solo lectura y tu página deja de verse.',
+];
 
 /**
  * Step 4 (PLAN 2.2, 2.9, 2.11): what is about to be created, what of it will be public, what
- * happens after (the review of the platform) and the two declarations the founder makes. Both
- * boxes start unticked; nothing is created without them.
+ * happens after (the review of the platform, the trial) and the two declarations the founder
+ * makes. Both boxes start unticked; nothing is created without them.
  */
 export function StepReview({ form, errors, set }: StepProps) {
   return (
     <>
       <dl className="flex flex-col divide-y rounded-lg bg-muted px-4">
         {summaryOf(form).map(([term, value]) => (
-          <div key={term} className="flex items-baseline justify-between gap-4 py-2.5">
+          <div key={term} className="flex flex-wrap items-baseline justify-between gap-x-4 py-2.5">
             <dt className="shrink-0 text-[0.9375rem] text-muted-foreground">{term}</dt>
-            <dd className="min-w-0 text-right font-semibold wrap-anywhere tabular-nums">{value}</dd>
+            {/* A long link or address takes a row of its own instead of squeezing the term. */}
+            <dd className="ml-auto min-w-0 text-right font-semibold wrap-anywhere tabular-nums">
+              {value}
+            </dd>
           </div>
         ))}
         <div className="flex items-center justify-between gap-4 py-2.5">
@@ -60,14 +64,16 @@ export function StepReview({ form, errors, set }: StepProps) {
         </div>
       </dl>
       <InlineAlert tone="info">{PUBLIC_NOTICE}</InlineAlert>
-      <p className="flex items-start gap-2.5 text-[0.9375rem] text-muted-foreground">
-        <SearchCheck
-          aria-hidden="true"
-          className="mt-0.5 size-5 shrink-0 text-flame-text"
-          strokeWidth={ICON_STROKE}
-        />
-        {WHAT_COMES_NEXT}
-      </p>
+      <section aria-labelledby="que-pasa-ahora" className="rounded-lg bg-primary-soft p-4">
+        <h2 id="que-pasa-ahora" className="text-lg font-bold">
+          Qué pasa ahora
+        </h2>
+        <ul className="mt-2 flex list-disc flex-col gap-2 pl-5 text-[0.9375rem] marker:text-primary-text">
+          {WHAT_COMES_NEXT.map((line) => (
+            <li key={line}>{line}</li>
+          ))}
+        </ul>
+      </section>
       <CheckboxField
         name="acceptTerms"
         checked={form.acceptTerms}
@@ -90,9 +96,6 @@ export function StepReview({ form, errors, set }: StepProps) {
         Declaro que puedo representar a este negocio y que cuenta con las autorizaciones que la ley
         exige para comercializar GLP.
       </CheckboxField>
-      <p className="rounded-lg bg-primary-soft p-4 text-[0.9375rem] font-semibold text-primary-text">
-        {TRIAL_NOTE}
-      </p>
     </>
   );
 }

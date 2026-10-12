@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ROUTES } from '../../lib/routes';
-import { foundingEntryState, hasFinishedFounding, readFoundingEntry } from './founding-draft';
+import {
+  foundedNameOf,
+  foundingEntryState,
+  hasFinishedFounding,
+  readFoundingEntry,
+} from './founding-draft';
 
 interface StepsOptions {
   /** The run of the wizard on screen (`FoundingDraft.run`). */
@@ -68,5 +73,8 @@ export function useFoundingSteps({ run, furthestIndex, onHeldBack }: StepsOption
     [navigate, run],
   );
 
-  return { position, isDone, advance, returnTo, startOver };
+  /** What the finished run of this entry founded, to name it on the screen that says so. */
+  const foundedName = isDone ? foundedNameOf(entry.run) : null;
+
+  return { position, isDone, foundedName, advance, returnTo, startOver };
 }

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   finishFoundingDraft,
-  forgetFoundingDraft,
+  foundedNameOf,
   foundingEntryState,
   hasFinishedFounding,
   keepFoundingDraft,
@@ -13,7 +13,8 @@ import { FOUNDING_STEPS } from './founding-form';
 // Invented data: the repository is public.
 const OWNER = { displayName: 'Persona Demo', phone: '900000051' };
 
-beforeEach(() => forgetFoundingDraft());
+// The draft belongs to one account: opening it for another one leaves every test a new one.
+beforeEach(() => void openFoundingDraft('u-0', OWNER));
 
 // PLAN 2.2. role-walker 2026-10-11: the back button of the browser emptied the sign-up.
 describe('draft of the sign-up of a distributor', () => {
@@ -58,10 +59,12 @@ describe('draft of the sign-up of a distributor', () => {
     finishFoundingDraft(run);
 
     expect(hasFinishedFounding(run)).toBe(true);
+    expect(foundedNameOf(run)).toBe('Gas Demo');
     const next = openFoundingDraft('u-1', OWNER);
     expect(next.run).not.toBe(run);
     expect(next.form.name).toBe('');
     expect(hasFinishedFounding(next.run)).toBe(false);
+    expect(foundedNameOf(next.run)).toBeNull();
   });
 
   it('ignores what a finished run still tries to keep', () => {

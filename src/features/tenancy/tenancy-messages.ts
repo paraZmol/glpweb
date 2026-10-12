@@ -34,9 +34,9 @@ const FIELD_MESSAGES: Record<string, string> = {
   'taxId:required': 'Escribe el RUC del negocio.',
   'taxId:invalid': 'Revisa el RUC: son 11 dígitos y alguno no coincide.',
   'legalName:required': 'Escribe la razón social o el nombre del titular, como figura en el RUC.',
-  'hydrocarbonsRegistry:required': 'Escribe el número de ficha del Registro de Hidrocarburos.',
+  'hydrocarbonsRegistry:required': 'Escribe el número de registro de Osinergmin.',
   'hydrocarbonsRegistry:invalid':
-    'Escribe el número de ficha tal como figura: solo letras, números, guiones, puntos o barras.',
+    'Escribe el número de registro tal como figura: solo letras, números, guiones, puntos o barras.',
   'reviewNote:tooLong': 'La nota es demasiado larga.',
   'plant:invalid': 'Marca la ubicación de la planta en el mapa.',
   'location:invalid': 'Marca la ubicación en el mapa.',

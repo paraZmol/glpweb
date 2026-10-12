@@ -1,19 +1,21 @@
-import { ExternalLink } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { OutsideLink } from '@/components/common/outside-link';
 import { formatCoordinates } from '@/domain/geo/coordinates';
 import { DEFAULT_TIMEZONE } from '@/domain/tenancy/constants';
 import { formatPhone } from '@/domain/tenancy/contact-links';
 import { describeDays, formatTimeOfDay } from '@/domain/tenancy/schedule';
 import type { ListingReview } from '@/features/platform/platform-actions';
 import { formatDate, formatDateTime } from '@/lib/format-date';
-import { ICON_STROKE } from '@/lib/icons';
+import { OFFICIAL_SOURCES } from '@/lib/official-sources';
 import { distributorPath } from '@/lib/routes';
 
-// Where the declared data is compared, by hand. Home pages only: the inner addresses of these
-// sites change, and a link that guesses one would break (or mislead) without anybody noticing.
+// Where the declared data is compared, by hand.
 const SOURCES = [
-  { label: 'Consulta de RUC en SUNAT', href: 'https://www.sunat.gob.pe' },
-  { label: 'Registro de Hidrocarburos en Osinergmin', href: 'https://www.osinergmin.gob.pe' },
+  { label: 'Consulta de RUC en SUNAT', href: OFFICIAL_SOURCES.taxId },
+  {
+    label: 'Registro de Hidrocarburos en Osinergmin',
+    href: OFFICIAL_SOURCES.hydrocarbonsRegistry,
+  },
 ];
 
 type Row = [term: string, value: ReactNode];
@@ -61,7 +63,7 @@ export function declaredRowsOf({ settings }: ListingReview): Row[] {
   return [
     ['RUC', settings.taxId || 'Sin declarar'],
     ['Razón social o titular', settings.legalName || 'Sin declarar'],
-    ['Registro de Hidrocarburos', settings.hydrocarbonsRegistry || 'Sin declarar'],
+    ['Registro de Osinergmin', settings.hydrocarbonsRegistry || 'Sin declarar'],
   ];
 }
 
@@ -81,16 +83,7 @@ export function SourceLinks() {
     <ul className="mt-3 flex flex-col gap-1.5">
       {SOURCES.map(({ label, href }) => (
         <li key={href}>
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-sm font-semibold text-flame-text underline underline-offset-4"
-          >
-            <ExternalLink aria-hidden="true" className="size-4" strokeWidth={ICON_STROKE} />
-            {label}
-            <span className="sr-only"> (se abre en otra pestaña)</span>
-          </a>
+          <OutsideLink href={href}>{label}</OutsideLink>
         </li>
       ))}
     </ul>

@@ -18,7 +18,8 @@ export interface FoundingDraft {
 }
 
 let draft: FoundingDraft | null = null;
-const finishedRuns = new Set<string>();
+/** The runs that founded their distributor, with the public name it was founded with. */
+const finishedRuns = new Map<string, string>();
 
 type Owner = { displayName: string; phone: string | null };
 
@@ -37,7 +38,7 @@ export function keepFoundingDraft(run: string, held: Pick<FoundingDraft, 'form' 
 
 /** The run founded its distributor: its answers go, and its history entries stop being a form. */
 export function finishFoundingDraft(run: string): void {
-  finishedRuns.add(run);
+  finishedRuns.set(run, draft?.run === run ? draft.form.name.trim() : '');
   if (draft?.run === run) draft = null;
 }
 
@@ -45,9 +46,9 @@ export function hasFinishedFounding(run: string): boolean {
   return finishedRuns.has(run);
 }
 
-/** Drops whatever is held, so the next visit of the wizard starts empty. */
-export function forgetFoundingDraft(): void {
-  draft = null;
+/** The name of the distributor a finished run founded, or null when it is not known. */
+export function foundedNameOf(run: string): string | null {
+  return finishedRuns.get(run) || null;
 }
 
 const ENTRY_KEY = 'founding';

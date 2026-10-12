@@ -161,6 +161,7 @@ export function useFoundingWizard({ session, owner, onFounded }: WizardOptions) 
     isBlocked,
     /** Reached through the history after founding: there is nothing left to fill in here. */
     isDone: steps.isDone,
+    foundedName: steps.foundedName,
     startOver: steps.startOver,
   };
 }

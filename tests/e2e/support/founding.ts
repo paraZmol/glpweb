@@ -23,7 +23,7 @@ export const FOUNDING_VERIFICATION = {
   taxId: '20000000001',
   legalNameLabel: 'Razón social o nombre del titular',
   legalName: 'Gas Ensayo S.A.C.',
-  registryLabel: 'Número de ficha del Registro de Hidrocarburos',
+  registryLabel: 'Número de registro de Osinergmin (Hidrocarburos)',
   registry: '00000-074-000099',
 };
 

@@ -120,15 +120,6 @@ export function bannerVariants(isReduced: boolean) {
   };
 }
 
-/** Floating notice or card that rises into place. */
-export function riseVariants(isReduced: boolean) {
-  return {
-    initial: { opacity: 0, y: isReduced ? 0 : LIST_RISE_PX },
-    animate: { opacity: 1, y: 0, transition: enterTransition(isReduced ? 'fast' : 'base') },
-    exit: { opacity: 0, y: isReduced ? 0 : LIST_RISE_PX, transition: exitTransition('base') },
-  };
-}
-
 /** Direction B: the current step of the order timeline lands with a short bounce. */
 export const STEP_BOUNCE = {
   scale: [0.8, 1.12, 1],

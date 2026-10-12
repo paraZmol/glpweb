@@ -90,20 +90,20 @@ test('a verified account founds a distributor and lands on its office', async ({
   await expect(page.getByRole('heading', { level: 1 })).toContainText('crea tu distribuidora.');
   await expect(
     page.getByText(
-      'Todo lo de este resumen será público, también el teléfono, el WhatsApp, la dirección y la ubicación de la planta. Tu celular personal, tu RUC, tu razón social y tu número de ficha no.',
+      'Es público: nombre, enlace, teléfono, WhatsApp, dirección y ubicación de la planta. No es público: tu celular, tu RUC, tu razón social y tu número de registro.',
     ),
   ).toBeVisible();
   await expect(page.getByText(FOUNDING_VERIFICATION.taxId)).toHaveCount(0);
-  await expect(
-    page.getByText(
-      'Tu distribuidora se crea ahora y puedes configurarla de inmediato. Aparecerá en el buscador cuando Hornilla revise sus datos. Los 30 días de prueba corren desde hoy, también durante la revisión. Revisar no es certificar: lo que declaras sigue siendo tu responsabilidad.',
-    ),
-  ).toBeVisible();
-  await expect(
-    page.getByText(
-      '30 días de prueba gratis desde hoy. No pedimos tarjeta y no hay ningún cobro al terminar. El precio de cada plan se informa antes de contratarlo; si al terminar la prueba no tienes un plan, tu panel queda en solo lectura y tu página deja de verse.',
-    ),
-  ).toBeVisible();
+  // One block, three points; the trial is said once, with what happens when it ends.
+  const comesNext = page.getByRole('region', { name: 'Qué pasa ahora' }).getByRole('listitem');
+  await expect(comesNext).toHaveText([
+    'Tu distribuidora se crea ahora y puedes configurarla de inmediato.',
+    'Aparece en el buscador cuando Hornilla revise sus datos. Revisar no es certificar: lo que declaras sigue siendo tu responsabilidad.',
+    '30 días de prueba gratis desde hoy, también durante la revisión. No pedimos tarjeta y no hay ningún cobro al terminar. El precio de cada plan se informa antes de contratarlo; si al terminar la prueba no tienes un plan, tu panel queda en solo lectura y tu página deja de verse.',
+  ]);
+  // The plant shows by its address: raw coordinates tell the founder nothing.
+  await expect(page.getByText('Av. Muestra 500', { exact: true })).toBeVisible();
+  await expect(page.getByText(PLANT.latitude)).toHaveCount(0);
   await expect(page.getByRole('checkbox', { name: TERMS_BOX })).not.toBeChecked();
   await expect(page.getByRole('checkbox', { name: AUTHORITY_BOX })).not.toBeChecked();
   await page.getByRole('button', { name: 'Crear mi distribuidora' }).click();

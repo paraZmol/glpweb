@@ -9,6 +9,7 @@ import { FocusShell } from '../../components/layout/focus-shell';
 import { checkBrandColor } from '../../domain/brand/brand-color-check';
 import { SUGGESTED_BRAND_COLORS } from '../../domain/brand/palette';
 import { emptyFoundingForm, type FoundingForm } from '../../features/tenancy/founding-form';
+import { OFFICIAL_SOURCES } from '../../lib/official-sources';
 import { ROUTES } from '../../lib/routes';
 import { NewDistributorPage } from './new-distributor';
 
@@ -21,6 +22,7 @@ const FORM: FoundingForm = {
   taxId: '20000000001',
   legalName: 'Gas Demo Centro S.A.C.',
   hydrocarbonsRegistry: '00000-074-000061',
+  addressLine: 'Av. Muestra 500',
   latitude: '-8.1',
   longitude: '-79.03',
 };
@@ -69,17 +71,34 @@ describe('sign-up wizard of a distributor (PLAN 2.2)', () => {
       expect.arrayContaining([
         'RUC',
         'Razón social o nombre del titular',
-        'Número de ficha del Registro de Hidrocarburos',
+        'Número de registro de Osinergmin (Hidrocarburos)',
       ]),
     );
     expect(text).toContain(
       'Estos tres datos no se publican. Hornilla los usa para revisar tu distribuidora antes de mostrarla; solo los ven tú y la administración de Hornilla. El detalle está en la Política de privacidad',
     );
-    expect(text).toContain('Es el registro de Osinergmin del local de venta');
+    expect(text).toContain(
+      'Está en el documento de inscripción de tu local, que da Osinergmin. Si no lo tienes a mano, búscalo con tu RUC en el enlace de abajo.',
+    );
+    expect(text).toContain(
+      'El de quien vende el gas: tu empresa o tú, si trabajas con RUC de persona.',
+    );
+    // The draft lives in memory only: the step must not promise that the answers are kept.
+    expect(text).not.toMatch(/se guardan?\b/);
     // The note comes before the fields it talks about.
     expect(text.indexOf('Estos tres datos no se publican')).toBeLessThan(
       text.indexOf('Razón social o nombre del titular'),
     );
+  });
+
+  it('links the public look-up of the registry: fixed address, other tab, no referrer', () => {
+    const html = wizard();
+    const [lookUp = ''] = tags(html, 'a').filter((tag) => tag.includes('href="https://'));
+
+    expect(lookUp).toContain(`href="${OFFICIAL_SOURCES.hydrocarbonsRegistry}"`);
+    expect(lookUp).toContain('target="_blank"');
+    expect(lookUp).toContain('rel="noopener noreferrer"');
+    expect(textOf(html)).toContain('Consulta del Registro de Hidrocarburos');
   });
 
   it('has a way out and no navigation to wander off', () => {
@@ -178,14 +197,24 @@ describe('review step', () => {
     expect(text).toContain('Gas Demo Centro');
     expect(text).toContain('/d/gas-demo-centro');
     expect(text).toContain('900 000 061');
-    expect(text).toContain('-8.1000, -79.0300');
+    expect(text).toContain('Av. Muestra 500');
     expect(text).toContain('5 km desde la planta');
   });
 
+  // ux-reviewer 2026-10-12: raw coordinates tell the founder nothing.
+  it('shows the plant by its address, or as marked, never as raw coordinates', () => {
+    const unnamed = { ...step, form: { ...FORM, addressLine: ' ' } };
+    const withoutAddress = textOf(renderStatic(<StepReview {...unnamed} />));
+
+    expect(text).not.toContain('-8.1');
+    expect(withoutAddress).toContain('Ubicación marcada');
+    expect(withoutAddress).not.toContain('-8.1');
+  });
+
   // PLAN 2.11
-  it('warns that everything in the summary will be public, and what will not', () => {
+  it('says what of the summary is public, and what is not', () => {
     expect(text).toContain(
-      'Todo lo de este resumen será público, también el teléfono, el WhatsApp, la dirección y la ubicación de la planta. Tu celular personal, tu RUC, tu razón social y tu número de ficha no.',
+      'Es público: nombre, enlace, teléfono, WhatsApp, dirección y ubicación de la planta. No es público: tu celular, tu RUC, tu razón social y tu número de registro.',
     );
   });
 
@@ -197,8 +226,10 @@ describe('review step', () => {
   });
 
   it('says what happens after creating it, without calling it verified', () => {
+    expect(text).toContain('Qué pasa ahora');
+    expect(text).toContain('Tu distribuidora se crea ahora y puedes configurarla de inmediato.');
     expect(text).toContain(
-      'Tu distribuidora se crea ahora y puedes configurarla de inmediato. Aparecerá en el buscador cuando Hornilla revise sus datos. Los 30 días de prueba corren desde hoy, también durante la revisión. Revisar no es certificar: lo que declaras sigue siendo tu responsabilidad.',
+      'Aparece en el buscador cuando Hornilla revise sus datos. Revisar no es certificar: lo que declaras sigue siendo tu responsabilidad.',
     );
     expect(text).not.toMatch(/verificad|autorizad[ao]\b/i);
   });
@@ -216,10 +247,11 @@ describe('review step', () => {
     );
   });
 
-  it('announces the free trial without a price', () => {
+  it('announces the free trial once, with what happens when it ends and without a price', () => {
     expect(text).toContain(
-      '30 días de prueba gratis desde hoy. No pedimos tarjeta y no hay ningún cobro al terminar. El precio de cada plan se informa antes de contratarlo; si al terminar la prueba no tienes un plan, tu panel queda en solo lectura y tu página deja de verse.',
+      '30 días de prueba gratis desde hoy, también durante la revisión. No pedimos tarjeta y no hay ningún cobro al terminar. El precio de cada plan se informa antes de contratarlo; si al terminar la prueba no tienes un plan, tu panel queda en solo lectura y tu página deja de verse.',
     );
+    expect(count(text, /30 días/g)).toBe(1);
     expect(text).not.toMatch(/S\/ \d/);
   });
 });
