@@ -356,6 +356,9 @@ describe('founding — the list of founded distributors in the profile', () => {
     ['written twice', [NEW.d, NEW.d]],
     ['written twice after the old one', [OWNED, NEW.d, NEW.d]],
     ['with the old one dropped and a filler', ['dist-ghost', NEW.d]],
+    // The swap that would get an account past "a read-only distributor founds no other one":
+    // its own entry traded for a distributor of somebody else that may operate.
+    ['with the old one traded for a healthy distributor of somebody else', [WORLD.a.d, NEW.d]],
     ['not written at all', [OWNED]],
     ['as text', NEW.d],
     ['inside a nested list-like map', { 0: OWNED, 1: NEW.d }],
