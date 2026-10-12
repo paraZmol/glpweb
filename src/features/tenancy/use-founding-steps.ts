@@ -55,10 +55,23 @@ export function useFoundingSteps({ run, furthestIndex, onHeldBack }: StepsOption
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [needsOwnEntry, run, index, requestedIndex]);
 
-  const advance = useCallback(
-    () => void navigate(ROUTES.newDistributor, { state: foundingEntryState(run, index + 1) }),
-    [navigate, run, index],
-  );
+  // A double click on "Continuar" asks twice for the same step: once before the screen has
+  // moved (same entry of the history) or once more from the step that is leaving (an older
+  // render). Either would leave two entries for one step, and the first "back" would do nothing.
+  const shownIndex = useRef(index);
+  const advancedFrom = useRef<string | null>(null);
+  useEffect(() => {
+    shownIndex.current = index;
+  }, [index]);
+  useEffect(() => {
+    advancedFrom.current = null;
+  }, [location.key]);
+  const entryKey = location.key;
+  const advance = useCallback(() => {
+    if (shownIndex.current !== index || advancedFrom.current === entryKey) return;
+    advancedFrom.current = entryKey;
+    void navigate(ROUTES.newDistributor, { state: foundingEntryState(run, index + 1) });
+  }, [navigate, run, index, entryKey]);
   /** Back to an earlier step through the history, so "forward" still leads where it led. */
   const returnTo = useCallback(
     (earlierIndex: number) => {
