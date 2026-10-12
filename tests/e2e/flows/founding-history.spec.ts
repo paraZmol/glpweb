@@ -251,7 +251,10 @@ test('another account that signs in on the same tab finds nothing of the sign-up
 
   // Out through the header of the wizard, then the session ends and somebody else signs in.
   await page.getByRole('link', { name: 'Salir' }).click();
+  // Signing out reloads the app at the home: the next click waits for that reload to be over.
+  const restarted = page.waitForEvent('load');
   await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+  await restarted;
   await page.getByRole('banner').getByRole('link', { name: 'Ingresar' }).click();
   await submitSignIn(page, other.email);
   await expect(page).toHaveURL(/\/inicio$/);
