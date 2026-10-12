@@ -88,7 +88,7 @@ skill `glp-domain`: la válida pasa, las inválidas fallan. Un cambio de reglas 
 `firebase deploy --only firestore:rules,database,hosting` es una acción hacia afuera: confirmar
 con el usuario. Nunca desplegar reglas con tests en rojo. Índices en `firestore.indexes.json`.
 
-## 10. Decisiones posteriores (al día: 2026-10-12)
+## 10. Decisiones posteriores (al día: 2026-10-12, ingreso solo con Google incluido)
 Cuando esta sección y los §2–§3 chocan, manda esta. La fuente exacta es la cabecera de
 `firebase/firestore.rules` (modelo de datos campo por campo) y `docs/PLAN.md` §11.
 
@@ -148,11 +148,38 @@ Cuando esta sección y los §2–§3 chocan, manda esta. La fuente exacta es la 
   fundó en solo lectura (hasta 2 `get` más en el lote del alta). El id debe tener la forma del que
   genera Firestore (20 letras o números).
 
-### 10.3 Orden de las guardas
-**sesión → correo verificado → términos → rol** (`src/domain/auth/access.ts`). Las reglas lo
-respaldan: nada se guarda (perfil, consentimientos, direcciones, distribuidora) para una cuenta
-con el correo sin verificar, así que el paso de términos solo puede crear el perfil después de
-verificar. Sustituye el orden anterior (sesión → términos → correo).
+### 10.3 Ingreso solo con Google y orden de las guardas
+**El ingreso es solo con Google** (PLAN §11, 2026-10-12): no hay registro ni ingreso con correo
+y contraseña, ni verificación de correo, ni restablecimiento. La cuenta se crea en el primer
+ingreso; el perfil, al aceptar los términos. `src/data/auth-repo.ts` no crea cuentas ni envía
+correos.
+
+- **Guardas**: **sesión → correo confirmado → términos → rol** (`src/domain/auth/access.ts`).
+  Google entrega el correo confirmado, así que una sesión sin él no debería existir: no es un
+  paso que completar, `decideAccess` responde `unconfirmedEmail` y la pantalla solo ofrece
+  cerrar sesión.
+- **Reglas**: se conserva `emailVerified()` en todo lo que ya lo exigía (perfil, direcciones,
+  alta de distribuidora). Además, `signedInWithGoogle()` — correo verificado **y**
+  `request.auth.token.firebase.sign_in_provider == 'google.com'` — es condición para **crear**
+  `users/{uid}` y cada línea de `users/{uid}/acceptances`; como aceptar una versión nueva
+  escribe una línea, tampoco se renueva un consentimiento con otra clase de sesión. Un perfil
+  solo existe para un correo verificado. Ninguna lectura de reglas nueva. Al añadir otra
+  colección con datos personales: decidir si exige `emailVerified()` o `signedInWithGoogle()`.
+- **Tests de reglas**: `verified(env, uid)` de `firebase/tests/helpers.ts` ya es una sesión de
+  Google; `unverified` también (solo cambia el correo); `verifiedThrough(env, uid, proveedor)`
+  es la sesión hostil con otro proveedor. `authenticatedContext(uid)` a secas lleva
+  `sign_in_provider: 'custom'`: no crea perfiles.
+- **Tests de repositorio y de navegador**: abren sesión como una identidad de Google que el
+  emulador de Auth simula (`src/data/emulated-google.ts`, que se niega a funcionar fuera del
+  emulador). Repositorio: `signInAs`/`signInAsNewcomer` de `tests/support/emulated-session.ts`.
+  Navegador: `signInAs`/`signInHere` de `tests/e2e/support/sign-in.ts`, a través de
+  `window.hornillaE2eSignIn`, que solo existe en una compilación con `VITE_E2E_SIGN_IN=true`
+  (la pone `playwright.config.ts`); `scripts/check-dist.mjs` falla si aparece en `dist/`. La
+  semilla y `createTestAccount` crean las cuentas ya enlazadas a su identidad de Google
+  (`googleIdOf(correo)`), sin contraseña, para conservar el uid.
+- **La foto de Google** se quita del perfil de la cuenta tras cada ingreso pidiendo al servicio
+  que borre el atributo (`deleteAttribute: ['PHOTO_URL']`); `updateProfile({ photoURL: null })`
+  no la borra.
 
 ### 10.4 Otras
 - **Miembros solo por invitación.** Un dueño no puede crear miembros directamente; el fundador
