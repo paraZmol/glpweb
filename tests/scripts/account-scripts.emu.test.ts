@@ -8,7 +8,6 @@ import { EMULATOR_HOST, EMULATOR_PROJECT_ID, emulatorPorts } from '../../scripts
 import {
   SEED_CREATED_AT,
   SEED_DISTRIBUTORS,
-  SEED_PASSWORD,
   SEED_PRIVACY_VERSION,
   SEED_TERMS_VERSION,
   SEED_USERS,
@@ -185,7 +184,6 @@ describe('export-account.mjs', () => {
         },
       ],
     });
-    expect(result.stdout).not.toContain(SEED_PASSWORD);
     expect(result.stdout).not.toMatch(/passwordHash|passwordSalt/);
   });
 

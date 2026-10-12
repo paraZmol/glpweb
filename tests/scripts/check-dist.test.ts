@@ -1,7 +1,7 @@
 // PLAN 2.11: the check Hosting runs before every deploy. A build that talks to the emulators,
 // or that carries source maps, must never reach the public site.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -59,6 +59,17 @@ describe('checkDist', () => {
       'const env={VITE_USE_EMULATORS:"true"};',
       'VITE_USE_EMULATORS=true',
     ],
+    // PLAN 2.1: the sign-in entry of the browser tests never reaches the public site.
+    [
+      'hangs the test-only sign-in on window',
+      'window.hornillaE2eSignIn=async e=>(await import("./emulated-google-x.js")).s(e);',
+      'test-only sign-in entry',
+    ],
+    [
+      'carries the emulator-only Google sign-in',
+      'if(a.emulatorConfig===null)throw new Error("hornilla-emulated-google-sign-in: only against the Auth emulator");',
+      'emulator-only Google sign-in',
+    ],
   ])('refuses a build that %s', (_case, code, mention) => {
     productionBuild();
     write('assets/firebase-xyz.js', `${PRODUCTION_BUNDLE}${code}`);
@@ -92,6 +103,20 @@ describe('checkDist', () => {
     write(name, content);
 
     expect(checkDist(folder)).toEqual([`${name}: points at a source map`]);
+  });
+
+  // The two files of the test entry and the two markers the check looks for must not drift.
+  it('looks for the names the test-only sign-in really uses', () => {
+    const entry = readFileSync('src/features/auth/e2e-entry.ts', 'utf8');
+    const emulated = readFileSync('src/data/emulated-google.ts', 'utf8');
+    productionBuild();
+    write('assets/entry.js', entry);
+    write('assets/emulated.js', emulated);
+
+    const problems = checkDist(folder).join('\n');
+
+    expect(problems).toContain('assets/entry.js: carries the test-only sign-in entry');
+    expect(problems).toContain('assets/emulated.js: carries the emulator-only Google sign-in');
   });
 
   it('reports every problem of the folder at once', () => {

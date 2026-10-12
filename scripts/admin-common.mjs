@@ -1,4 +1,5 @@
 // Shared by the local Admin SDK scripts: delete-account.mjs, export-account.mjs,
+// purge-password-accounts.mjs,
 // grant-platform-admin.mjs and set-distributor-status.mjs. They are manual procedures for the
 // person responsible for the platform (docs/PLAN.md 2.10 and 2.11): they are NOT wired into npm
 // scripts, CI or the app.
