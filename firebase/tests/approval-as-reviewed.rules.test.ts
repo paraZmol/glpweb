@@ -24,10 +24,12 @@ import {
   createEnv,
   daysFromNow,
   type Db,
+  distributorDoc,
   editIdentity,
   foundDistributor,
   newDistributorId,
   reviewedMarks,
+  seedDoc,
   seedProfile,
   seedWorld,
   verified,
@@ -77,6 +79,8 @@ const renames = () => editIdentity(owner(), PENDING, { name: 'Gas Famosa' });
 const changesPhone = () => editIdentity(owner(), PENDING, { contactPhone: '900000099' });
 const movesAddress = () =>
   updateDoc(profileOf(owner(), PENDING), { addressLine: 'Av. Otra 300', ...stamp });
+const changesColour = () =>
+  updateDoc(profileOf(owner(), PENDING), { brandColor: '#0a7cff', ...stamp });
 const correctsSettings = () =>
   updateDoc(settingsOf(owner(), PENDING), { legalName: 'Gas Famosa S.A.C.', ...stamp });
 
@@ -105,7 +109,8 @@ describe('an approval names the version that was reviewed', () => {
   it.each([
     ['its name', renames],
     ['its phone', changesPhone],
-    ['its address, which does not even send it back to review', movesAddress],
+    ['its address', movesAddress],
+    ['its colour, which does not even send it back to review', changesColour],
     ['the RUC data it declared', correctsSettings],
   ])(
     'blocks the approval when the owner changed %s after the review was opened',
@@ -221,6 +226,16 @@ describe('the version of a listing cannot stand still under an edit', () => {
   });
 
   it('blocks the staff from correcting the public flag without a new date', async () => {
+    // The trial ran out and nobody took the distributor out of the search yet.
+    await seedDoc(
+      env,
+      `distributors/${WORLD.expired.d}`,
+      distributorDoc(WORLD.expired.slug, {
+        acceptingOrders: true,
+        createdAt: PAST,
+        updatedAt: PAST,
+      }),
+    );
     const driver = verified(env, 'driver-expired');
 
     await assertFails(updateDoc(profileOf(driver, WORLD.expired.d), { acceptingOrders: false }));
@@ -233,20 +248,14 @@ describe('the version of a listing cannot stand still under an edit', () => {
 describe('the version reviewed belongs to that distributor and to that approval', () => {
   it('is not staled by an edit of another distributor', async () => {
     const seen = await reviewedMarks(env, PENDING);
-    await updateDoc(profileOf(verified(env, 'owner-b'), B), {
-      addressLine: 'Av. Otra 300',
-      ...stamp,
-    });
+    await updateDoc(profileOf(verified(env, 'owner-b'), B), { brandColor: '#0a7cff', ...stamp });
 
     await assertSucceeds(approve(PENDING, seen));
   });
 
   it('blocks an approval that names the version of another distributor', async () => {
     await renames();
-    await updateDoc(profileOf(verified(env, 'owner-b'), B), {
-      addressLine: 'Av. Otra 300',
-      ...stamp,
-    });
+    await updateDoc(profileOf(verified(env, 'owner-b'), B), { brandColor: '#0a7cff', ...stamp });
 
     await assertFails(approve(PENDING, await reviewedMarks(env, B)));
   });

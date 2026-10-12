@@ -50,8 +50,9 @@ rules_version = '2';
 //     search filters by and what opens the document to visitors. Nobody flips it when a trial
 //     runs out, so it can stay true after the trial ended until the staff or a platform admin
 //     corrects it; no rule that guards a write trusts it (they all read the control document).
-//     Changing name, contactPhone or whatsapp sends the listing back to review: that edit must
-//     leave acceptingOrders false and the control document with listingApproved false.
+//     Changing name, contactPhone, whatsapp, addressLine or plant sends the listing back to
+//     review: that edit must leave acceptingOrders false and the control document with
+//     listingApproved false. Staff may only write the flag when its value really changes.
 //   schedule: { days: list 1..7 of 0..6 without repeats, opensAt: 'HH:MM', closesAt: 'HH:MM' }
 //   maxCylindersPerOrder: int 1..20 · brands: list ≤ 8 of string 1..30
 //   priceFromCents: null | int 1..99900 · currency: 'PEN' · createdAt (immutable), updatedAt
@@ -70,9 +71,11 @@ rules_version = '2';
 //     optional only in documents approved before the fields existed.
 //   reviewNote: optional string 1..300, only while listingApproved is false; platform admin only
 //   correctedAt: optional timestamp, only next to a reviewNote — "the owner answered the note".
-//     Only an owner writes it, always = request.time and only in a request that also edits the
-//     public profile or the private settings. A platform admin can only remove it, and must do
-//     so whenever it changes the note. It approves nothing: no rule reads it to grant anything.
+//     Only an owner writes it, always = request.time and only in a request that also changes
+//     the content of the public profile or of the private settings (a write that only moves
+//     updatedAt or the public flag corrects nothing). A platform admin can only remove it, and
+//     must do so whenever it changes the note. It approves nothing: no rule reads it to grant
+//     anything.
 //   distributorName, slug: copies of the public name and link, so the platform lists need one
 //     read per distributor. Required at founding; whoever may update this document can only
 //     write them equal to the public profile, and nobody removes them. A rename of the public
@@ -617,14 +620,21 @@ service cloud.firestore {
         && foundedNow(d);
 
       // Owner: profile whitelist only, and only while the distributor is writable. An edit of
-      // what identifies the business (name, phones) sends the listing back to review: the same
-      // request must leave it unlisted here and not approved in the control document.
+      // what identifies the business (name, phones, address, plant) sends the listing back to
+      // review: the same request must leave it unlisted here and not approved in the control
+      // document.
       // Staff or platform admin: bring `acceptingOrders` in line with the control document, in
       // either direction. It can only ever be written as the truth, so it needs no more trust.
+      // The staff may only do it when the value really changes: every write moves `updatedAt`,
+      // which is the version an approval names, so a write that changes nothing would let any
+      // driver make an open review go stale. A platform admin may rewrite it as it is next to
+      // its own decision.
       // A new name must also reach the copy the control document keeps of it.
       // Reads added by rules: 2 (owner: get member, get control · staff: getAfter control, get
-      // member), 3 lookups for an owner edit of name or phones (the third is a getAfter of the
-      // same control document) and 3 for a platform admin (the member lookup fails first).
+      // member), 3 lookups for an owner edit of what identifies the business (the third is a
+      // getAfter of the same control document) and 3 for a platform admin (the member lookup
+      // fails first). A write of the staff that changes nothing costs 2 before it is refused
+      // (getAfter control, exists platformAdmins).
       allow update: if isValidDistributor(request.resource.data)
         && request.resource.data.updatedAt == request.time
         && (
@@ -632,7 +642,7 @@ service cloud.firestore {
           (
             onlyChanges(['acceptingOrders', 'updatedAt'])
             && request.resource.data.acceptingOrders == isOpenData(getAfter(controlPath(d)).data)
-            && (isStaff(d) || isPlatformAdmin())
+            && ((flipsTheFlag() && isStaff(d)) || isPlatformAdmin())
           )
           || (
             onlyChanges([
@@ -648,10 +658,15 @@ service cloud.firestore {
 
       // No delete from the app.
 
-      // Same list as IDENTITY_FIELDS in src/domain/tenancy/listing.ts.
+      // Same list as IDENTITY_FIELDS in src/domain/tenancy/listing.ts: who the business is, how
+      // it is reached and where it is. The radius and the schedule are routine adjustments.
       function changesIdentity() {
         return request.resource.data.diff(resource.data).affectedKeys()
-          .hasAny(['name', 'contactPhone', 'whatsapp']);
+          .hasAny(['name', 'contactPhone', 'whatsapp', 'addressLine', 'plant']);
+      }
+
+      function flipsTheFlag() {
+        return request.resource.data.acceptingOrders != resource.data.acceptingOrders;
       }
 
       function returnsToReview() {
@@ -715,7 +730,8 @@ service cloud.firestore {
         // the correction mark of the owner: it keeps it untouched or removes it, and a new note
         // removes it.
         // Owner of the distributor: may only send its own listing back to review (it does so
-        // when it edits the name or a phone) and mark that it answered a note with a correction.
+        // when it edits what identifies the business) and mark that it answered a note with a
+        // correction.
         // The mark approves nothing and the note stays where the admin left it.
         // In both cases the public flag must agree once the request is applied, so a change
         // that opens or closes the distributor carries both documents; and the copies of the
@@ -723,8 +739,9 @@ service cloud.firestore {
         // Reads added by rules: 2 for a platform admin (exists platformAdmins, getAfter
         // distributor) and 4 when it approves (get distributor, get settings: the versions it
         // says it reviewed), 3 for an owner (exists platformAdmins, get member, getAfter
-        // distributor), 4 when the owner marks a correction of the private settings (getAfter
-        // settings).
+        // distributor); marking a correction adds the stored public profile (get distributor: 4)
+        // and, when the correction is not there, the private settings before and after (get and
+        // getAfter settings: 6).
         allow update: if isValidControl(request.resource.data)
           && request.resource.data.updatedAt == request.time
           && (
@@ -759,15 +776,23 @@ service cloud.firestore {
             || unchanged(['correctedAt', 'reviewNote']);
         }
 
-        // "Corrected now", and only together with an edit of what the platform reviews: the
-        // public profile or the private settings, written in this same request. (The shape
-        // already demands a note beside it and a listing that is not approved.)
+        // "Corrected now", and only together with a correction of what the platform reviews: the
+        // public profile or the private settings, changed by this same request. A write that
+        // only moves `updatedAt`, or the public flag, corrects nothing. (The shape already
+        // demands a note beside it and a listing that is not approved.)
         function marksCorrection() {
           return request.resource.data.correctedAt == request.time
+            && isWritableData(resource.data)
             && (
-              getAfter(distributorPath(d)).data.updatedAt == request.time
-              || getAfter(settingsPath(d)).data.updatedAt == request.time
+              corrects(distributorPath(d), ['acceptingOrders', 'updatedAt'])
+              || corrects(settingsPath(d), ['updatedAt'])
             );
+        }
+
+        // Whether this request changes that document in something else than `hollow`, the
+        // fields that carry none of its content.
+        function corrects(path, hollow) {
+          return !getAfter(path).data.diff(get(path).data).affectedKeys().hasOnly(hollow);
         }
 
         // A copy of the public profile: when present it is the truth; once there, it stays.

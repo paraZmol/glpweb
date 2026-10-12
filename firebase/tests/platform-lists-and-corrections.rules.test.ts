@@ -432,7 +432,7 @@ describe('answering a note of the platform — the correction mark', () => {
   it('blocks the mark next to an edit of another distributor instead of this one', async () => {
     const db = verified(env, 'owner-a');
     const batch = writeBatch(db);
-    batch.update(profileOf(db, A), { addressLine: 'Av. Corregida 200', ...stamp });
+    batch.update(profileOf(db, A), { brandColor: '#0a7cff', ...stamp });
     batch.update(controlOf(db, PENDING), mark());
 
     await assertFails(batch.commit());

@@ -538,8 +538,20 @@ const MUTANTS = [
   [
     'D15',
     'flag corrected by anyone signed in',
-    '&& (isStaff(d) || isPlatformAdmin())',
+    '&& ((flipsTheFlag() && isStaff(d)) || isPlatformAdmin())',
     '&& signedIn()',
+  ],
+  [
+    'D35',
+    'staff rewrites the flag as it is, which moves the version a review is for',
+    '((flipsTheFlag() && isStaff(d)) || isPlatformAdmin())',
+    '(isStaff(d) || isPlatformAdmin())',
+  ],
+  [
+    'D36',
+    'a real change of the flag by an account that does not work there',
+    '((flipsTheFlag() && isStaff(d)) || isPlatformAdmin())',
+    '(flipsTheFlag() || isPlatformAdmin())',
   ],
   [
     'D16',
@@ -568,8 +580,8 @@ const MUTANTS = [
   [
     'D20',
     'flag read from the control before the batch',
-    'isOpenData(getAfter(controlPath(d)).data)\n            && (isStaff',
-    'isOpenData(get(controlPath(d)).data)\n            && (isStaff',
+    'isOpenData(getAfter(controlPath(d)).data)\n            && ((flipsTheFlag',
+    'isOpenData(get(controlPath(d)).data)\n            && ((flipsTheFlag',
   ],
   [
     'D21',
@@ -628,20 +640,32 @@ const MUTANTS = [
   [
     'D30',
     'a new name is not an identity edit',
-    ".hasAny(['name', 'contactPhone', 'whatsapp'])",
-    ".hasAny(['contactPhone', 'whatsapp'])",
+    ".hasAny(['name', 'contactPhone', 'whatsapp', 'addressLine', 'plant'])",
+    ".hasAny(['contactPhone', 'whatsapp', 'addressLine', 'plant'])",
   ],
   [
     'D31',
     'a new contact phone is not an identity edit',
-    ".hasAny(['name', 'contactPhone', 'whatsapp'])",
-    ".hasAny(['name', 'whatsapp'])",
+    ".hasAny(['name', 'contactPhone', 'whatsapp', 'addressLine', 'plant'])",
+    ".hasAny(['name', 'whatsapp', 'addressLine', 'plant'])",
   ],
   [
     'D32',
     'a new WhatsApp is not an identity edit',
-    ".hasAny(['name', 'contactPhone', 'whatsapp'])",
-    ".hasAny(['name', 'contactPhone'])",
+    ".hasAny(['name', 'contactPhone', 'whatsapp', 'addressLine', 'plant'])",
+    ".hasAny(['name', 'contactPhone', 'addressLine', 'plant'])",
+  ],
+  [
+    'D33',
+    'a new address line is not an identity edit',
+    ".hasAny(['name', 'contactPhone', 'whatsapp', 'addressLine', 'plant'])",
+    ".hasAny(['name', 'contactPhone', 'whatsapp', 'plant'])",
+  ],
+  [
+    'D34',
+    'a plant somewhere else is not an identity edit',
+    ".hasAny(['name', 'contactPhone', 'whatsapp', 'addressLine', 'plant'])",
+    ".hasAny(['name', 'contactPhone', 'whatsapp', 'addressLine'])",
   ],
   [
     'C01',
@@ -1136,26 +1160,56 @@ const MUTANTS = [
   [
     'X14',
     'correction mark with a made-up date',
-    'return request.resource.data.correctedAt == request.time\n            && (',
-    'return (',
+    'return request.resource.data.correctedAt == request.time\n            && isWritableData',
+    'return isWritableData',
   ],
   [
     'X15',
     'correction mark without a correction',
-    '\n            && (\n              getAfter(distributorPath(d)).data.updatedAt == request.time\n              || getAfter(settingsPath(d)).data.updatedAt == request.time\n            );',
+    "\n            && (\n              corrects(distributorPath(d), ['acceptingOrders', 'updatedAt'])\n              || corrects(settingsPath(d), ['updatedAt'])\n            );",
     ';',
   ],
   [
     'X16',
     'an edit of the public profile does not count as a correction',
-    'getAfter(distributorPath(d)).data.updatedAt == request.time\n              || getAfter(settingsPath',
-    'getAfter(settingsPath',
+    "corrects(distributorPath(d), ['acceptingOrders', 'updatedAt'])\n              || corrects(settingsPath",
+    'corrects(settingsPath',
   ],
   [
     'X17',
     'an edit of the private settings does not count as a correction',
-    '\n              || getAfter(settingsPath(d)).data.updatedAt == request.time',
+    "\n              || corrects(settingsPath(d), ['updatedAt'])",
     '',
+  ],
+  [
+    'X18',
+    'a write of the public profile that only moves its date counts as a correction',
+    "corrects(distributorPath(d), ['acceptingOrders', 'updatedAt'])",
+    "corrects(distributorPath(d), ['acceptingOrders'])",
+  ],
+  [
+    'X19',
+    'a flip of the public flag counts as a correction',
+    "corrects(distributorPath(d), ['acceptingOrders', 'updatedAt'])",
+    "corrects(distributorPath(d), ['updatedAt'])",
+  ],
+  [
+    'X20',
+    'a write of the private settings that only moves its date counts as a correction',
+    "corrects(settingsPath(d), ['updatedAt'])",
+    'corrects(settingsPath(d), [])',
+  ],
+  [
+    'X21',
+    'correction marked on a distributor that cannot be written',
+    '\n            && isWritableData(resource.data)\n            && (\n              corrects',
+    '\n            && (\n              corrects',
+  ],
+  [
+    'X22',
+    'a document that was written counts as corrected, whatever it changed',
+    '!getAfter(path).data.diff(get(path).data).affectedKeys().hasOnly(hollow)',
+    'getAfter(path).data.updatedAt == request.time',
   ],
   [
     'R01',
@@ -1255,6 +1309,7 @@ const EQUIVALENT = {
   G03: 'without a session request.auth is null, so comparing resource.data.uid with request.auth.uid fails',
   X07: 'an approval removes the note (H49), and leavesCorrectionMarkAlone() lets a mark survive only while the note is untouched: the shape is a second lock',
   X09: 'only an owner writes the mark, through marksCorrection(), which demands correctedAt == request.time: it is always a timestamp',
+  X21: 'the mark needs a change of content in the public profile or in the private settings, and both rules already demand a writable distributor for it (writable(d) in the owner edit, settingsEditAllowed()): a second lock that costs no read, because the control document is the one being written',
 };
 
 const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');

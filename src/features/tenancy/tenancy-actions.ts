@@ -112,17 +112,19 @@ export async function checkSlug(raw: string): Promise<SlugCheck> {
 
 export interface ProfileEditOutcome {
   /**
-   * True when the edit touched the name or a phone: the listing went back to review and the
-   * distributor is out of the search until a platform admin approves it again (PLAN 2.11).
+   * True when the edit touched what identifies the business (name, phones, address, plant):
+   * the listing went back to review and the distributor is out of the search until a platform
+   * admin approves it again (PLAN 2.11).
    */
   isBackInReview: boolean;
 }
 
 /**
  * Owner edit of the public profile. PASS ONLY THE FIELDS THAT CHANGED: a patch that carries
- * `name`, `contactPhone` or `whatsapp` sends the listing back to review (see `touchesIdentity`
- * in the domain to warn the person before saving). While the listing waits with a note of the
- * platform, any edit counts as its answer (`listing` becomes `correctionsSent`).
+ * `name`, `contactPhone`, `whatsapp`, `addressLine` or `plant` sends the listing back to
+ * review (see `touchesIdentity` in the domain to warn the person before saving). While the
+ * listing waits with a note of the platform, any edit counts as its answer (`listing` becomes
+ * `correctionsSent`).
  * Throws `InvalidInputError`, or
  * `PermissionDeniedError` when the account is not an owner or the distributor is read-only
  * (suspended, trial over).
@@ -153,7 +155,8 @@ export const getPrivateSettings = distributorsRepo.getDistributorPrivateSettings
  * When the platform had left a note, the listing is marked as corrected in the same transaction:
  * after `current.reload()`, `useCurrentDistributor()` reports `listing: 'correctionsSent'`
  * instead of `changesRequested`. The note stays for the platform admin, and nothing is approved.
- * Throws `InvalidInputError`, `PermissionDeniedError` or `OfflineError` (it is not queued).
+ * Throws `InvalidInputError`, `NothingChangedError` (the three values are the stored ones:
+ * nothing was written), `PermissionDeniedError` or `OfflineError` (it is not queued).
  */
 export async function correctVerificationData(
   distributorId: string,

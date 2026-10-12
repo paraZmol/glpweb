@@ -28,7 +28,7 @@ import {
   TRIAL_DAYS,
 } from '../../src/domain/tenancy/constants';
 import { EDITABLE_PROFILE_FIELDS } from '../../src/domain/tenancy/distributor-input';
-import { IDENTITY_FIELDS } from '../../src/domain/tenancy/listing';
+import { IDENTITY_FIELDS, touchesIdentity } from '../../src/domain/tenancy/listing';
 import { RESERVED_SLUGS } from '../../src/domain/tenancy/slug';
 import { isWritable } from '../../src/domain/tenancy/status';
 import { DISTRIBUTOR_STATUSES, type DistributorStatus } from '../../src/domain/tenancy/types';
@@ -491,7 +491,13 @@ describe('field validation, on founding and on editing', () => {
     'blocks an owner edit with %s',
     async (_case, change) => {
       const db = verified(env, 'owner-a');
-      await assertFails(updateDoc(doc(db, `distributors/${WORLD.a.d}`), { ...change, ...stamp }));
+      // What identifies the business travels with the return to review (PLAN 2.11): sent that
+      // way, the edit is refused for its value and not for the missing batch.
+      const edit = touchesIdentity(change)
+        ? editIdentity(db, WORLD.a.d, change)
+        : updateDoc(doc(db, `distributors/${WORLD.a.d}`), { ...change, ...stamp });
+
+      await assertFails(edit);
     },
   );
 });
@@ -708,7 +714,7 @@ describe('/distributors/{d} — owner edit', () => {
     await assertSucceeds(updateDoc(target('owner-a'), { [field]: EDIT[field], ...stamp }));
   });
 
-  it('lets the owner edit everything but name and phones at once, and clear the price', async () => {
+  it('lets the owner edit everything that is not its identity at once, and clear the price', async () => {
     await assertSucceeds(updateDoc(target('owner-a'), { ...PLAIN_EDIT, ...stamp }));
     await assertSucceeds(
       updateDoc(target('owner-a'), { priceFromCents: null, brands: [], ...stamp }),
@@ -717,11 +723,11 @@ describe('/distributors/{d} — owner edit', () => {
 
   it('lets the owner of a running trial edit', async () => {
     const trialOwner = target('owner-trial', WORLD.trial.d);
-    await assertSucceeds(updateDoc(trialOwner, { addressLine: 'Jr. En Prueba 1', ...stamp }));
+    await assertSucceeds(updateDoc(trialOwner, { brandColor: '#0a7cff', ...stamp }));
   });
 
   // PLAN 2.11: what identifies the business cannot change under an approval.
-  describe('name and phones — the edit sends the listing back to review', () => {
+  describe('name, phones, address and plant — the edit sends the listing back to review', () => {
     const control = (db: Db, d = WORLD.a.d) => doc(db, `distributors/${d}/private/control`);
 
     it.each(IDENTITY_FIELDS)('blocks a plain edit of %s on an approved listing', async (field) => {
@@ -822,9 +828,7 @@ describe('/distributors/{d} — owner edit', () => {
     });
 
     it('lets a plain edit leave the listing approved and public', async () => {
-      await assertSucceeds(
-        updateDoc(target('owner-a'), { addressLine: 'Jr. Nuevo 200', ...stamp }),
-      );
+      await assertSucceeds(updateDoc(target('owner-a'), { coverageRadiusKm: 7.5, ...stamp }));
 
       const snapshot = await getDoc(doc(anonymous(env), `distributors/${WORLD.a.d}`));
       expect(snapshot.data()?.acceptingOrders).toBe(true);
@@ -863,7 +867,7 @@ describe('/distributors/{d} — owner edit', () => {
     ['its slug', { slug: 'gas-otro' }],
     [
       'acceptingOrders together with a plain edit',
-      { addressLine: 'Jr. Nuevo 200', acceptingOrders: false },
+      { brandColor: '#0a7cff', acceptingOrders: false },
     ],
     ['acceptingOrders to false while it takes orders', { acceptingOrders: false }],
     ['its createdAt', { createdAt: serverTimestamp() }],
@@ -874,10 +878,8 @@ describe('/distributors/{d} — owner edit', () => {
   });
 
   it('blocks an edit without a fresh updatedAt', async () => {
-    await assertFails(updateDoc(target('owner-a'), { addressLine: 'Jr. Nuevo 200' }));
-    await assertFails(
-      updateDoc(target('owner-a'), { addressLine: 'Jr. Nuevo 200', updatedAt: PAST }),
-    );
+    await assertFails(updateDoc(target('owner-a'), { brandColor: '#0a7cff' }));
+    await assertFails(updateDoc(target('owner-a'), { brandColor: '#0a7cff', updatedAt: PAST }));
   });
 
   it('blocks replacing the document with one that drops required fields', async () => {
@@ -896,7 +898,7 @@ describe('/distributors/{d} — owner edit', () => {
   ])('blocks %s from editing the profile', async (_who, connect) => {
     const db = connect();
     await assertFails(
-      updateDoc(doc(db, `distributors/${WORLD.a.d}`), { addressLine: 'Hackeado', ...stamp }),
+      updateDoc(doc(db, `distributors/${WORLD.a.d}`), { brandColor: '#0a7cff', ...stamp }),
     );
     await assertFails(editIdentity(db, WORLD.a.d, { name: 'Hackeado' }));
   });
@@ -908,7 +910,7 @@ describe('/distributors/{d} — owner edit', () => {
       path,
       memberDoc(WORLD.a.d, 'owner-a', 'owner', { active: false, createdAt: PAST, updatedAt: PAST }),
     );
-    await assertFails(updateDoc(target('owner-a'), { addressLine: 'Jr. Nuevo 200', ...stamp }));
+    await assertFails(updateDoc(target('owner-a'), { brandColor: '#0a7cff', ...stamp }));
   });
 
   it.each([
@@ -916,7 +918,7 @@ describe('/distributors/{d} — owner edit', () => {
     ['on an expired trial', WORLD.expired, 'owner-expired'],
     ['past due', WORLD.pastDue, 'owner-past-due'],
   ] as const)('blocks the owner of a distributor that is %s', async (_case, seeded, owner) => {
-    const edit = { addressLine: 'Jr. Nuevo 200', ...stamp };
+    const edit = { brandColor: '#0a7cff', ...stamp };
     await assertFails(updateDoc(target(owner, seeded.d), edit));
     await assertFails(editIdentity(verified(env, owner), seeded.d, { name: 'Gas Demo Dos' }));
   });
@@ -928,7 +930,7 @@ describe('/distributors/{d} — owner edit', () => {
       new Date(),
     );
 
-    const attempt = updateDoc(target(owner, seeded.d), { addressLine: 'Jr. Dos 2', ...stamp });
+    const attempt = updateDoc(target(owner, seeded.d), { brandColor: '#0a7cff', ...stamp });
     const passed = await attempt.then(
       () => true,
       () => false,

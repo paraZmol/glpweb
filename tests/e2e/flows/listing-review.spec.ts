@@ -25,7 +25,7 @@ const NOT_FOUND = 'Esta distribuidora no existe.';
 const IN_REVIEW_TEXT =
   'Estamos revisando tus datos. Mientras tanto puedes preparar tu catálogo; tus clientes todavía no te ven.';
 const BACK_TO_REVIEW =
-  'Cambiar el nombre, el teléfono o el WhatsApp devuelve tu ficha a revisión: dejará de verse en el buscador y en tu enlace hasta que Hornilla la apruebe de nuevo.';
+  'Cambiar el nombre, el teléfono, el WhatsApp o la dirección devuelve tu ficha a revisión: dejará de verse en el buscador y en tu enlace hasta que Hornilla la apruebe de nuevo.';
 const NOTE = 'El número de ficha no coincide con la razón social. Revísalo.';
 /** Follows the fake pattern 9000000xx of the seed. */
 const NEW_PHONE = '900000096';
@@ -198,18 +198,26 @@ test('the owner changes the phone: warned before saving, back in review and hidd
   // An edit that does not touch who it is saves at once and changes nothing for visitors.
   await owner.page.getByRole('link', { name: 'Editar ficha' }).click();
   await expect(heading(owner.page)).toHaveText('Edita tu ficha.');
-  await owner.page.getByLabel('Dirección de la planta').fill('Av. Ensayo 701');
+  const radiusBefore = (await readDocument(`distributors/${id}`))?.coverageRadiusKm as number;
+  await owner.page.getByRole('button', { name: 'Ampliar el radio un kilómetro' }).click();
   await expect(owner.page.getByText(BACK_TO_REVIEW)).toHaveCount(0);
   await owner.page.getByRole('button', { name: 'Guardar cambios' }).click();
   await expect(owner.page).toHaveURL(/\/central$/);
   await expect(chip(owner.page, 'Visible en el buscador')).toBeVisible();
   expect(await readDocument(`distributors/${id}`)).toMatchObject({
-    addressLine: 'Av. Ensayo 701',
+    coverageRadiusKm: radiusBefore + 1,
     acceptingOrders: true,
   });
 
-  // The phone is who it is: the warning shows while typing, and saving asks once more.
+  // Where it is and how it is reached is who it is: the warning shows while typing — for the
+  // address as much as for a phone (security audit of phase 2, M1) — and saving asks once more.
   await owner.page.getByRole('link', { name: 'Editar ficha' }).click();
+  const address = owner.page.getByLabel('Dirección de la planta');
+  const addressBefore = await address.inputValue();
+  await address.fill('Av. Ensayo 701');
+  await expect(owner.page.getByText(BACK_TO_REVIEW)).toBeVisible();
+  await address.fill(addressBefore);
+  await expect(owner.page.getByText(BACK_TO_REVIEW)).toHaveCount(0);
   await owner.page.getByLabel('Teléfono del negocio').fill(NEW_PHONE);
   await expect(owner.page.getByText(BACK_TO_REVIEW)).toBeVisible();
   await owner.page.getByRole('button', { name: 'Guardar cambios' }).click();

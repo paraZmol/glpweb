@@ -316,7 +316,7 @@ describe('trial at its edge — the clock decides, not the client', () => {
     await seedEdge(60 * SECOND, true);
     const db = verified(env, 'owner-edge');
 
-    await assertSucceeds(updateDoc(profile(db, EDGE), { addressLine: 'Jr. Borde 1', ...stamp }));
+    await assertSucceeds(updateDoc(profile(db, EDGE), { brandColor: '#0a7cff', ...stamp }));
     await assertFails(updateDoc(profile(db, EDGE), { acceptingOrders: false, ...stamp }));
   });
 

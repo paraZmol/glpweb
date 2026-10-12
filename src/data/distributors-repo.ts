@@ -30,6 +30,7 @@ import type { DistributorProfilePatch, NewDistributor } from '../domain/tenancy/
 import {
   DistributorLimitError,
   FoundingBlockedError,
+  NothingChangedError,
   PermissionDeniedError,
   ProfileRequiredError,
   SlugTakenError,
@@ -373,7 +374,7 @@ interface ProfileEdit {
   d: string;
   /** The public document to write, already built. */
   document: Record<string, unknown>;
-  /** The edit touches the name or a phone. */
+  /** The edit touches what identifies the business (`touchesIdentity`). */
   isBackInReview: boolean;
   /** The listing waits with a note of the platform: the edit is an answer to it. */
   answersNote: boolean;
@@ -400,14 +401,15 @@ function controlChangeOf({ document, isBackInReview, answersNote }: ProfileEdit)
 }
 
 /**
- * An edit that reaches more than the public document is one batch (PLAN 2.11). A new name or
- * phone: the edit itself, which also unlists the distributor; the listing back to review in the
- * control document, with its copy of the name; and, for a new name, the copy every member keeps
- * of it (up to the cap of the staff list; anyone beyond it corrects its own copy the next time
+ * An edit that reaches more than the public document is one batch (PLAN 2.11). A new name,
+ * phone, address or plant: the edit itself, which also unlists the distributor; the listing back
+ * to review in the control document, with its copy of the name; and, for a new name, the copy
+ * every member keeps of it (up to the cap of the staff list; anyone beyond it corrects its own copy the next time
  * it opens the panel). An edit that answers a note of the platform: the edit and the correction
  * mark in the control document.
  * Cost: 2 writes, plus one read and one write per member when the name changes. The rules add 3
- * lookups for the profile, 3 for the control document and 2 per member.
+ * lookups for the profile, 3 for the control document (4 when it carries the correction mark)
+ * and 2 per member.
  */
 async function editWithControl(edit: ProfileEdit, controlChange: Record<string, unknown>) {
   const { d, document, isBackInReview } = edit;
@@ -428,11 +430,12 @@ async function editWithControl(edit: ProfileEdit, controlChange: Record<string, 
 
 /**
  * Owner edit of the public profile. `patch` must come from `prepareProfilePatch` and carry only
- * the fields that changed: a patch with `name`, `contactPhone` or `whatsapp` sends the listing
- * back to review and takes the distributor out of the search until a platform admin approves it
- * again. Resolves to true in that case.
+ * the fields that changed: a patch with `name`, `contactPhone`, `whatsapp`, `addressLine` or
+ * `plant` (`IDENTITY_FIELDS`) sends the listing back to review and takes the distributor out of
+ * the search until a platform admin approves it again. Resolves to true in that case.
  * While the listing waits with a note of the platform, any edit is an answer to it: the control
- * document is marked as corrected in the same batch (`listing` becomes `correctionsSent`).
+ * document is marked as corrected in the same batch (`listing` becomes `correctionsSent`). The
+ * rules refuse that mark next to a patch that changes nothing, so never send an empty one.
  * Cost: 1 read (the control document, to know whether a note waits; one more by the rules
  * unless the caller is the founder), then one write, or the batch described above.
  */
@@ -457,7 +460,9 @@ export async function updateDistributorProfile(
  * Writes the public "takes orders" flag. The rules accept it only when it equals what the
  * control document says at that moment (it may operate and its listing is approved), and only
  * from the staff or a platform admin: this is how a trial that ran out stops being listed
- * (nobody else flips the flag when the date passes).
+ * (nobody else flips the flag when the date passes). From the staff it must be a real change:
+ * call it only when the stored flag differs (a rewrite of the same value is refused, because
+ * every write moves the version a review is for).
  */
 export function syncAcceptingOrders(d: string, acceptingOrders: boolean): Promise<void> {
   return guarded(() =>
@@ -485,14 +490,24 @@ export function getDistributorPrivateSettings(
   });
 }
 
+function isSameVerification(stored: BusinessVerification, sent: BusinessVerification): boolean {
+  return (
+    stored.taxId === sent.taxId &&
+    stored.legalName === sent.legalName &&
+    stored.hydrocarbonsRegistry === sent.hydrocarbonsRegistry
+  );
+}
+
 /**
  * Founder only, and only while the listing is not approved: corrects the verification data a
  * platform admin sent back. `verification` must come from `prepareBusinessVerification`.
  * When the listing waits with a note, the control document is marked as corrected in the same
  * transaction (server time; the note itself stays for the admin). Resolves to true in that case.
  * It approves nothing: only a platform admin does.
- * Cost: 1 read + 1 or 2 writes, plus 1 lookup by the rules for the settings and 4 for the mark.
- * Not queued without a connection (`OfflineError`).
+ * Throws `NothingChangedError`, without writing, when the three values are the stored ones: an
+ * answer to a note has to correct something (the rules refuse the mark otherwise).
+ * Cost: 2 reads + 1 or 2 writes, plus 1 lookup by the rules for the settings and up to 6 for
+ * the mark. Not queued without a connection (`OfflineError`).
  */
 export function updateVerificationData(
   d: string,
@@ -500,9 +515,14 @@ export function updateVerificationData(
 ): Promise<boolean> {
   return guarded(() =>
     runTransaction(db, async (tx) => {
+      const settingsRef = doc(db, paths.distributorPrivateSettings(d));
       const control = (await tx.get(controlRef(d).withConverter(controlConverter))).data();
+      const stored = (await tx.get(settingsRef.withConverter(privateSettingsConverter))).data();
+      if (stored !== undefined && isSameVerification(stored, verification)) {
+        throw new NothingChangedError();
+      }
       const answersNote = control !== undefined && answersReviewNote(control);
-      tx.update(doc(db, paths.distributorPrivateSettings(d)), {
+      tx.update(settingsRef, {
         taxId: verification.taxId,
         legalName: verification.legalName,
         hydrocarbonsRegistry: verification.hydrocarbonsRegistry,

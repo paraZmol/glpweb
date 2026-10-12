@@ -145,12 +145,21 @@ describe('answersReviewNote', () => {
 });
 
 describe('touchesIdentity', () => {
-  it.each(['name', 'contactPhone', 'whatsapp'])('is true for a change of %s', (field) => {
-    expect(touchesIdentity({ [field]: 'x' })).toBe(true);
-  });
+  // Security audit of phase 2 (M1): where the business is belongs to what was approved.
+  it.each(['name', 'contactPhone', 'whatsapp', 'addressLine', 'plant'])(
+    'is true for a change of %s',
+    (field) => {
+      expect(touchesIdentity({ [field]: 'x' })).toBe(true);
+    },
+  );
 
   it('is false for the rest of the profile', () => {
-    expect(touchesIdentity({ addressLine: 'x', brandColor: '#000000', schedule: {} })).toBe(false);
+    const routine = { coverageRadiusKm: 8, brandColor: '#000000', schedule: {} };
+
+    expect(touchesIdentity(routine)).toBe(false);
+    expect(touchesIdentity({ maxCylindersPerOrder: 4, brands: [], priceFromCents: null })).toBe(
+      false,
+    );
     expect(touchesIdentity({})).toBe(false);
   });
 });

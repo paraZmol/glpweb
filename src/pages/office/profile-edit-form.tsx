@@ -20,11 +20,11 @@ import { useOnlineStatus } from '@/lib/use-online-status';
 import { ProfileFields, type SetProfileField } from './profile-fields';
 
 const OFFLINE_TEXT = 'Sin conexión: para guardar los cambios necesitas internet.';
-// PLAN 2.11: said BEFORE saving, as soon as the name or a phone differs from what is stored.
+// PLAN 2.11: said BEFORE saving, as soon as the name, a phone or the address differs from what
+// is stored (`IDENTITY_FIELDS`).
 export const BACK_TO_REVIEW =
-  'Cambiar el nombre, el teléfono o el WhatsApp devuelve tu ficha a revisión: dejará de verse en el buscador y en tu enlace hasta que Hornilla la apruebe de nuevo.';
-const STILL_IN_REVIEW =
-  'Tu ficha todavía está en revisión: Hornilla verá el nombre y los teléfonos nuevos.';
+  'Cambiar el nombre, el teléfono, el WhatsApp o la dirección devuelve tu ficha a revisión: dejará de verse en el buscador y en tu enlace hasta que Hornilla la apruebe de nuevo.';
+const STILL_IN_REVIEW = 'Tu ficha todavía está en revisión: Hornilla verá los datos nuevos.';
 const NOTHING_CHANGED = 'No cambiaste nada todavía.';
 
 type ProfileEditFormProps = {

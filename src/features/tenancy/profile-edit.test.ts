@@ -38,7 +38,7 @@ describe('profilePatchOf', () => {
     ['name', { name: 'Gas Demo Centro' }, true],
     ['contactPhone', { contactPhone: '900000012' }, true],
     ['whatsapp', { whatsapp: '900000013' }, true],
-    ['addressLine', { addressLine: 'Jr. Demo 456' }, false],
+    ['addressLine', { addressLine: 'Jr. Demo 456' }, true],
     ['coverageRadiusKm', { coverageRadiusKm: 8 }, false],
     ['brandColor', { brandColor: '#1f2937' }, false],
   ] as const)('carries only %s when only it changed', (field, change, isIdentity) => {
@@ -63,7 +63,7 @@ describe('profilePatchOf', () => {
   });
 
   it('never carries an identity field that did not change, whatever else did', () => {
-    const patch = profilePatchOf({ ...FORM, addressLine: 'Otra', brandColor: '#1f2937' }, STORED);
+    const patch = profilePatchOf({ ...FORM, coverageRadiusKm: 9, brandColor: '#1f2937' }, STORED);
 
     expect(touchesIdentity(patch)).toBe(false);
   });

@@ -16,7 +16,7 @@ export function isOpenToPublic(control: ListingInput, now: Date): boolean {
 
 /**
  * Where a distributor stands with the review of its listing, for its own panel:
- * - `inReview`: waiting for a platform admin (a new one, or one that changed its name or phones);
+ * - `inReview`: waiting for a platform admin (a new one, or one that changed what identifies it);
  * - `changesRequested`: sent back with a note the owner should read;
  * - `correctionsSent`: the owner answered that note with a correction and waits again; the note
  *   stays until a platform admin decides;
@@ -68,11 +68,20 @@ export function platformListOf(control: ListedControl): PlatformListFilter {
 }
 
 /**
- * What a customer uses to recognise and reach the business. Changing any of them after the
- * approval sends the listing back to review: otherwise an approved distributor could turn into
- * somebody else overnight. The rules hold the same list.
+ * What a customer uses to recognise, reach and place the business: its name, its phones, its
+ * address and where its plant is. Changing any of them after the approval sends the listing back
+ * to review: otherwise an approved distributor could turn into somebody else overnight, write
+ * another phone in its address line or move to a city nobody reviewed it for. The delivery
+ * radius and the schedule are routine adjustments and do not (PLAN §9). The rules hold the same
+ * list.
  */
-export const IDENTITY_FIELDS = ['name', 'contactPhone', 'whatsapp'] as const;
+export const IDENTITY_FIELDS = [
+  'name',
+  'contactPhone',
+  'whatsapp',
+  'addressLine',
+  'plant',
+] as const;
 
 export function touchesIdentity(patch: object): boolean {
   return IDENTITY_FIELDS.some((field) => field in patch);

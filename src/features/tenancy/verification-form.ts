@@ -1,4 +1,4 @@
-import { InvalidInputError } from '../../domain/tenancy/errors';
+import { InvalidInputError, NothingChangedError } from '../../domain/tenancy/errors';
 import type { DistributorPrivateSettings } from '../../domain/tenancy/types';
 import {
   type BusinessVerificationInput,
@@ -24,8 +24,11 @@ export function validateVerification(input: BusinessVerificationInput): Verifica
   return prepared.ok ? {} : fieldMessagesOf(new InvalidInputError(prepared.issues));
 }
 
+const NOTHING_CHANGED = 'No cambiaste nada todavía: corrige el dato que te pidieron y guarda.';
+
 export function verificationErrorsOf(error: unknown): VerificationErrors {
   if (error instanceof InvalidInputError) return fieldMessagesOf(error);
+  if (error instanceof NothingChangedError) return { form: NOTHING_CHANGED };
   return { form: describeTenancyError(error) };
 }
 

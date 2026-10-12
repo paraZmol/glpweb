@@ -67,7 +67,8 @@ function isSameColor(typed: string, stored: string): boolean {
 /**
  * ONLY what changed, compared as it would be stored (a phone typed with spaces is the same
  * phone). The repository sends the listing back to review when the patch carries the name or a
- * phone, so a field that did not change must never travel (`touchesIdentity`).
+ * phone, the address or the plant, so a field that did not change must never travel
+ * (`touchesIdentity`).
  */
 export function profilePatchOf(
   form: ProfileEditForm,

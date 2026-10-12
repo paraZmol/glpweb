@@ -37,7 +37,7 @@ export const FILTER_COPY: Record<PlatformListFilter, FilterCopy> = {
     empty: {
       title: 'No hay altas pendientes.',
       description:
-        'Cuando alguien registre una distribuidora, o cambie su nombre o un teléfono, va a aparecer aquí para revisarla.',
+        'Cuando alguien registre una distribuidora, o cambie su nombre, un teléfono o su dirección, va a aparecer aquí para revisarla.',
     },
   },
   approved: {

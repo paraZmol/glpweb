@@ -5,7 +5,7 @@ import { EMULATOR_HOST, EMULATOR_PROJECT_ID, emulatorPorts } from '../../scripts
 import { SEED_DISTRIBUTORS, SEED_PASSWORD, SEED_USERS, type SeedUser } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
 import { approveAsSeen } from '../../tests/support/approve-as-seen';
-import { PermissionDeniedError } from '../domain/tenancy/errors';
+import { NothingChangedError, PermissionDeniedError } from '../domain/tenancy/errors';
 import { listingStateOf } from '../domain/tenancy/listing';
 import { signInWithEmail, signOutSession } from './auth-repo';
 import {
@@ -32,6 +32,7 @@ const CORRECTED = {
   legalName: 'Gas Demo Corregida S.A.C.',
   hydrocarbonsRegistry: PENDING.hydrocarbonsRegistry,
 };
+const CORRECTED_AGAIN = { ...CORRECTED, legalName: 'Gas Demo Corregida Dos S.A.C.' };
 
 const signInAs = (user: SeedUser) => signInWithEmail(user.email, SEED_PASSWORD);
 const idsOf = (items: { distributorId: string }[]) => items.map((item) => item.distributorId);
@@ -211,7 +212,14 @@ describe('answering a note of the platform', () => {
     await signInAs(SEED_USERS.ownerE);
     expect(await stateOf(PENDING.id)).toBe('changesRequested');
 
-    expect(await updateVerificationData(PENDING.id, CORRECTED)).toBe(true);
+    // Security audit of phase 2 (B1): sending again what is stored corrects nothing, so
+    // nothing is written and the listing does not read "corrections sent".
+    await expect(updateVerificationData(PENDING.id, CORRECTED)).rejects.toBeInstanceOf(
+      NothingChangedError,
+    );
+    expect(await stateOf(PENDING.id)).toBe('changesRequested');
+
+    expect(await updateVerificationData(PENDING.id, CORRECTED_AGAIN)).toBe(true);
 
     expect(await getDistributorControl(PENDING.id)).toMatchObject({
       listingApproved: false,
@@ -246,9 +254,7 @@ describe('answering a note of the platform', () => {
   it('marks an edit of the public profile as the answer too, without listing it', async () => {
     await signInAs(SEED_USERS.ownerE);
 
-    expect(await updateDistributorProfile(PENDING.id, { addressLine: 'Av. Corregida 200' })).toBe(
-      false,
-    );
+    expect(await updateDistributorProfile(PENDING.id, { coverageRadiusKm: 7 })).toBe(false);
 
     expect(await stateOf(PENDING.id)).toBe('correctionsSent');
     expect((await getStaffDistributor(PENDING.id))?.acceptingOrders).toBe(false);
@@ -269,7 +275,7 @@ describe('answering a note of the platform', () => {
   it('does not mark an edit of an approved listing', async () => {
     await signInAs(SEED_USERS.ownerE);
 
-    await updateDistributorProfile(PENDING.id, { addressLine: 'Av. Aprobada 300' });
+    await updateDistributorProfile(PENDING.id, { coverageRadiusKm: 9 });
 
     expect(await getDistributorControl(PENDING.id)).toMatchObject({
       listingApproved: true,

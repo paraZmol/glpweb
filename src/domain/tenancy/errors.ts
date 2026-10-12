@@ -80,6 +80,16 @@ export class StaleReviewError extends DomainError {
   }
 }
 
+/**
+ * What was sent as a correction is what was already stored: nothing was written, and the
+ * listing is not marked as corrected (the rules refuse that mark next to an empty edit).
+ */
+export class NothingChangedError extends DomainError {
+  constructor() {
+    super('The correction changes nothing of what is stored');
+  }
+}
+
 /** The security rules refused the operation (wrong role, suspended distributor, expired trial). */
 export class PermissionDeniedError extends DomainError {
   constructor(options?: ErrorOptions) {

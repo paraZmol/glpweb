@@ -339,7 +339,7 @@ describe('updateDistributorProfile', () => {
     await signInAs(SEED_USERS.ownerB);
     const plain = {
       coverageRadiusKm: 6,
-      plant: { lat: -12.08, lng: -77.03 },
+      brandColor: '#1f2937',
       schedule: { days: [1, 2, 3, 4, 5, 6], opensAt: '06:30', closesAt: '21:00' },
     };
 
@@ -348,7 +348,7 @@ describe('updateDistributorProfile', () => {
     await signOutSession();
     expect(await getDistributor(B.id)).toMatchObject({
       coverageRadiusKm: 6,
-      plant: { lat: -12.08, lng: -77.03 },
+      brandColor: '#1f2937',
       schedule: { opensAt: '06:30', closesAt: '21:00' },
       acceptingOrders: true,
     });
@@ -358,6 +358,9 @@ describe('updateDistributorProfile', () => {
   it.each([
     ['the contact phone', { contactPhone: '900000024' }],
     ['the WhatsApp number', { whatsapp: '900000025' }],
+    // Security audit of phase 2 (M1): where the business is was approved too.
+    ['the address', { addressLine: 'Av. Ensayo 705' }],
+    ['where the plant is', { plant: { lat: -16.409, lng: -71.5375 } }],
   ])('sends the listing back to review when the owner changes %s', async (_case, change) => {
     await signInAs(SEED_USERS.admin);
     await approveAsSeen(B.id, SEED_USERS.admin.uid);
@@ -499,7 +502,12 @@ describe('control document and the public "takes orders" flag', () => {
     await expect(syncAcceptingOrders(EXPIRED.id, true)).rejects.toBeInstanceOf(
       PermissionDeniedError,
     );
-    await syncAcceptingOrders(EXPIRED.id, false);
+    // It already says the truth. Writing it again would change nothing but the version of the
+    // listing, which is what an approval names (security audit of phase 2, B2): refused. A real
+    // correction of the flag is in firebase/tests/attack-review-integrity.rules.test.ts.
+    await expect(syncAcceptingOrders(EXPIRED.id, false)).rejects.toBeInstanceOf(
+      PermissionDeniedError,
+    );
 
     expect((await getDistributor(EXPIRED.id))?.acceptingOrders).toBe(false);
   });

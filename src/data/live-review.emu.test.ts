@@ -132,7 +132,7 @@ describe('approving a listing as it was seen', () => {
     await returnListingToReview(A.id, '');
     const seen = await versionSeenByAdmin(A.id);
     await signInAs(SEED_USERS.ownerB);
-    await updateDistributorProfile(B.id, { addressLine: 'Av. Ensayo 703' });
+    await updateDistributorProfile(B.id, { coverageRadiusKm: 9 });
 
     await signInAs(ADMIN);
 
