@@ -4,8 +4,12 @@
 //
 // This file imports nothing so that plain `node` can run the seed (see seed.ts).
 
-/** Test-only password shared by every seeded account. It protects nothing. */
-export const SEED_PASSWORD = 'solo-para-pruebas'; // public-ok: fake password for emulator accounts
+/**
+ * The id "Google" gives a test account. Sign-in is with Google only (PLAN 2.1) and the Auth
+ * emulator pretends Google's answer: an account is found again by this id, so deriving it from
+ * the e-mail lets a test sign in knowing only the address. It means nothing outside the emulator.
+ */
+export const googleIdOf = (email: string) => `google-${email}`;
 
 export type SeedRole = 'owner' | 'dispatcher' | 'driver';
 export type SeedStatus = 'trial' | 'active' | 'pastDue' | 'suspended';
@@ -15,6 +19,7 @@ export interface SeedUser {
   email: string;
   displayName: string;
   phone: string;
+  /** False pretends a Google sign-in without a confirmed address (it should never happen). */
   emailVerified: boolean;
   /** False for an account that signed in but never got a profile (terms still pending). */
   hasProfile: boolean;
@@ -45,8 +50,8 @@ export interface SeedDistributor {
 }
 
 /** Versions of the terms and of the privacy policy every seeded profile accepted. */
-export const SEED_TERMS_VERSION = '0.3';
-export const SEED_PRIVACY_VERSION = '0.3';
+export const SEED_TERMS_VERSION = '0.4';
+export const SEED_PRIVACY_VERSION = '0.4';
 
 const user = (key: string, displayName: string, phoneSuffix: string, emailVerified = true) => ({
   uid: `seed-${key}`,
@@ -72,9 +77,14 @@ export const SEED_USERS = {
   customer: user('cliente', 'I. Cliente', '51'),
   /** Platform admin: listed in /platformAdmins. */
   admin: user('admin', 'J. Plataforma', '61'),
-  /** Registered but never followed the verification link. */
+  /**
+   * A session without a confirmed e-mail. Google always confirms it, so no real account looks
+   * like this: it is here to prove that the app and the rules give such a session nothing.
+   * It is seeded WITH a profile (which the rules would never let it create) so that a refusal
+   * can only come from the e-mail check, not from the missing profile.
+   */
   unverified: user('sin-verificar', 'K. Nueva', '71', false),
-  /** Verified account without a profile: what a first Google sign-in looks like. */
+  /** Account without a profile: what a first sign-in looks like. */
   noProfile: { ...user('sin-perfil', 'L. Reciente', '81'), hasProfile: false },
   /**
    * Verified, with a profile and no membership: the account the E2E of the sign-up of a

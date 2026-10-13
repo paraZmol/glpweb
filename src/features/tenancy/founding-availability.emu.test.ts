@@ -1,18 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import {
-  SEED_DISTRIBUTORS,
-  SEED_PASSWORD,
-  SEED_USERS,
-  type SeedUser,
-} from '../../../tests/seed/data';
+import { SEED_DISTRIBUTORS, SEED_USERS } from '../../../tests/seed/data';
 import { seedEmulators } from '../../../tests/seed/seed';
-import { markEmailVerified } from '../../../tests/support/emulator';
-import {
-  refreshSession,
-  registerWithEmail,
-  signInWithEmail,
-  signOutSession,
-} from '../../data/auth-repo';
+import { signInAs, signInAsNewcomer } from '../../../tests/support/emulated-session';
+import { signOutSession } from '../../data/auth-repo';
 import { getOwnedControls } from '../../data/distributors-repo';
 import { setDistributorStatus } from '../../data/platform-repo';
 import { createUserProfile } from '../../data/users-repo';
@@ -32,7 +22,6 @@ import {
 } from './tenancy-actions';
 
 const { a: A, b: B } = SEED_DISTRIBUTORS;
-const signInAs = (user: SeedUser) => signInWithEmail(user.email, SEED_PASSWORD);
 
 const inputOf = (slug: string): FoundingInput => ({
   name: 'Gas Demo Cupo',
@@ -49,13 +38,9 @@ const inputOf = (slug: string): FoundingInput => ({
   declaresAuthority: true,
 });
 
-/** A fresh, verified account with a profile, signed in. */
+/** A fresh account with a profile, signed in. */
 async function freshFounder(key: string): Promise<Session> {
-  const email = `${key}@example.com`;
-  const created = await registerWithEmail({ email, password: SEED_PASSWORD });
-  await markEmailVerified(created.uid);
-  const session = await refreshSession();
-  if (session === null) throw new Error('The fresh account should be signed in');
+  const session = await signInAsNewcomer(`${key}@example.com`);
   await createUserProfile(
     session.uid,
     { displayName: 'N. Fundadora', phone: null },
@@ -109,7 +94,7 @@ describe('getFoundingAvailability', () => {
     expect(await getFoundingAvailability(founder.uid)).toBe('available');
     await signInAs(SEED_USERS.admin);
     await setDistributorStatus(first, 'suspended', new Date());
-    await signInWithEmail(founder.email ?? '', SEED_PASSWORD);
+    await signInAsNewcomer(founder.email ?? '');
 
     expect(await getFoundingAvailability(founder.uid)).toBe('blocked');
     // Asked only about the one that is not on screen, it still finds it.

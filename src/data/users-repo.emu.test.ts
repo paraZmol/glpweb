@@ -1,17 +1,19 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { SEED_CUSTOMER_LOCATION, SEED_PASSWORD, SEED_USERS } from '../../tests/seed/data';
+import { SEED_CUSTOMER_LOCATION, SEED_USERS } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
 import { CURRENT_LEGAL_VERSIONS, PRIVACY_VERSION, TERMS_VERSION } from '../domain/legal/versions';
 import { ADDRESS_SLOT_IDS } from '../domain/tenancy/account-input';
 import { MAX_ADDRESSES_PER_USER } from '../domain/tenancy/constants';
-import { markEmailVerified, rewindAcceptance } from '../../tests/support/emulator';
+import { signInAs, signInAsNewcomer } from '../../tests/support/emulated-session';
+import { markEmailVerifiedAsAdmin, rewindAcceptance } from '../../tests/support/emulator';
 import {
   AddressLimitError,
   OfflineError,
   PermissionDeniedError,
   ProfileRequiredError,
 } from '../domain/tenancy/errors';
-import { refreshSession, registerWithEmail, signInWithEmail, signOutSession } from './auth-repo';
+import { signOutSession } from './auth-repo';
+import { auth } from './firebase';
 import { isPlatformAdmin } from './platform-repo';
 import {
   acceptLegalVersions,
@@ -46,7 +48,7 @@ afterAll(async () => {
 // PLAN 2.1
 describe('profile', () => {
   it('creates the profile with both acceptances, stamped by the server', async () => {
-    const session = await signInWithEmail(SEED_USERS.noProfile.email, SEED_PASSWORD);
+    const session = await signInAs(SEED_USERS.noProfile);
     const before = Date.now();
 
     expect(await getUserProfile(session.uid)).toBeNull();
@@ -70,12 +72,7 @@ describe('profile', () => {
 
   // PLAN 2.11: every acceptance leaves its line in the history, in the same batch.
   it('leaves one history entry per text, dated like the profile', async () => {
-    const registered = await registerWithEmail({
-      email: 'deja-constancia@example.com',
-      password: SEED_PASSWORD,
-    });
-    await markEmailVerified(registered.uid);
-    const { uid } = (await refreshSession()) ?? registered;
+    const { uid } = await signInAsNewcomer('deja-constancia@example.com');
 
     await createUserProfile(
       uid,
@@ -95,12 +92,9 @@ describe('profile', () => {
     ['of the terms', { ...CURRENT_LEGAL_VERSIONS, termsVersion: '9.9' }],
     ['of the privacy policy', { ...CURRENT_LEGAL_VERSIONS, privacyVersion: '9.9' }],
   ])('refuses a profile that accepts a version %s that does not exist', async (_case, versions) => {
-    const registered = await registerWithEmail({
-      email: `perfil-${versions.termsVersion}-${versions.privacyVersion}@example.com`,
-      password: SEED_PASSWORD,
-    });
-    await markEmailVerified(registered.uid);
-    const session = (await refreshSession()) ?? registered;
+    const session = await signInAsNewcomer(
+      `perfil-${versions.termsVersion}-${versions.privacyVersion}@example.com`,
+    );
     const profile = { displayName: 'M. Perfil', phone: null };
 
     await expect(createUserProfile(session.uid, profile, versions)).rejects.toBeInstanceOf(
@@ -110,26 +104,47 @@ describe('profile', () => {
   });
 
   // PLAN 2.11: nothing is stored for an e-mail nobody proved is theirs.
-  it('stores no profile and no address for an account whose e-mail is not verified', async () => {
-    const session = await registerWithEmail({
-      email: 'aun-sin-verificar@example.com',
-      password: SEED_PASSWORD,
+  it('stores no profile and no address for a session without a confirmed e-mail', async () => {
+    const session = await signInAs({
+      email: 'aun-sin-confirmar@example.com',
+      displayName: 'N. Sin Confirmar',
+      emailVerified: false,
     });
-    const profile = { displayName: 'N. Sin Verificar', phone: null };
+    const profile = { displayName: 'N. Sin Confirmar', phone: null };
 
     await expect(
       createUserProfile(session.uid, profile, CURRENT_LEGAL_VERSIONS),
     ).rejects.toBeInstanceOf(PermissionDeniedError);
     await expect(addAddress(session.uid, HOME)).rejects.toBeInstanceOf(PermissionDeniedError);
+    expect(await getUserProfile(session.uid)).toBeNull();
+  });
 
-    await markEmailVerified(session.uid);
-    await refreshSession();
-    await createUserProfile(session.uid, profile, CURRENT_LEGAL_VERSIONS);
-    expect(await addAddress(session.uid, HOME)).toBe('a0');
+  // PLAN 2.1: sign-in is with Google only. The app cannot open any other kind of session, so
+  // this one is opened behind its back, the way a hostile client would against a project that
+  // still let it: a real token of the emulator, with a verified e-mail, that is not Google's.
+  it('stores no profile for a verified session that did not come in through Google', async () => {
+    const { createUserWithEmailAndPassword } = await import('firebase/auth');
+    await signOutSession();
+    const { user } = await createUserWithEmailAndPassword(
+      auth,
+      'otra-puerta@example.com',
+      'solo-para-esta-prueba', // public-ok: made up here for one emulator account
+    );
+    await markEmailVerifiedAsAdmin(user.uid);
+    await user.reload();
+    const token = await user.getIdTokenResult(true);
+    expect(token.claims.email_verified).toBe(true);
+    expect(token.signInProvider).toBe('password');
+    const profile = { displayName: 'O. Puerta', phone: null };
+
+    await expect(
+      createUserProfile(user.uid, profile, CURRENT_LEGAL_VERSIONS),
+    ).rejects.toBeInstanceOf(PermissionDeniedError);
+    expect(await getUserProfile(user.uid)).toBeNull();
   });
 
   it('updates the name and the phone', async () => {
-    const { uid } = await signInWithEmail(SEED_USERS.customer.email, SEED_PASSWORD);
+    const { uid } = await signInAs(SEED_USERS.customer);
 
     await updateUserProfile(uid, { displayName: 'I. Cliente Editado', phone: '900000052' });
 
@@ -140,10 +155,7 @@ describe('profile', () => {
   });
 
   it('refuses to save the profile of an account that has none', async () => {
-    const { uid } = await registerWithEmail({
-      email: 'guarda-sin-perfil@example.com',
-      password: SEED_PASSWORD,
-    });
+    const { uid } = await signInAsNewcomer('guarda-sin-perfil@example.com');
 
     await expect(updateUserProfile(uid, { displayName: 'X', phone: null })).rejects.toBeInstanceOf(
       ProfileRequiredError,
@@ -152,7 +164,7 @@ describe('profile', () => {
 
   // PLAN 2.11 (defect found by flow-tester): a save never waits for ever.
   it('gives up with OfflineError when the server does not answer within the deadline', async () => {
-    const { uid } = await signInWithEmail(SEED_USERS.customer.email, SEED_PASSWORD);
+    const { uid } = await signInAs(SEED_USERS.customer);
     const before = await getUserProfile(uid);
 
     await expect(
@@ -165,7 +177,7 @@ describe('profile', () => {
   });
 
   it('cannot read, create or edit the profile of another account', async () => {
-    await signInWithEmail(SEED_USERS.customer.email, SEED_PASSWORD);
+    await signInAs(SEED_USERS.customer);
     const other = SEED_USERS.ownerA.uid;
     const intruder = { displayName: 'Intruso', phone: null };
 
@@ -185,7 +197,7 @@ describe('acceptLegalVersions', () => {
   const behindInTerms = { from: TERMS_VERSION, to: OLD_VERSION, at: LONG_AGO };
 
   it('renews only the text that is pending and leaves the date of the other alone', async () => {
-    const { uid } = await signInWithEmail(SEED_USERS.ownerB.email, SEED_PASSWORD);
+    const { uid } = await signInAs(SEED_USERS.ownerB);
     await rewindAcceptance(uid, 'privacy', behindInPrivacy);
     const before = await getUserProfile(uid);
     const started = Date.now();
@@ -204,7 +216,7 @@ describe('acceptLegalVersions', () => {
   });
 
   it('adds the new version to the history and keeps the entry of the one before', async () => {
-    const { uid } = await signInWithEmail(SEED_USERS.ownerC.email, SEED_PASSWORD);
+    const { uid } = await signInAs(SEED_USERS.ownerC);
     await rewindAcceptance(uid, 'terms', behindInTerms);
 
     await acceptLegalVersions(uid, CURRENT_LEGAL_VERSIONS);
@@ -231,7 +243,7 @@ describe('acceptLegalVersions', () => {
   });
 
   it('renews both texts in one go when both are behind', async () => {
-    const { uid } = await signInWithEmail(SEED_USERS.driverB.email, SEED_PASSWORD);
+    const { uid } = await signInAs(SEED_USERS.driverB);
     await rewindAcceptance(uid, 'terms', behindInTerms);
     await rewindAcceptance(uid, 'privacy', behindInPrivacy);
 
@@ -247,7 +259,7 @@ describe('acceptLegalVersions', () => {
   });
 
   it('writes nothing for an account that already holds those versions', async () => {
-    const { uid } = await signInWithEmail(SEED_USERS.dispatcherB.email, SEED_PASSWORD);
+    const { uid } = await signInAs(SEED_USERS.dispatcherB);
     const before = await getUserProfile(uid);
     const historyBefore = await listLegalAcceptances(uid);
 
@@ -258,7 +270,7 @@ describe('acceptLegalVersions', () => {
   });
 
   it('refuses a version that does not exist and stores nothing, history included', async () => {
-    const { uid } = await signInWithEmail(SEED_USERS.dispatcherB.email, SEED_PASSWORD);
+    const { uid } = await signInAs(SEED_USERS.dispatcherB);
     const before = await getUserProfile(uid);
     const unknown = { ...CURRENT_LEGAL_VERSIONS, privacyVersion: '9.9' };
 
@@ -269,10 +281,7 @@ describe('acceptLegalVersions', () => {
   });
 
   it('refuses an account that has no profile', async () => {
-    const { uid } = await registerWithEmail({
-      email: 'acepta-sin-perfil@example.com',
-      password: SEED_PASSWORD,
-    });
+    const { uid } = await signInAsNewcomer('acepta-sin-perfil@example.com');
 
     await expect(acceptLegalVersions(uid, CURRENT_LEGAL_VERSIONS)).rejects.toBeInstanceOf(
       ProfileRequiredError,
@@ -281,7 +290,7 @@ describe('acceptLegalVersions', () => {
   });
 
   it('gives up with OfflineError past its deadline and accepts nothing afterwards', async () => {
-    const { uid } = await signInWithEmail(SEED_USERS.ownerD.email, SEED_PASSWORD);
+    const { uid } = await signInAs(SEED_USERS.ownerD);
     await rewindAcceptance(uid, 'privacy', behindInPrivacy);
 
     await expect(acceptLegalVersions(uid, CURRENT_LEGAL_VERSIONS, 0)).rejects.toBeInstanceOf(
@@ -295,9 +304,9 @@ describe('acceptLegalVersions', () => {
   it('lets a platform admin read the history of an account, and no other account', async () => {
     const target = SEED_USERS.ownerA.uid;
 
-    await signInWithEmail(SEED_USERS.admin.email, SEED_PASSWORD);
+    await signInAs(SEED_USERS.admin);
     const seenByAdmin = await listLegalAcceptances(target);
-    await signInWithEmail(SEED_USERS.customer.email, SEED_PASSWORD);
+    await signInAs(SEED_USERS.customer);
 
     expect(seenByAdmin.map((entry) => entry.document).toSorted()).toEqual(['privacy', 'terms']);
     await expect(listLegalAcceptances(target)).rejects.toBeInstanceOf(PermissionDeniedError);
@@ -306,7 +315,7 @@ describe('acceptLegalVersions', () => {
 
 describe('addresses', () => {
   it('adds, lists, edits and deletes addresses of the account', async () => {
-    const { uid } = await signInWithEmail(SEED_USERS.dispatcherA.email, SEED_PASSWORD);
+    const { uid } = await signInAs(SEED_USERS.dispatcherA);
 
     const first = await addAddress(uid, HOME);
     const second = await addAddress(uid, { ...HOME, label: 'Trabajo' });
@@ -324,7 +333,7 @@ describe('addresses', () => {
   });
 
   it('stops at the address limit and reuses a freed slot', async () => {
-    const { uid } = await signInWithEmail(SEED_USERS.driverA.email, SEED_PASSWORD);
+    const { uid } = await signInAs(SEED_USERS.driverA);
     await ADDRESS_SLOT_IDS.reduce(
       (previous) => previous.then(() => addAddress(uid, HOME)),
       Promise.resolve(''),
@@ -339,7 +348,7 @@ describe('addresses', () => {
   });
 
   it('cannot list or edit addresses of another account', async () => {
-    await signInWithEmail(SEED_USERS.customer.email, SEED_PASSWORD);
+    await signInAs(SEED_USERS.customer);
     const other = SEED_USERS.driverA.uid;
 
     await expect(listAddresses(other)).rejects.toBeInstanceOf(PermissionDeniedError);
@@ -349,10 +358,10 @@ describe('addresses', () => {
 
 describe('platform admin flag', () => {
   it('is true only for the seeded admin', async () => {
-    const admin = await signInWithEmail(SEED_USERS.admin.email, SEED_PASSWORD);
+    const admin = await signInAs(SEED_USERS.admin);
     expect(await isPlatformAdmin(admin.uid)).toBe(true);
 
-    const customer = await signInWithEmail(SEED_USERS.customer.email, SEED_PASSWORD);
+    const customer = await signInAs(SEED_USERS.customer);
     expect(await isPlatformAdmin(customer.uid)).toBe(false);
   });
 });

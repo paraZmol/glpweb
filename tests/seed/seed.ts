@@ -13,8 +13,8 @@ import { doc, Timestamp, writeBatch } from 'firebase/firestore';
 import { EMULATOR_HOST, EMULATOR_PROJECT_ID, emulatorPorts } from '../../scripts/lane-ports.mjs';
 import {
   SEED_CREATED_AT,
+  googleIdOf,
   SEED_DISTRIBUTORS,
-  SEED_PASSWORD,
   SEED_PRIVACY_VERSION,
   SEED_TERMS_VERSION,
   SEED_USERS,
@@ -182,18 +182,28 @@ async function authRequest(authPort: number, method: string, path: string, body?
   }
 }
 
+/**
+ * Accounts as Google sign-in leaves them (PLAN 2.1): linked to a Google id, without a password.
+ * The id is fixed here so the session of a seeded account keeps the uid its documents use.
+ */
 async function seedAccounts(projectId: string, authPort: number, clear: boolean) {
   if (clear) await authRequest(authPort, 'DELETE', `/emulator/v1/projects/${projectId}/accounts`);
-  const createPath = `/identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts`;
-  for (const user of Object.values(SEED_USERS)) {
-    await authRequest(authPort, 'POST', createPath, {
-      localId: user.uid,
-      email: user.email,
-      password: SEED_PASSWORD,
-      displayName: user.displayName,
-      emailVerified: user.emailVerified,
-    });
-  }
+  const users = Object.values(SEED_USERS).map((user) => ({
+    localId: user.uid,
+    email: user.email,
+    displayName: user.displayName,
+    emailVerified: user.emailVerified,
+    providerUserInfo: [
+      {
+        providerId: 'google.com',
+        rawId: googleIdOf(user.email),
+        email: user.email,
+        displayName: user.displayName,
+      },
+    ],
+  }));
+  const importPath = `/identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:batchCreate`;
+  await authRequest(authPort, 'POST', importPath, { users });
 }
 
 export async function seedEmulators(options: SeedOptions = {}): Promise<SeedSummary> {
@@ -232,7 +242,7 @@ if (isCommandLine) {
     .then((summary) => {
       process.stdout.write(
         `Seeded ${summary.projectId}: ${summary.users} accounts, ${summary.distributors} distributors.\n` +
-          `Every account uses the test password "${SEED_PASSWORD}".\n`,
+          'Every account signs in with Google: in the window of the emulator, pick it from the list.\n',
       );
     })
     .catch((error: unknown) => {

@@ -1,8 +1,9 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SEED_PASSWORD, SEED_USERS } from '../../tests/seed/data';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { SEED_USERS } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
-import { markEmailVerified, rewindAcceptance } from '../../tests/support/emulator';
-import { currentSession, refreshSession, registerWithEmail } from '../data/auth-repo';
+import { signInAs, signInAsNewcomer } from '../../tests/support/emulated-session';
+import { rewindAcceptance } from '../../tests/support/emulator';
+import { currentSession } from '../data/auth-repo';
 import {
   getDistributorBySlug,
   getDistributorPrivateSettings,
@@ -22,24 +23,16 @@ import {
   PermissionDeniedError,
 } from '../domain/tenancy/errors';
 import {
-  acceptCurrentTerms,
   acceptLegalDocuments,
   discardUnacceptedAccount,
   listLegalAcceptances,
-  registerAccount,
-  signIn,
   signOut,
   suggestedProfileOf,
 } from './auth/auth-actions';
-import { PENDING_PROFILE_KEY } from './auth/pending-profile';
 import { type FoundingInput, foundDistributor } from './tenancy/tenancy-actions';
 
-const REGISTRATION = {
-  email: 'acepta-terminos@example.com',
-  password: SEED_PASSWORD,
-  displayName: '  P. Acepta ',
-  phone: '900 000 097',
-};
+/** The account that founds at the end of this file: a newcomer that accepts first. */
+const FOUNDER = { email: 'acepta-terminos@example.com', displayName: 'P. Acepta' };
 
 const FOUNDING: FoundingInput = {
   name: 'Gas Demo Legal',
@@ -66,66 +59,42 @@ const unticked = false as unknown as true;
 const fieldsOf = (error: unknown) =>
   error instanceof InvalidInputError ? error.issues.map((issue) => issue.field) : error;
 
-/** The tab's own storage, which Node does not have. */
-function memoryStorage(): Storage {
-  const values = new Map<string, string>();
-  return {
-    get length() {
-      return values.size;
-    },
-    clear: () => values.clear(),
-    getItem: (key) => values.get(key) ?? null,
-    key: (index) => [...values.keys()][index] ?? null,
-    removeItem: (key) => void values.delete(key),
-    setItem: (key, value) => void values.set(key, value),
-  };
-}
-
-/** What following the link of the verification e-mail and coming back to the app does. */
-async function verifyEmail(uid: string) {
-  await markEmailVerified(uid);
-  const refreshed = await refreshSession();
-  if (!refreshed) throw new Error('The account should be signed in');
-  return refreshed;
-}
-
-let tabStorage: Storage;
-
 beforeAll(async () => {
   await seedEmulators();
-});
-
-beforeEach(() => {
-  tabStorage = memoryStorage();
-  vi.stubGlobal('sessionStorage', tabStorage);
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
 });
 
 afterAll(async () => {
   await signOut();
 });
 
-// PLAN 2.11: nothing is stored for an e-mail nobody proved is theirs.
-describe('registration — nothing on the server before the e-mail is verified', () => {
-  it('creates only the sign-in account: no profile, no consent, no name', async () => {
-    const session = await registerAccount(REGISTRATION);
+// PLAN 2.1, 2.11: the first sign-in creates the account and nothing else. The profile and the
+// two consents are created together, when the person accepts.
+describe('a first sign-in — nothing is stored until the person accepts', () => {
+  it('creates only the sign-in account: no profile, no consent', async () => {
+    const session = await signInAsNewcomer('primera-vez@example.com', 'P. Primera');
 
-    expect(session).toMatchObject({ emailVerified: false, displayName: null });
+    expect(session).toMatchObject({ emailVerified: true, displayName: 'P. Primera' });
     expect(await getUserProfile(session.uid)).toBeNull();
+    expect(await listLegalAcceptances(session.uid)).toEqual([]);
   });
 
-  it('keeps what the person typed in the tab, to offer it on the terms step', async () => {
-    const session = await registerAccount({ ...REGISTRATION, email: 'recuerda@example.com' });
+  it('offers the name Google gave for the person to confirm, and no phone', async () => {
+    const session = await signInAsNewcomer('primera-vez@example.com', 'P. Primera');
 
-    expect(suggestedProfileOf(session)).toEqual({ displayName: 'P. Acepta', phone: '900000097' });
-    expect(tabStorage.getItem(PENDING_PROFILE_KEY)).toContain(session.uid);
+    expect(suggestedProfileOf(session)).toEqual({ displayName: 'P. Primera', phone: null });
+    expect(suggestedProfileOf({ ...session, displayName: null })).toEqual({
+      displayName: '',
+      phone: null,
+    });
   });
 
-  it('refuses the acceptance, and the profile itself, while the e-mail is not verified', async () => {
-    const session = await signIn(REGISTRATION.email, REGISTRATION.password);
+  it('refuses the acceptance, and the profile itself, without a confirmed e-mail', async () => {
+    const session = await signInAs({
+      email: 'sin-confirmar@example.com',
+      displayName: 'S. Confirmar',
+      emailVerified: false,
+    });
+    expect(session.emailVerified).toBe(false);
 
     await expect(acceptLegalDocuments(session.uid)).rejects.toBeInstanceOf(EmailNotVerifiedError);
     await expect(
@@ -134,31 +103,17 @@ describe('registration — nothing on the server before the e-mail is verified',
     expect(await getUserProfile(session.uid)).toBeNull();
   });
 
-  it.each([
-    ['a blank name', { displayName: '   ' }, ['displayName']],
-    ['a phone that is not a mobile', { phone: '12345' }, ['phone']],
-  ])('creates no account at all with %s', async (_case, change, expected) => {
-    await signOut();
-    const email = 'no-se-crea@example.com';
+  it('creates the profile with both consents and their history from what the step sends', async () => {
+    const session = await signInAsNewcomer('confirma-datos@example.com', 'P. De Google');
 
-    const failure = await registerAccount({ ...REGISTRATION, email, ...change }).catch(
-      (error: unknown) => error,
-    );
-
-    expect(fieldsOf(failure)).toEqual(expected);
-    expect(currentSession()).toBeNull();
-    await expect(signIn(email, REGISTRATION.password)).rejects.toThrow();
-  });
-
-  it('creates the profile with both consents once verified, from what was typed', async () => {
-    const registered = await registerAccount({ ...REGISTRATION, email: 'verifica@example.com' });
-    const session = await verifyEmail(registered.uid);
-
-    await acceptLegalDocuments(session.uid);
+    await acceptLegalDocuments(session.uid, {
+      displayName: ' P. Corregida ',
+      phone: '900 000 097',
+    });
 
     const profile = await getUserProfile(session.uid);
     expect(profile).toMatchObject({
-      displayName: 'P. Acepta',
+      displayName: 'P. Corregida',
       phone: '900000097',
       terms: { version: TERMS_VERSION },
       privacy: { version: PRIVACY_VERSION },
@@ -168,27 +123,12 @@ describe('registration — nothing on the server before the e-mail is verified',
       `privacy-${PRIVACY_VERSION}`,
       `terms-${TERMS_VERSION}`,
     ]);
-    // What the tab kept is gone, and the session now carries the name.
-    expect(tabStorage.getItem(PENDING_PROFILE_KEY)).toBeNull();
-    expect(currentSession()?.displayName).toBe('P. Acepta');
-  });
-
-  it('prefers the details the terms step sends over what the tab kept', async () => {
-    const session = await verifyEmail(
-      (await signIn(REGISTRATION.email, REGISTRATION.password)).uid,
-    );
-
-    await acceptLegalDocuments(session.uid, { displayName: ' P. Corregida ', phone: null });
-
-    expect(await getUserProfile(session.uid)).toMatchObject({
-      displayName: 'P. Corregida',
-      phone: null,
-    });
+    // The session now carries the name the person confirmed, not the one Google gave.
+    expect(currentSession()?.displayName).toBe('P. Corregida');
   });
 
   it('refuses invalid details on the terms step and creates nothing', async () => {
-    const registered = await registerAccount({ ...REGISTRATION, email: 'detalles@example.com' });
-    const session = await verifyEmail(registered.uid);
+    const session = await signInAsNewcomer('detalles@example.com');
 
     const failure = await acceptLegalDocuments(session.uid, {
       displayName: '',
@@ -198,21 +138,11 @@ describe('registration — nothing on the server before the e-mail is verified',
     expect(fieldsOf(failure)).toEqual(['displayName', 'phone']);
     expect(await getUserProfile(session.uid)).toBeNull();
   });
-
-  it('never hands what one account typed to another on the same tab', async () => {
-    await registerAccount({ ...REGISTRATION, email: 'primera@example.com' });
-    const other = await signIn(SEED_USERS.noProfile.email, SEED_PASSWORD);
-
-    expect(suggestedProfileOf(other)).toEqual({
-      displayName: SEED_USERS.noProfile.displayName,
-      phone: null,
-    });
-  });
 });
 
 describe('acceptLegalDocuments', () => {
   it('does not invent a profile for an account that never accepted', async () => {
-    const session = await signIn(SEED_USERS.noProfile.email, SEED_PASSWORD);
+    const session = await signInAs(SEED_USERS.noProfile);
 
     const profile = await getUserProfile(session.uid);
 
@@ -221,7 +151,7 @@ describe('acceptLegalDocuments', () => {
   });
 
   it('creates the missing profile, named after the session, once the person accepts', async () => {
-    const session = await signIn(SEED_USERS.noProfile.email, SEED_PASSWORD);
+    const session = await signInAs(SEED_USERS.noProfile);
 
     await acceptLegalDocuments(session.uid);
 
@@ -236,7 +166,7 @@ describe('acceptLegalDocuments', () => {
 
   // PLAN 2.11: only the pending text is renewed; the other keeps the date it was accepted.
   it('renews the pending text of an account that already has a profile, and only that one', async () => {
-    const session = await signIn(SEED_USERS.customer.email, SEED_PASSWORD);
+    const session = await signInAs(SEED_USERS.customer);
     await rewindAcceptance(session.uid, 'privacy', BEHIND_IN_PRIVACY);
     const before = await getUserProfile(session.uid);
 
@@ -251,7 +181,7 @@ describe('acceptLegalDocuments', () => {
   });
 
   it('changes no date when the account has nothing pending', async () => {
-    const session = await signIn(SEED_USERS.ownerB.email, SEED_PASSWORD);
+    const session = await signInAs(SEED_USERS.ownerB);
     const before = await getUserProfile(session.uid);
 
     await acceptLegalDocuments(session.uid);
@@ -259,19 +189,8 @@ describe('acceptLegalDocuments', () => {
     expect(await getUserProfile(session.uid)).toEqual(before);
   });
 
-  it('still answers to its old name', async () => {
-    const session = await signIn(SEED_USERS.dispatcherA.email, SEED_PASSWORD);
-    await rewindAcceptance(session.uid, 'privacy', BEHIND_IN_PRIVACY);
-    const seededAt = (await getUserProfile(session.uid))?.privacy?.acceptedAt.getTime() ?? 0;
-
-    await acceptCurrentTerms(session.uid);
-
-    const renewedAt = (await getUserProfile(session.uid))?.privacy?.acceptedAt.getTime() ?? 0;
-    expect(renewedAt).toBeGreaterThan(seededAt);
-  });
-
   it('refuses to accept in the name of another account', async () => {
-    await signIn(SEED_USERS.customer.email, SEED_PASSWORD);
+    await signInAs(SEED_USERS.customer);
 
     await expect(acceptLegalDocuments(SEED_USERS.noProfile.uid)).rejects.toMatchObject({
       code: 'notSignedIn',
@@ -279,10 +198,10 @@ describe('acceptLegalDocuments', () => {
   });
 });
 
-// PLAN 2.9: "No acepto: eliminar mi cuenta".
+// PLAN 2.9: "No quiero continuar: eliminar mi cuenta".
 describe('discardUnacceptedAccount', () => {
   it('refuses an account that already has a profile, and leaves it signed in', async () => {
-    const session = await signIn(SEED_USERS.customer.email, SEED_PASSWORD);
+    const session = await signInAs(SEED_USERS.customer);
 
     await expect(discardUnacceptedAccount(session.uid)).rejects.toBeInstanceOf(AccountInUseError);
 
@@ -291,40 +210,32 @@ describe('discardUnacceptedAccount', () => {
   });
 
   it('refuses to act on any account other than the signed-in one', async () => {
-    await signIn(SEED_USERS.customer.email, SEED_PASSWORD);
+    await signInAs(SEED_USERS.customer);
 
     await expect(discardUnacceptedAccount(SEED_USERS.unverified.uid)).rejects.toMatchObject({
       code: 'notSignedIn',
     });
   });
 
-  it('removes an account that never accepted: it can no longer sign in', async () => {
-    const fresh = await registerWithEmail({
-      email: 'no-acepta@example.com',
-      password: SEED_PASSWORD,
-    });
+  it('removes an account that never accepted: coming back starts from nothing', async () => {
+    const fresh = await signInAsNewcomer('no-acepta@example.com');
 
     await discardUnacceptedAccount(fresh.uid);
 
     expect(currentSession()).toBeNull();
-    await expect(signIn('no-acepta@example.com', SEED_PASSWORD)).rejects.toThrow();
-  });
-
-  it('forgets what a registration typed when the account is discarded before verifying', async () => {
-    const fresh = await registerAccount({ ...REGISTRATION, email: 'se-arrepiente@example.com' });
-    expect(tabStorage.getItem(PENDING_PROFILE_KEY)).not.toBeNull();
-
-    await discardUnacceptedAccount(fresh.uid);
-
-    expect(tabStorage.getItem(PENDING_PROFILE_KEY)).toBeNull();
+    const again = await signInAsNewcomer('no-acepta@example.com');
+    expect(again.uid).not.toBe(fresh.uid);
+    expect(await getUserProfile(again.uid)).toBeNull();
   });
 });
 
 describe('terms, authority and verification data when founding a distributor', () => {
-  const founder = async () => {
-    const session = await signIn(REGISTRATION.email, REGISTRATION.password);
-    return session;
-  };
+  const founder = () => signInAs(FOUNDER);
+
+  beforeAll(async () => {
+    const session = await founder();
+    await acceptLegalDocuments(session.uid, { displayName: FOUNDER.displayName, phone: null });
+  });
 
   it.each([
     ['the terms', { acceptTerms: unticked }, ['acceptTerms']],

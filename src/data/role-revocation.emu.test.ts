@@ -7,10 +7,11 @@ import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, updateDoc } from 'firebase/firestore';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { EMULATOR_HOST, EMULATOR_PROJECT_ID, emulatorPorts } from '../../scripts/lane-ports.mjs';
-import { SEED_DISTRIBUTORS, SEED_PASSWORD, SEED_USERS } from '../../tests/seed/data';
+import { SEED_DISTRIBUTORS, SEED_USERS } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
+import { renewSession, signInAs } from '../../tests/support/emulated-session';
 import { PermissionDeniedError } from '../domain/tenancy/errors';
-import { refreshSession, signInWithEmail, signOutSession } from './auth-repo';
+import { signOutSession } from './auth-repo';
 import { paths } from './paths';
 import {
   getListingReview,
@@ -62,7 +63,7 @@ let stopWatching = () => {};
 
 beforeAll(async () => {
   await seedEmulators();
-  await signInWithEmail(ADMIN.email, SEED_PASSWORD);
+  await signInAs(ADMIN);
   stopWatching = watchListingReview(
     PENDING.id,
     (review) => reviews.push(review),
@@ -135,6 +136,6 @@ describe('an account that lost the platform admin role', () => {
 
   // Last on purpose: it ends the session the tests above use.
   it('loses the session when it tries to renew it: its refresh tokens were revoked', async () => {
-    await expect(refreshSession()).rejects.toThrow();
+    await expect(renewSession()).rejects.toThrow();
   });
 });
