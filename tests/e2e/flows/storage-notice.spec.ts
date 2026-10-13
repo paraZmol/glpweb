@@ -8,7 +8,7 @@ import { SEED_CUSTOMER_LOCATION, SEED_DISTRIBUTORS } from '../../seed/data';
 import { DESKTOP, test } from '../support/actors';
 import { createTestAccount, uniqueTag } from '../support/emulator-admin';
 import { foundDistributor } from '../support/founding';
-import { signInAsSeedUser, signInWithPassword } from '../support/sign-in';
+import { signInAsSeedUser, signInAs } from '../support/sign-in';
 
 test.skip(
   process.env.E2E_EMULATORS !== 'true',
@@ -76,10 +76,10 @@ test('office: "Guardar cambios" at the end of the listing is free, and it saves'
   const tag = uniqueTag(testInfo);
   const account = await createTestAccount(tag);
   const founder = await actors.open(DESKTOP);
-  await signInWithPassword(founder.page, account.email, '/inicio');
+  await signInAs(founder.page, account, '/inicio');
   await foundDistributor(founder.page, { name: `Gas Aviso ${tag}`, slug: `aviso-${tag}` });
 
-  await signInWithPassword(page, account.email, '/central');
+  await signInAs(page, account, '/central');
   await page.goto('/central/ficha');
   await page.getByLabel('Dirección de la planta').fill('Av. Ensayo 702');
   const save = page.getByRole('button', { name: 'Guardar cambios' });

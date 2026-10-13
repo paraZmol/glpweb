@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { SEED_DISTRIBUTORS, SEED_PASSWORD, SEED_USERS } from '../seed/data';
+import { SEED_DISTRIBUTORS, SEED_USERS } from '../seed/data';
 import { FOUNDING_VERIFICATION } from './support/founding';
+import { signInHere } from './support/sign-in';
 import { dismissStorageNotice } from './support/storage-notice';
 
 test.skip(
@@ -27,9 +28,7 @@ test('a verified account founds a distributor and lands on its office', async ({
 
   // By hand, not with the helper: once it has founded, this account lands on its office.
   await page.goto('/ingresar?desde=%2Fdistribuidora%2Fnueva');
-  await page.getByLabel('Correo', { exact: true }).fill(SEED_USERS.founder.email);
-  await page.getByLabel('Contraseña', { exact: true }).fill(SEED_PASSWORD);
-  await page.getByRole('button', { name: 'Ingresar', exact: true }).click();
+  await signInHere(page, SEED_USERS.founder);
   await expect(page).toHaveURL(/\/distribuidora\/nueva$/);
 
   // Step 1: business. The link is proposed from the name and checked while typing.
@@ -137,9 +136,7 @@ test('a verified account founds a distributor and lands on its office', async ({
 test('the wizard keeps what was typed when going back a step', async ({ page }) => {
   await dismissStorageNotice(page);
   await page.goto('/ingresar?desde=%2Fdistribuidora%2Fnueva');
-  await page.getByLabel('Correo', { exact: true }).fill(SEED_USERS.customer.email);
-  await page.getByLabel('Contraseña', { exact: true }).fill(SEED_PASSWORD);
-  await page.getByRole('button', { name: 'Ingresar', exact: true }).click();
+  await signInHere(page, SEED_USERS.customer);
   await expect(page).toHaveURL(/\/distribuidora\/nueva$/);
 
   await page.getByLabel('Nombre de la distribuidora').fill('Gas Ida y Vuelta');

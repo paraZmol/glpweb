@@ -6,7 +6,7 @@ import {
   writeDocument,
 } from '../support/emulator-admin';
 import { foundDistributor } from '../support/founding';
-import { signInWithPassword } from '../support/sign-in';
+import { signInAs } from '../support/sign-in';
 import { dismissStorageNotice } from '../support/storage-notice';
 
 test.skip(
@@ -28,7 +28,7 @@ test('an account founds three distributors and the fourth attempt shows the cap'
   const tag = uniqueTag(testInfo);
   const account = await createTestAccount(tag);
   await dismissStorageNotice(page);
-  await signInWithPassword(page, account.email, '/inicio');
+  await signInAs(page, account, '/inicio');
 
   for (const ordinal of ORDINALS) {
     await foundDistributor(page, {
@@ -62,7 +62,7 @@ test('a suspended distributor that is not the selected one stops the sign-up bef
   const tag = uniqueTag(testInfo);
   const account = await createTestAccount(tag);
   await dismissStorageNotice(page);
-  await signInWithPassword(page, account.email, '/inicio');
+  await signInAs(page, account, '/inicio');
   const first = { name: `Gas Bloqueo uno ${tag}`, slug: `bloqueo-uno-${tag}` };
   await foundDistributor(page, first);
   await foundDistributor(page, { name: `Gas Bloqueo dos ${tag}`, slug: `bloqueo-dos-${tag}` });

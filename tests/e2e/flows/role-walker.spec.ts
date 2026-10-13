@@ -4,8 +4,9 @@
 // expects. The ones the app does not do yet are marked `test.fail` with the reason: the day the
 // app is fixed the test turns "unexpectedly passing" and the mark is removed. Fixed since then
 // (their tests stay as plain tests): the back button in the sign-up of a distributor, the
-// storage notice over "Guardar cambios", the answer of /restablecer, the 404 page with a session
-// and the password of spaces.
+// storage notice over "Guardar cambios" and the 404 page with a session. Two findings of that
+// pass were about the password (the answer of /restablecer, a password of spaces): their tests
+// left with the screens when sign-in became Google only (PLAN 2.1, 2026-10-12).
 // The groups marked "second pass" come from the pass of 2026-10-12, over the history of the
 // sign-up wizard, the live review of the platform and the live office. Fixed since (plain tests
 // now): the double click on "Aprobar" and on "Continuar", the question before sending a listing
@@ -24,7 +25,7 @@ import {
   writeDocument,
 } from '../support/emulator-admin';
 import { foundDistributor, FOUNDING_PATH, FOUNDING_VERIFICATION } from '../support/founding';
-import { signInAsSeedUser, signInWithPassword } from '../support/sign-in';
+import { signInAs, signInAsSeedUser } from '../support/sign-in';
 import { dismissStorageNotice } from '../support/storage-notice';
 
 test.skip(
@@ -78,7 +79,7 @@ async function foundedOffice(actors: Actors, tag: string, device: Device = DESKT
   const name = `Gas Recorrido ${tag}`;
   const slug = `recorrido-${tag}`;
   const owner = await actors.open(device);
-  await signInWithPassword(owner.page, account.email, '/inicio');
+  await signInAs(owner.page, account, '/inicio');
   await foundDistributor(owner.page, { name, slug });
   const link = await readDocument(`slugs/${slug}`);
   return { account, name, slug, owner, id: String(link?.distributorId) };
@@ -95,7 +96,7 @@ test.describe('sign-up of a distributor: what is typed survives the browser', ()
   }, testInfo) => {
     const tag = uniqueTag(testInfo);
     const account = await createTestAccount(tag);
-    await signInWithPassword(page, account.email, '/inicio');
+    await signInAs(page, account, '/inicio');
     await reachSecondStep(page, `Gas Atrás ${tag}`, `atras-${tag}`);
 
     await page.goBack();
@@ -115,7 +116,7 @@ test.describe('sign-up of a distributor: what is typed survives the browser', ()
     );
     const tag = uniqueTag(testInfo);
     const account = await createTestAccount(tag);
-    await signInWithPassword(page, account.email, '/inicio');
+    await signInAs(page, account, '/inicio');
     await reachSecondStep(page, `Gas Recarga ${tag}`, `recarga-${tag}`);
 
     await page.reload();
@@ -227,7 +228,7 @@ test.describe('review of a listing with two people at once', () => {
     const context = await browser.newContext(PHONE);
     try {
       const page = await context.newPage();
-      await signInWithPassword(page, account.email, '/central');
+      await signInAs(page, account, '/central');
       await page.goto('/central/ficha');
       await expect(page.getByRole('region', { name: 'Aviso de almacenamiento' })).toBeVisible();
       await page.getByLabel('Dirección de la planta').fill('Av. Ensayo 701');
@@ -246,21 +247,6 @@ test.describe('small things a person meets on the way', () => {
     await dismissStorageNotice(page);
   });
 
-  // PLAN 2.1. MEDIO: the screen has no password, and the answer tells apart the addresses
-  // that have an account from the ones that do not.
-  test('asking to reset the password of an unknown address answers like a known one', async ({
-    page,
-  }, testInfo) => {
-    await page.goto('/restablecer');
-    await page
-      .getByLabel('Correo', { exact: true })
-      .fill(`nadie-${uniqueTag(testInfo)}@example.com`);
-
-    await page.getByRole('button', { name: 'Enviar enlace' }).click();
-
-    await expect(heading(page)).toContainText('Revisa tu correo');
-  });
-
   // PLAN 2.4. BAJO.
   test('the "not found" page does not offer "Ingresar" to somebody already signed in', async ({
     page,
@@ -271,24 +257,6 @@ test.describe('small things a person meets on the way', () => {
 
     await expect(heading(page)).toContainText('no existe');
     await expect(page.getByRole('main').getByRole('link', { name: 'Ingresar' })).toHaveCount(0);
-  });
-
-  // PLAN 2.1. BAJO.
-  test('the registration refuses a password made only of spaces', async ({ page }, testInfo) => {
-    await page.goto('/registro');
-    await page.getByLabel('Nombre', { exact: true }).fill('Z. Prueba');
-    await page
-      .getByLabel('Correo', { exact: true })
-      .fill(`espacios-${uniqueTag(testInfo)}@example.com`);
-    await page.getByLabel('Contraseña', { exact: true }).fill(' '.repeat(8));
-
-    await page.getByRole('button', { name: 'Crear cuenta', exact: true }).click();
-
-    await expect(page.getByLabel('Contraseña', { exact: true })).toHaveAttribute(
-      'aria-invalid',
-      'true',
-    );
-    await expect(page).toHaveURL(/\/registro$/);
   });
 });
 
@@ -310,7 +278,7 @@ test.describe('second pass: the sign-up wizard and the history of the browser', 
     );
     const tag = uniqueTag(testInfo);
     const account = await createTestAccount(tag);
-    await signInWithPassword(page, account.email, '/inicio');
+    await signInAs(page, account, '/inicio');
     await foundDistributor(page, { name: `Gas Vuelta ${tag}`, slug: `vuelta-${tag}` });
 
     await page.reload();
@@ -329,7 +297,7 @@ test.describe('second pass: the sign-up wizard and the history of the browser', 
   }, testInfo) => {
     const tag = uniqueTag(testInfo);
     const account = await createTestAccount(tag);
-    await signInWithPassword(page, account.email, '/inicio');
+    await signInAs(page, account, '/inicio');
     await page.goto(FOUNDING_PATH);
     await page.getByLabel('Nombre de la distribuidora').fill(`Gas Doble ${tag}`);
     await page.getByLabel('Enlace de tu página').fill(`doble-${tag}`);
@@ -580,7 +548,7 @@ test.describe('second pass: a suspended distributor', () => {
       updatedAt: now,
     });
 
-    await signInWithPassword(page, account.email, '/reparto');
+    await signInAs(page, account, '/reparto');
 
     await expect(heading(page)).toBeVisible();
     // Not the name of the seeded distributor ("Gas Demo Suspendida"): a sentence about its state.
@@ -608,7 +576,7 @@ test.describe('second pass: the welcome of the office and the long lists of the 
   }, testInfo) => {
     const tag = uniqueTag(testInfo);
     const account = await createTestAccount(tag);
-    await signInWithPassword(page, account.email, '/inicio');
+    await signInAs(page, account, '/inicio');
     await foundDistributor(page, { name: `Gas Saludo ${tag}`, slug: `saludo-${tag}` });
     await expect(page.getByText(WELCOME)).toBeVisible();
 

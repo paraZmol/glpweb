@@ -10,7 +10,7 @@ import {
   FOUNDING_PLANT,
   FOUNDING_TERMS_BOX,
 } from '../support/founding';
-import { signInWithPassword } from '../support/sign-in';
+import { signInAs } from '../support/sign-in';
 
 test.skip(
   process.env.E2E_EMULATORS !== 'true',
@@ -56,7 +56,7 @@ test('two accounts send the same link at once: one founds, the other keeps its f
     (['uno', 'dos'] as const).map(async (ordinal) => {
       const account = await createTestAccount(`${tag}-${ordinal}`);
       const actor = await actors.open(DESKTOP);
-      await signInWithPassword(actor.page, account.email, '/inicio');
+      await signInAs(actor.page, account, '/inicio');
       await actor.page.goto(FOUNDING_PATH);
       const name = `Gas Carrera ${ordinal} ${tag}`;
       await fillFoundingWizard(actor.page, { name, slug });
@@ -116,7 +116,7 @@ test('two accounts send the same link at once: one founds, the other keeps its f
 async function twoTabsOneSlotLeft(actors: Actors, tag: string) {
   const account = await createTestAccount(tag);
   const { context, page: firstTab, errors } = await actors.open(DESKTOP);
-  await signInWithPassword(firstTab, account.email, '/inicio');
+  await signInAs(firstTab, account, '/inicio');
   await foundDistributor(firstTab, { name: `Gas Tope uno ${tag}`, slug: `tope-uno-${tag}` });
   await foundDistributor(firstTab, { name: `Gas Tope dos ${tag}`, slug: `tope-dos-${tag}` });
   const secondTab = await context.newPage();

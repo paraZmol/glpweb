@@ -46,7 +46,7 @@ test('signing out in one tab ends the session and wipes the device in both', asy
   await expect(first).toHaveURL(/\/$/);
   await expect(first.getByRole('banner').getByRole('link', { name: 'Ingresar' })).toBeVisible();
   await expect(second).toHaveURL(/\/ingresar/);
-  await expect(second.getByRole('button', { name: 'Ingresar', exact: true })).toBeVisible();
+  await expect(second.getByRole('button', { name: 'Continuar con Google' })).toBeVisible();
   await expectDeviceCleared(first);
   await expectDeviceCleared(second);
   const cache = await deviceStorageDump(first, FIRESTORE_CACHE_DB);
