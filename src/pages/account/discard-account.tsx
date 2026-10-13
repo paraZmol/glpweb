@@ -36,8 +36,9 @@ type DiscardAccountProps = {
 };
 
 /**
- * "No acepto: eliminar mi cuenta" (PLAN 2.9): the way out for somebody who signed in for the
- * first time and does not accept the terms. Only for an account without a profile. It asks once more before deleting, because it cannot be undone.
+ * "No quiero continuar: eliminar mi cuenta" (PLAN 2.1, 2.9): the way out for somebody who signed
+ * in for the first time and does not accept the terms. Only for an account without a profile.
+ * It asks once more before deleting, because it cannot be undone.
  * When it works the session ends and the app restarts by itself, signed out.
  */
 export function DiscardAccount({ uid, disabled }: DiscardAccountProps) {

@@ -109,8 +109,9 @@ export function registerPathFrom(from: string | null | undefined): string {
 const NOT_A_DESTINATION: readonly string[] = [ROUTES.acceptTerms, ROUTES.appEntry, ROUTES.home];
 
 /**
- * Where an account was going when the pending step (accept the terms) stood in its way. It travels in the navigation state, so the addresses of the steps stay clean and it
- * lasts as long as the tab (PLAN 2.11). Undefined when there is nowhere special to go.
+ * Where an account was going when the pending step (accept the terms) stood in its way. It
+ * travels in the navigation state, so the addresses of the steps stay clean and it lasts as long
+ * as the tab (PLAN 2.11). Undefined when there is nowhere special to go.
  */
 export function destinationState(from: string | null | undefined): { after: string } | undefined {
   const target = safeReturnPath(from);

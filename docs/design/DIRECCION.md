@@ -152,7 +152,7 @@ Se diseñan con las piezas de `ui-system` antes de construirlas; cada una pasa p
 |---|---|---|---|
 | Pedido, paso 2: dónde (pin) | 4.1, 4.2 | mapa a pantalla completa + hoja, como el seguimiento | pin fijo al centro y mapa que se mueve debajo, dirección detectada, campo de referencia, "Usar mi ubicación", aviso de fuera de cobertura, direcciones guardadas |
 | Pedido, paso 3: confirmar | 4.2 | resumen "Tu pedido" de la página de la distribuidora | líneas con balón, vacíos a entregar, medio de pago (tarjetas, no desplegable), "con cuánto pagas" para el vuelto, total, un botón "Confirmar pedido", y la confirmación (marca que se dibuja) |
-| Acceso y registro | 2.1 | tarjeta destacada centrada, logo arriba | correo o Google, verificación de correo, errores en el campo |
+| Acceso y registro | 2.1 | tarjeta destacada centrada, logo arriba | solo "Continuar con Google" (PLAN 2.1, 2026-10-12): un botón, su línea legal y el error bajo el botón; `/registro` es la misma pantalla con otro título |
 | Alta de distribuidora | 2.2 | asistente de pasos con vista previa en vivo (el celular de muestra de la portada) | nombre y enlace (disponibilidad del slug), WhatsApp, planta con pin, radio de cobertura sobre el mapa, color (muestras + hex con la validación de §6) y logo |
 | Seguimiento sin mapa | 6.2 | hoja del seguimiento a página completa | lo mismo sin mapa; también es la alternativa cuando no hay posición |
 | Aviso de pedido nuevo (repartidor) | 4.5 | tarjeta en tinta con botón crítico "Aceptar" | cuenta atrás en anillo, distancia, artículos, cobro; rechazo discreto |
