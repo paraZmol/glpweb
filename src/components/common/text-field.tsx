@@ -13,7 +13,7 @@ export type TextFieldProps = Omit<ComponentProps<'input'>, 'id' | 'className'> &
   error?: string;
   /** Standing help under the field ("Mínimo 8 caracteres."). May carry a link. */
   hint?: ReactNode;
-  /** Control placed inside the field, at its right edge (show password, clear…). */
+  /** Control placed inside the field, at its right edge (clear, copy…). */
   trailing?: ReactNode;
   className?: string;
 };

@@ -51,7 +51,7 @@ export function acceptanceEntryId(text: AcceptedText, version: string): string {
   return `${text}-${version}`;
 }
 
-/** The versions an account accepts in one go: the two boxes of the registration form. */
+/** The versions an account accepts in one go: the two boxes of the terms step. */
 export interface LegalVersions {
   termsVersion: string;
   privacyVersion: string;

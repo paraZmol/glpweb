@@ -6,9 +6,8 @@ import { useSignedInSession } from './use-session';
 
 export interface AccountProfile {
   /**
-   * Null when the account has no profile yet: a first Google sign-in, or a registration that
-   * lost the connection before its profile was stored. It is never created behind the scenes,
-   * because a profile carries the acceptance of the terms.
+   * Null when the account has no profile yet: it signed in and has not accepted the terms. It
+   * is never created behind the scenes, because a profile carries the acceptance of the terms.
    */
   profile: UserProfile | null;
   /**

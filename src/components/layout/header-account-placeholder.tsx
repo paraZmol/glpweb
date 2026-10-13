@@ -4,7 +4,7 @@ import { HeaderEntryLinks, isEntryScreen } from './header-entry-links';
 
 /**
  * Holds the place of the header button (40 px pill) while the session is being restored. On the
- * sign-in and registration screens there is nothing to wait for: an account that turns out to be
+ * two entry screens there is nothing to wait for: an account that turns out to be
  * signed in is taken away from them, so the link a visitor needs is shown at once instead of a
  * pill that stays empty for as long as the session takes.
  */
