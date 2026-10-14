@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AccountInUseError,
   DistributorLimitError,
+  EmailNotVerifiedError,
   InvalidInputError,
   PermissionDeniedError,
   SlugTakenError,
@@ -51,6 +52,8 @@ describe('describeTenancyError', () => {
     [new DistributorLimitError(3), 'hasta 3'],
     [new PermissionDeniedError(), 'solo lectura'],
     [new AccountInUseError(), 'Contacto'],
+    // It is said where the session can be closed: these screens have no button for it.
+    [new EmailNotVerifiedError(), 'Ve a Cuenta, cierra la sesión'],
     [new Error('unexpected'), 'Vuelve a intentar'],
   ])('explains %o', (error, fragment) => {
     expect(describeTenancyError(error)).toContain(fragment);

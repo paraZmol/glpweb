@@ -63,7 +63,9 @@ export function describeTenancyError(error: unknown): string {
   if (error instanceof SlugTakenError) return 'Ese enlace ya lo usa otra distribuidora.';
   if (error instanceof InvalidInputError) return 'Revisa los datos marcados.';
   if (error instanceof EmailNotVerifiedError) {
-    return 'No pudimos confirmar tu correo con Google. Cierra sesión e inténtalo de nuevo.';
+    // Said on screens without a way out of the session (the sign-up of a distributor, the
+    // review of the platform): it says where that is.
+    return 'No pudimos confirmar tu correo con Google. Ve a Cuenta, cierra la sesión y vuelve a ingresar.';
   }
   if (error instanceof DistributorLimitError) {
     return `Una cuenta puede registrar hasta ${error.limit} distribuidoras.`;
