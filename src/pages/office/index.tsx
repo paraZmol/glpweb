@@ -2,6 +2,7 @@ import { AppShell } from '@/components/layout/app-shell';
 import { RequireAccess } from '@/components/layout/require-access';
 import { useLiveDistributor } from '@/features/tenancy/live-distributor';
 
+export { CatalogPage } from './catalog';
 export { EditProfilePage } from './edit-profile';
 export { OfficeHomePage } from './home';
 

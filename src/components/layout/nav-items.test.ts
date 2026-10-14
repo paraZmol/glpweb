@@ -56,12 +56,13 @@ describe('navItemsFor', () => {
     );
   });
 
+  // PLAN 3.1: the catalogue joins the office and the driver areas.
   it.each([
-    ['office', 'Monitor'],
-    ['driver', 'Reparto'],
-    ['platform', 'Distribuidoras'],
-  ] as const)('keeps the %s area to its own screen and the account', (area, own) => {
-    expect(labels(area, { role: 'owner', isPlatformAdmin: true })).toEqual([own, 'Cuenta']);
+    ['office', ['Monitor', 'Catálogo', 'Cuenta']],
+    ['driver', ['Reparto', 'Catálogo', 'Cuenta']],
+    ['platform', ['Distribuidoras', 'Cuenta']],
+  ] as const)('keeps the %s area to its own screens and the account', (area, expected) => {
+    expect(labels(area, { role: 'owner', isPlatformAdmin: true })).toEqual(expected);
   });
 });
 

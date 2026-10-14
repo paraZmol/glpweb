@@ -286,15 +286,17 @@ describe('home of each area: an empty state that says what is going on', () => {
     expect(tags(html, 'a').some((tag) => tag.includes('href="/distribuidora/nueva"'))).toBe(true);
   });
 
-  // PLAN 2.2: what the owner sees after founding.
-  it('lists what is left to set up, with the catalogue and the staff marked as coming soon', () => {
+  // PLAN 2.2 and 3.1: what the owner sees after founding.
+  it('lists what is left to set up: the catalogue is a real task, the staff comes soon', () => {
     const html = inArea('office', <OfficeHomePage />, OWNER);
     const text = textOf(html);
 
     expect(text).toContain('Completa tu distribuidora');
     expect(text).toContain('Carga tu catálogo');
     expect(text).toContain('Suma a tu personal');
-    expect(count(html, /Llega pronto/)).toBe(2);
+    expect(count(html, /Llega pronto/)).toBe(1);
+    expect(text).toContain('Cargar catálogo');
+    expect(tags(html, 'a').some((tag) => tag.includes('href="/central/catalogo"'))).toBe(true);
     expect(tags(html, 'a').some((tag) => tag.includes('href="/d/gas-demo-norte"'))).toBe(true);
   });
 

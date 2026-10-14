@@ -2,6 +2,7 @@ import { AppShell } from '@/components/layout/app-shell';
 import { RequireAccess } from '@/components/layout/require-access';
 import { useLiveDistributor } from '@/features/tenancy/live-distributor';
 
+export { DriverCatalogPage } from './catalog';
 export { DriverHomePage } from './home';
 
 export const DriverGate = () => <RequireAccess gate="driver" />;

@@ -20,9 +20,13 @@ export const ROUTES = {
   account: '/cuenta',
   newDistributor: '/distribuidora/nueva',
   driverHome: '/reparto',
+  /** The catalogue, read-only, for the driver (PLAN 3.1). */
+  driverCatalog: '/reparto/catalogo',
   officeHome: '/central',
   /** The owner edits the public profile of the distributor (PLAN 2.11). */
   officeProfile: '/central/ficha',
+  /** Products and prices: the owner edits them, the dispatcher reads them (PLAN 3.1). */
+  officeCatalog: '/central/catalogo',
   platformHome: '/plataforma',
   /** One listing under review; build a real path with `platformListingPath`. */
   platformListing: '/plataforma/altas/:distributorId',
@@ -133,7 +137,11 @@ export type TransitionDirection = 'forward' | 'back' | 'fade';
 /** The two screens that list distributors: the page of one of them is their detail. */
 const FINDER_SCREENS: readonly string[] = [ROUTES.home, ROUTES.customerHome];
 
+/** Destinations of the navigation bar under an area home: siblings of it, not its details. */
+const TAB_SCREENS: readonly string[] = [ROUTES.officeCatalog, ROUTES.driverCatalog];
+
 function isDetailOf(child: string, parent: string): boolean {
+  if (TAB_SCREENS.includes(child)) return false;
   if (child.startsWith(DISTRIBUTOR_PREFIX) && FINDER_SCREENS.includes(parent)) return true;
   const base = parent.endsWith('/') ? parent : `${parent}/`;
   return parent !== ROUTES.home && child.startsWith(base);

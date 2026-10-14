@@ -14,6 +14,14 @@ const CURRENT_ICON = 'group-aria-[current=page]:text-primary-text';
 const DRIVER_CURRENT_BLOCK = 'in-data-[ambient=driver]:group-aria-[current=page]:bg-foreground';
 const DRIVER_CURRENT_GLYPH = 'in-data-[ambient=driver]:group-aria-[current=page]:text-background';
 
+/**
+ * Whether the destination `to` lights up only on its own path: an area home with another
+ * destination under it (`/central` and `/central/catalogo`) must not stay current there too.
+ */
+export function isExactDestination(to: string, items: readonly NavItem[]): boolean {
+  return items.some((other) => other.to.startsWith(`${to}/`));
+}
+
 /** Phone: fixed bar at the bottom, five destinations at most. Hidden from `lg:` up. */
 export function BottomNav({ items, isRoomy }: { items: NavItem[]; isRoomy: boolean }) {
   return (
@@ -27,6 +35,7 @@ export function BottomNav({ items, isRoomy }: { items: NavItem[]; isRoomy: boole
           <li key={to}>
             <NavLink
               to={to}
+              end={isExactDestination(to, items)}
               className={cn(
                 'group flex flex-col items-center justify-center gap-0.5 rounded-lg text-xs font-semibold',
                 'text-muted-foreground transition-colors motion-fast',
@@ -64,6 +73,7 @@ export function SideNav({ items }: { items: NavItem[] }) {
           <li key={to}>
             <NavLink
               to={to}
+              end={isExactDestination(to, items)}
               className={cn(
                 'group flex min-h-11 items-center gap-3 rounded-md px-3 text-[0.9375rem] font-semibold',
                 'text-muted-foreground transition-colors motion-fast hover:bg-muted hover:text-foreground',

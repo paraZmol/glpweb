@@ -52,6 +52,40 @@ function Task({ title, detail, isDone = false, action }: TaskProps) {
   );
 }
 
+/**
+ * PLAN 3.1: done once a product is on sale. The profile already says so without reading the
+ * catalogue: its "desde" price is the cheapest refill on sale, and every product has a refill.
+ */
+function CatalogTask({
+  hasProductsOnSale,
+  canEdit,
+}: {
+  hasProductsOnSale: boolean;
+  canEdit: boolean;
+}) {
+  return (
+    <Task
+      title="Carga tu catálogo"
+      detail={
+        hasProductsOnSale
+          ? 'Ya tienes balones a la venta. Cambia precios y orden cuando quieras.'
+          : 'Balones, marcas y precios: tus clientes los ven en tu página.'
+      }
+      isDone={hasProductsOnSale}
+      action={
+        <ButtonLink
+          to={ROUTES.officeCatalog}
+          variant={hasProductsOnSale || !canEdit ? 'line' : 'soft'}
+          size="sm"
+          className="shrink-0"
+        >
+          {hasProductsOnSale || !canEdit ? 'Ver catálogo' : 'Cargar catálogo'}
+        </ButtonLink>
+      }
+    />
+  );
+}
+
 type SetupChecklistProps = {
   distributor: PublicDistributor;
   /** Whether visitors can open its page already (PLAN 2.11). */
@@ -62,7 +96,7 @@ type SetupChecklistProps = {
 
 /**
  * "Completa tu distribuidora" (PLAN 2.2): what the owner has done and what comes next. The
- * catalogue and the staff arrive with phase 3: they are listed, and said to be on their way.
+ * catalogue is real since PLAN 3.1; the staff arrives with 3.2 and is said to be on its way.
  */
 export function SetupChecklist(props: SetupChecklistProps) {
   const { distributor, isListed, canEdit = true } = props;
@@ -103,7 +137,7 @@ export function SetupChecklist(props: SetupChecklistProps) {
             </ButtonLink>
           }
         />
-        <Task title="Carga tu catálogo" detail="Balones, marcas y precios." />
+        <CatalogTask hasProductsOnSale={distributor.priceFromCents !== null} canEdit={canEdit} />
         <Task title="Suma a tu personal" detail="Central y repartidores, por invitación." />
       </ul>
     </Panel>

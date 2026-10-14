@@ -86,7 +86,10 @@ const accountRoutes: RouteObject = {
       'driver',
       (m) => m.DriverGate,
       (m) => m.DriverShell,
-      [{ path: ROUTES.driverHome, lazy: from('driver', (m) => m.DriverHomePage) }],
+      [
+        { path: ROUTES.driverHome, lazy: from('driver', (m) => m.DriverHomePage) },
+        { path: ROUTES.driverCatalog, lazy: from('driver', (m) => m.DriverCatalogPage) },
+      ],
     ),
     guarded(
       'office',
@@ -95,6 +98,7 @@ const accountRoutes: RouteObject = {
       [
         { path: ROUTES.officeHome, lazy: from('office', (m) => m.OfficeHomePage) },
         { path: ROUTES.officeProfile, lazy: from('office', (m) => m.EditProfilePage) },
+        { path: ROUTES.officeCatalog, lazy: from('office', (m) => m.CatalogPage) },
       ],
     ),
     guarded(
