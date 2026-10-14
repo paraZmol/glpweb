@@ -4,8 +4,8 @@ Fuente: `docs/PLAN.md` (§3 roles, §5.4 datos, fase 2 y paso 2.11). La mantiene
 **role-walker**: antes de recorrer la app completa la matriz con las rutas y acciones nuevas, y
 después prueba cada celda en la interfaz **y** con el intento directo contra las reglas.
 
-Alcance de hoy: lo construido hasta la fase 2 (cuentas, distribuidoras, aprobación previa) y los
-datos del catálogo (paso 3.1, solo reglas: sus pantallas todavía no existen). Los pedidos, el
+Alcance de hoy: lo construido hasta la fase 2 (cuentas, distribuidoras, aprobación previa) y el
+catálogo (paso 3.1: datos, reglas y pantallas). Los pedidos, el
 personal, la jornada y los mapas llegan en las fases 3 a 6: sus filas se agregan con cada paso.
 
 ## Cómo leerla
@@ -78,8 +78,10 @@ Una sola puerta (PLAN §11, 2026-10-14): el encabezado público ofrece "Ingresar
 | `/inicio`, `/pedidos`, `/cuenta` | → ingresar | ve el aviso | → `/aceptar-terminos` | ve | ve | ve | ve | ve | ve | ve |
 | `/distribuidora/nueva` | → ingresar | ve el aviso | → `/aceptar-terminos` | ve | ve | ve | ve (hasta 3) | ve (hasta 3) | ve el aviso "por ahora no puedes registrar otra" | ve |
 | `/reparto` | → ingresar | ve el aviso | → `/aceptar-terminos` | → su área | ve | → su área | → su área | → su área | → su área | → su área |
+| `/reparto/catalogo` (3.1) | → ingresar | ve el aviso | → `/aceptar-terminos` | → su área | ve el catálogo de A en solo lectura (también lo retirado), sin un solo botón | → su área | → su área | → su área | → su área | → su área |
 | `/central` | → ingresar | ve el aviso | → `/aceptar-terminos` | → su área | → su área | ve (la de A) | ve (la de A) | ve (la de B, nada de A) | ve, con aviso de solo lectura | → su área |
 | `/central/ficha` | → ingresar | ve el aviso | → `/aceptar-terminos` | → su área | → su área | ve "la edita quien es titular" | ve | ve (la de B) | ve como solo lectura: campos deshabilitados, sin "Guardar cambios", con el aviso | → su área |
+| `/central/catalogo` (3.1) | → ingresar | ve el aviso | → `/aceptar-terminos` | → su área | → su área | ve el de A en solo lectura, con "Los productos y los precios los cambia quien es titular…" y sin botones | ve el de A con "Añadir producto", editar, subir y bajar, quitar y poner a la venta | ve el de B, nada de A | ve el suyo en solo lectura bajo el aviso, sin botones (vacío: "Todavía no hay productos.") | → su área |
 | `/plataforma` y sus tres listas (`?estado=`) | → ingresar | ve el aviso | → `/aceptar-terminos` | → su área | → su área | → su área | → su área | → su área | → su área | ve |
 | `/plataforma/altas/{id}` | → ingresar | ve el aviso | → `/aceptar-terminos` | → su área | → su área | → su área | → su área | → su área | → su área | ve, bajo la lista a la que pertenece (y "no existe" si el id no existe) |
 | Cualquier otra ruta | ve "no existe" con "Ingresar" | ve "no existe" con "Ir a mi inicio" | igual | igual | igual | igual | igual | igual | igual | igual |
@@ -106,6 +108,12 @@ Una sola puerta (PLAN §11, 2026-10-14): el encabezado público ofrece "Ingresar
 | Ver el estado de la ficha y la nota de la plataforma en `/central` (en vivo: cambia sin recargar) | — | — | — | — | — | ve | ve | ve lo suyo | ve | — |
 | Copiar el enlace público | — | — | — | — | — | puede | puede | puede lo suyo | no ve | — |
 | Editar la ficha pública (`/central/ficha`) | — | — | — | — | — | no ve | puede | puede la suya; rechaza la de A | rechaza (solo lectura) | — |
+| Catálogo (3.1, pantalla): añadir un producto, editar sus precios, subir y bajar, quitar o volver a poner a la venta en `/central/catalogo` | — | — | — | — | no ve | no ve | puede | puede en la suya | no ve (solo lectura) | — |
+| Catálogo: guardar un balón completo que no cuesta más que la recarga | — | — | — | — | — | — | ve el error en el campo, no se guarda | ve el error en el campo | — | — |
+| Catálogo: con 30 productos (también retirados) | — | — | — | — | — | — | ve el tope en lugar de "Añadir producto" | igual | — | — |
+| Ver en `/d/{slug}` de A sus productos a la venta, en su orden, con "Recarga S/ X" y, si lo vende, "Balón completo S/ Y" (sin botón de pedir) | ve | ve | ve | ve | ve | ve | ve | ve | ve | ve |
+| Ver en el buscador el "Recarga desde" de cada distribuidora (la recarga a la venta más barata; sin productos, sin precio) | ve | ve | ve | ve | ve | ve | ve | ve | ve | ve |
+| "Carga tu catálogo" en `/central`: enlace al catálogo, hecha con un producto a la venta | — | — | — | — | — | no ve | ve | ve la suya | ve "Ver catálogo" | — |
 | Cambiar nombre, teléfono, WhatsApp, dirección o ubicación de la planta de una aprobada | — | — | — | — | — | no ve | puede, con pregunta antes de guardar; vuelve a revisión y deja de verse en el buscador y en `/d/{slug}` | — | rechaza | — |
 | Cambiar radio, horario o color de una aprobada | — | — | — | — | — | no ve | puede, sin volver a revisión | — | rechaza | — |
 | Enviar la corrección sin cambiar nada ("Corregir mis datos") | — | — | — | — | — | no ve | ve "No cambiaste nada todavía"; nada se marca | — | rechaza | — |
@@ -191,8 +199,9 @@ Se anotan aquí con el motivo; una celda no recorrida no se da por buena.
 
 - **Catálogo en pantalla (3.1)**: las filas del catálogo de §3 están probadas solo contra las
   reglas (`firebase/tests/catalog.rules.test.ts`) y el repositorio
-  (`src/data/products-repo.emu.test.ts`); las pantallas del titular y los productos de
-  `/d/{slug}` las construye `frontend-builder` y se recorren entonces.
+  (`src/data/products-repo.emu.test.ts`). Las pantallas (`/central/catalogo`,
+  `/reparto/catalogo` y los productos de `/d/{slug}`) existen desde el 2026-10-14 con su E2E en
+  `tests/e2e/flows/catalog.spec.ts`; falta que **role-walker** recorra sus filas de §1 y §2.
 
 ## 4b. Celdas que hoy no cumplen lo que dice la matriz
 
