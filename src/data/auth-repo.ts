@@ -1,5 +1,6 @@
 import {
   type Auth,
+  browserPopupRedirectResolver,
   deleteUser,
   getRedirectResult,
   GoogleAuthProvider,
@@ -93,21 +94,26 @@ export function signInWithGoogle(): Promise<Session | null> {
   provider.setCustomParameters({ prompt: 'select_account' });
   return translating(async () => {
     try {
-      const { user } = await signInWithPopup(auth, provider);
+      const { user } = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
       await dropProviderPhoto(user);
       return toSession(user);
     } catch (error) {
       if (!isPopupUnavailable(error)) throw error;
-      await signInWithRedirect(auth, provider);
+      await signInWithRedirect(auth, provider, browserPopupRedirectResolver);
       return null;
     }
   });
 }
 
-/** Call once when the app starts: returns the session if this load ends a redirect sign-in. */
+/**
+ * Call once when the app starts: returns the session if this load ends a redirect sign-in. The
+ * SDK first looks for the mark `signInWithRedirect` leaves in this tab's session storage and
+ * only with it prepares Google's sign-in frame: a visitor who never started a redirect contacts
+ * nobody (PLAN §11, 2026-10-14; the E2E `no-google-before-sign-in` checks it).
+ */
 export function completeRedirectSignIn(): Promise<Session | null> {
   return translating(async () => {
-    const result = await getRedirectResult(auth);
+    const result = await getRedirectResult(auth, browserPopupRedirectResolver);
     if (result) await dropProviderPhoto(result.user);
     return result ? toSession(result.user) : null;
   });

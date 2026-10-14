@@ -1,5 +1,11 @@
 import { initializeApp } from 'firebase/app';
-import { connectAuthEmulator, getAuth } from 'firebase/auth';
+import {
+  browserLocalPersistence,
+  browserSessionPersistence,
+  connectAuthEmulator,
+  indexedDBLocalPersistence,
+  initializeAuth,
+} from 'firebase/auth';
 import {
   connectFirestoreEmulator,
   initializeFirestore,
@@ -35,7 +41,13 @@ if (!useEmulators && typeof appCheckSiteKey === 'string' && appCheckSiteKey !== 
   });
 }
 
-export const auth = getAuth(app);
+// The same persistence getAuth() would choose, but WITHOUT the popup and redirect resolver
+// (PLAN §11, 2026-10-14). With it, Auth prepares Google's sign-in frame as soon as the app opens
+// on phones and in Safari, so every visitor would contact Google before asking to sign in.
+// auth-repo.ts hands it to the three calls that open or finish a Google sign-in.
+export const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
+});
 
 // Outside a browser (repository tests under Node) there is no IndexedDB: memory cache instead.
 const hasIndexedDb = typeof indexedDB !== 'undefined';
