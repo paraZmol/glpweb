@@ -1424,6 +1424,32 @@ const MUTANTS = [
     '\n        && data.sortOrder',
   ],
   ['K34', 'position with decimals', 'data.sortOrder is int', 'data.sortOrder is number'],
+  // Attacks on the catalogue and on its copy in the public profile (attack-catalog).
+  [
+    'K35',
+    'on sale read as "not withdrawn"',
+    'return resource.data.active == true\n            && get(distributorPath(d))',
+    'return resource.data.active != false\n            && get(distributorPath(d))',
+  ],
+  [
+    'K36',
+    '"from" price of zero in the public profile',
+    'data.priceFromCents is int && data.priceFromCents >= 1',
+    'data.priceFromCents is int && data.priceFromCents >= 0',
+  ],
+  [
+    'K37',
+    '"from" price above the cap in the public profile',
+    'data.priceFromCents <= 99900))',
+    'data.priceFromCents <= 999900))',
+  ],
+  [
+    'K38',
+    '"from" price with decimals in the public profile',
+    '(data.priceFromCents is int &&',
+    '(data.priceFromCents is number &&',
+  ],
+  ['K39', 'more brands than are checked', 'brands.size() <= 8', 'brands.size() <= 9'],
 ];
 
 /**
