@@ -84,19 +84,79 @@ export async function dropProviderPhoto(user: User): Promise<void> {
   }
 }
 
+/** How often the window of Google is looked at, and how long a closed one may still deliver. */
+const GOOGLE_WINDOW_CHECK_MS = 250;
+const GOOGLE_WINDOW_GRACE_MS = 1_000;
+
+interface GoogleWindowWatch {
+  /** Resolves once the window is closed and its grace is over. Never rejects. */
+  closed: Promise<void>;
+  stop: () => void;
+}
+
+/**
+ * The SDK notices a closed window late: it looks every 2 s and then waits 8 s more in case the
+ * result is on its way, so whoever closed it saw the button turn for ~10 s (role-walker,
+ * 2026-10-14). The SDK does not hand the window over, so the next `window.open` is caught as it
+ * happens, and only that one. A window that closes itself after the person chose an account has
+ * delivered its result well within the grace; a result that comes later still signs in, through
+ * the session listener.
+ */
+function watchGoogleWindow(): GoogleWindowWatch {
+  const open = window.open;
+  let timer: number | undefined;
+  let reportClosed = () => {};
+  const closed = new Promise<void>((resolve) => {
+    reportClosed = resolve;
+  });
+  const look = (popup: Window) => {
+    timer = window.setTimeout(() => {
+      if (!popup.closed) return look(popup);
+      timer = window.setTimeout(reportClosed, GOOGLE_WINDOW_GRACE_MS);
+    }, GOOGLE_WINDOW_CHECK_MS);
+  };
+  const catchOne: typeof window.open = (...args) => {
+    window.open = open;
+    const popup = open.apply(window, args);
+    if (popup) look(popup);
+    return popup;
+  };
+  window.open = catchOne;
+  const stop = () => {
+    if (window.open === catchOne) window.open = open;
+    window.clearTimeout(timer);
+  };
+  return { closed, stop };
+}
+
+async function signInWithGoogleWindow(provider: GoogleAuthProvider): Promise<Session> {
+  const watch = watchGoogleWindow();
+  const signingIn = signInWithPopup(auth, provider, browserPopupRedirectResolver).then(
+    async ({ user }) => {
+      await dropProviderPhoto(user);
+      return toSession(user);
+    },
+  );
+  const cancelled = watch.closed.then(() => Promise.reject(authErrorFor('cancelled')));
+  try {
+    return await Promise.race([signingIn, cancelled]);
+  } finally {
+    watch.stop();
+  }
+}
+
 /**
  * Google sign-in with a popup. Where a popup cannot open (blocked, in-app browsers, installed
  * PWA on some phones) it falls back to a full-page redirect and resolves to null: the page
  * unloads and the session arrives through `completeRedirectSignIn` on the way back.
+ * Closing the window is answered with the `cancelled` error within about a second.
  */
 export function signInWithGoogle(): Promise<Session | null> {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
   return translating(async () => {
     try {
-      const { user } = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
-      await dropProviderPhoto(user);
-      return toSession(user);
+      return await signInWithGoogleWindow(provider);
     } catch (error) {
       if (!isPopupUnavailable(error)) throw error;
       await signInWithRedirect(auth, provider, browserPopupRedirectResolver);

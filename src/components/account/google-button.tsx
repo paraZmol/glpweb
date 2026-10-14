@@ -12,7 +12,8 @@ type GoogleButtonProps = {
   /** Where to go once signed in. */
   after: string;
   disabled?: boolean;
-  onError: (message: string) => void;
+  /** The message of a failed attempt; undefined when a new one starts. */
+  onError: (message: string | undefined) => void;
 };
 
 /**
@@ -25,6 +26,7 @@ export function GoogleButton({ after, disabled, onError }: GoogleButtonProps) {
 
   const start = () =>
     void run(async () => {
+      onError(undefined);
       try {
         const session = await signInWithGoogle();
         // Null: the browser is leaving for Google and comes back to this same page.
@@ -39,7 +41,8 @@ export function GoogleButton({ after, disabled, onError }: GoogleButtonProps) {
       <Button
         type="button"
         variant="line"
-        className="w-full"
+        // A double click must not select the line under the button.
+        className="w-full select-none"
         loading={isRunning}
         loadingLabel="Abriendo Google…"
         disabled={disabled}
