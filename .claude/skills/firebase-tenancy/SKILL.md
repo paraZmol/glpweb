@@ -253,6 +253,17 @@ correos.
   `storageNoticeSeen` (`src/data/local-wipe.ts`, `src/features/account/end-session.ts`).
 - **Emuladores.** Solo a través de `scripts/emulators.mjs` (carril con `E2E_LANE=N`); nunca
   `firebase emulators:*` ni `java` directos: abren ventanas en el equipo del usuario.
+- **Subcolección pública que sigue a la ficha** (catálogo, PLAN 3.1). `products` va en su
+  propio `match` (nunca dentro de la regla de la ficha: límite de expresiones). La lectura
+  pública es `resource.data.active == true && get(ficha).data.acceptingOrders == true` (el mismo
+  indicador que abre la ficha: se ve exactamente cuando la ficha), y la consulta debe filtrar
+  `active == true` con `limit`; el personal lee todo con `isStaff(d)`. Coste: 1 `get` por
+  consulta. **Tope por casillas fijas** (`p00`…`p29`, `productId.matches(...)`), como las
+  direcciones: sin servidor es la única forma de limitar una colección. **Copias en la ficha
+  que las reglas no pueden verificar** (`brands`, `priceFromCents`: harían falta sumas): las
+  escribe el repositorio en la misma transacción que el cambio del catálogo y solo si cambian
+  (cada escritura de la ficha mueve la versión que nombra una revisión); se anotan como riesgo,
+  no como garantía.
 - **Mutación de reglas.** `scripts/mutate-rules.mjs` rompe una condición cada vez y exige que un
   test lo note. Al reescribir una regla, su entrada en la lista deja de aplicar: se actualiza en
   el mismo cambio y se añaden las condiciones nuevas (`MUTANTS=ID,… npm run test:mutation`).

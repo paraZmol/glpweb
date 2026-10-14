@@ -4,9 +4,9 @@ Fuente: `docs/PLAN.md` (§3 roles, §5.4 datos, fase 2 y paso 2.11). La mantiene
 **role-walker**: antes de recorrer la app completa la matriz con las rutas y acciones nuevas, y
 después prueba cada celda en la interfaz **y** con el intento directo contra las reglas.
 
-Alcance de hoy: lo construido hasta la fase 2 (cuentas, distribuidoras, aprobación previa). Los
-pedidos, el catálogo, el personal, la jornada y los mapas llegan en las fases 3 a 6: sus filas se
-agregan con cada paso.
+Alcance de hoy: lo construido hasta la fase 2 (cuentas, distribuidoras, aprobación previa) y los
+datos del catálogo (paso 3.1, solo reglas: sus pantallas todavía no existen). Los pedidos, el
+personal, la jornada y los mapas llegan en las fases 3 a 6: sus filas se agregan con cada paso.
 
 ## Cómo leerla
 
@@ -153,6 +153,13 @@ Lo que cada rol consigue llamando a la base con su propia sesión, sin pasar por
 | Guardar cualquier dato propio (perfil, aceptación, dirección, distribuidora) sin correo confirmado | — | rechaza | — | — | — | — | — | — | — | — |
 | Crear el perfil o aceptar una versión con una sesión que no entró con Google (otro proveedor, aunque tenga el correo verificado) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 | Apropiarse de un enlace (`slugs/{slug}`) · borrar una ficha | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
+| Catálogo (3.1): leer los productos **a la venta** de A (consulta con `where('active', '==', true)` y tope de 30) | puede | puede | puede | puede | puede | puede | puede | puede | puede | puede |
+| Catálogo: leer los productos a la venta de una sin aprobar, suspendida o vencida | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | puede solo los suyos | rechaza |
+| Catálogo: leer el catálogo entero de A (también lo retirado) o un producto retirado | rechaza | rechaza | rechaza | rechaza | puede | puede | puede | rechaza | rechaza | rechaza |
+| Catálogo: cualquier consulta sin `limit` o con más de 30 | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
+| Catálogo: añadir un producto, cambiar un precio, quitar o volver a poner a la venta, reordenar | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza (decisión pendiente, PLAN §11) | puede | rechaza | rechaza (solo lectura) | rechaza |
+| Catálogo: producto fuera de las 30 casillas, precio no entero, de 0, negativo o de más de S/ 999, balón completo igual o más barato que la recarga, otra moneda, campos de más; cambiar el peso o la moneda | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
+| Catálogo: borrar un producto | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 | Realtime Database: leer o escribir cualquier ruta | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 
 ## 4. Celdas sin probar
@@ -181,6 +188,11 @@ Se anotan aquí con el motivo; una celda no recorrida no se da por buena.
   sesión no se recorrió.
 - **Repartidor y central de B** (`driverB`, `dispatcherB`): el recorrido de 2026-10-14 entró con
   los de A; los de B se cubren por el aislamiento de §3.
+
+- **Catálogo en pantalla (3.1)**: las filas del catálogo de §3 están probadas solo contra las
+  reglas (`firebase/tests/catalog.rules.test.ts`) y el repositorio
+  (`src/data/products-repo.emu.test.ts`); las pantallas del titular y los productos de
+  `/d/{slug}` las construye `frontend-builder` y se recorren entonces.
 
 ## 4b. Celdas que hoy no cumplen lo que dice la matriz
 

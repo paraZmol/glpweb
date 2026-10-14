@@ -77,10 +77,20 @@ Estados (`ShiftStatus`): `requested → approved ⇄ paused → closed`, o `requ
   jornada → `closed`. No se puede liquidar con un pedido en `WITH_DRIVER`.
 
 ## 5. Catálogo y stock
-- Producto: marca (texto libre de la distribuidora), `weightKg`, `refillPriceCents`,
-  `fullPriceCents` opcional, `active`. La distribuidora indica `acceptsOtherBrandEmpties`.
-  Motivo de cancelación conocido: `noEmptyCylinder` ("Sin balón vacío").
-  Tope de cordura al editar precio (S/ 999) contra errores de dedo.
+- Producto (`src/domain/catalog/`, PLAN 3.1 y §11 del 2026-10-14): `brand` (texto libre de la
+  distribuidora; el tipo de válvula va en la marca, D8), `brandColor` opcional, `weightKg`
+  entero, `name` ("Balón 10 kg" por defecto), `refillPriceCents`, `fullPriceCents` o `null`,
+  `currency` (la de la distribuidora), `active`, `sortOrder`. La distribuidora indica
+  `acceptsOtherBrandEmpties`. Motivo de cancelación conocido: `noEmptyCylinder` ("Sin balón vacío").
+- Precios: céntimos enteros de 1 a 99 900 (tope de cordura S/ 999 contra errores de dedo).
+  **El balón completo cuesta más que la recarga** (`full > refill`): igual o menor es una
+  promoción, no un precio de lista. La recarga siempre se vende.
+- Hasta 30 productos, en casillas fijas `p00`…`p29`; nunca se borran (se retiran con
+  `active: false`). El peso y la moneda no cambian: otro peso es otro producto.
+- Precios y catálogo los escribe **solo el titular** (la central y el reparto leen). El público
+  ve solo lo `active` y solo mientras la distribuidora atiende pedidos.
+- "Recarga desde" y las marcas del buscador se derivan del catálogo (`summarizeCatalog`): la
+  recarga a la venta más barata, nunca un balón completo ni un precio que exija comprar dos.
 - Stock de planta por producto: `full`, `empty`. Todo ajuste manual lleva motivo y autor.
 - Cambiar la capacidad de un vehículo no reescribe cargas ya aprobadas.
 
