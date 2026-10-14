@@ -25,6 +25,7 @@ export function UnconfirmedEmail() {
       <main id="contenido" className="mx-auto w-full max-w-xl flex-1 px-4 py-10">
         <ErrorState
           title="No pudimos confirmar tu correo con Google."
+          titleLevel={1}
           description={
             <>
               Cierra sesión e inténtalo de nuevo. Si se repite, o si quieres que eliminemos esta
