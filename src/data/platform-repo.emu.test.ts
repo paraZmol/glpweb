@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { SEED_DISTRIBUTORS, SEED_PASSWORD, SEED_USERS, type SeedUser } from '../../tests/seed/data';
+import { SEED_DISTRIBUTORS, SEED_USERS } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
 import { approveAsSeen } from '../../tests/support/approve-as-seen';
+import { signInAs } from '../../tests/support/emulated-session';
 import { PermissionDeniedError } from '../domain/tenancy/errors';
-import { signInWithEmail, signOutSession } from './auth-repo';
+import { signOutSession } from './auth-repo';
 import {
   getDistributor,
   getDistributorBySlug,
@@ -21,7 +22,6 @@ import {
 const { a: A, b: B, c: SUSPENDED, e: PENDING } = SEED_DISTRIBUTORS;
 const ADMIN = SEED_USERS.admin;
 
-const signInAs = (user: SeedUser) => signInWithEmail(user.email, SEED_PASSWORD);
 const visibleIds = async () =>
   (await listVisibleDistributors()).map((distributor) => distributor.id);
 const pendingIds = async () => (await listPendingListings()).map((entry) => entry.distributorId);

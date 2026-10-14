@@ -46,7 +46,6 @@ const publicRoutes: RouteObject = {
     { index: true, element: <HomePage /> },
     { path: ROUTES.signIn, lazy: from('public', (m) => m.SignInPage) },
     { path: ROUTES.register, lazy: from('public', (m) => m.RegisterPage) },
-    { path: ROUTES.resetPassword, lazy: from('public', (m) => m.ResetPasswordPage) },
     { path: ROUTES.terms, lazy: from('public', (m) => m.TermsPage) },
     { path: ROUTES.privacy, lazy: from('public', (m) => m.PrivacyPage) },
     { path: ROUTES.cookies, lazy: from('public', (m) => m.CookiesPage) },
@@ -60,12 +59,6 @@ const accountRoutes: RouteObject = {
   lazy: from('account', (m) => m.AccountLayout),
   children: [
     { path: ROUTES.appEntry, lazy: from('account', (m) => m.HomeGate) },
-    guarded(
-      'account',
-      (m) => m.VerifyEmailGate,
-      (m) => m.GateShell,
-      [{ path: ROUTES.verifyEmail, lazy: from('account', (m) => m.VerifyEmailPage) }],
-    ),
     guarded(
       'account',
       (m) => m.AcceptTermsGate,

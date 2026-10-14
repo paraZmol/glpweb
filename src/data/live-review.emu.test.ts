@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { SEED_DISTRIBUTORS, SEED_PASSWORD, SEED_USERS, type SeedUser } from '../../tests/seed/data';
+import { SEED_DISTRIBUTORS, SEED_USERS } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
 import { NEVER_SEEN } from '../../tests/support/approve-as-seen';
+import { signInAs } from '../../tests/support/emulated-session';
 import { PermissionDeniedError, StaleReviewError } from '../domain/tenancy/errors';
 import type { ReviewVersion } from '../domain/tenancy/review-version';
-import { signInWithEmail, signOutSession } from './auth-repo';
+import { signOutSession } from './auth-repo';
 import {
   getDistributor,
   getDistributorControl,
@@ -25,8 +26,6 @@ const { a: A, b: B, e: PENDING } = SEED_DISTRIBUTORS;
 const ADMIN = SEED_USERS.admin;
 const OWNER = SEED_USERS.ownerE;
 const NOTE = 'El RUC no coincide con la razón social.';
-
-const signInAs = (user: SeedUser) => signInWithEmail(user.email, SEED_PASSWORD);
 
 /** What the admin has on screen: the version of the listing read as the admin. */
 async function versionSeenByAdmin(d: string): Promise<ReviewVersion> {

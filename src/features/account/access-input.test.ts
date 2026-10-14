@@ -11,7 +11,7 @@ const SESSION: Session = {
   email: 'persona@example.com',
   emailVerified: true,
   displayName: 'Persona Demo',
-  providerIds: ['password'],
+  providerIds: ['google.com'],
 };
 const DRIVER = { uid: 'u1', distributorId: 'd1', role: 'driver', active: true } as Member;
 

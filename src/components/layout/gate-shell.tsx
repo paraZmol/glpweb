@@ -6,8 +6,8 @@ import { useSignOut } from '@/features/account/use-sign-out';
 const LOGO_PX = 30;
 
 /**
- * Frame of the two pending steps (verify the e-mail, accept the terms). No navigation: the only
- * ways out are finishing the step or signing out.
+ * Frame of the pending step (accept the terms). No navigation: the only ways out are finishing
+ * the step or signing out.
  */
 export function GateShell() {
   const { signOut, isSigningOut } = useSignOut();

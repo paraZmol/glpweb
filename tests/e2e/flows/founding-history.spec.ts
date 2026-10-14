@@ -10,7 +10,7 @@ import {
   FOUNDING_PLANT,
   FOUNDING_VERIFICATION,
 } from '../support/founding';
-import { signInWithPassword, submitSignIn } from '../support/sign-in';
+import { signInAs, signInHere } from '../support/sign-in';
 import { dismissStorageNotice } from '../support/storage-notice';
 
 test.skip(
@@ -57,7 +57,7 @@ async function backToWizard(page: Page): Promise<void> {
 test.beforeEach(async ({ page }, testInfo) => {
   await dismissStorageNotice(page);
   founder = await createTestAccount(uniqueTag(testInfo));
-  await signInWithPassword(page, founder.email, '/inicio');
+  await signInAs(page, founder, '/inicio');
   // By the link a person follows, not by typing the address: the home stays in the history.
   await enterWizard(page);
   await expect(page).toHaveURL(new RegExp(`${FOUNDING_PATH}$`));
@@ -256,7 +256,7 @@ test('another account that signs in on the same tab finds nothing of the sign-up
   await page.getByRole('button', { name: 'Cerrar sesión' }).click();
   await restarted;
   await page.getByRole('banner').getByRole('link', { name: 'Ingresar' }).click();
-  await submitSignIn(page, other.email);
+  await signInHere(page, other);
   await expect(page).toHaveURL(/\/inicio$/);
   await enterWizard(page);
 

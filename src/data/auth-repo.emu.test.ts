@@ -1,33 +1,20 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { SEED_PASSWORD, SEED_USERS } from '../../tests/seed/data';
+import { googleIdOf, SEED_USERS } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
-import { markEmailVerified, sentAuthEmails } from '../../tests/support/emulator';
-import {
-  EmailAlreadyInUseError,
-  InvalidCredentialsError,
-  isAuthError,
-  WeakPasswordError,
-} from '../domain/auth/errors';
+import { signInAs, signInAsNewcomer } from '../../tests/support/emulated-session';
+import { isAuthError } from '../domain/auth/errors';
 import type { Session } from '../domain/auth/session';
 import {
   currentSession,
+  deleteOwnAccount,
   onSessionChanged,
-  refreshSession,
-  registerWithEmail,
-  resendVerificationEmail,
-  sendPasswordReset,
-  signInWithEmail,
+  setSessionDisplayName,
   signOutSession,
 } from './auth-repo';
+import { signInWithEmulatedGoogle } from './emulated-google';
+import { auth } from './firebase';
 
-const NEW_ACCOUNT = {
-  email: 'registro-nuevo@example.com',
-  password: SEED_PASSWORD,
-};
-const TOO_SHORT = '123';
-
-const typesSentTo = async (email: string) =>
-  (await sentAuthEmails()).filter((mail) => mail.email === email).map((mail) => mail.requestType);
+const NEWCOMER_EMAIL = 'recien-llegada@example.com';
 
 beforeAll(async () => {
   await seedEmulators();
@@ -37,69 +24,79 @@ afterAll(async () => {
   await signOutSession();
 });
 
-// PLAN 2.1
+// PLAN 2.1: sign-in is with Google only. The emulator pretends Google's answer; what is under
+// test is everything the app does with the session it gets.
 describe('auth repository against the emulator', () => {
-  it('registers an unverified account, signs it in and sends the verification e-mail', async () => {
-    const session = await registerWithEmail(NEW_ACCOUNT);
+  it('creates the account on the first sign-in, with the e-mail Google confirmed', async () => {
+    const session = await signInAsNewcomer(NEWCOMER_EMAIL, 'R. Llegada');
 
     expect(session).toMatchObject({
-      email: NEW_ACCOUNT.email,
-      emailVerified: false,
-      // PLAN 2.11: not even the name is stored before the e-mail is verified.
-      displayName: null,
-      providerIds: ['password'],
+      email: NEWCOMER_EMAIL,
+      emailVerified: true,
+      displayName: 'R. Llegada',
+      providerIds: ['google.com'],
     });
     expect(currentSession()?.uid).toBe(session.uid);
-    expect(await typesSentTo(NEW_ACCOUNT.email)).toEqual(['VERIFY_EMAIL']);
   });
 
-  it('sees the verified e-mail only after refreshing the session', async () => {
-    const session = await signInWithEmail(NEW_ACCOUNT.email, NEW_ACCOUNT.password);
-    await markEmailVerified(session.uid);
+  it('finds the same account on the next sign-in', async () => {
+    const first = await signInAsNewcomer(NEWCOMER_EMAIL);
+    await signOutSession();
 
-    expect(currentSession()?.emailVerified).toBe(false);
-    const refreshed = await refreshSession();
+    const second = await signInAsNewcomer(NEWCOMER_EMAIL);
 
-    expect(refreshed?.emailVerified).toBe(true);
+    expect(second.uid).toBe(first.uid);
   });
 
-  it('can send the verification e-mail again', async () => {
-    await signInWithEmail(SEED_USERS.unverified.email, SEED_PASSWORD);
+  it('signs in a seeded account under its own uid', async () => {
+    const session = await signInAs(SEED_USERS.ownerA);
 
-    await resendVerificationEmail();
-
-    expect(await typesSentTo(SEED_USERS.unverified.email)).toEqual(['VERIFY_EMAIL']);
+    expect(session).toMatchObject({
+      uid: SEED_USERS.ownerA.uid,
+      emailVerified: true,
+      providerIds: ['google.com'],
+    });
   });
 
-  it('rejects registering an e-mail that already has an account', async () => {
-    const duplicate = { ...NEW_ACCOUNT, email: SEED_USERS.customer.email };
-    await expect(registerWithEmail(duplicate)).rejects.toBeInstanceOf(EmailAlreadyInUseError);
+  it('carries how the session came in, which is what the rules read', async () => {
+    await signInAs(SEED_USERS.customer);
+
+    const token = await auth.currentUser?.getIdTokenResult();
+
+    expect(token?.signInProvider).toBe('google.com');
+    expect(token?.claims.email_verified).toBe(true);
   });
 
-  it('rejects a password that Firebase considers too weak', async () => {
-    const weak = { ...NEW_ACCOUNT, email: 'otra@example.com', password: TOO_SHORT };
-    await expect(registerWithEmail(weak)).rejects.toBeInstanceOf(WeakPasswordError);
+  // PLAN 2.11: the photo Google hands over is not kept in the account.
+  it('does not keep the photo Google hands over', async () => {
+    await signOutSession();
+    const idToken = JSON.stringify({
+      sub: googleIdOf('con-foto@example.com'),
+      email: 'con-foto@example.com',
+      email_verified: true,
+      name: 'F. Foto',
+      picture: 'https://example.com/foto.png',
+    });
+    const { GoogleAuthProvider, signInWithCredential } = await import('firebase/auth');
+    const { user } = await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
+    expect(user.photoURL).toBe('https://example.com/foto.png');
+
+    await signInWithEmulatedGoogle({
+      sub: googleIdOf('con-foto@example.com'),
+      email: 'con-foto@example.com',
+      name: 'F. Foto',
+    });
+
+    expect(auth.currentUser?.photoURL).toBeNull();
+    // Gone from the account itself, not only from what this tab remembers.
+    await auth.currentUser?.reload();
+    expect(auth.currentUser?.photoURL).toBeNull();
   });
 
-  it('signs in a seeded account', async () => {
-    const session = await signInWithEmail(SEED_USERS.ownerA.email, SEED_PASSWORD);
+  it('reports a session without a confirmed e-mail as such', async () => {
+    const session = await signInAs(SEED_USERS.unverified);
 
-    expect(session).toMatchObject({ uid: SEED_USERS.ownerA.uid, emailVerified: true });
-  });
-
-  it.each([
-    ['a wrong password', SEED_USERS.ownerA.email],
-    ['an unknown account', 'nadie@example.com'],
-  ])('rejects %s with the same error, so accounts cannot be probed', async (_case, email) => {
-    await expect(signInWithEmail(email, 'no-es-la-correcta')).rejects.toBeInstanceOf(
-      InvalidCredentialsError,
-    );
-  });
-
-  it('sends a password reset e-mail', async () => {
-    await sendPasswordReset(SEED_USERS.customer.email);
-
-    expect(await typesSentTo(SEED_USERS.customer.email)).toEqual(['PASSWORD_RESET']);
+    expect(session).toMatchObject({ uid: SEED_USERS.unverified.uid, emailVerified: false });
   });
 
   it('notifies subscribers on sign-in and sign-out', async () => {
@@ -107,23 +104,38 @@ describe('auth repository against the emulator', () => {
     const seen: (Session | null)[] = [];
     const unsubscribe = onSessionChanged((session) => seen.push(session));
 
-    await signInWithEmail(SEED_USERS.customer.email, SEED_PASSWORD);
+    await signInAs(SEED_USERS.customer);
     await signOutSession();
     unsubscribe();
 
-    expect(seen.map((session) => session?.uid ?? null)).toEqual([
+    // The sign-in can notify more than once (the photo is removed after it): what matters is
+    // who was there, in order.
+    const uids = seen.map((session) => session?.uid ?? null);
+    expect(uids.filter((uid, index) => uid !== uids[index - 1])).toEqual([
       null,
       SEED_USERS.customer.uid,
       null,
     ]);
   });
 
-  it('refuses to resend the verification e-mail without a session', async () => {
+  it('deletes the signed-in account, which can come back as a new one', async () => {
+    const first = await signInAsNewcomer('se-va@example.com');
+
+    await deleteOwnAccount();
+
+    expect(currentSession()).toBeNull();
+    const again = await signInAsNewcomer('se-va@example.com');
+    expect(again.uid).not.toBe(first.uid);
+  });
+
+  it.each([
+    ['delete the account', () => deleteOwnAccount()],
+    ['rename the session', () => setSessionDisplayName('Nadie')],
+  ])('refuses to %s without a session', async (_case, act) => {
     await signOutSession();
 
-    const failure = await resendVerificationEmail().catch((error: unknown) => error);
+    const failure = await act().catch((error: unknown) => error);
 
     expect(isAuthError(failure, 'notSignedIn')).toBe(true);
-    expect(await refreshSession()).toBeNull();
   });
 });

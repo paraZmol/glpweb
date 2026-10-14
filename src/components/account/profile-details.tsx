@@ -12,7 +12,7 @@ type ProfileDetailsFieldsProps = {
 
 /**
  * Name and phone of a new account, shown on the terms step so the person confirms or corrects
- * what it typed when registering (or what Google gave) before the profile exists (PLAN 2.11).
+ * the name Google handed over before the profile exists (PLAN 2.1, 2.11).
  */
 export function ProfileDetailsFields({ details, errors, onChange }: ProfileDetailsFieldsProps) {
   return (

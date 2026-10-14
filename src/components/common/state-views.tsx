@@ -41,6 +41,8 @@ type ErrorStateProps = {
   onRetry?: () => void;
   /** Extra way out next to "Reintentar". */
   secondaryAction?: ReactNode;
+  /** `h1` when the error is the whole screen; `h2` (default) when it is part of one. */
+  titleLevel?: 1 | 2;
   className?: string;
 };
 
@@ -50,8 +52,10 @@ export function ErrorState({
   description,
   onRetry,
   secondaryAction,
+  titleLevel = 2,
   className,
 }: ErrorStateProps) {
+  const Title = titleLevel === 1 ? 'h1' : 'h2';
   return (
     <div role="alert" className={cn('rounded-xl bg-card p-6 shadow-card', className)}>
       <TriangleAlert
@@ -59,7 +63,7 @@ export function ErrorState({
         className="size-8 text-state-danger-text"
         strokeWidth={ICON_STROKE}
       />
-      <h2 className="mt-3 text-xl font-bold">{title}</h2>
+      <Title className="mt-3 text-xl font-bold">{title}</Title>
       {description && <p className="mt-1.5 max-w-prose text-muted-foreground">{description}</p>}
       <div className="mt-5 flex flex-wrap gap-3">
         {onRetry && (

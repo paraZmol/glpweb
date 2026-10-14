@@ -15,7 +15,7 @@ const SESSION: Session = {
   email: 'persona@example.com',
   emailVerified: true,
   displayName: 'Persona Demo',
-  providerIds: ['password'],
+  providerIds: ['google.com'],
 };
 
 const ready = <T>(value: T): Loadable<T> => ({ status: 'ready', value });
@@ -37,7 +37,7 @@ function input(gate: AccessGate, patch: Partial<AccessInput> = {}): AccessInput 
   };
 }
 
-const ALL_GATES: AccessGate[] = [...APP_AREAS, 'acceptTerms', 'verifyEmail', 'home'];
+const ALL_GATES: AccessGate[] = [...APP_AREAS, 'acceptTerms', 'home'];
 const home = (area: string, denied = false) => ({ kind: 'redirect', to: 'area', area, denied });
 
 describe('decideAccess: the steps before any area (PLAN 2.4)', () => {
@@ -51,7 +51,7 @@ describe('decideAccess: the steps before any area (PLAN 2.4)', () => {
     expect(decision).toEqual({ kind: 'redirect', to: 'signIn' });
   });
 
-  // PLAN 2.11: session → e-mail verified → terms → role.
+  // PLAN 2.11: session → e-mail confirmed → terms → role.
   it.each(ALL_GATES)('waits on %s while the profile loads', (gate) => {
     expect(decideAccess(input(gate, { termsPending: LOADING }))).toEqual({ kind: 'wait' });
   });
@@ -62,7 +62,7 @@ describe('decideAccess: the steps before any area (PLAN 2.4)', () => {
     expect(decision).toEqual({ kind: 'error', source: 'profile' });
   });
 
-  it.each([...APP_AREAS, 'verifyEmail', 'home'] as AccessGate[])(
+  it.each([...APP_AREAS, 'home'] as AccessGate[])(
     'asks for the terms before %s, even to an owner or an admin',
     (gate) => {
       const decision = decideAccess(
@@ -77,52 +77,39 @@ describe('decideAccess: the steps before any area (PLAN 2.4)', () => {
     },
   );
 
-  it.each([...APP_AREAS, 'acceptTerms', 'home'] as AccessGate[])(
-    'asks to verify the e-mail before the terms on %s',
-    (gate) => {
-      const decision = decideAccess(
-        input(gate, { termsPending: ready(true), session: signedIn({ emailVerified: false }) }),
-      );
-
-      expect(decision).toEqual({ kind: 'redirect', to: 'verifyEmail' });
-    },
-  );
-
-  it.each([LOADING, FAILED, ready(true)])(
-    'keeps an unverified account on the verification step whatever its profile (%o)',
-    (termsPending) => {
-      const unverified = signedIn({ emailVerified: false });
-
-      expect(decideAccess(input('verifyEmail', { session: unverified, termsPending }))).toEqual({
-        kind: 'allow',
-      });
-      expect(decideAccess(input('customer', { session: unverified, termsPending }))).toEqual({
-        kind: 'redirect',
-        to: 'verifyEmail',
-      });
-    },
-  );
-
-  it.each([...APP_AREAS, 'home'] as AccessGate[])('asks to verify the e-mail before %s', (gate) => {
+  // PLAN 2.1: Google hands over a confirmed address, so such a session should not exist. If one
+  // does, it gets no screen of the app and no step to complete: only the way out.
+  it.each(ALL_GATES)('stops a session without a confirmed e-mail on %s', (gate) => {
     const decision = decideAccess(
-      input(gate, { session: signedIn({ emailVerified: false }), role: ready('owner') }),
+      input(gate, {
+        session: signedIn({ emailVerified: false }),
+        role: ready('owner'),
+        isPlatformAdmin: ready(true),
+      }),
     );
 
-    expect(decision).toEqual({ kind: 'redirect', to: 'verifyEmail' });
+    expect(decision).toEqual({ kind: 'unconfirmedEmail' });
   });
+
+  it.each([LOADING, FAILED, ready(true), ready(false)])(
+    'stops it before looking at its profile (%o)',
+    (termsPending) => {
+      const session = signedIn({ emailVerified: false });
+
+      expect(decideAccess(input('acceptTerms', { session, termsPending }))).toEqual({
+        kind: 'unconfirmedEmail',
+      });
+      expect(decideAccess(input('customer', { session, termsPending }))).toEqual({
+        kind: 'unconfirmedEmail',
+      });
+    },
+  );
 
   it('shows the terms step only while it is pending', () => {
     expect(decideAccess(input('acceptTerms', { termsPending: ready(true) }))).toEqual({
       kind: 'allow',
     });
     expect(decideAccess(input('acceptTerms'))).toEqual(home('customer'));
-  });
-
-  it('shows the verification step only while it is pending', () => {
-    const unverified = signedIn({ emailVerified: false });
-
-    expect(decideAccess(input('verifyEmail', { session: unverified }))).toEqual({ kind: 'allow' });
-    expect(decideAccess(input('verifyEmail', { role: ready('driver') }))).toEqual(home('driver'));
   });
 });
 

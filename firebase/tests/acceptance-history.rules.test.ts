@@ -45,6 +45,7 @@ import {
   seedWorld,
   termsDoc,
   unverified,
+  verifiedThrough,
   userDoc,
   verified,
 } from './helpers';
@@ -140,6 +141,11 @@ describe('acceptances — a new profile leaves its two entries', () => {
   it('blocks an account whose e-mail is not verified, entries included', async () => {
     await assertFails(createProfile(unverified(env, NEWCOMER), NEWCOMER));
   });
+
+  // PLAN 2.1: sign-in is with Google only.
+  it('blocks a verified session that did not come in through Google, entries included', async () => {
+    await assertFails(createProfile(verifiedThrough(env, NEWCOMER, 'password'), NEWCOMER));
+  });
 });
 
 describe.each(ACCEPTED_TEXTS)('acceptances — accepting a new version of the %s', (text) => {
@@ -180,6 +186,16 @@ describe.each(ACCEPTED_TEXTS)('acceptances — accepting a new version of the %s
     await assertFails(updateDoc(own, { ...accept(), ...stamp }));
     await assertFails(acceptOnProfile(behind(), BEHIND_HERE, accept(), {}));
   });
+
+  // PLAN 2.1: the line of the history is only written by a session that came in through Google.
+  it.each(['password', 'custom'])(
+    'blocks a verified session that came in through %s from accepting it',
+    async (provider) => {
+      const db = verifiedThrough(env, BEHIND_HERE, provider);
+
+      await assertFails(acceptOnProfile(db, BEHIND_HERE, accept()));
+    },
+  );
 
   it('blocks accepting with the entry of the other text only', async () => {
     await assertFails(acceptOnProfile(behind(), BEHIND_HERE, accept(), currentEntry(other)));
@@ -312,8 +328,10 @@ describe('acceptances — who reads the history', () => {
     ]);
   });
 
-  it('lets the account read its history even before its e-mail is verified again', async () => {
-    await assertSucceeds(getDoc(doc(unverified(env, SETTLED), entryPath(SETTLED, 'terms'))));
+  // PLAN §11 (2026-10-14): reading what is one's own also takes a Google session with a
+  // verified e-mail.
+  it('blocks the account from reading its history without a verified e-mail', async () => {
+    await assertFails(getDoc(doc(unverified(env, SETTLED), entryPath(SETTLED, 'terms'))));
   });
 
   it('lets a platform admin read and list the history of any account', async () => {

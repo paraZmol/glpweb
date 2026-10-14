@@ -1,14 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import {
-  SEED_CUSTOMER_LOCATION,
-  SEED_DISTRIBUTORS,
-  SEED_PASSWORD,
-  SEED_USERS,
-  type SeedUser,
-} from '../../tests/seed/data';
+import { SEED_CUSTOMER_LOCATION, SEED_DISTRIBUTORS, SEED_USERS } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
 import { approveAsSeen } from '../../tests/support/approve-as-seen';
-import { markEmailVerified } from '../../tests/support/emulator';
+import { signInAs, signInAsNewcomer } from '../../tests/support/emulated-session';
 import { CURRENT_LEGAL_VERSIONS, TERMS_VERSION } from '../domain/legal/versions';
 import { MAX_DISTRIBUTORS_PER_ACCOUNT, TRIAL_DAYS } from '../domain/tenancy/constants';
 import { type NewDistributor, prepareNewDistributor } from '../domain/tenancy/distributor-input';
@@ -21,7 +15,7 @@ import {
 } from '../domain/tenancy/errors';
 import { findNearbyDistributors } from '../domain/tenancy/nearby';
 import { isWritable, trialDaysLeft } from '../domain/tenancy/status';
-import { refreshSession, registerWithEmail, signInWithEmail, signOutSession } from './auth-repo';
+import { signOutSession } from './auth-repo';
 import {
   createDistributor,
   getDistributor,
@@ -63,14 +57,10 @@ function newDistributor(slug: string): NewDistributor {
   return prepared.value;
 }
 
-const signInAs = (user: SeedUser) => signInWithEmail(user.email, SEED_PASSWORD);
-
-/** A fresh, verified account with a profile: what a real founder has by the time it gets here. */
+/** A fresh account with a profile: what a real founder has by the time it gets here. */
 async function freshFounder(key: string) {
   const email = `${key}@example.com`;
-  const session = await registerWithEmail({ email, password: SEED_PASSWORD });
-  await markEmailVerified(session.uid);
-  await refreshSession();
+  const session = await signInAsNewcomer(email);
   const profile = { displayName: 'N. Fundadora', phone: null };
   await createUserProfile(session.uid, profile, CURRENT_LEGAL_VERSIONS);
   return { uid: session.uid, email };
@@ -162,7 +152,7 @@ describe('createDistributor', () => {
     expect(await listMyMemberships(founder.uid)).toHaveLength(1);
   });
 
-  it('refuses an account whose e-mail is not verified', async () => {
+  it('refuses a session without a confirmed e-mail', async () => {
     const session = await signInAs(SEED_USERS.unverified);
     const founder = { uid: session.uid, email: SEED_USERS.unverified.email };
 
@@ -173,12 +163,7 @@ describe('createDistributor', () => {
   });
 
   it('refuses an account without a profile', async () => {
-    const session = await registerWithEmail({
-      email: 'aun-sin-perfil@example.com',
-      password: SEED_PASSWORD,
-    });
-    await markEmailVerified(session.uid);
-    await refreshSession();
+    const session = await signInAsNewcomer('aun-sin-perfil@example.com');
     const founder = { uid: session.uid, email: 'aun-sin-perfil@example.com' };
 
     await expect(found(founder, 'gas-demo-sin-perfil')).rejects.toBeInstanceOf(

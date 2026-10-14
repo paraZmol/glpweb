@@ -4,8 +4,8 @@ import type { AppArea } from '@/domain/auth/access';
 export const ROUTES = {
   home: '/',
   signIn: '/ingresar',
+  /** The same screen as `signIn` with other words: the first sign-in creates the account. */
   register: '/registro',
-  resetPassword: '/restablecer',
   terms: '/terminos',
   privacy: '/privacidad',
   cookies: '/cookies',
@@ -14,7 +14,6 @@ export const ROUTES = {
   distributor: '/d/:slug',
   /** Sends a signed-in account to the area of its role. */
   appEntry: '/app',
-  verifyEmail: '/verificar-correo',
   acceptTerms: '/aceptar-terminos',
   customerHome: '/inicio',
   customerOrders: '/pedidos',
@@ -99,25 +98,20 @@ export function signInPathFrom(from: string): string {
   return `${ROUTES.signIn}?${RETURN_PARAM}=${encodeURIComponent(target)}`;
 }
 
-/** Path of the registration screen that remembers where the visitor was going (PLAN 2.11). */
+/** Path of the "crear cuenta" screen that remembers where the visitor was going (PLAN 2.11). */
 export function registerPathFrom(from: string | null | undefined): string {
   const target = safeReturnPath(from);
   if (target === null || target === ROUTES.home) return ROUTES.register;
   return `${ROUTES.register}?${RETURN_PARAM}=${encodeURIComponent(target)}`;
 }
 
-/** The pending steps and the entry never are a destination of their own. */
-const NOT_A_DESTINATION: readonly string[] = [
-  ROUTES.verifyEmail,
-  ROUTES.acceptTerms,
-  ROUTES.appEntry,
-  ROUTES.home,
-];
+/** The pending step and the entry never are a destination of their own. */
+const NOT_A_DESTINATION: readonly string[] = [ROUTES.acceptTerms, ROUTES.appEntry, ROUTES.home];
 
 /**
- * Where an account was going when a pending step (verify the e-mail, accept the terms) stood in
- * its way. It travels in the navigation state, so the addresses of the steps stay clean and it
- * lasts as long as the tab (PLAN 2.11). Undefined when there is nowhere special to go.
+ * Where an account was going when the pending step (accept the terms) stood in its way. It
+ * travels in the navigation state, so the addresses of the steps stay clean and it lasts as long
+ * as the tab (PLAN 2.11). Undefined when there is nowhere special to go.
  */
 export function destinationState(from: string | null | undefined): { after: string } | undefined {
   const target = safeReturnPath(from);
@@ -136,16 +130,10 @@ export function destinationOf(state: unknown): string | null {
 
 export type TransitionDirection = 'forward' | 'back' | 'fade';
 
-/** Screens that are a detail of another one without sharing its path. */
-const PARENT_OF: Record<string, string> = {
-  [ROUTES.resetPassword]: ROUTES.signIn,
-};
-
 /** The two screens that list distributors: the page of one of them is their detail. */
 const FINDER_SCREENS: readonly string[] = [ROUTES.home, ROUTES.customerHome];
 
 function isDetailOf(child: string, parent: string): boolean {
-  if (PARENT_OF[child] === parent) return true;
   if (child.startsWith(DISTRIBUTOR_PREFIX) && FINDER_SCREENS.includes(parent)) return true;
   const base = parent.endsWith('/') ? parent : `${parent}/`;
   return parent !== ROUTES.home && child.startsWith(base);

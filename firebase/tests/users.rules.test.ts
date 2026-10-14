@@ -47,6 +47,7 @@ import {
   seedWorld,
   termsDoc,
   unverified,
+  verifiedThrough,
   userDoc,
   verified,
   WORLD,
@@ -82,12 +83,30 @@ describe('/users/{uid} — create', () => {
     await assertFails(createProfile(unverified(env, NEWCOMER), NEWCOMER, userDoc()));
   });
 
+  // PLAN 2.1: sign-in is with Google only, and a profile exists only for a verified e-mail.
+  it.each(['password', 'custom', 'anonymous', 'emailLink', 'facebook.com'])(
+    'blocks a verified session that came in through %s from creating its profile',
+    async (provider) => {
+      const db = verifiedThrough(env, NEWCOMER, provider);
+
+      await assertFails(createProfile(db, NEWCOMER, userDoc()));
+    },
+  );
+
+  it('blocks a verified session whose token does not say how it came in', async () => {
+    const db = env
+      .authenticatedContext(NEWCOMER, { email: 'newcomer@example.com', email_verified: true })
+      .firestore();
+
+    await assertFails(createProfile(db, NEWCOMER, userDoc()));
+  });
+
   it('blocks an account without an e-mail claim at all', async () => {
     const db = env.authenticatedContext(NEWCOMER).firestore();
     await assertFails(createProfile(db, NEWCOMER, userDoc()));
   });
 
-  it('blocks an unverified account from editing a profile, renewing consents or saving addresses', async () => {
+  it('blocks an unverified account from reading or touching its profile and addresses', async () => {
     const at = Timestamp.fromDate(new Date('2026-02-01T12:00:00Z'));
     const stamps = { createdAt: at, updatedAt: at };
     await seedDoc(env, `users/${NEWCOMER}`, userDoc(stamps));
@@ -101,9 +120,9 @@ describe('/users/{uid} — create', () => {
     await assertFails(
       updateDoc(doc(db, `users/${NEWCOMER}/addresses/a0`), { label: 'Trabajo', ...now }),
     );
-    // Reading and deleting what is already there stays possible.
-    await assertSucceeds(getDoc(doc(db, `users/${NEWCOMER}`)));
-    await assertSucceeds(deleteDoc(doc(db, `users/${NEWCOMER}/addresses/a0`)));
+    // Nor reading or deleting what is already there (PLAN §11, 2026-10-14).
+    await assertFails(getDoc(doc(db, `users/${NEWCOMER}`)));
+    await assertFails(deleteDoc(doc(db, `users/${NEWCOMER}/addresses/a0`)));
   });
 
   it('blocks anonymous visitors', async () => {

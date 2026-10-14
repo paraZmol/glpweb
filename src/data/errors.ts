@@ -1,23 +1,13 @@
 import { AuthError, type AuthErrorCode, authErrorFor } from '../domain/auth/errors';
 import { OfflineError, PermissionDeniedError } from '../domain/tenancy/errors';
 
-/** Firebase errors carry a string `code` such as `permission-denied` or `auth/invalid-email`. */
+/** Firebase errors carry a string `code` such as `permission-denied` or `auth/user-disabled`. */
 export function firebaseCodeOf(error: unknown): string | null {
   if (typeof error !== 'object' || error === null || !('code' in error)) return null;
   return typeof error.code === 'string' ? error.code : null;
 }
 
 const AUTH_CODES: Record<string, AuthErrorCode> = {
-  'auth/email-already-in-use': 'emailAlreadyInUse',
-  'auth/invalid-credential': 'invalidCredentials',
-  'auth/invalid-login-credentials': 'invalidCredentials',
-  'auth/wrong-password': 'invalidCredentials',
-  'auth/user-not-found': 'invalidCredentials',
-  'auth/missing-password': 'invalidCredentials',
-  'auth/invalid-email': 'invalidEmail',
-  'auth/missing-email': 'invalidEmail',
-  'auth/weak-password': 'weakPassword',
-  'auth/password-does-not-meet-requirements': 'weakPassword',
   'auth/too-many-requests': 'tooManyAttempts',
   'auth/network-request-failed': 'network',
   'auth/popup-closed-by-user': 'cancelled',

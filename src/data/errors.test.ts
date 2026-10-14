@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  AuthError,
-  EmailAlreadyInUseError,
-  InvalidCredentialsError,
-  TooManyAttemptsError,
-} from '../domain/auth/errors';
+import { AuthError, SignInCancelledError, TooManyAttemptsError } from '../domain/auth/errors';
 import { OfflineError, PermissionDeniedError, SlugTakenError } from '../domain/tenancy/errors';
 import {
   authErrorCodeFor,
@@ -32,12 +27,6 @@ describe('firebaseCodeOf', () => {
 
 describe('authErrorCodeFor', () => {
   it.each([
-    ['auth/email-already-in-use', 'emailAlreadyInUse'],
-    ['auth/invalid-credential', 'invalidCredentials'],
-    ['auth/wrong-password', 'invalidCredentials'],
-    ['auth/user-not-found', 'invalidCredentials'],
-    ['auth/invalid-email', 'invalidEmail'],
-    ['auth/weak-password', 'weakPassword'],
     ['auth/too-many-requests', 'tooManyAttempts'],
     ['auth/network-request-failed', 'network'],
     ['auth/popup-closed-by-user', 'cancelled'],
@@ -50,15 +39,18 @@ describe('authErrorCodeFor', () => {
     expect(authErrorCodeFor(firebaseCode)).toBe(expected);
   });
 
-  it('does not tell a wrong password from an unknown account', () => {
-    expect(authErrorCodeFor('auth/wrong-password')).toBe(authErrorCodeFor('auth/user-not-found'));
-  });
+  // Sign-in is with Google only (PLAN 2.1): nothing of a password flow has a message of its own.
+  it.each(['auth/wrong-password', 'auth/user-not-found', 'auth/email-already-in-use'])(
+    'has no special case for %s',
+    (firebaseCode) => {
+      expect(authErrorCodeFor(firebaseCode)).toBe('unknown');
+    },
+  );
 });
 
 describe('toAuthError', () => {
   it.each([
-    ['auth/email-already-in-use', EmailAlreadyInUseError],
-    ['auth/invalid-credential', InvalidCredentialsError],
+    ['auth/popup-closed-by-user', SignInCancelledError],
     ['auth/too-many-requests', TooManyAttemptsError],
     ['auth/internal-error', AuthError],
   ])('turns %s into a named domain error that keeps the cause', (code, expectedClass) => {

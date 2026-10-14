@@ -2,7 +2,7 @@ import { type BrowserContext, expect, type Page, test } from '@playwright/test';
 import { SEED_CUSTOMER_LOCATION, SEED_DISTRIBUTORS } from '../../seed/data';
 import { appStorageKeys, expectDeviceCleared } from '../support/device-storage';
 import { createTestAccount, readDocument, uniqueTag } from '../support/emulator-admin';
-import { signInWithPassword } from '../support/sign-in';
+import { signInAs } from '../support/sign-in';
 import { dismissStorageNotice } from '../support/storage-notice';
 
 test.skip(
@@ -76,7 +76,7 @@ test('the account screen says why it cannot save without a connection', async ({
   context,
 }, testInfo) => {
   const account = await createTestAccount(uniqueTag(testInfo));
-  await signInWithPassword(page, account.email, '/inicio');
+  await signInAs(page, account, '/inicio');
   await page.goto('/cuenta');
   await expect(nameField(page)).toHaveValue(account.displayName);
 
@@ -104,7 +104,7 @@ test('a save cut by a lost connection tells the person instead of spinning for e
   context,
 }, testInfo) => {
   const account = await createTestAccount(uniqueTag(testInfo));
-  await signInWithPassword(page, account.email, '/inicio');
+  await signInAs(page, account, '/inicio');
   await page.goto('/cuenta');
   await expect(nameField(page)).toHaveValue(account.displayName);
   await loseConnectionOnNextWrite(context);
@@ -138,7 +138,7 @@ test.fixme('signing out with an unsent change warns first and offers to sign out
   context,
 }, testInfo) => {
   const account = await createTestAccount(uniqueTag(testInfo));
-  await signInWithPassword(page, account.email, '/inicio');
+  await signInAs(page, account, '/inicio');
   await page.goto('/cuenta');
   await expect(nameField(page)).toHaveValue(account.displayName);
   await loseConnectionOnNextWrite(context);

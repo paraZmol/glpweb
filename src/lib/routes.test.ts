@@ -75,8 +75,7 @@ describe('transitionDirection', () => {
   it.each([
     ['/pedidos', '/pedidos/1047', 'forward'],
     ['/pedidos/1047', '/pedidos', 'back'],
-    ['/ingresar', '/restablecer', 'forward'],
-    ['/restablecer', '/ingresar', 'back'],
+    ['/ingresar', '/registro', 'fade'],
     ['/inicio', '/pedidos', 'fade'],
     ['/inicio', '/cuenta', 'fade'],
     ['/', '/d/gas-demo-norte', 'forward'],
@@ -127,10 +126,10 @@ describe('destination carried through the pending steps', () => {
     const state = destinationState('/distribuidora/nueva');
 
     expect(state).toEqual({ after: '/distribuidora/nueva' });
-    expect(destinationOf({ justRegistered: true, ...state })).toBe('/distribuidora/nueva');
+    expect(destinationOf({ justFounded: true, ...state })).toBe('/distribuidora/nueva');
   });
 
-  it.each(['/verificar-correo', '/aceptar-terminos', '/app', '/', '/registro', null, undefined])(
+  it.each(['/aceptar-terminos', '/app', '/', '/registro', '/ingresar', null, undefined])(
     'has nothing to carry for %j',
     (from) => {
       expect(destinationState(from)).toBeUndefined();

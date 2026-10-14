@@ -9,6 +9,7 @@ import { type AccountGateValue, useAccountGate } from '@/features/account/accoun
 import { signOut } from '@/features/auth/auth-actions';
 import { AREA_HOME, destinationOf, destinationState, ROUTES, signInPathFrom } from '@/lib/routes';
 import { AreaLoading } from './area-loading';
+import { UnconfirmedEmail } from './unconfirmed-email';
 
 const DENIED_NOTICE = 'Esa sección no está disponible para tu cuenta. Te llevamos a la tuya.';
 const DENIED_TOAST_ID = 'access-denied';
@@ -57,11 +58,12 @@ export function RequireAccess({ gate }: { gate: AccessGate }) {
   const decision = decideAccess(accessInputFor(gate, account));
 
   const from = `${location.pathname}${location.search}`;
-  const isPendingStep = gate === 'verifyEmail' || gate === 'acceptTerms';
+  const isPendingStep = gate === 'acceptTerms';
 
   if (decision.kind === 'wait') return <AreaLoading />;
   if (decision.kind === 'error') return <AccessError account={account} />;
   if (decision.kind === 'allow') return <Outlet />;
+  if (decision.kind === 'unconfirmedEmail') return <UnconfirmedEmail />;
   if (decision.to === 'area') {
     const home = AREA_HOME[decision.area];
     if (decision.denied) return <DeniedRedirect to={home} />;
@@ -69,11 +71,9 @@ export function RequireAccess({ gate }: { gate: AccessGate }) {
     const after = isPendingStep ? destinationOf(location.state) : null;
     return <Navigate to={after ?? home} replace />;
   }
-  if (decision.to === 'acceptTerms' || decision.to === 'verifyEmail') {
-    // The destination rides along in the navigation state: from one step to the next, or from
-    // the screen that was asked for.
-    const after = isPendingStep ? destinationOf(location.state) : from;
-    return <Navigate to={ROUTES[decision.to]} replace state={destinationState(after)} />;
+  if (decision.to === 'acceptTerms') {
+    // The destination rides along in the navigation state, from the screen that was asked for.
+    return <Navigate to={ROUTES.acceptTerms} replace state={destinationState(from)} />;
   }
   return <Navigate to={signInPathFrom(from)} replace state={{ notice: SIGN_IN_REQUIRED }} />;
 }

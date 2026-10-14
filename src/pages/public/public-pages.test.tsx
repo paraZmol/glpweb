@@ -1,6 +1,4 @@
-import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { CheckboxField } from '../../components/common/checkbox-field';
 import { count, renderStatic, tags, textOf } from '../../../tests/support/render-static';
 import { PublicShell } from '../../components/layout/public-shell';
 import { CURRENT_TEXT_VERSIONS } from '../../domain/legal/text-editions';
@@ -8,9 +6,7 @@ import { ContactPage } from './contact';
 import { HomePage } from './home';
 import { CookiesPage, PrivacyPage, TermsPage } from './index';
 import { NotFoundPage } from './not-found';
-import { RegisterPage } from './register';
-import { ResetPasswordPage } from './reset-password';
-import { SignInPage } from './sign-in';
+import { RegisterPage, SignInPage } from './sign-in';
 
 const inPublicShell = (page: React.ReactElement, path: string, at = path) =>
   renderStatic(page, { path, at, shell: <PublicShell /> });
@@ -86,108 +82,79 @@ describe('home with the finder (PLAN 2.6)', () => {
     expect(text).not.toMatch(/S\/ \d/);
   });
 
-  it('leads owners to the sign-up of their distributor', () => {
+  // PLAN §11 (2026-10-14): a visitor goes there through the screen for somebody new.
+  it('leads owners to the sign-up of their distributor, through "Crear cuenta"', () => {
     expect(text).toContain('¿Tienes una distribuidora de gas?');
-    expect(linksTo(html, '/distribuidora/nueva').length).toBeGreaterThan(0);
+    expect(linksTo(html, '/registro?desde=%2Fdistribuidora%2Fnueva')).toHaveLength(1);
   });
 });
 
-describe('registration (PLAN 2.1, 2.11)', () => {
-  const html = inPublicShell(<RegisterPage />, '/registro');
-  const inputs = tags(html, 'input');
-  const named = (name: string) => inputs.find((tag) => tag.includes(`name="${name}"`)) ?? '';
+// PLAN 2.1: sign-in is with Google only. `/ingresar` and `/registro` are the same screen with
+// other words: the first sign-in is what creates the account.
+describe.each([
+  [
+    '/ingresar',
+    <SignInPage key="i" />,
+    'Ingresa a Hornilla.',
+    'Ingresas con tu cuenta de Google. Para buscar distribuidoras y ver sus páginas no necesitas cuenta.',
+  ],
+  [
+    '/registro',
+    <RegisterPage key="r" />,
+    'Crea tu cuenta en Hornilla.',
+    'Necesitas una cuenta de Google: es la única forma de entrar y no hay contraseña que crear. La misma cuenta te sirve como cliente y para trabajar con tu distribuidora. Sigue: confirmar tus datos y aceptar los términos. Si ya tienes cuenta, el mismo botón te hace ingresar.',
+  ],
+] as const)('entry screen %s', (path, page, title, lead) => {
+  const html = inPublicShell(page, path);
+  const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
 
-  it('asks for name, e-mail, password and an optional phone, each with its label', () => {
-    expect(inputs.map((tag) => /name="([^"]+)"/.exec(tag)?.[1])).toEqual([
-      'displayName',
-      'email',
-      'password',
-      'phone',
-    ]);
-    expect(count(html, /<label\b/)).toBe(inputs.length);
-    expect(textOf(html)).toContain('Celular (opcional)');
-  });
-
-  it('is titled without promising an order', () => {
+  it('is titled for what the visitor came to do, and says it is with Google', () => {
     const [h1 = ''] = html.match(/<h1\b.*?<\/h1>/s) ?? [];
 
-    expect(textOf(h1)).toBe('Crea tu cuenta en Hornilla.');
+    expect(textOf(h1)).toBe(title);
+    expect(textOf(main)).toContain(lead);
   });
 
-  // PLAN 2.11: registering records no consent, so the form has no box to tick.
-  it('asks for no consent and says where the terms are accepted', () => {
-    const text = textOf(html).replaceAll(' (se abre en otra pestaña)', '');
-
-    expect(inputs.some((tag) => tag.includes('type="checkbox"'))).toBe(false);
-    expect(text).toContain(
-      'Los Términos y condiciones y la Política de privacidad se aceptan en el paso siguiente, después de verificar tu correo.',
-    );
-    expect(text).not.toMatch(/Acepto los|autorizo a Hornilla/);
+  it('offers Google as the only way in: no field, no password, nothing to send', () => {
+    expect(tags(main, 'input')).toEqual([]);
+    expect(count(main, /<form\b/)).toBe(0);
+    expect(tags(main, 'button').map((tag) => tag.includes('type="button"'))).toEqual([true]);
+    expect(textOf(main)).toContain('Continuar con Google');
+    expect(textOf(main)).not.toMatch(/contraseña que (escribir|recordar)|Olvidaste|verifica/i);
   });
 
   it('says what Google hands over under its button, with the official mark as a file', () => {
-    expect(textOf(html)).toContain(
+    expect(textOf(main)).toContain(
       'Google nos entrega tu nombre, tu correo y tu foto de perfil. La foto no la mostramos ni la usamos: la quitamos del perfil de tu cuenta al terminar el ingreso, aunque el servicio de ingreso conserva la copia que Google le entrega.',
     );
-    expect(tags(html, 'img').some((tag) => tag.includes('src="/google-g.svg"'))).toBe(true);
+    expect(tags(main, 'img').some((tag) => tag.includes('src="/google-g.svg"'))).toBe(true);
   });
 
-  it('would show a ticked box as ticked (control for the test above)', () => {
-    const ticked = renderToStaticMarkup(
-      <CheckboxField checked onChange={() => {}}>
-        Acepto
-      </CheckboxField>,
+  // PLAN 2.11: entering records no consent, so the screen has no box to tick.
+  it('asks for no consent and says where the terms are accepted', () => {
+    const text = textOf(main).replaceAll(' (se abre en otra pestaña)', '');
+
+    expect(text).toContain(
+      'Al continuar se crea tu cuenta de ingreso con el nombre y el correo que entrega Google. Los Términos y condiciones y la Política de privacidad se aceptan en el paso siguiente, la primera vez que ingresas; si no los aceptas, ahí mismo puedes eliminar la cuenta.',
     );
-
-    expect(ticked).toContain(' checked=""');
-  });
-
-  it('opens the terms and the privacy policy in another tab, so nothing typed is lost', () => {
-    const form = html.slice(html.indexOf('<form'), html.indexOf('</form>'));
-
+    expect(text).not.toMatch(/Acepto los|autorizo a Hornilla/);
     for (const href of ['/terminos', '/privacidad']) {
-      const [link = ''] = linksTo(form, href);
+      const [link = ''] = linksTo(main, href);
       expect(link).toContain('target="_blank"');
       expect(link).toContain('rel="noopener"');
     }
   });
 
-  it('tells password managers what each field is, and the minimum length', () => {
-    expect(named('password')).toContain('autoComplete="new-password"');
-    expect(named('password')).toContain('type="password"');
-    expect(named('email')).toContain('autoComplete="email"');
-    expect(textOf(html)).toContain('Mínimo 8 caracteres.');
-  });
-
-  it('has a single submit button', () => {
-    expect(tags(html, 'button').filter((tag) => tag.includes('type="submit"'))).toHaveLength(1);
-  });
-});
-
-describe('sign-in and password reset (PLAN 2.1)', () => {
-  it('offers e-mail, Google and the way to reset the password', () => {
-    const html = inPublicShell(<SignInPage />, '/ingresar');
-
-    expect(tags(html, 'input').map((tag) => /name="([^"]+)"/.exec(tag)?.[1])).toEqual([
-      'email',
-      'password',
-    ]);
-    expect(textOf(html)).toContain('Continuar con Google');
-    expect(linksTo(html, '/restablecer')).toHaveLength(1);
-    expect(linksTo(html, '/registro').length).toBeGreaterThan(0);
+  // PLAN §11 (2026-10-14): one door. The other screen would be the same button again.
+  it('links to neither entry screen, nor to anything that no longer exists', () => {
+    expect(linksTo(html, '/ingresar')).toEqual([]);
+    expect(linksTo(html, '/registro')).toEqual([]);
+    expect(linksTo(html, '/restablecer')).toEqual([]);
+    expect(linksTo(html, '/verificar-correo')).toEqual([]);
   });
 
   it('explains the detour only to a visitor sent by a guard', () => {
-    const direct = inPublicShell(<SignInPage />, '/ingresar');
-
-    expect(textOf(direct)).not.toContain('Ingresa para continuar.');
-  });
-
-  it('asks only for the e-mail to reset the password', () => {
-    const html = inPublicShell(<ResetPasswordPage />, '/restablecer');
-
-    expect(tags(html, 'input')).toHaveLength(1);
-    expect(linksTo(html, '/ingresar').length).toBeGreaterThan(0);
+    expect(textOf(html)).not.toContain('Ingresa para continuar.');
   });
 });
 
@@ -201,7 +168,7 @@ describe('legal pages (PLAN 2.7)', () => {
   const PUBLISHED = {
     terms: '12 de octubre de 2026',
     privacy: '12 de octubre de 2026',
-    cookies: '11 de octubre de 2026',
+    cookies: '12 de octubre de 2026',
   } as const;
 
   it.each(PAGES)('%s shows its document under the draft banner', (path, page, title, id) => {

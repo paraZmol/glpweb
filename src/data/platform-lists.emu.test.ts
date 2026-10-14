@@ -2,12 +2,13 @@ import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { EMULATOR_HOST, EMULATOR_PROJECT_ID, emulatorPorts } from '../../scripts/lane-ports.mjs';
-import { SEED_DISTRIBUTORS, SEED_PASSWORD, SEED_USERS, type SeedUser } from '../../tests/seed/data';
+import { SEED_DISTRIBUTORS, SEED_USERS } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
 import { approveAsSeen } from '../../tests/support/approve-as-seen';
+import { signInAs } from '../../tests/support/emulated-session';
 import { NothingChangedError, PermissionDeniedError } from '../domain/tenancy/errors';
 import { listingStateOf } from '../domain/tenancy/listing';
-import { signInWithEmail, signOutSession } from './auth-repo';
+import { signOutSession } from './auth-repo';
 import {
   getDistributorBySlug,
   getDistributorControl,
@@ -34,7 +35,6 @@ const CORRECTED = {
 };
 const CORRECTED_AGAIN = { ...CORRECTED, legalName: 'Gas Demo Corregida Dos S.A.C.' };
 
-const signInAs = (user: SeedUser) => signInWithEmail(user.email, SEED_PASSWORD);
 const idsOf = (items: { distributorId: string }[]) => items.map((item) => item.distributorId);
 
 /** Writes one document past the rules, as only the emulator allows. */

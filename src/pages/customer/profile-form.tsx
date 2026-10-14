@@ -85,7 +85,8 @@ export function ProfileForm({ uid, profile, email, onSaved }: ProfileFormProps) 
         readOnly
         hint={
           <>
-            Con este correo ingresas. Para eliminar tu cuenta o cambiar tu correo, escribe a{' '}
+            Es el correo de tu cuenta de Google, con la que ingresas. Para eliminar tu cuenta o
+            ingresar con otra cuenta de Google, escribe a{' '}
             <TextLink to={ROUTES.contact}>Contacto y reclamos</TextLink>.
           </>
         }

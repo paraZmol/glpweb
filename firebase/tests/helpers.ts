@@ -48,12 +48,56 @@ export function createEnv(suffix: string): Promise<RulesTestEnvironment> {
 
 export const emailOf = (uid: string) => `${uid}@example.com`;
 
+/**
+ * What Firebase Auth puts in the token about how the session started. Typed loosely on
+ * purpose: the attacks name providers the library does not list.
+ */
+const signedInWith = (provider: string) =>
+  ({ firebase: { sign_in_provider: provider, identities: {} } }) as never;
+
+/** A session as the app starts them: through Google, which hands over a confirmed e-mail. */
 export function verified(env: RulesTestEnvironment, uid: string): Db {
-  return env.authenticatedContext(uid, { email: emailOf(uid), email_verified: true }).firestore();
+  return env
+    .authenticatedContext(uid, {
+      email: emailOf(uid),
+      email_verified: true,
+      ...(signedInWith('google.com') as object),
+    })
+    .firestore();
 }
 
+/**
+ * A session with a verified e-mail that did NOT come in through Google (PLAN 2.1): the app
+ * offers no such way in, so only a hostile or a left-over client holds one.
+ */
+export function verifiedThrough(env: RulesTestEnvironment, uid: string, provider: string): Db {
+  return env
+    .authenticatedContext(uid, {
+      email: emailOf(uid),
+      email_verified: true,
+      ...(signedInWith(provider) as object),
+    })
+    .firestore();
+}
+
+/**
+ * A Google session whose e-mail is not verified. Google always confirms it, so this is the
+ * session that should not exist; it differs from `verified` in that one claim only, so a
+ * refusal can only come from the e-mail check.
+ */
 export function unverified(env: RulesTestEnvironment, uid: string): Db {
-  return env.authenticatedContext(uid, { email: emailOf(uid), email_verified: false }).firestore();
+  return env
+    .authenticatedContext(uid, {
+      email: emailOf(uid),
+      email_verified: false,
+      ...(signedInWith('google.com') as object),
+    })
+    .firestore();
+}
+
+/** An anonymous Firebase session on that uid: no e-mail at all. The app never starts one. */
+export function signedInAnonymously(env: RulesTestEnvironment, uid: string): Db {
+  return env.authenticatedContext(uid, signedInWith('anonymous')).firestore();
 }
 
 export function anonymous(env: RulesTestEnvironment): Db {

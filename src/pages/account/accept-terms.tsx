@@ -19,6 +19,7 @@ import {
   validateConsents,
   validateProfile,
 } from '@/features/auth/auth-forms';
+import { useTermsAcceptedElsewhere } from '@/features/auth/terms-elsewhere';
 import { usePageTitle } from '@/lib/page-title';
 import { ROUTES } from '@/lib/routes';
 import { useAsyncAction } from '@/lib/use-async-action';
@@ -32,8 +33,8 @@ const OFFLINE_TEXT = 'Sin conexión: para registrar tu aceptación necesitas int
 type Errors = ConsentErrors & ProfileErrors;
 
 /**
- * Pending step: the account, with its e-mail verified, has not accepted the current terms or
- * privacy policy (PLAN 2.7, 2.9, 2.11). A new account also confirms its name and phone here:
+ * Pending step: the account has not accepted the current terms or privacy policy (PLAN 2.7,
+ * 2.9, 2.11). A new account also confirms the name Google gave and adds its phone here:
  * the profile is created with the acceptance, never before. Nothing is recorded until the
  * person ticks BOTH boxes and presses the button; then the guard moves on.
  */
@@ -51,6 +52,7 @@ export function AcceptTermsPage() {
   const [isRecorded, setRecorded] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   useFocusFirstInvalid(formRef, errors);
+  useTermsAcceptedElsewhere(session.uid, reloadProfile);
   const copy = copyFor(profile);
   const isNewAccount = profile === null;
 

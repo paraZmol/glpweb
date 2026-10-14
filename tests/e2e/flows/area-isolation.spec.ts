@@ -2,7 +2,7 @@ import { expect, type Page } from '@playwright/test';
 import { SEED_DISTRIBUTORS, SEED_USERS } from '../../seed/data';
 import { DESKTOP, runOncePerActorDevices, test } from '../support/actors';
 import { deviceStorageDump } from '../support/device-storage';
-import { SEED_HOME_PATH, type SeedUserKey, submitSignIn } from '../support/sign-in';
+import { SEED_HOME_PATH, type SeedUserKey, signInHere } from '../support/sign-in';
 
 test.skip(
   process.env.E2E_EMULATORS !== 'true',
@@ -73,7 +73,7 @@ test('a visitor typing /central signs in first and is still kept out of it', asy
 
   await expect(page).toHaveURL(/\/ingresar\?desde=%2Fcentral$/);
   await expect(page.getByText('Ingresa para continuar.')).toBeVisible();
-  await submitSignIn(page, SEED_USERS.customer.email);
+  await signInHere(page, SEED_USERS.customer);
   await expect(page).toHaveURL(/\/inicio$/);
   await expect(page.getByText(DENIED_NOTICE)).toBeVisible();
   expect(errors).toEqual([]);

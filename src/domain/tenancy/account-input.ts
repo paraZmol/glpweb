@@ -20,6 +20,11 @@ export interface PreparedUserProfile {
   phone: string | null;
 }
 
+/** A name as a person writes it: no spaces at the ends and one space between words. */
+export function tidyName(raw: string): string {
+  return raw.trim().replace(/\s+/g, ' ');
+}
+
 export function prepareUserProfile(input: UserProfileInput): Validated<PreparedUserProfile> {
   const displayName = input.displayName.trim();
   const phone = input.phone ? normalizePeruvianMobile(input.phone) : null;

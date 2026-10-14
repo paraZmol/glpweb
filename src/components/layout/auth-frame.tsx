@@ -50,7 +50,7 @@ type AuthFrameProps = {
   title: ReactNode;
   lead?: ReactNode;
   children: ReactNode;
-  /** Secondary way out under the form ("¿Primera vez? Crear cuenta"). */
+  /** Secondary way out under the form ("No acepto: eliminar mi cuenta"). */
   footer?: ReactNode;
 };
 

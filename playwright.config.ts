@@ -46,7 +46,9 @@ export default defineConfig({
   webServer: {
     command: withEmulators ? serveWithEmulators : serve,
     // The launcher adds the emulator ports of the lane to the build's environment.
-    env: withEmulators ? { VITE_USE_EMULATORS: 'true' } : {},
+    // VITE_E2E_SIGN_IN puts the test-only sign-in entry in this build (PLAN 2.1): it only works
+    // against the Auth emulator, and `scripts/check-dist.mjs` keeps it out of what is deployed.
+    env: withEmulators ? { VITE_USE_EMULATORS: 'true', VITE_E2E_SIGN_IN: 'true' } : {},
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: withEmulators ? 240_000 : 120_000,

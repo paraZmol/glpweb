@@ -11,7 +11,7 @@ import {
 import { SEED_DISTRIBUTORS } from '../../seed/data';
 import { createTestAccount, readDocument, uniqueTag } from '../support/emulator-admin';
 import { foundDistributor, FOUNDING_PLANT, FOUNDING_VERIFICATION } from '../support/founding';
-import { signInWithPassword } from '../support/sign-in';
+import { signInAs } from '../support/sign-in';
 
 test.skip(
   process.env.E2E_EMULATORS !== 'true',
@@ -56,7 +56,7 @@ async function foundedListing(actors: Actors, tag: string): Promise<Listing> {
   const name = `Gas Revisión ${tag}`;
   const slug = `revision-${tag}`;
   const owner = await actors.open(DESKTOP);
-  await signInWithPassword(owner.page, account.email, '/inicio');
+  await signInAs(owner.page, account, '/inicio');
   await foundDistributor(owner.page, { name, slug });
   const link = await readDocument(`slugs/${slug}`);
   const admin = await actors.openSeed('admin');

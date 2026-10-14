@@ -20,7 +20,7 @@ export const SESSION: Session = {
   email: 'persona@example.com',
   emailVerified: true,
   displayName: 'Persona Demo',
-  providerIds: ['password'],
+  providerIds: ['google.com'],
 };
 
 export const PROFILE: UserProfile = {

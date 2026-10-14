@@ -7,6 +7,7 @@ import { useAccount } from '@/features/account/account-context';
 import { useDeliveryLocation } from '@/features/location/use-delivery-location';
 import { greetingFor } from '@/lib/greeting';
 import { usePageTitle } from '@/lib/page-title';
+import { ROUTES } from '@/lib/routes';
 
 /**
  * Home of the customer (PLAN 2.6): the same search of the public home, inside the app frame
@@ -22,7 +23,9 @@ export function CustomerHomePage() {
       <PageHeader
         title={
           <>
-            {greetingFor(profile?.displayName)} <Highlight>¿Quién te lleva el gas hoy?</Highlight>
+            {/* The name is the person's: a long one without spaces breaks where it must. */}
+            <span className="wrap-anywhere">{greetingFor(profile?.displayName)}</span>{' '}
+            <Highlight>¿Quién te lleva el gas hoy?</Highlight>
           </>
         }
         lead="Dinos dónde estás y mira qué distribuidoras llegan hasta tu puerta."
@@ -30,7 +33,7 @@ export function CustomerHomePage() {
       <LocationField delivery={delivery} className="lg:max-w-xl" />
       <DistributorFinder point={delivery.location?.point ?? null} />
       {/* Whoever already works at a distributor does not need the invitation. */}
-      {role === null && <OwnersBand />}
+      {role === null && <OwnersBand to={ROUTES.newDistributor} />}
     </div>
   );
 }

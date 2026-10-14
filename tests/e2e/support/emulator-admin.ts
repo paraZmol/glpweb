@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import type { TestInfo } from '@playwright/test';
 import { EMULATOR_HOST, EMULATOR_PROJECT_ID, emulatorPorts } from '../../../scripts/lane-ports.mjs';
 import {
-  SEED_PASSWORD,
+  googleIdOf,
   SEED_PRIVACY_VERSION,
   SEED_TERMS_VERSION,
   type SeedUser,
@@ -122,13 +122,14 @@ export async function findAuthAccount(email: string): Promise<AuthAccount | null
 /**
  * What the profile of a new account looks like:
  * - `current`: accepted the terms and the privacy policy in force (a normal account);
- * - `none`: no profile at all (a first Google sign-in);
+ * - `none`: no profile at all (a first sign-in);
  * - `outdated`: accepted versions that are no longer in force;
- * - `privacyMissing`: an account from before the second box of the registration.
+ * - `privacyMissing`: an account from before the privacy policy was accepted apart.
  */
 export type TestProfile = 'current' | 'none' | 'outdated' | 'privacyMissing';
 
 export interface TestAccountOptions {
+  /** False pretends a Google account without a confirmed address (it should never happen). */
   emailVerified?: boolean;
   profile?: TestProfile;
 }
@@ -176,9 +177,10 @@ async function writeProfile(account: SeedUser, kind: Exclude<TestProfile, 'none'
 }
 
 /**
- * Creates an account only this test uses (password: `SEED_PASSWORD`), so the test can verify
- * it, accept with it, found with it or delete it without touching the seeded ones. By default
- * it is a verified customer with a current profile.
+ * Creates an account only this test uses, so the test can accept with it, found with it or
+ * delete it without touching the seeded ones. Like the seeded ones it is linked to a Google id
+ * derived from its e-mail (PLAN 2.1): `signInAs(page, account, …)` opens its session. By
+ * default it is a customer with a current profile.
  */
 export async function createTestAccount(
   tag: string,
@@ -192,15 +194,28 @@ export async function createTestAccount(
     emailVerified,
     hasProfile: profile !== 'none',
   };
-  const createPath = `/identitytoolkit.googleapis.com/v1/projects/${EMULATOR_PROJECT_ID}/accounts`;
-  const response = await adminRequest(authUrl(createPath), 'POST', {
-    localId: account.uid,
+  const importPath = `/identitytoolkit.googleapis.com/v1/projects/${EMULATOR_PROJECT_ID}/accounts:batchCreate`;
+  const google = {
+    providerId: 'google.com',
+    rawId: googleIdOf(account.email),
     email: account.email,
-    password: SEED_PASSWORD,
     displayName: account.displayName,
-    emailVerified,
+  };
+  const response = await adminRequest(authUrl(importPath), 'POST', {
+    users: [
+      {
+        localId: account.uid,
+        email: account.email,
+        displayName: account.displayName,
+        emailVerified,
+        providerUserInfo: [google],
+      },
+    ],
   });
-  await mustSucceed(response, 'Auth emulator create account');
+  const { error = [] } = (await mustSucceed(response, 'Auth emulator create account')) as {
+    error?: unknown[];
+  };
+  if (error.length > 0) throw new Error(`Auth emulator create account → ${JSON.stringify(error)}`);
   if (profile !== 'none') await writeProfile(account, profile);
   return account;
 }

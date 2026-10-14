@@ -91,8 +91,8 @@ export function ContactPage() {
           <p>
             Si la aplicación falla, si viste un precio o una promoción engañosos, si una
             distribuidora suplanta a otro negocio o publica datos falsos, o si quieres eliminar tu
-            cuenta, cambiar tu correo o pedir una copia de tus datos. Para reportar una
-            distribuidora, indica su nombre y su enlace.
+            cuenta, cambiar la cuenta de Google con la que ingresas o pedir una copia de tus datos.
+            Para reportar una distribuidora, indica su nombre y su enlace.
           </p>
           <PlatformChannel email={email} />
           <p className="text-[0.9375rem]">

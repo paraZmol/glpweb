@@ -13,7 +13,7 @@ const SIGNED_IN: SessionState = {
     email: 'persona@example.com',
     emailVerified: true,
     displayName: 'Persona Demo',
-    providerIds: ['password'],
+    providerIds: ['google.com'],
   },
 };
 

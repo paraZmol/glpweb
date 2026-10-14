@@ -5,11 +5,14 @@ rules_version = '2';
 // Deny by default; each collection is opened operation by operation and has tests in
 // firebase/tests. Limits mirror src/domain/tenancy/constants.ts (the tests read those constants).
 //
+// Who: everything below that is not marked public is read and written only by a session that
+// came in through Google with a verified e-mail (signedInWithGoogle()), platform admins included.
+//
 // Data model (every listed field is required unless marked optional; no other field is accepted).
 // Every text is stored trimmed: white space at either end is refused.
 //
-// /users/{uid}                     private to the account; written only once its e-mail is
-//                                  verified (nothing is stored for an address nobody proved)
+// /users/{uid}                     private to the account; nothing is stored for an address
+//                                  nobody proved
 //   displayName: string 1..80 · phone: null | '9' + 8 digits
 //   ownedDistributorIds: list ≤ 3 — grows only inside a founding batch (caps distributors/account)
 //   terms: { version: an allowed terms version, acceptedAt: timestamp = request.time when it
@@ -19,9 +22,9 @@ rules_version = '2';
 //   createdAt, updatedAt: timestamp (= request.time when written; createdAt immutable)
 //
 // /users/{uid}/acceptances/{id}    history of acceptances: proof of every version the account
-//                                  accepted. {id} is document + '-' + version (terms-0.3).
-//                                  Created by the account only, with a verified e-mail and in the
-//                                  same request that writes that acceptance in the profile;
+//                                  accepted. {id} is document + '-' + version (terms-0.4).
+//                                  Created by the account only, in the same request that
+//                                  writes that acceptance in the profile;
 //                                  never updated or deleted from the app. Read by the account
 //                                  and by platform admins.
 //   document: 'terms' | 'privacy' · version: an allowed version of that text
@@ -109,12 +112,19 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isSelf(uid) {
-      return signedIn() && request.auth.uid == uid;
+    // Sign-in is with Google only (PLAN 2.1): every read and write of the data of an account
+    // or of a distributor demands a session that came in through Google with a verified e-mail
+    // (PLAN §11, 2026-10-14). The app offers no other way in; this is the same decision written
+    // where a client cannot skip it. The two checks stand side by side on purpose: neither one
+    // stands in for the other. Only the public reads (a listed profile, a slug) go without it.
+    function signedInWithGoogle() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
     }
 
-    function emailVerified() {
-      return signedIn() && request.auth.token.email_verified == true;
+    function isSelf(uid) {
+      return signedInWithGoogle() && request.auth.uid == uid;
     }
 
     // The role always comes from the member document, never from the client or the token.
@@ -122,12 +132,19 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/distributors/$(d)/members/$(request.auth.uid)).data;
     }
 
+    // The member document is read once per call: the rule of the public profile is close to the
+    // limit of expressions per evaluation (PLAN §9).
     function hasRole(d, roles) {
-      return signedIn() && member(d).active == true && member(d).role in roles;
+      return signedInWithGoogle() && holdsRole(member(d), roles);
     }
 
+    function holdsRole(held, roles) {
+      return held.active == true && held.role in roles;
+    }
+
+    // A platform admin too: the role grants the most, so it asks the same of the session.
     function isPlatformAdmin() {
-      return signedIn()
+      return signedInWithGoogle()
         && exists(/databases/$(database)/documents/platformAdmins/$(request.auth.uid));
     }
 
@@ -193,11 +210,11 @@ service cloud.firestore {
     // Stored text is always trimmed (the forms trim before validating): a value made of white
     // space, or padded with it, is refused, so a "required" text cannot be blank. The class is
     // what String.prototype.trim() removes in JavaScript; trim() of the rules leaves non-breaking
-    // and other Unicode spaces in place.
+    // and other Unicode spaces in place. Both ends in one pattern: this runs for every brand of
+    // the public profile, whose update rule is close to the limit of expressions (PLAN §9).
     function isText(value, min, max) {
       return value is string && value.size() >= min && value.size() <= max
-        && !value.matches('(?s)^[\\s\\x0b\\pZ\\x{feff}].*')
-        && !value.matches('(?s).*[\\s\\x0b\\pZ\\x{feff}]$');
+        && !value.matches('(?s)^[\\s\\x0b\\pZ\\x{feff}].*|.*[\\s\\x0b\\pZ\\x{feff}]$');
     }
 
     // The public name of a distributor carries at least one letter or digit: punctuation, emoji
@@ -275,12 +292,12 @@ service cloud.firestore {
     // Acceptance of the terms (docs/legal). Same list as TERMS_VERSIONS in
     // src/domain/legal/versions.ts.
     function acceptedTermsVersions() {
-      return ['0.3'];
+      return ['0.4'];
     }
 
     // Same list as PRIVACY_VERSIONS in src/domain/legal/versions.ts.
     function acceptedPrivacyVersions() {
-      return ['0.3'];
+      return ['0.4'];
     }
 
     function isAcceptance(acceptance, versions) {
@@ -462,10 +479,9 @@ service cloud.firestore {
       // Reads added by rules: 0.
       allow get: if isSelf(uid);
 
-      // A profile carries the consents: it exists only for an account that proved its e-mail
-      // (PLAN 2.11).
+      // A profile carries the consents: like every write of the account (isSelf), only for a
+      // session that came in through Google with a verified e-mail (PLAN 2.1, 2.11).
       allow create: if isSelf(uid)
-        && emailVerified()
         && isValidUserProfile(request.resource.data)
         && request.resource.data.ownedDistributorIds.size() == 0
         // Reads added by rules: 2 (getAfter of the two history entries).
@@ -476,7 +492,6 @@ service cloud.firestore {
       // Reads added by rules: 0 for a profile edit, 1 (getAfter) inside a founding batch, 1
       // (getAfter of its history entry) for each text accepted.
       allow update: if isSelf(uid)
-        && emailVerified()
         && isValidUserProfile(request.resource.data)
         && unchanged(['createdAt'])
         && request.resource.data.updatedAt == request.time
@@ -514,14 +529,12 @@ service cloud.firestore {
         // which cannot exist without the accepted terms and privacy policy.
         // Reads added by rules: 1 (exists profile) on create, 0 otherwise.
         allow create: if isSelf(uid)
-          && emailVerified()
           && isSlot()
           && isValidAddress(request.resource.data)
           && stampedNow(request.resource.data)
           && exists(/databases/$(database)/documents/users/$(uid));
 
         allow update: if isSelf(uid)
-          && emailVerified()
           && isValidAddress(request.resource.data)
           && unchanged(['createdAt'])
           && request.resource.data.updatedAt == request.time;
@@ -542,8 +555,9 @@ service cloud.firestore {
         // The other half of logsAcceptance(): no line without the acceptance it proves, written
         // in the profile by this same request.
         // Reads added by rules: 1 (getAfter profile).
+        // Through Google only, like the profile: accepting a new version writes a line here, so
+        // no session of another kind can renew a consent either.
         allow create: if isSelf(uid)
-          && emailVerified()
           && isAcceptanceEntry(request.resource.data)
           && entryId == acceptanceEntryId(
             request.resource.data.document, request.resource.data.version)
@@ -573,7 +587,7 @@ service cloud.firestore {
       // Only inside the founding batch of the distributor it points to. An existing slug makes
       // this write an update, which nobody is allowed: that is what makes slugs unique.
       // Reads added by rules: 2 (getAfter control, getAfter distributor).
-      allow create: if emailVerified()
+      allow create: if signedInWithGoogle()
         && isSlug(slug)
         && hasExactly(request.resource.data, ['distributorId', 'createdAt'])
         && isDocId(request.resource.data.distributorId)
@@ -607,7 +621,7 @@ service cloud.firestore {
       // the slug; the control document vouches for everything else.
       // Reads added by rules: 2 (getAfter slug, getAfter control).
       // It is born unlisted: a platform admin approves it before visitors see it (PLAN 2.11).
-      allow create: if emailVerified()
+      allow create: if signedInWithGoogle()
         && isDistributorId(d)
         && isValidDistributor(request.resource.data)
         && request.resource.data.acceptingOrders == false
@@ -683,7 +697,7 @@ service cloud.firestore {
       match /private/control {
         // Reads added by rules: 0 for the founder, 1 for the rest of the staff, 2 for a
         // platform admin.
-        allow get: if signedIn()
+        allow get: if signedInWithGoogle()
           && (resource.data.ownerUid == request.auth.uid || isStaff(d) || isPlatformAdmin());
 
         // The anchor of the founding batch: it proves the other four pieces exist and belong to
@@ -695,7 +709,7 @@ service cloud.firestore {
         // no other one: it would be thirty fresh days of trial (PLAN 2.11).
         // Reads added by rules: 4 (getAfter distributor, member, settings, founder profile),
         // plus 1 per distributor the account already owns (get control; at most 2).
-        allow create: if emailVerified()
+        allow create: if signedInWithGoogle()
           && isValidControl(request.resource.data)
           && request.resource.data.ownerUid == request.auth.uid
           && request.resource.data.status == 'trial'
@@ -830,11 +844,11 @@ service cloud.firestore {
         // The founder's own contact data and the tax number of the business: not even a
         // co-owner reads them (PLAN 2.11).
         // Reads added by rules: 0 for the founder, 1 for a platform admin.
-        allow get: if signedIn()
+        allow get: if signedInWithGoogle()
           && (resource.data.ownerUid == request.auth.uid || isPlatformAdmin());
 
         // Reads added by rules: 1 (getAfter control).
-        allow create: if emailVerified()
+        allow create: if signedInWithGoogle()
           && isValidPrivateSettings(request.resource.data)
           && request.resource.data.ownerUid == request.auth.uid
           && request.resource.data.ownerEmail == request.auth.token.email
@@ -847,7 +861,7 @@ service cloud.firestore {
         // The verification data can be corrected only while the listing is not approved: what a
         // platform admin approved does not change behind its back.
         // Reads added by rules: 1 (get control).
-        allow update: if signedIn()
+        allow update: if signedInWithGoogle()
           && resource.data.ownerUid == request.auth.uid
           && isValidPrivateSettings(request.resource.data)
           && onlyChanges([
@@ -879,7 +893,6 @@ service cloud.firestore {
         // creates its own member with exactly the role of a valid invitation.
         // Reads added by rules: 2 (getAfter distributor, getAfter control).
         allow create: if isSelf(memberUid)
-          && emailVerified()
           && isValidMember(request.resource.data, d, memberUid)
           && stampedNow(request.resource.data)
           && request.resource.data.role == 'owner'
@@ -895,7 +908,7 @@ service cloud.firestore {
         // do it on its own document and an owner on anyone's (the rename batch), because the
         // only value accepted is the public name as it stands once the request is applied.
         // Reads added by rules: 1 (getAfter distributor) on the own document, 2 for an owner.
-        allow update: if signedIn()
+        allow update: if signedInWithGoogle()
           && isValidMember(request.resource.data, d, memberUid)
           && request.resource.data.updatedAt == request.time
           && (
@@ -931,7 +944,7 @@ service cloud.firestore {
     // "My memberships" (selector of distributors): a collection-group query that must filter
     // by the caller's own uid and carry a limit. Billed as one read per membership found.
     match /{path=**}/members/{memberUid} {
-      allow list: if signedIn()
+      allow list: if signedInWithGoogle()
         && request.query.limit <= 20
         && resource.data.uid == request.auth.uid;
     }

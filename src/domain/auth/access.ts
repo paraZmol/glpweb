@@ -8,8 +8,8 @@ import type { SessionState } from './session';
 export const APP_AREAS = ['customer', 'driver', 'office', 'platform'] as const;
 export type AppArea = (typeof APP_AREAS)[number];
 
-/** What a route asks for: an area, one of the two pending steps, or "take me to my area". */
-export type AccessGate = AppArea | 'acceptTerms' | 'verifyEmail' | 'home';
+/** What a route asks for: an area, the pending step, or "take me to my area". */
+export type AccessGate = AppArea | 'acceptTerms' | 'home';
 
 export type Loadable<T> =
   { status: 'loading' } | { status: 'error' } | { status: 'ready'; value: T };
@@ -19,7 +19,7 @@ export interface AccessInput {
   session: SessionState;
   /**
    * True when the account has no profile or accepted an older version of the terms. Only looked
-   * at once the e-mail is verified: before that the account cannot have a profile at all.
+   * at for a confirmed e-mail: without one the account cannot have a profile at all.
    */
   termsPending: Loadable<boolean>;
   /** Role in the distributor the panels show; null for an account that is only a customer. */
@@ -31,7 +31,13 @@ export type AccessDecision =
   | { kind: 'wait' }
   | { kind: 'allow' }
   | { kind: 'error'; source: 'profile' | 'membership' | 'platform' }
-  | { kind: 'redirect'; to: 'signIn' | 'acceptTerms' | 'verifyEmail' }
+  /**
+   * The session has no confirmed e-mail. Sign-in is with Google only (PLAN 2.1), which always
+   * hands one over, so this is a session that should not exist: nothing to complete, only to
+   * sign out and try again.
+   */
+  | { kind: 'unconfirmedEmail' }
+  | { kind: 'redirect'; to: 'signIn' | 'acceptTerms' }
   /** `denied` is true when the account asked for an area it has no role for. */
   | { kind: 'redirect'; to: 'area'; area: AppArea; denied: boolean };
 
@@ -78,27 +84,21 @@ function decideArea(input: AccessInput): AccessDecision {
 }
 
 /**
- * The steps go in order and nobody skips one: session → e-mail verified → terms accepted →
+ * The steps go in order and nobody skips one: session → e-mail confirmed → terms accepted →
  * role for the area (PLAN 2.11). The e-mail comes first because nothing is stored for an
- * account that has not proved its address: the rules refuse its profile and its consents, so
- * the terms step could not be completed before it. The two pending-step screens are only
- * reachable while their step is the pending one.
+ * account without a confirmed address: the rules refuse its profile and its consents, so the
+ * terms step could not be completed. The terms screen is only reachable while it is pending.
  */
 export function decideAccess(input: AccessInput): AccessDecision {
   const { gate, session, termsPending } = input;
   if (session.status === 'loading') return WAIT;
   if (session.status === 'signedOut') return { kind: 'redirect', to: 'signIn' };
-
-  // An unverified account has one place to be, whatever the state of its profile.
-  if (!session.session.emailVerified) {
-    return gate === 'verifyEmail' ? ALLOW : { kind: 'redirect', to: 'verifyEmail' };
-  }
+  if (!session.session.emailVerified) return { kind: 'unconfirmedEmail' };
 
   if (termsPending.status === 'loading') return WAIT;
   if (termsPending.status === 'error') return { kind: 'error', source: 'profile' };
   if (gate === 'acceptTerms') return termsPending.value ? ALLOW : sendHome(input, false);
   if (termsPending.value) return { kind: 'redirect', to: 'acceptTerms' };
-  if (gate === 'verifyEmail') return sendHome(input, false);
 
   return decideArea(input);
 }
