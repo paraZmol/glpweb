@@ -28,6 +28,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
+import { CATALOG_QUERY_LIMIT } from '../../src/domain/catalog/constants';
 import { MAX_ACCEPTANCE_ENTRIES, TERMS_VERSION } from '../../src/domain/legal/versions';
 import {
   MAX_ADDRESSES_PER_USER,
@@ -46,6 +47,8 @@ import {
   entryPath,
   foundDistributor,
   newDistributorId,
+  productDoc,
+  productPath,
   seedDoc,
   seedWorld,
   signedInAnonymously,
@@ -76,6 +79,11 @@ beforeEach(async () => {
     version: TERMS_VERSION,
     acceptedAt: AT,
   });
+  await seedDoc(
+    env,
+    productPath(A, 'p00'),
+    productDoc({ active: false, createdAt: AT, updatedAt: AT }),
+  );
 });
 
 afterAll(async () => {
@@ -182,6 +190,19 @@ const DISTRIBUTOR: Case[] = [
     'deactivate a driver',
     OWNER,
     (db) => updateDoc(doc(db, `distributors/${A}/members/driver-a`), { active: false, ...stamp }),
+  ],
+  [
+    'list its whole catalogue (PLAN 3.1)',
+    OWNER,
+    (db) =>
+      getDocs(query(collection(db, `distributors/${A}/products`), limit(CATALOG_QUERY_LIMIT))),
+  ],
+  ['read a product off sale', OWNER, (db) => getDoc(doc(db, productPath(A, 'p00')))],
+  ['add a product', OWNER, (db) => setDoc(doc(db, productPath(A, 'p01')), productDoc())],
+  [
+    'change a price',
+    OWNER,
+    (db) => updateDoc(doc(db, productPath(A, 'p00')), { refillPriceCents: 5400, ...stamp }),
   ],
   [
     'close the public profile of a distributor that cannot take orders (a driver)',

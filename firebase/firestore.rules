@@ -102,6 +102,19 @@ rules_version = '2';
 //     needs no extra read; it can only ever be written equal to the public name
 //   createdAt (immutable), updatedAt
 //
+// /distributors/{d}/products/{p}   the catalogue (PLAN 3.1). {p} is a slot, p00 … p29: the only
+//                                  way rules can cap it (30 products). Never deleted: a product
+//                                  leaves the sale with active = false. Anyone reads the products
+//                                  on sale while the distributor takes orders; its staff reads
+//                                  them all; only an owner writes, while it is writable.
+//   brand: string 1..30 · brandColor: null | '#rrggbb' lowercase · name: string 2..60
+//   weightKg: int 1..100 (immutable: another weight is another product)
+//   refillPriceCents: int 1..99900 — what a refill costs (the customer hands an empty cylinder)
+//   fullPriceCents: null (the cylinder is not sold with its container) | int above
+//     refillPriceCents and ≤ 99900 — gas + container ("Balón completo")
+//   currency: the distributor's (immutable) · active: bool · sortOrder: int 0..999
+//   createdAt (immutable), updatedAt (= request.time when written)
+//
 // Billed reads added by the rules (get / exists / getAfter) are noted on each `allow`.
 // ===============================================================================================
 service cloud.firestore {
@@ -454,6 +467,33 @@ service cloud.firestore {
         && isPhone(data.ownerPhone)
         && isText(data.ownerEmail, 3, 254)
         && data.plan in ['trial']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Integer cents within the sanity cap of S/ 999.00 (MAX_PRICE_CENTS).
+    function isPriceCents(value) {
+      return value is int && value >= 1 && value <= 99900;
+    }
+
+    // Same checks as prepareNewProduct in src/domain/catalog/product-input.ts. The full cylinder
+    // is the gas plus its container, so it costs more than the refill.
+    function isValidProduct(data) {
+      return hasExactly(data, [
+          'brand', 'brandColor', 'weightKg', 'name', 'refillPriceCents', 'fullPriceCents',
+          'currency', 'active', 'sortOrder', 'createdAt', 'updatedAt'
+        ])
+        && isText(data.brand, 1, 30)
+        && (data.brandColor == null
+          || (data.brandColor is string && data.brandColor.matches('^#[0-9a-f]{6}$')))
+        && data.weightKg is int && data.weightKg >= 1 && data.weightKg <= 100
+        && isText(data.name, 2, 60)
+        && isPriceCents(data.refillPriceCents)
+        && (data.fullPriceCents == null
+          || (isPriceCents(data.fullPriceCents) && data.fullPriceCents > data.refillPriceCents))
+        && data.currency is string
+        && data.active is bool
+        && data.sortOrder is int && data.sortOrder >= 0 && data.sortOrder <= 999
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
@@ -937,8 +977,49 @@ service cloud.firestore {
         }
       }
 
-      // invites, helpers, vehicles, products, plantStock, customers, orders, shifts: closed
-      // until their phase opens them.
+      // ------------------------------------------------------------------------ products ----
+      // The catalogue (PLAN 3.1), in a match of its own: the update rule of the public profile is
+      // close to the limit of expressions per evaluation (PLAN §9).
+      match /products/{productId} {
+        // Public while the distributor takes orders, and only what is on sale: a query must carry
+        // where('active', '==', true) and a limit ≤ 30. It follows the same flag that opens the
+        // public profile, so a catalogue is readable exactly when its profile is. The staff reads
+        // everything, withdrawn products included.
+        // Reads added by rules: 1 for a visitor (get distributor); for the staff 1 (get member),
+        // or 2 when it reads a product on sale of a distributor that does not take orders.
+        allow get: if isOnSale() || isStaff(d);
+        allow list: if request.query.limit <= 30 && (isOnSale() || isStaff(d));
+
+        // Only an owner sets prices and decides what is sold (PLAN §11, 2026-10-14), and only
+        // while the distributor is writable. A taken slot makes this an update, which must keep
+        // the creation date: no product is replaced by another one.
+        // Reads added by rules: 3 (get member, get control, get distributor).
+        allow create: if isValidProduct(request.resource.data)
+          && productId.matches('^p[0-2][0-9]$')
+          && stampedNow(request.resource.data)
+          && hasRole(d, ['owner'])
+          && writable(d)
+          && request.resource.data.currency == get(distributorPath(d)).data.currency;
+
+        // The weight, the currency and the creation date never change. PLAN 3.5 adds here: no
+        // raise of a list price while a promotion is active or scheduled on the product.
+        // Reads added by rules: 2 (get member, get control).
+        allow update: if isValidProduct(request.resource.data)
+          && unchanged(['weightKg', 'currency', 'createdAt'])
+          && request.resource.data.updatedAt == request.time
+          && hasRole(d, ['owner'])
+          && writable(d);
+
+        // No delete: orders (phase 4) and the plant stock (3.4) name products by their slot.
+
+        function isOnSale() {
+          return resource.data.active == true
+            && get(distributorPath(d)).data.acceptingOrders == true;
+        }
+      }
+
+      // invites, helpers, vehicles, plantStock, customers, orders, shifts: closed until their
+      // phase opens them.
     }
 
     // "My memberships" (selector of distributors): a collection-group query that must filter

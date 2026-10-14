@@ -306,6 +306,26 @@ export function memberDoc(
   };
 }
 
+/** A product of the catalogue (PLAN 3.1) as the owner's client writes it: on sale, both ways. */
+export function productDoc(change: Record<string, unknown> = {}) {
+  return {
+    brand: 'Marca Uno',
+    brandColor: '#1757d6',
+    weightKg: 10,
+    name: 'Balón 10 kg',
+    refillPriceCents: 5200,
+    fullPriceCents: 18500,
+    currency: 'PEN',
+    active: true,
+    sortOrder: 0,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...change,
+  };
+}
+
+export const productPath = (d: string, slot: string) => `distributors/${d}/products/${slot}`;
+
 export function privateDoc(ownerUid: string, change: Record<string, unknown> = {}) {
   return {
     ownerUid,
