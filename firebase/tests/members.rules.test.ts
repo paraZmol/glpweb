@@ -431,7 +431,8 @@ describe('everything not opened yet stays closed', () => {
     'invites/token-1',
     'helpers/h1',
     'vehicles/v1',
-    'products/p1',
+    // Opened in PLAN 3.1 (catalog.rules.test.ts); what hangs below a product stays closed.
+    'products/p00/history/h1',
     'plantStock/p1',
     'customers/c1',
     'orders/o1',
