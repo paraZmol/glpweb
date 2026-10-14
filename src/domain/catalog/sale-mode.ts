@@ -6,9 +6,11 @@
 export const SALE_MODES = ['refill', 'full'] as const;
 export type SaleMode = (typeof SALE_MODES)[number];
 
-/** What a product card needs to show; the real catalogue type arrives with phase 3. */
+/** What a product card needs to show (`toProductOffer` builds it from a catalogue product). */
 export interface ProductOffer {
   weightKg: number;
+  /** Visible name without the brand ("Balón 10 kg"); the card falls back to that when absent. */
+  name?: string;
   /** Gas brand of the cylinder, with its own colour (not the distributor's). */
   brandName: string;
   brandColor: string | null;

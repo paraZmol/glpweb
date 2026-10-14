@@ -42,6 +42,7 @@ describe('ways of selling a product', () => {
   it('turns into what the product card shows', () => {
     expect(toProductOffer(PRODUCT)).toEqual({
       weightKg: 45,
+      name: 'Balón 45 kg',
       brandName: 'Marca Uno',
       brandColor: '#1757d6',
       refillPriceCents: 19000,

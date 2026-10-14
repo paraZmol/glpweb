@@ -73,6 +73,7 @@ export function sellsFullCylinder(product: Pick<Product, 'fullPriceCents'>): boo
 export function toProductOffer(product: Product): ProductOffer {
   return {
     weightKg: product.weightKg,
+    name: product.name,
     brandName: product.brand,
     brandColor: product.brandColor,
     refillPriceCents: product.refillPriceCents,
