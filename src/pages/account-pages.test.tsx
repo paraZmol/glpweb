@@ -176,7 +176,7 @@ describe('my account (PLAN 2.1)', () => {
   });
 
   // PLAN 2.9
-  it('says what signing out erases and where to ask for a deletion or an e-mail change', () => {
+  it('says what signing out erases and where to ask for a deletion or another Google account', () => {
     const html = inArea('customer', <AccountPage />, accountOf(), ROUTES.account);
     const text = textOf(html);
 
@@ -184,7 +184,7 @@ describe('my account (PLAN 2.1)', () => {
       'Al cerrar sesión se borran de este dispositivo tu sesión, la copia de tus datos y el último punto desde el que buscaste.',
     );
     expect(text).toContain(
-      'Para eliminar tu cuenta o cambiar tu correo, escribe a Contacto y reclamos',
+      'Es el correo de tu cuenta de Google, con la que ingresas. Para eliminar tu cuenta o ingresar con otra cuenta de Google, escribe a Contacto y reclamos',
     );
     expect(tags(html, 'a').filter((tag) => tag.includes('href="/contacto"'))).toHaveLength(2);
   });

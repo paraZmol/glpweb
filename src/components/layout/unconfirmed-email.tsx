@@ -1,8 +1,10 @@
 import { HornillaLogo } from '@/components/brand/hornilla-logo';
 import { Button } from '@/components/common/button';
 import { ErrorState } from '@/components/common/state-views';
+import { TextLink } from '@/components/common/text-link';
 import { useSignOut } from '@/features/account/use-sign-out';
 import { usePageTitle } from '@/lib/page-title';
+import { ROUTES } from '@/lib/routes';
 
 const LOGO_PX = 30;
 
@@ -23,7 +25,12 @@ export function UnconfirmedEmail() {
       <main id="contenido" className="mx-auto w-full max-w-xl flex-1 px-4 py-10">
         <ErrorState
           title="No pudimos confirmar tu correo con Google."
-          description="Cierra sesión e inténtalo de nuevo."
+          description={
+            <>
+              Cierra sesión e inténtalo de nuevo. Si se repite, o si quieres que eliminemos esta
+              cuenta, escríbenos desde <TextLink to={ROUTES.contact}>Contacto y reclamos</TextLink>.
+            </>
+          }
           secondaryAction={
             <Button variant="ink" loading={isSigningOut} onClick={signOut}>
               Cerrar sesión

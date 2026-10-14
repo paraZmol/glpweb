@@ -85,8 +85,9 @@ test('a new person signs in, confirms the data, accepts the terms and lands on t
 
 // PLAN 2.2, 2.11 ("que el registro conserve el destino"). Defect reported by flow-tester on
 // 2026-10-10: a visitor taps "Súmala a Hornilla", is asked to sign in at
-// /ingresar?desde=/distribuidora/nueva and, having no account, follows "Crear cuenta". The
-// destination must travel with the person through the sign-in and the terms.
+// /ingresar?desde=/distribuidora/nueva and, having no account, signs in with Google there (since
+// 2026-10-14 the screen no longer links to /registro: it is the same button). The destination
+// must travel with the person through the sign-in and the terms.
 test('entering from "¿Tienes una distribuidora?" ends on the sign-up of the distributor', async ({
   page,
 }, testInfo) => {
@@ -94,11 +95,6 @@ test('entering from "¿Tienes una distribuidora?" ends on the sign-up of the dis
   await page.getByRole('link', { name: 'Súmala a Hornilla' }).click();
   await expect(page).toHaveURL(/\/ingresar\?desde=%2Fdistribuidora%2Fnueva$/);
   await expect(page.getByText('Ingresa para continuar.')).toBeVisible();
-  await page.getByRole('main').getByRole('link', { name: 'Crear cuenta' }).click();
-  await expect(page).toHaveURL(/\/registro\?desde=%2Fdistribuidora%2Fnueva$/);
-  // And back: the other screen keeps it too.
-  await page.getByRole('main').getByRole('link', { name: 'Ingresar' }).click();
-  await expect(page).toHaveURL(/\/ingresar\?desde=%2Fdistribuidora%2Fnueva$/);
 
   await signInHere(page, newcomer(uniqueTag(testInfo)));
   await expect(page).toHaveURL(/\/aceptar-terminos$/);

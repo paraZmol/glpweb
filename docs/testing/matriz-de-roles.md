@@ -47,8 +47,14 @@ identidad de Google que el emulador simula.
 Orden de las guardas (PLAN 2.11): sesión → correo confirmado → términos → rol. Por eso ST va
 siempre a `/aceptar-terminos` antes que a cualquier área. SV no tiene un paso que completar: en
 cualquier ruta con sesión ve, sin cambiar de dirección, **el aviso** "No pudimos confirmar tu
-correo con Google. Cierra sesión e inténtalo de nuevo.", con "Cerrar sesión" como única salida
-(en las tablas: `ve el aviso`).
+correo con Google. Cierra sesión e inténtalo de nuevo. Si se repite, o si quieres que eliminemos
+esta cuenta, escríbenos desde Contacto y reclamos.", con "Cerrar sesión" como única salida de la
+sesión y el enlace a `/contacto` (en las tablas: `ve el aviso`). Ninguna cuenta con una sesión
+que no sea de Google con correo verificado lee ni escribe nada propio (reglas, PLAN §11
+2026-10-14).
+
+Una sola puerta (PLAN §11, 2026-10-14): el encabezado público ofrece "Ingresar" (y nada en
+`/ingresar` ni en `/registro`), y esas dos pantallas no se enlazan entre sí.
 
 ## 1. Rutas
 

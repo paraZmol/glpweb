@@ -171,7 +171,10 @@ describe('RequireAccess', () => {
 
       expect(html).toContain('role="alert"');
       expect(textOf(html)).toContain('No pudimos confirmar tu correo con Google.');
-      expect(textOf(html)).toContain('Cierra sesión e inténtalo de nuevo.');
+      expect(textOf(html)).toContain(
+        'Cierra sesión e inténtalo de nuevo. Si se repite, o si quieres que eliminemos esta cuenta, escríbenos desde Contacto y reclamos',
+      );
+      expect(tags(html, 'a').filter((tag) => tag.includes('href="/contacto"'))).toHaveLength(1);
       expect(tags(html, 'button')).toHaveLength(1);
       expect(textOf(html)).toContain('Cerrar sesión');
       expect(textOf(html)).not.toContain('pantalla protegida');

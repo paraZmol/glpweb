@@ -4,9 +4,8 @@ import { HeaderEntryLinks, isEntryScreen } from './header-entry-links';
 
 /**
  * Holds the place of the header button (40 px pill) while the session is being restored. On the
- * two entry screens there is nothing to wait for: an account that turns out to be
- * signed in is taken away from them, so the link a visitor needs is shown at once instead of a
- * pill that stays empty for as long as the session takes.
+ * two entry screens there is nothing to wait for and nothing to show: their header has no link
+ * (an account that turns out to be signed in is taken away from them), so no pill either.
  */
 export function HeaderAccountPlaceholder() {
   const { pathname } = useLocation();

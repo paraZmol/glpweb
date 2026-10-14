@@ -95,24 +95,33 @@ test('"Crear cuenta" is the same way in, under its own title', async ({ page }) 
   await expect(heading(page)).toHaveText('Crea tu cuenta en Hornilla.');
   await expect(page.getByRole('button', { name: 'Continuar con Google' })).toBeVisible();
   await expect(page.getByRole('main').getByRole('textbox')).toHaveCount(0);
+  await expect(page.getByText(/^Necesitas una cuenta de Google: es la única forma/)).toBeVisible();
   await expect(
-    page.getByText(/se aceptan en el paso siguiente, la primera vez que ingresas\./),
+    page.getByText(/se aceptan en el paso siguiente, la primera vez que ingresas; si no los/),
   ).toBeVisible();
   const main = page.getByRole('main');
   await expect(main.getByRole('link', { name: /Términos y condiciones/ })).toBeVisible();
   await expect(main.getByRole('link', { name: /Política de privacidad/ })).toBeVisible();
 });
 
-// PLAN 2.9: the header never offers the screen the visitor is already on.
-test('the header offers the other screen, not the current one', async ({ page }) => {
-  await page.goto('/registro');
+// PLAN 2.1, §11 (2026-10-14): one way in. The header offers "Ingresar" elsewhere and nothing on
+// the two entry screens, which do not link to each other: it would be the same button again.
+test('there is one door: "Ingresar" in the header, and no crossing between the entry screens', async ({
+  page,
+}) => {
+  await page.goto('/');
   const header = page.getByRole('banner');
   await expect(header.getByRole('link', { name: 'Ingresar' })).toBeVisible();
   await expect(header.getByRole('link', { name: 'Crear cuenta' })).toHaveCount(0);
 
-  await page.goto('/ingresar');
-  await expect(header.getByRole('link', { name: 'Crear cuenta' })).toBeVisible();
-  await expect(header.getByRole('link', { name: 'Ingresar' })).toHaveCount(0);
+  for (const path of ['/ingresar', '/registro']) {
+    await page.goto(path);
+    await expect(page.getByRole('button', { name: 'Continuar con Google' })).toBeVisible();
+    for (const name of ['Ingresar', 'Crear cuenta']) {
+      await expect(header.getByRole('link', { name })).toHaveCount(0);
+      await expect(page.getByRole('main').getByRole('link', { name })).toHaveCount(0);
+    }
+  }
 });
 
 // PLAN 2.1: the screens of the password are gone, with or without a session.

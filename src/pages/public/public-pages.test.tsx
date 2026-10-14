@@ -91,16 +91,27 @@ describe('home with the finder (PLAN 2.6)', () => {
 // PLAN 2.1: sign-in is with Google only. `/ingresar` and `/registro` are the same screen with
 // other words: the first sign-in is what creates the account.
 describe.each([
-  ['/ingresar', <SignInPage key="i" />, 'Ingresa a Hornilla.', '/registro'],
-  ['/registro', <RegisterPage key="r" />, 'Crea tu cuenta en Hornilla.', '/ingresar'],
-] as const)('entry screen %s', (path, page, title, otherPath) => {
+  [
+    '/ingresar',
+    <SignInPage key="i" />,
+    'Ingresa a Hornilla.',
+    'Ingresas con tu cuenta de Google. Para buscar distribuidoras y ver sus páginas no necesitas cuenta.',
+  ],
+  [
+    '/registro',
+    <RegisterPage key="r" />,
+    'Crea tu cuenta en Hornilla.',
+    'Necesitas una cuenta de Google: es la única forma de entrar y no hay contraseña que crear. La misma cuenta te sirve como cliente y para trabajar con tu distribuidora. Sigue: confirmar tus datos y aceptar los términos.',
+  ],
+] as const)('entry screen %s', (path, page, title, lead) => {
   const html = inPublicShell(page, path);
   const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
 
-  it('is titled for what the visitor came to do', () => {
+  it('is titled for what the visitor came to do, and says it is with Google', () => {
     const [h1 = ''] = html.match(/<h1\b.*?<\/h1>/s) ?? [];
 
     expect(textOf(h1)).toBe(title);
+    expect(textOf(main)).toContain(lead);
   });
 
   it('offers Google as the only way in: no field, no password, nothing to send', () => {
@@ -123,7 +134,7 @@ describe.each([
     const text = textOf(main).replaceAll(' (se abre en otra pestaña)', '');
 
     expect(text).toContain(
-      'Los Términos y condiciones y la Política de privacidad se aceptan en el paso siguiente, la primera vez que ingresas.',
+      'Al continuar se crea tu cuenta de ingreso con el nombre y el correo que entrega Google. Los Términos y condiciones y la Política de privacidad se aceptan en el paso siguiente, la primera vez que ingresas; si no los aceptas, ahí mismo puedes eliminar la cuenta.',
     );
     expect(text).not.toMatch(/Acepto los|autorizo a Hornilla/);
     for (const href of ['/terminos', '/privacidad']) {
@@ -133,8 +144,10 @@ describe.each([
     }
   });
 
-  it('leads to the other entry screen, and to nothing that no longer exists', () => {
-    expect(linksTo(main, otherPath)).toHaveLength(1);
+  // PLAN §11 (2026-10-14): one door. The other screen would be the same button again.
+  it('links to neither entry screen, nor to anything that no longer exists', () => {
+    expect(linksTo(html, '/ingresar')).toEqual([]);
+    expect(linksTo(html, '/registro')).toEqual([]);
     expect(linksTo(html, '/restablecer')).toEqual([]);
     expect(linksTo(html, '/verificar-correo')).toEqual([]);
   });

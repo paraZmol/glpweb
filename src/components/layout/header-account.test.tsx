@@ -11,18 +11,15 @@ const linksAt = (path: string) =>
     .filter((tag) => !tag.includes('href="#contenido"'))
     .map((tag) => /href="([^"]+)"/.exec(tag)?.[1]);
 
-// PLAN 2.9: the header never offers the screen the visitor is already on.
+// PLAN 2.1, §11 (2026-10-14): one way in. Signing in and creating an account are the same
+// Google button, so the header offers "Ingresar" and, on the two entry screens, nothing.
 describe('account links of the public header', () => {
-  it('offers both ways in on any other screen', () => {
-    expect(linksAt('/')).toEqual(['/registro', '/ingresar']);
+  it('offers only "Ingresar" on any other screen', () => {
+    expect(linksAt('/')).toEqual(['/ingresar']);
   });
 
-  it('offers only "Crear cuenta" on the sign-in screen', () => {
-    expect(linksAt('/ingresar')).toEqual(['/registro']);
-  });
-
-  it('offers only "Ingresar" on the registration screen', () => {
-    expect(linksAt('/registro')).toEqual(['/ingresar']);
+  it.each(['/ingresar', '/registro'])('offers no link on the entry screen %s', (path) => {
+    expect(linksAt(path)).toEqual([]);
   });
 
   it('leads a signed-in account to its own area', () => {

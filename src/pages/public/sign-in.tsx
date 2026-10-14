@@ -9,13 +9,7 @@ import { AuthFrame } from '@/components/layout/auth-frame';
 import { SIGN_IN_REQUIRED } from '@/components/layout/require-access';
 import { useSession } from '@/features/auth/use-session';
 import { usePageTitle } from '@/lib/page-title';
-import {
-  registerPathFrom,
-  RETURN_PARAM,
-  ROUTES,
-  safeReturnPath,
-  signInPathFrom,
-} from '@/lib/routes';
+import { RETURN_PARAM, ROUTES, safeReturnPath } from '@/lib/routes';
 import { useOnlineStatus } from '@/lib/use-online-status';
 
 const OFFLINE_TEXT = 'Sin conexión: para ingresar necesitas internet.';
@@ -31,22 +25,19 @@ type EntryMode = 'signIn' | 'register';
 /**
  * The two addresses say the same thing to two kinds of visitor: with Google as the only way
  * in (PLAN 2.1) the first sign-in is what creates the account, so there is no form to tell
- * them apart. Only the words change.
+ * them apart. Only the words change, and neither screen links to the other: it would be the
+ * same button under another title (PLAN §11, 2026-10-14).
  */
 const COPY = {
   signIn: {
     pageTitle: 'Ingresar',
     title: 'Ingresa a',
-    lead: 'Tus pedidos, tus direcciones y tu distribuidora te esperan.',
-    otherQuestion: '¿Primera vez por aquí?',
-    otherLabel: 'Crear cuenta',
+    lead: 'Ingresas con tu cuenta de Google. Para buscar distribuidoras y ver sus páginas no necesitas cuenta.',
   },
   register: {
     pageTitle: 'Crear cuenta',
     title: 'Crea tu cuenta en',
-    lead: 'Entras con tu cuenta de Google: no hay contraseña que crear. La misma cuenta te sirve como cliente y para trabajar con tu distribuidora. Sigue: confirmar tus datos y aceptar los términos.',
-    otherQuestion: '¿Ya tienes cuenta?',
-    otherLabel: 'Ingresar',
+    lead: 'Necesitas una cuenta de Google: es la única forma de entrar y no hay contraseña que crear. La misma cuenta te sirve como cliente y para trabajar con tu distribuidora. Sigue: confirmar tus datos y aceptar los términos.',
   },
 } as const;
 
@@ -68,8 +59,6 @@ function EntryPage({ mode }: { mode: EntryMode }) {
 
   if (session.status === 'signedIn') return <Navigate to={after} replace />;
 
-  const otherPath = mode === 'signIn' ? registerPathFrom(target) : signInPathFrom(target ?? '');
-
   return (
     <AuthFrame
       title={
@@ -78,11 +67,6 @@ function EntryPage({ mode }: { mode: EntryMode }) {
         </>
       }
       lead={copy.lead}
-      footer={
-        <p>
-          {copy.otherQuestion} <TextLink to={otherPath}>{copy.otherLabel}</TextLink>
-        </p>
-      }
     >
       {cameFromGuard(location.state) && (
         <InlineAlert tone="info" className="mb-6">
@@ -92,8 +76,10 @@ function EntryPage({ mode }: { mode: EntryMode }) {
       <div className="flex flex-col gap-5">
         <GoogleButton after={after} disabled={!isOnline} onError={setError} />
         <FormStatus error={error} isOnline={isOnline} offlineText={OFFLINE_TEXT} />
-        {/* Entering accepts nothing: a new account accepts, by choice, on the next step. */}
+        {/* Entering accepts nothing: a new account accepts, by choice, on the next step, where it
+            can also delete the account it just created. */}
         <p className="text-[0.9375rem] text-muted-foreground">
+          Al continuar se crea tu cuenta de ingreso con el nombre y el correo que entrega Google.
           Los{' '}
           <TextLink to={ROUTES.terms} newTab>
             Términos y condiciones
@@ -102,7 +88,8 @@ function EntryPage({ mode }: { mode: EntryMode }) {
           <TextLink to={ROUTES.privacy} newTab>
             Política de privacidad
           </TextLink>{' '}
-          se aceptan en el paso siguiente, la primera vez que ingresas.
+          se aceptan en el paso siguiente, la primera vez que ingresas; si no los aceptas, ahí mismo
+          puedes eliminar la cuenta.
         </p>
       </div>
     </AuthFrame>
