@@ -20,6 +20,7 @@ const ISSUE_MESSAGES: Record<FieldIssue['code'], string> = {
   outOfRange: 'Está fuera del rango permitido.',
   invalid: 'Revisa este dato.',
   tooFaint: 'Ese color casi no se distingue del fondo. Prueba con un tono más intenso.',
+  notAbove: 'Debe ser mayor.',
   invalidCharacters: 'Usa solo letras minúsculas, números y guiones.',
   reserved: 'Ese enlace está reservado. Prueba con otro.',
 };

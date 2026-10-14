@@ -8,7 +8,9 @@ export type FieldIssueCode =
   | 'outOfRange'
   | 'invalid'
   /** A brand colour that cannot be told apart from the page background. */
-  | 'tooFaint';
+  | 'tooFaint'
+  /** A value that must be greater than another field of the same form (full vs refill price). */
+  | 'notAbove';
 
 /** One rejected form field. Screens map `code` to a message in Spanish. */
 export interface FieldIssue {
