@@ -29,9 +29,9 @@ test('shows the public profile of a seeded distributor to anybody', async ({ pag
   await expect(page.getByText(`${a.name} vende y reparte el gas`)).toBeVisible();
   await expect(page.getByText(`${a.coverageRadiusKm} km`, { exact: true })).toBeVisible();
   await expect(page.getByText(/7:00 a\. m\.–8:00 p\. m\./)).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'Esta distribuidora todavía no publicó su catálogo.' }),
-  ).toBeVisible();
+  // PLAN 3.1: its products on sale, with the price of the refill (and of the full cylinder).
+  await expect(page.getByRole('heading', { name: 'Balón 45 kg' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Balón 15 kg' })).toHaveCount(0);
   await expect(page.getByText('Página en')).toBeVisible();
   await expect(page.getByText(/ve esta página: ahora no es pública/)).toHaveCount(0);
   // PLAN 2.11: anybody can report a page to the platform.

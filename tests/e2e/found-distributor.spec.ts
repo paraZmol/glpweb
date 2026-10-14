@@ -117,7 +117,12 @@ test('a verified account founds a distributor and lands on its office', async ({
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Hoy en ${name}.`);
   await expect(page.getByText(`${name} ya está en Hornilla.`)).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Completa tu distribuidora' })).toBeVisible();
-  await expect(page.getByText('Llega pronto')).toHaveCount(2);
+  // PLAN 3.1: the catalogue is a task of its own; only the staff is still on its way.
+  await expect(page.getByText('Llega pronto')).toHaveCount(1);
+  await expect(page.getByRole('link', { name: 'Cargar catálogo' })).toHaveAttribute(
+    'href',
+    '/central/catalogo',
+  );
   await expect(page.getByText(/Prueba gratis · quedan 30 días/)).toBeVisible();
   // PLAN 2.11: it waits for the review of the platform, and the office says so.
   await expect(page.getByText('En revisión', { exact: true })).toBeVisible();
