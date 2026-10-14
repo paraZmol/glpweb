@@ -93,11 +93,11 @@ Una sola puerta (PLAN §11, 2026-10-14): el encabezado público ofrece "Ingresar
 | Llamar o escribir por WhatsApp a una distribuidora | puede | puede | puede | puede | puede | puede | puede | puede | puede | puede |
 | Ingresar con "Continuar con Google" (la primera vez crea la cuenta; conserva el destino `desde`) | puede | — | — | — | — | — | — | — | — | — |
 | Ingresar o registrarse con correo y contraseña · restablecer la contraseña · verificar el correo | no ve (no existe) | no ve | no ve | no ve | no ve | no ve | no ve | no ve | no ve | no ve |
-| Cerrar la ventana de Google sin elegir cuenta | ve "Se canceló el ingreso." y sigue en la pantalla (hoy tarda unos 10 s, §4b) | — | — | — | — | — | — | — | — | — |
+| Cerrar la ventana de Google sin elegir cuenta | ve "Se canceló el ingreso." en 1–2 s y el botón vuelve a poder pulsarse; el mensaje se borra al intentarlo otra vez | — | — | — | — | — | — | — | — | — |
 | Eliminar la cuenta antes de aceptar ("No quiero continuar: eliminar mi cuenta") | — | no ve (solo puede cerrar sesión) | puede (sin perfil; puede volver a entrar con la misma cuenta de Google) · → `/contacto` (con perfil: "No acepto: pedir que eliminen mi cuenta") | — | — | — | — | — | — | — |
 | Pulsar dos veces "Continuar con Google" | abre una sola ventana | — | — | — | — | — | — | — | — | — |
 | Confirmar el nombre que entrega Google, añadir el celular y aceptar términos y privacidad (crea el perfil) | — | — | puede (conserva el destino `desde`, también tras recargar `/aceptar-terminos`) | — | — | — | — | — | — | — |
-| Aceptar en una pestaña con otra pestaña abierta en `/aceptar-terminos` | — | — | la otra pestaña sale de `/aceptar-terminos` (hoy no, §4b) | — | — | — | — | — | — | — |
+| Aceptar en una pestaña con otra pestaña abierta en `/aceptar-terminos` | — | — | la otra pestaña sale de `/aceptar-terminos` hacia su destino (al momento en el mismo navegador; desde otro dispositivo, al volver a la pestaña) | — | — | — | — | — | — | — |
 | Cambiar de cuenta en la misma pestaña (cerrar sesión e ingresar con otra) | — | — | no ve nada de la anterior | igual | igual | igual | igual | igual | igual | igual |
 | Editar nombre y celular en `/cuenta` | — | — | — | puede | puede | puede | puede | puede | puede | puede |
 | Cambiar el correo en `/cuenta` | — | — | — | no ve | no ve | no ve | no ve | no ve | no ve | no ve |
@@ -192,19 +192,12 @@ distribuidora quedan dos, las dos a la espera de una decisión sobre almacenamie
 - **Recargar a mitad del alta** vacía lo escrito (el borrador vive solo en memoria).
 - **Recargar la central recién creada y pulsar Atrás** muestra el paso 1 del alta vacío.
 
-Del ingreso solo con Google (tercera pasada, 2026-10-14):
-
-- **Cerrar la ventana de Google**: el botón sigue girando unos 10 s antes de "Se canceló el
-  ingreso." y, mientras tanto, no hay nada que pulsar (MEDIO).
-- **Volver a pulsar tras cancelar**: "Se canceló el ingreso." sigue a la vista mientras la
-  ventana nueva está abierta (BAJO).
-- **Dos pestañas en `/aceptar-terminos`**: si una acepta, la otra sigue pidiendo aceptar; su
-  "No quiero continuar: eliminar mi cuenta" responde, con razón, que la cuenta ya tiene datos
-  (BAJO).
-- **Nombre largo sin espacios** (hasta 80 caracteres): el saludo de `/inicio` lo corta en el
-  borde, a 390 y a 1440 px (BAJO).
-- **Pantalla de correo sin confirmar**: el título se ve grande pero no es un encabezado
-  principal para un lector de pantalla (BAJO).
+Arregladas el 2026-10-14 (sus tests quedaron como tests normales), las cinco de la tercera
+pasada: cerrar la ventana de Google se responde en 1–2 s con "Se canceló el ingreso." y el
+botón libre; el mensaje se borra al volver a pulsar y el doble clic no selecciona el texto de
+debajo; con dos pestañas en `/aceptar-terminos`, la otra sale cuando una acepta; un nombre largo
+sin espacios se parte en el saludo de `/inicio` (en la lateral y en `/cuenta` ya se recortaba);
+la pantalla de correo sin confirmar tiene su título como encabezado principal.
 
 Arregladas el 2026-10-12 (sus tests quedaron como tests normales): la ficha de una suspendida o
 vencida ya es de solo lectura, también si la suspensión llega con la ficha a medio editar;
@@ -223,3 +216,4 @@ reactivar, volver a revisión, eliminar la cuenta) se responde con un doble clic
 | 2026-10-12 | Arreglos de la segunda pasada (no es una pasada nueva): confirmaciones que no se responden con doble clic, pregunta de vuelta a revisión a la vista, ficha de solo lectura (también en vivo), aviso de suspensión en `/reparto`, una sola entrada del historial por paso del alta, avisos de plataforma (cambio de estado frente a cambio de datos, título en celular), bienvenida de la central que se cierra, listas de plataforma que conservan lo cargado. Quedan con `test.fail` las dos de §4b | `fase-2/cuentas-y-distribuidoras` |
 | 2026-10-12 | No es una pasada: la matriz se pone al día con el ingreso solo con Google (PLAN 2.1). Salen `/restablecer` y `/verificar-correo`; `/registro` es la misma pantalla que `/ingresar`; la columna SV cambia de sentido (una sesión que no debería existir y que no obtiene nada); filas nuevas de reglas para el proveedor de ingreso. **Falta la pasada de `role-walker` sobre estas celdas** | `fase-2/pendientes-del-cierre` |
 | 2026-10-14 | Tercera pasada, sobre el ingreso solo con Google: primera entrada con el botón y la ventana del emulador (cuenta nueva, cancelar, doble clic, Atrás, Adelante y recarga en `/aceptar-terminos`, eliminar y volver a entrar, cerrar sesión ahí); destino `desde` conservado con y sin términos, y valores raros ignorados; `/restablecer` y `/verificar-correo` con y sin sesión; todos los enlaces y textos de portada, entrada, pie, no existe, contacto, documentos legales y `/cuenta`; recorrido completo de CL, RE, CE, DU, DO, DS (C y D), SA, ST y SV con recarga y Atrás; cierre de sesión con dos pestañas y cambio de cuenta en la misma; intento directo con sesiones de otro proveedor y anónimas sobre cuentas con perfil y membresía, y con una sesión de Google sin perfil. Sin CRÍTICO ni ALTO; 1 medio y 4 bajos (§4b) | `fase-2/pendientes-del-cierre` |
+| 2026-10-14 | Arreglos de la tercera pasada (no es una pasada nueva): los cinco de §4b. Además, el nombre de Google llega a términos sin espacios sobrantes y la banda "¿Tienes una distribuidora?" de la portada lleva a una visita a `/registro?desde=/distribuidora/nueva` (PLAN §11). Quedan con `test.fail` las dos del alta de §4b | `fase-2/pendientes-del-cierre` |
