@@ -30,7 +30,9 @@ async function openGoogleWindow(page: Page): Promise<Page> {
 /** Goes through the window as a person who types in the Google account to use. */
 async function continueWithGoogle(page: Page, email: string, name: string) {
   const popup = await openGoogleWindow(page);
-  await popup.locator('#add-account-button').click();
+  // The window lists every account the emulator holds; on a phone, once the run has created
+  // enough of them, that list lies over "add account" and a pointer click lands on a row.
+  await popup.locator('#add-account-button').dispatchEvent('click');
   await popup.locator('#email-input').fill(email);
   await popup.locator('#display-name-input').fill(name);
   await popup.locator('#sign-in').click();
