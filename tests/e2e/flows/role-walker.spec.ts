@@ -14,6 +14,9 @@
 // the notices of the platform, the welcome of the office and the long lists of the platform.
 // Still open, both waiting for a decision on storage (docs/legal/cookies.md): a reload in the
 // middle of the wizard, and "back" after founding and reloading the office.
+// The group "third pass" comes from the pass of 2026-10-14 over the sign-in with Google only:
+// the answer when the window of Google is closed, a second tab on the terms, a long name and
+// the main heading of the screen of an unconfirmed e-mail.
 import { expect, type Page } from '@playwright/test';
 import { SEED_DISTRIBUTORS } from '../../seed/data';
 import { type Actors, DESKTOP, type Device, PHONE, test } from '../support/actors';
@@ -666,5 +669,127 @@ test.describe('second pass: the welcome of the office and the long lists of the 
       expect(scrolledTo).toBeGreaterThan(0);
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrolledTo);
     });
+  });
+});
+
+// Third pass (2026-10-14): the sign-in is with Google only (PLAN 2.1, §11 2026-10-12 and
+// 2026-10-14). The first entry presses the real button and goes through the window of the Auth
+// emulator; the rest open the session the way the other flows do.
+test.describe('third pass: signing in with Google', () => {
+  /** What the window of the Auth emulator asks other sites for: its looks, nothing it needs. */
+  const WINDOW_DRESSING = /^https:\/\/(unpkg\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)\//;
+  const CANCELLED = 'Se canceló el ingreso.';
+
+  async function openGoogleWindow(page: Page): Promise<Page> {
+    await page.context().route(WINDOW_DRESSING, (route) => route.abort());
+    const opening = page.waitForEvent('popup');
+    await page.getByRole('button', { name: 'Continuar con Google' }).click();
+    const popup = await opening;
+    await popup.locator('#add-account-button').waitFor();
+    return popup;
+  }
+
+  test.beforeEach(async ({ page }) => {
+    await dismissStorageNotice(page);
+  });
+
+  // MEDIO. A person closes the window of Google and the button keeps turning for about ten
+  // seconds before the screen says anything: it looks stuck, and there is nothing to press.
+  test('closing the window of Google is answered within a few seconds', async ({ page }) => {
+    test.fail(
+      true,
+      'Known (role-walker, 2026-10-14): "Se canceló el ingreso." appears about 10 s after the window closes',
+    );
+    await page.goto('/ingresar');
+    const popup = await openGoogleWindow(page);
+
+    await popup.close();
+
+    await expect(page.getByText(CANCELLED)).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByRole('button', { name: 'Continuar con Google' })).toBeEnabled({
+      timeout: 1_000,
+    });
+  });
+
+  // BAJO. After a cancelled attempt, pressing the button again opens the window while the red
+  // "Se canceló el ingreso." of the previous attempt is still on the screen.
+  test('a new attempt does not keep the message of the cancelled one', async ({ page }) => {
+    test.fail(
+      true,
+      'Known (role-walker, 2026-10-14): the cancel message stays visible during the next attempt',
+    );
+    await page.goto('/ingresar');
+    const first = await openGoogleWindow(page);
+    await first.close();
+    await expect(page.getByText(CANCELLED)).toBeVisible();
+
+    await openGoogleWindow(page);
+
+    await expect(page.getByText(CANCELLED)).toHaveCount(0);
+  });
+
+  // BAJO. Two tabs on "Un paso antes de empezar": accepting in one leaves the other asking for
+  // the same acceptance, and its "No quiero continuar: eliminar mi cuenta" now answers that the
+  // account already has data.
+  test('a second tab on the terms follows when the first one accepts', async ({
+    actors,
+  }, testInfo) => {
+    test.fail(
+      true,
+      'Known (role-walker, 2026-10-14): the other tab stays on /aceptar-terminos after the profile exists',
+    );
+    const { context, page: first } = await actors.open(DESKTOP);
+    const email = `rw-dos-pestanas-${uniqueTag(testInfo)}@example.com`;
+    await signInAs(first, { email, displayName: 'Z. Dos Pestañas' }, '/aceptar-terminos');
+    const second = await context.newPage();
+    await second.goto('/aceptar-terminos');
+    await expect(heading(second)).toHaveText('Un paso antes de empezar.');
+
+    await first.getByRole('checkbox', { name: /Acepto los Términos y condiciones/ }).check();
+    await first.getByRole('checkbox', { name: /Leí la Política de privacidad/ }).check();
+    await first.getByRole('button', { name: 'Aceptar y continuar' }).click();
+    await expect(first).toHaveURL(/\/inicio$/);
+
+    await expect(second).not.toHaveURL(/\/aceptar-terminos$/, { timeout: 10_000 });
+  });
+
+  // BAJO. The name Google hands over is shown as is: a long name without spaces (allowed up to
+  // 80 characters) runs off the greeting of the home of a customer, cut at the edge.
+  test('a long name does not run off the greeting of the home', async ({ page }, testInfo) => {
+    test.fail(
+      true,
+      'Known (role-walker, 2026-10-14): a long name without spaces is cut at the edge of the greeting',
+    );
+    const email = `rw-nombre-largo-${uniqueTag(testInfo)}@example.com`;
+    await signInAs(page, { email, displayName: 'x'.repeat(80) }, '/aceptar-terminos');
+    await page.getByRole('checkbox', { name: /Acepto los Términos y condiciones/ }).check();
+    await page.getByRole('checkbox', { name: /Leí la Política de privacidad/ }).check();
+    await page.getByRole('button', { name: 'Aceptar y continuar' }).click();
+    await expect(page).toHaveURL(/\/inicio$/);
+
+    const greeting = heading(page);
+    await expect(greeting).toContainText('Hola');
+    const overflows = await greeting.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      return [...element.querySelectorAll('*'), element].some(
+        (node) => node.getBoundingClientRect().right > Math.min(box.right, window.innerWidth) + 1,
+      );
+    });
+    expect(overflows).toBe(false);
+  });
+
+  // BAJO (accessibility). The screen of a session whose e-mail is not confirmed shows its title
+  // in large type, but a screen reader finds no main heading on the page.
+  test('the screen of an unconfirmed e-mail has a main heading', async ({ page }) => {
+    test.fail(
+      true,
+      'Known (role-walker, 2026-10-14): "No pudimos confirmar tu correo con Google." is not a level-1 heading',
+    );
+    await signInAsSeedUser(page, 'unverified');
+
+    await expect(
+      page.getByText('No pudimos confirmar tu correo con Google.').first(),
+    ).toBeVisible();
+    await expect(heading(page)).toHaveText('No pudimos confirmar tu correo con Google.');
   });
 });
