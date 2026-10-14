@@ -5,7 +5,11 @@ import { CURRENT_LEGAL_VERSIONS, PRIVACY_VERSION, TERMS_VERSION } from '../domai
 import { ADDRESS_SLOT_IDS } from '../domain/tenancy/account-input';
 import { MAX_ADDRESSES_PER_USER } from '../domain/tenancy/constants';
 import { signInAs, signInAsNewcomer } from '../../tests/support/emulated-session';
-import { markEmailVerifiedAsAdmin, rewindAcceptance } from '../../tests/support/emulator';
+import {
+  documentExistsAsAdmin,
+  markEmailVerifiedAsAdmin,
+  rewindAcceptance,
+} from '../../tests/support/emulator';
 import {
   AddressLimitError,
   OfflineError,
@@ -116,7 +120,9 @@ describe('profile', () => {
       createUserProfile(session.uid, profile, CURRENT_LEGAL_VERSIONS),
     ).rejects.toBeInstanceOf(PermissionDeniedError);
     await expect(addAddress(session.uid, HOME)).rejects.toBeInstanceOf(PermissionDeniedError);
-    expect(await getUserProfile(session.uid)).toBeNull();
+    // Not even its own profile can be read: it is checked as the emulator's admin.
+    await expect(getUserProfile(session.uid)).rejects.toBeInstanceOf(PermissionDeniedError);
+    expect(await documentExistsAsAdmin(`users/${session.uid}`)).toBe(false);
   });
 
   // PLAN 2.1: sign-in is with Google only. The app cannot open any other kind of session, so
@@ -140,7 +146,8 @@ describe('profile', () => {
     await expect(
       createUserProfile(user.uid, profile, CURRENT_LEGAL_VERSIONS),
     ).rejects.toBeInstanceOf(PermissionDeniedError);
-    expect(await getUserProfile(user.uid)).toBeNull();
+    await expect(getUserProfile(user.uid)).rejects.toBeInstanceOf(PermissionDeniedError);
+    expect(await documentExistsAsAdmin(`users/${user.uid}`)).toBe(false);
   });
 
   it('updates the name and the phone', async () => {

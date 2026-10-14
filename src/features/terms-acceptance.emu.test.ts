@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { SEED_USERS } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
 import { signInAs, signInAsNewcomer } from '../../tests/support/emulated-session';
-import { rewindAcceptance } from '../../tests/support/emulator';
+import { documentExistsAsAdmin, rewindAcceptance } from '../../tests/support/emulator';
 import { currentSession } from '../data/auth-repo';
 import {
   getDistributorBySlug,
@@ -100,7 +100,8 @@ describe('a first sign-in — nothing is stored until the person accepts', () =>
     await expect(
       createUserProfile(session.uid, { displayName: 'X', phone: null }, CURRENT_LEGAL_VERSIONS),
     ).rejects.toBeInstanceOf(PermissionDeniedError);
-    expect(await getUserProfile(session.uid)).toBeNull();
+    await expect(getUserProfile(session.uid)).rejects.toBeInstanceOf(PermissionDeniedError);
+    expect(await documentExistsAsAdmin(`users/${session.uid}`)).toBe(false);
   });
 
   it('creates the profile with both consents and their history from what the step sends', async () => {

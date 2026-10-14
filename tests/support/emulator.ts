@@ -14,6 +14,20 @@ async function firestoreAdmin(method: string, path: string, body?: unknown): Pro
   if (!response.ok) throw new Error(`Firestore emulator ${method} ${path} → ${response.status}`);
 }
 
+/**
+ * Whether a document exists, read as the emulator's admin: for a session the rules no longer
+ * let read even its own data (PLAN §11, 2026-10-14).
+ */
+export async function documentExistsAsAdmin(path: string): Promise<boolean> {
+  const base = `http://${EMULATOR_HOST}:${emulatorPorts().firestore}/v1/projects/${EMULATOR_PROJECT_ID}`;
+  const response = await fetch(`${base}/databases/(default)/documents/${path}`, {
+    headers: { Authorization: 'Bearer owner' },
+  });
+  if (response.status === 404) return false;
+  if (!response.ok) throw new Error(`Firestore emulator GET ${path} → ${response.status}`);
+  return true;
+}
+
 export interface Rewind {
   /** The version the profile holds now; its entry of the history is removed. */
   from: string;
