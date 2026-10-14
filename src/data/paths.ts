@@ -17,6 +17,8 @@ export const paths = {
   helpers: (d: string) => `distributors/${d}/helpers`,
   vehicles: (d: string) => `distributors/${d}/vehicles`,
   products: (d: string) => `distributors/${d}/products`,
+  /** `slot` is `p00` … `p29` (PRODUCT_SLOT_IDS in src/domain/catalog/catalog.ts). */
+  product: (d: string, slot: string) => `distributors/${d}/products/${slot}`,
   plantStock: (d: string) => `distributors/${d}/plantStock`,
   customers: (d: string) => `distributors/${d}/customers`,
   orders: (d: string) => `distributors/${d}/orders`,

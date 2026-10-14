@@ -134,6 +134,13 @@ function writeDistributor(batch: Batch, db: Db, distributor: SeedDistributor) {
   batch.set(doc(db, `distributors/${id}/private/control`), controlDocument(distributor));
   batch.set(doc(db, `distributors/${id}/private/settings`), privateDocument(distributor));
   batch.set(doc(db, `slugs/${slug}`), { distributorId: id, createdAt });
+  for (const { id: slot, ...product } of distributor.products) {
+    batch.set(doc(db, `distributors/${id}/products/${slot}`), {
+      ...product,
+      currency: 'PEN',
+      ...stamps,
+    });
+  }
   for (const { user, role } of distributor.members) {
     batch.set(doc(db, `distributors/${id}/members/${user.uid}`), {
       uid: user.uid,

@@ -85,7 +85,12 @@ export interface CatalogSummary {
   priceFromCents: number | null;
 }
 
-export function summarizeCatalog(products: readonly Product[]): CatalogSummary {
+export type SummarizedProduct = Pick<
+  Product,
+  'id' | 'sortOrder' | 'active' | 'brand' | 'refillPriceCents'
+>;
+
+export function summarizeCatalog(products: readonly SummarizedProduct[]): CatalogSummary {
   const onSale = sortCatalog(products.filter((product) => product.active));
   const brands = [...new Set(onSale.map((product) => product.brand))].slice(0, MAX_BRANDS);
   const prices = onSale.map((product) => product.refillPriceCents);

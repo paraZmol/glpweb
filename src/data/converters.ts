@@ -4,6 +4,7 @@ import {
   type QueryDocumentSnapshot,
   Timestamp,
 } from 'firebase/firestore';
+import { defaultProductName, type Product } from '../domain/catalog/product';
 import { type GeoPoint, isValidGeoPoint } from '../domain/geo/distance';
 import {
   ACCEPTED_TEXTS,
@@ -258,6 +259,36 @@ export const parseMember: Parser<Member> = (id, path, data) => {
   };
 };
 
+export const parseProduct: Parser<Product> = (id, path, data) => {
+  const read = new FieldReader(path, data);
+  const createdAt = read.date('createdAt');
+  const weightKg = read.number('weightKg');
+  const refillPriceCents = read.integerOrNull('refillPriceCents');
+  if (refillPriceCents === null) {
+    throw new CorruptDocumentError(path, '"refillPriceCents" should be integer cents');
+  }
+  return {
+    id,
+    brand: read.text('brand'),
+    brandColor: read.textOrNull('brandColor'),
+    weightKg,
+    name: read.text('name', defaultProductName(weightKg)),
+    refillPriceCents,
+    // Anything but integer cents above the refill reads as "not sold with its container".
+    fullPriceCents: aboveOrNull(read.integerOrNull('fullPriceCents'), refillPriceCents),
+    currency: read.text('currency', DEFAULT_CURRENCY),
+    // A product without the flag is not offered: never sell what was not put on sale.
+    active: read.flag('active', false),
+    sortOrder: read.number('sortOrder', 0),
+    createdAt,
+    updatedAt: read.date('updatedAt', createdAt),
+  };
+};
+
+function aboveOrNull(value: number | null, floor: number): number | null {
+  return value !== null && value > floor ? value : null;
+}
+
 /**
  * Converters validate what is read. Writes do not go through them: each repository builds the
  * exact document the rules expect (server timestamps, whitelisted fields).
@@ -282,3 +313,4 @@ export const publicDistributorConverter = readOnlyConverter(parsePublicDistribut
 export const controlConverter = readOnlyConverter(parseControl);
 export const privateSettingsConverter = readOnlyConverter(parsePrivateSettings);
 export const memberConverter = readOnlyConverter(parseMember);
+export const productConverter = readOnlyConverter(parseProduct);

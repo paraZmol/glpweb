@@ -14,6 +14,7 @@ import {
   parsePublicDistributor,
   parseMember,
   parsePrivateSettings,
+  parseProduct,
   parseUserProfile,
 } from './converters';
 
@@ -378,5 +379,77 @@ describe('parseAcceptanceEntry', () => {
     ['a date that is not a timestamp', { ...ENTRY, acceptedAt: '2026-03-10' }],
   ])('rejects an entry with %s', (_case, broken) => {
     expect(() => parseAcceptanceEntry('terms-0.2', PATH, broken)).toThrow(CorruptDocumentError);
+  });
+});
+
+// PLAN 3.1: a product of the catalogue.
+describe('parseProduct', () => {
+  const PATH = 'distributors/dist-a/products/p00';
+  const STORED = {
+    brand: 'Marca Uno',
+    brandColor: '#1757d6',
+    weightKg: 10,
+    name: 'Balón 10 kg',
+    refillPriceCents: 5200,
+    fullPriceCents: 18500,
+    currency: 'PEN',
+    active: true,
+    sortOrder: 3,
+    createdAt: stamp,
+    updatedAt: stamp,
+  };
+
+  it('reads a full document', () => {
+    expect(parseProduct('p00', PATH, STORED)).toEqual({
+      id: 'p00',
+      brand: 'Marca Uno',
+      brandColor: '#1757d6',
+      weightKg: 10,
+      name: 'Balón 10 kg',
+      refillPriceCents: 5200,
+      fullPriceCents: 18500,
+      currency: 'PEN',
+      active: true,
+      sortOrder: 3,
+      createdAt: AT,
+      updatedAt: AT,
+    });
+  });
+
+  it('gives defaults to what a document may lack', () => {
+    const product = parseProduct('p00', PATH, {
+      brand: 'Marca Uno',
+      weightKg: 45,
+      refillPriceCents: 19000,
+      createdAt: stamp,
+    });
+    expect(product).toMatchObject({
+      brandColor: null,
+      name: 'Balón 45 kg',
+      fullPriceCents: null,
+      currency: 'PEN',
+      active: false,
+      sortOrder: 0,
+      updatedAt: AT,
+    });
+  });
+
+  it.each([
+    ['not whole cents', 18500.5],
+    ['not above the refill', 5200],
+    ['text', '18500'],
+  ])('reads a full price that is %s as "not sold with its container"', (_case, value) => {
+    expect(
+      parseProduct('p00', PATH, { ...STORED, fullPriceCents: value }).fullPriceCents,
+    ).toBeNull();
+  });
+
+  it.each([
+    ['a refill price that is not whole cents', { refillPriceCents: 52.5 }],
+    ['no refill price', { refillPriceCents: undefined }],
+    ['no brand', { brand: undefined }],
+    ['no weight', { weightKg: undefined }],
+  ])('refuses a document with %s', (_case, change) => {
+    expect(() => parseProduct('p00', PATH, { ...STORED, ...change })).toThrow(CorruptDocumentError);
   });
 });

@@ -25,6 +25,44 @@ export interface SeedUser {
   hasProfile: boolean;
 }
 
+/**
+ * A product of the catalogue (PLAN 3.1). Brands are invented ("Marca …"); prices are integer
+ * cents in the range of a Lima refill with delivery (S/ 45–58 for 10 kg) and a full cylinder
+ * 3 to 4 times that (docs/marketing/oferta-y-promociones.md §1).
+ */
+export interface SeedProduct {
+  /** Slot, p00 … p29. */
+  id: string;
+  brand: string;
+  brandColor: string | null;
+  weightKg: number;
+  name: string;
+  refillPriceCents: number;
+  /** Null: not sold with its container. */
+  fullPriceCents: number | null;
+  active: boolean;
+  sortOrder: number;
+}
+
+const product = (
+  id: string,
+  sortOrder: number,
+  brand: string,
+  weightKg: number,
+  prices: { refill: number; full?: number },
+  options: { brandColor?: string; active?: boolean } = {},
+): SeedProduct => ({
+  id,
+  brand,
+  brandColor: options.brandColor ?? null,
+  weightKg,
+  name: `Balón ${weightKg} kg`,
+  refillPriceCents: prices.refill,
+  fullPriceCents: prices.full ?? null,
+  active: options.active ?? true,
+  sortOrder,
+});
+
 export interface SeedDistributor {
   id: string;
   name: string;
@@ -43,8 +81,10 @@ export interface SeedDistributor {
   plant: { lat: number; lng: number };
   coverageRadiusKm: number;
   brandColor: string;
+  /** Must agree with `products`: the brands on sale and the cheapest refill on sale. */
   brands: string[];
   priceFromCents: number | null;
+  products: SeedProduct[];
   /** The first owner listed is the founder. */
   members: { user: SeedUser; role: SeedRole }[];
 }
@@ -137,6 +177,14 @@ export const SEED_DISTRIBUTORS = {
     brandColor: '#d9480f',
     brands: ['Marca Uno', 'Marca Dos'],
     priceFromCents: 3800,
+    products: [
+      product('p00', 0, 'Marca Uno', 10, { refill: 4800, full: 17500 }, { brandColor: '#1757d6' }),
+      product('p01', 1, 'Marca Dos', 10, { refill: 5200, full: 18500 }, { brandColor: '#2f9e44' }),
+      product('p02', 2, 'Marca Uno', 5, { refill: 3800 }, { brandColor: '#1757d6' }),
+      product('p03', 3, 'Marca Uno', 45, { refill: 19000 }, { brandColor: '#1757d6' }),
+      // Off sale: only the staff sees it.
+      product('p04', 4, 'Marca Dos', 15, { refill: 7000 }, { active: false }),
+    ],
     members: [
       { user: SEED_USERS.ownerA, role: 'owner' },
       { user: SEED_USERS.dispatcherA, role: 'dispatcher' },
@@ -161,6 +209,10 @@ export const SEED_DISTRIBUTORS = {
     brandColor: '#0a7cff',
     brands: ['Marca Tres'],
     priceFromCents: 3650,
+    products: [
+      product('p00', 0, 'Marca Tres', 10, { refill: 4950, full: 17900 }, { brandColor: '#c92a2a' }),
+      product('p01', 1, 'Marca Tres', 5, { refill: 3650 }, { brandColor: '#c92a2a' }),
+    ],
     members: [
       { user: SEED_USERS.ownerB, role: 'owner' },
       { user: SEED_USERS.dispatcherB, role: 'dispatcher' },
@@ -185,6 +237,7 @@ export const SEED_DISTRIBUTORS = {
     brandColor: '#5c6770',
     brands: [],
     priceFromCents: null,
+    products: [],
     members: [{ user: SEED_USERS.ownerC, role: 'owner' }],
   },
   /**
@@ -208,6 +261,7 @@ export const SEED_DISTRIBUTORS = {
     brandColor: '#2f9e44',
     brands: [],
     priceFromCents: null,
+    products: [],
     members: [{ user: SEED_USERS.ownerD, role: 'owner' }],
   },
   /**
@@ -231,6 +285,7 @@ export const SEED_DISTRIBUTORS = {
     brandColor: '#7048e8',
     brands: [],
     priceFromCents: null,
+    products: [],
     members: [{ user: SEED_USERS.ownerE, role: 'owner' }],
   },
 } as const satisfies Record<string, SeedDistributor>;
