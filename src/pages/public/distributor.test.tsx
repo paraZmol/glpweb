@@ -77,11 +77,12 @@ describe('public page of a distributor (PLAN 2.5)', () => {
     expect(links.some((href) => href?.startsWith('tel:') || href?.includes('wa.me'))).toBe(false);
   });
 
-  it('shows the catalogue as a designed empty state: products arrive with phase 3', () => {
+  // PLAN 3.1: the prices load after the profile; their place is held by the shape of the cards.
+  it('holds the place of the prices while they load, under its own heading', () => {
     const html = page();
 
-    expect(textOf(html)).toContain('Esta distribuidora todavía no publicó su catálogo.');
-    expect(html).toContain('aria-label="Balón de 10 kg"');
+    expect(textOf(html)).toContain('Balones y precios');
+    expect(textOf(html)).toContain('Cargando los precios');
     expect(html).not.toContain('role="radiogroup"');
   });
 

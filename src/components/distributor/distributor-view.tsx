@@ -1,7 +1,5 @@
 import { BrandTheme } from '@/components/brand/brand-theme';
-import { GasCylinder } from '@/components/brand/gas-cylinder';
 import { HornillaLogo } from '@/components/brand/hornilla-logo';
-import { EmptyState } from '@/components/common/state-views';
 import { TextLink } from '@/components/common/text-link';
 import { DEFAULT_TIMEZONE } from '@/domain/tenancy/constants';
 import { describeOpenStatus, openStatusAt } from '@/domain/tenancy/schedule';
@@ -10,32 +8,15 @@ import { ROUTES } from '@/lib/routes';
 import { ContactActions } from './contact-actions';
 import { CoverageCard, ScheduleCard } from './distributor-details';
 import { DistributorHero } from './distributor-hero';
+import { DistributorProducts } from './distributor-products';
 import { PrivatePreviewStrip } from './private-preview-strip';
 
-const EMPTY_CYLINDER_PX = 72;
 const FOOT_LOGO_PX = 20;
 
 function statusOf(distributor: PublicDistributor, now: Date) {
   if (!distributor.acceptingOrders) return { isOpen: false, text: 'Ahora no es pública' };
   const open = openStatusAt(distributor.schedule, now, DEFAULT_TIMEZONE);
   return { isOpen: open.isOpen, text: describeOpenStatus(open) };
-}
-
-/** The products of the distributor. The catalogue is phase 3: until then, a designed gap. */
-function Catalog() {
-  return (
-    <section aria-labelledby="catalogo">
-      <h2 id="catalogo" className="text-[1.75rem] font-extrabold lg:text-4xl">
-        Balones y precios
-      </h2>
-      <EmptyState
-        className="mt-4 rounded-xl bg-card p-6 shadow-card"
-        symbol={<GasCylinder weightKg={10} tone="mono" height={EMPTY_CYLINDER_PX} />}
-        title="Esta distribuidora todavía no publicó su catálogo."
-        description="Aquí van a aparecer sus balones, sus marcas y el precio de la recarga y del balón completo. Mientras tanto puedes preguntarle por teléfono o por WhatsApp."
-      />
-    </section>
-  );
 }
 
 /** Desktop: the column that will hold "Tu pedido"; today, the direct way to the business. */
@@ -84,7 +65,7 @@ export function DistributorView({ distributor, now }: DistributorViewProps) {
       <DistributorHero distributor={distributor} status={statusOf(distributor, now)} />
       <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 pt-7 lg:grid-cols-[minmax(0,1fr)_22.75rem] lg:px-8 lg:pt-6 lg:pb-20">
         <div className="flex min-w-0 flex-col gap-8">
-          <Catalog />
+          <DistributorProducts distributorId={distributor.id} />
           <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
             <CoverageCard distributor={distributor} />
             <ScheduleCard distributor={distributor} />
