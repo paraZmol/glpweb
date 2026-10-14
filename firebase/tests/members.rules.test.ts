@@ -132,9 +132,13 @@ describe('members — my memberships (collection group)', () => {
     expect(places).toEqual([A, B].sort());
   });
 
-  it('works for an unverified account and for one without memberships', async () => {
-    const found = await assertSucceeds(getDocs(mine(unverified(env, CUSTOMER_UID), CUSTOMER_UID)));
+  it('works for an account without memberships', async () => {
+    const found = await assertSucceeds(getDocs(mine(verified(env, CUSTOMER_UID), CUSTOMER_UID)));
     expect(found.empty).toBe(true);
+  });
+
+  it('blocks an account without a verified e-mail from its own memberships', async () => {
+    await assertFails(getDocs(mine(unverified(env, 'driver-a'), 'driver-a')));
   });
 
   it('blocks looking up the memberships of someone else', async () => {

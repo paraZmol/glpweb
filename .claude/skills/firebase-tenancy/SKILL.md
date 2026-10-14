@@ -158,17 +158,23 @@ correos.
   Google entrega el correo confirmado, así que una sesión sin él no debería existir: no es un
   paso que completar, `decideAccess` responde `unconfirmedEmail` y la pantalla solo ofrece
   cerrar sesión.
-- **Reglas**: se conserva `emailVerified()` en todo lo que ya lo exigía (perfil, direcciones,
-  alta de distribuidora). Además, `signedInWithGoogle()` — correo verificado **y**
-  `request.auth.token.firebase.sign_in_provider == 'google.com'` — es condición para **crear**
-  `users/{uid}` y cada línea de `users/{uid}/acceptances`; como aceptar una versión nueva
-  escribe una línea, tampoco se renueva un consentimiento con otra clase de sesión. Un perfil
-  solo existe para un correo verificado. Ninguna lectura de reglas nueva. Al añadir otra
-  colección con datos personales: decidir si exige `emailVerified()` o `signedInWithGoogle()`.
+- **Reglas** (PLAN §11, 2026-10-14): **toda lectura y escritura de datos propios exige una
+  sesión de Google con correo verificado**. `signedInWithGoogle()` — sesión, correo verificado
+  **y** `request.auth.token.firebase.sign_in_provider == 'google.com'` — va dentro de `isSelf()`,
+  `hasRole()` (y con ello `isStaff()`) e `isPlatformAdmin()`, y abre las reglas que no pasan por
+  ellas: crear enlace, distribuidora, control y ajustes privados; leer el control y los ajustes
+  por `ownerUid`; editar los ajustes; actualizar un miembro; "mis membresías". `emailVerified()`
+  ya no existe. Solo quedan sin sesión las lecturas públicas (ficha con `acceptingOrders`,
+  enlace, búsqueda). Ninguna lectura de reglas nueva. **Toda colección nueva** se abre con
+  `isSelf()`, `hasRole()`/`isStaff()` o `isPlatformAdmin()`; si una regla necesita otra forma,
+  empieza por `signedInWithGoogle()`. Tests: `firebase/tests/google-session-only.rules.test.ts`
+  (cada caso con Google pasa y con contraseña, anónima, token propio o sin correo verificado,
+  sobre la misma cuenta, falla): una colección nueva añade ahí sus casos.
 - **Tests de reglas**: `verified(env, uid)` de `firebase/tests/helpers.ts` ya es una sesión de
   Google; `unverified` también (solo cambia el correo); `verifiedThrough(env, uid, proveedor)`
-  es la sesión hostil con otro proveedor. `authenticatedContext(uid)` a secas lleva
-  `sign_in_provider: 'custom'`: no crea perfiles.
+  es la sesión hostil con otro proveedor y `signedInAnonymously(env, uid)` la anónima.
+  `authenticatedContext(uid)` a secas lleva `sign_in_provider: 'custom'`: no lee ni escribe
+  nada propio.
 - **Tests de repositorio y de navegador**: abren sesión como una identidad de Google que el
   emulador de Auth simula (`src/data/emulated-google.ts`, que se niega a funcionar fuera del
   emulador). Repositorio: `signInAs`/`signInAsNewcomer` de `tests/support/emulated-session.ts`.
@@ -177,6 +183,12 @@ correos.
   (la pone `playwright.config.ts`); `scripts/check-dist.mjs` falla si aparece en `dist/`. La
   semilla y `createTestAccount` crean las cuentas ya enlazadas a su identidad de Google
   (`googleIdOf(correo)`), sin contraseña, para conservar el uid.
+- **Nadie contacta con Google antes de pulsar el botón** (PLAN §11, 2026-10-14). `auth` se
+  crea con `initializeAuth` y la persistencia de siempre, **sin** `popupRedirectResolver`: con él
+  el SDK prepara la ventana de Google al abrir la app en celulares y Safari. El resolutor se pasa
+  solo a `signInWithPopup`, `signInWithRedirect` y `getRedirectResult` (este último no carga
+  nada si la pestaña no tiene una redirección pendiente). Nunca `getAuth()`. E2E:
+  `tests/e2e/no-google-before-sign-in.spec.ts`.
 - **La foto de Google** se quita del perfil de la cuenta tras cada ingreso pidiendo al servicio
   que borre el atributo (`deleteAttribute: ['PHOTO_URL']`); `updateProfile({ photoURL: null })`
   no la borra.
@@ -229,10 +241,14 @@ correos.
   `grant-platform-admin.mjs --revoke` revoca además los tokens: la sesión cae al renovar el
   suyo (como mucho una hora).
 - **Límite de 1 000 expresiones por evaluación.** La regla `update` de `/distributors/{d}`
-  está al borde (medido el 2026-10-12: la edición completa con 8 marcas admite unas 10
-  comparaciones más y no 12). Una escritura que se pasa del límite se rechaza aunque fuera
-  legítima. Antes de añadirle condiciones: validar solo lo que cambia o partir el documento
-  (PLAN §9).
+  está cerca del borde. Medido el 2026-10-14 contra el emulador con la edición legítima más
+  pesada (toda la ficha con 8 marcas y vuelta a revisión, test `lets the owner edit the whole
+  profile at once, eight brands included`), añadiendo al principio de la regla N copias de
+  `&& request.time == request.time`: antes del cambio pasaba con 6 y fallaba con 7; la sesión de
+  Google en `hasRole()` costó una; leer el miembro una sola vez (`holdsRole`) y un solo patrón
+  de espacios en `isText()` la dejaron en **pasa con 13, falla con 14**. Una escritura que se
+  pasa del límite se rechaza aunque fuera legítima. Antes de añadirle condiciones: validar solo
+  lo que cambia o partir el documento (PLAN §9).
 - **Datos locales.** Cerrar sesión borra la caché de Firestore y las claves `hornilla.*` salvo
   `storageNoticeSeen` (`src/data/local-wipe.ts`, `src/features/account/end-session.ts`).
 - **Emuladores.** Solo a través de `scripts/emulators.mjs` (carril con `E2E_LANE=N`); nunca

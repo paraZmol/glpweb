@@ -328,8 +328,10 @@ describe('acceptances — who reads the history', () => {
     ]);
   });
 
-  it('lets the account read its history even before its e-mail is verified again', async () => {
-    await assertSucceeds(getDoc(doc(unverified(env, SETTLED), entryPath(SETTLED, 'terms'))));
+  // PLAN §11 (2026-10-14): reading what is one's own also takes a Google session with a
+  // verified e-mail.
+  it('blocks the account from reading its history without a verified e-mail', async () => {
+    await assertFails(getDoc(doc(unverified(env, SETTLED), entryPath(SETTLED, 'terms'))));
   });
 
   it('lets a platform admin read and list the history of any account', async () => {

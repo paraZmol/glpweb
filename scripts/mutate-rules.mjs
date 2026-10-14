@@ -25,16 +25,22 @@ const DEFAULT_WORKERS = 3;
 
 /** [id, what the broken rule would allow, text to find (exactly once), replacement]. */
 const MUTANTS = [
-  ['H01', 'hasRole ignores active', 'member(d).active == true && ', ''],
-  ['H02', 'hasRole ignores the role', 'member(d).role in roles', 'true'],
+  ['H01', 'hasRole ignores active', 'held.active == true && ', ''],
+  ['H02', 'hasRole ignores the role', 'held.role in roles', 'true'],
   [
     'H03',
     'platform admin from a token claim',
     'exists(/databases/$(database)/documents/platformAdmins/$(request.auth.uid))',
     'request.auth.token.platformAdmin == true',
   ],
-  ['H04', 'emailVerified always true', 'request.auth.token.email_verified == true', 'true'],
-  // PLAN 2.1: sign-in is with Google only.
+  [
+    'H04',
+    'signedInWithGoogle ignores the e-mail',
+    'request.auth.token.email_verified == true',
+    'true',
+  ],
+  // PLAN 2.1: sign-in is with Google only, and since 2026-10-14 (PLAN §11) every read and write
+  // of the data of an account or of a distributor demands a session of Google.
   [
     'I01',
     'signedInWithGoogle ignores how the session came in',
@@ -42,10 +48,52 @@ const MUTANTS = [
     '',
   ],
   [
-    'I02',
-    'signedInWithGoogle ignores the e-mail',
-    'return emailVerified() && request.auth.token.firebase',
-    'return signedIn() && request.auth.token.firebase',
+    'I05',
+    'the own data of an account with any session',
+    'return signedInWithGoogle() && request.auth.uid == uid;',
+    'return signedIn() && request.auth.uid == uid;',
+  ],
+  [
+    'I06',
+    'a role of a distributor with any session',
+    'return signedInWithGoogle() && holdsRole(member(d), roles);',
+    'return signedIn() && holdsRole(member(d), roles);',
+  ],
+  [
+    'I07',
+    'platform admin with any session',
+    'return signedInWithGoogle()\n        && exists(/databases/$(database)/documents/platformAdmins',
+    'return signedIn()\n        && exists(/databases/$(database)/documents/platformAdmins',
+  ],
+  [
+    'I08',
+    'control document read by its founder with any session',
+    'allow get: if signedInWithGoogle()\n          && (resource.data.ownerUid == request.auth.uid || isStaff(d)',
+    'allow get: if signedIn()\n          && (resource.data.ownerUid == request.auth.uid || isStaff(d)',
+  ],
+  [
+    'I09',
+    'private settings read by the founder with any session',
+    'allow get: if signedInWithGoogle()\n          && (resource.data.ownerUid == request.auth.uid || isPlatformAdmin());',
+    'allow get: if signedIn()\n          && (resource.data.ownerUid == request.auth.uid || isPlatformAdmin());',
+  ],
+  [
+    'I10',
+    'private settings edited by the founder with any session',
+    'allow update: if signedInWithGoogle()\n          && resource.data.ownerUid == request.auth.uid',
+    'allow update: if signedIn()\n          && resource.data.ownerUid == request.auth.uid',
+  ],
+  [
+    'I11',
+    'member document updated with any session',
+    'allow update: if signedInWithGoogle()\n          && isValidMember',
+    'allow update: if signedIn()\n          && isValidMember',
+  ],
+  [
+    'I12',
+    'private settings created with any session',
+    'allow create: if signedInWithGoogle()\n          && isValidPrivateSettings',
+    'allow create: if signedIn()\n          && isValidPrivateSettings',
   ],
   ['H05', 'trial never expires', 'control.trialEndsAt > request.time', 'true'],
   [
@@ -77,18 +125,8 @@ const MUTANTS = [
     "hasExactly(acceptance, ['version', 'acceptedAt'])",
     "acceptance.keys().hasAll(['version', 'acceptedAt'])",
   ],
-  [
-    'H15',
-    'text may end in white space',
-    "\n        && !value.matches('(?s).*[\\\\s\\\\x0b\\\\pZ\\\\x{feff}]$')",
-    '',
-  ],
-  [
-    'H16',
-    'text may start with white space',
-    "\n        && !value.matches('(?s)^[\\\\s\\\\x0b\\\\pZ\\\\x{feff}].*')",
-    '',
-  ],
+  ['H15', 'text may end in white space', "|.*[\\\\s\\\\x0b\\\\pZ\\\\x{feff}]$')", "')"],
+  ['H16', 'text may start with white space', "'(?s)^[\\\\s\\\\x0b\\\\pZ\\\\x{feff}].*|", "'(?s)"],
   [
     'H17',
     'schedule days may repeat',
@@ -339,36 +377,6 @@ const MUTANTS = [
     '\n          && exists(/databases/$(database)/documents/users/$(uid))',
     '',
   ],
-  [
-    'U22',
-    'profile created by an unverified account',
-    'allow create: if isSelf(uid)\n        && signedInWithGoogle()\n        && isValidUserProfile',
-    'allow create: if isSelf(uid)\n        && isValidUserProfile',
-  ],
-  [
-    'I03',
-    'profile created by a verified session that did not come in through Google',
-    'allow create: if isSelf(uid)\n        && signedInWithGoogle()\n        && isValidUserProfile',
-    'allow create: if isSelf(uid)\n        && emailVerified()\n        && isValidUserProfile',
-  ],
-  [
-    'U23',
-    'profile edited by an unverified account',
-    'allow update: if isSelf(uid)\n        && emailVerified()\n        && isValidUserProfile',
-    'allow update: if isSelf(uid)\n        && isValidUserProfile',
-  ],
-  [
-    'U24',
-    'address saved by an unverified account',
-    'allow create: if isSelf(uid)\n          && emailVerified()\n          && isSlot()',
-    'allow create: if isSelf(uid)\n          && isSlot()',
-  ],
-  [
-    'U25',
-    'address edited by an unverified account',
-    'allow update: if isSelf(uid)\n          && emailVerified()\n          && isValidAddress',
-    'allow update: if isSelf(uid)\n          && isValidAddress',
-  ],
   // History of acceptances (/users/{uid}/acceptances): the two halves of an acceptance.
   [
     'A01',
@@ -403,20 +411,8 @@ const MUTANTS = [
   [
     'A06',
     'history entry created by another account',
-    'allow create: if isSelf(uid)\n          && signedInWithGoogle()\n          && isAcceptanceEntry',
-    'allow create: if signedInWithGoogle()\n          && isAcceptanceEntry',
-  ],
-  [
-    'A07',
-    'history entry created by an unverified account',
-    'allow create: if isSelf(uid)\n          && signedInWithGoogle()\n          && isAcceptanceEntry',
     'allow create: if isSelf(uid)\n          && isAcceptanceEntry',
-  ],
-  [
-    'I04',
-    'history entry created by a verified session that did not come in through Google',
-    'allow create: if isSelf(uid)\n          && signedInWithGoogle()\n          && isAcceptanceEntry',
-    'allow create: if isSelf(uid)\n          && emailVerified()\n          && isAcceptanceEntry',
+    'allow create: if signedInWithGoogle()\n          && isAcceptanceEntry',
   ],
   [
     'A08',
@@ -475,8 +471,8 @@ const MUTANTS = [
   ['S03', 'slug id unchecked', '\n        && isSlug(slug)', ''],
   [
     'S04',
-    'slug by unverified account',
-    'allow create: if emailVerified()\n        && isSlug(slug)',
+    'slug by a session that is not Google with a verified e-mail',
+    'allow create: if signedInWithGoogle()\n        && isSlug(slug)',
     'allow create: if signedIn()\n        && isSlug(slug)',
   ],
   [
@@ -527,13 +523,13 @@ const MUTANTS = [
   [
     'D09',
     'distributor id chosen by the client',
-    'allow create: if emailVerified()\n        && isDistributorId(d)',
-    'allow create: if emailVerified()\n        && isDocId(d)',
+    'allow create: if signedInWithGoogle()\n        && isDistributorId(d)',
+    'allow create: if signedInWithGoogle()\n        && isDocId(d)',
   ],
   [
     'D10',
-    'distributor by unverified account',
-    'allow create: if emailVerified()\n        && isDistributorId(d)',
+    'distributor by a session that is not Google with a verified e-mail',
+    'allow create: if signedInWithGoogle()\n        && isDistributorId(d)',
     'allow create: if signedIn()\n        && isDistributorId(d)',
   ],
   [
@@ -778,8 +774,8 @@ const MUTANTS = [
   ],
   [
     'C15',
-    'control by unverified account',
-    'allow create: if emailVerified()\n          && isValidControl',
+    'control by a session that is not Google with a verified e-mail',
+    'allow create: if signedInWithGoogle()\n          && isValidControl',
     'allow create: if signedIn()\n          && isValidControl',
   ],
   [
@@ -993,12 +989,6 @@ const MUTANTS = [
     '&& request.resource.data.active == true\n          && carriesPublicName()',
     '&& request.resource.data.active == true',
   ],
-  [
-    'M08',
-    'member by unverified account',
-    'allow create: if isSelf(memberUid)\n          && emailVerified()',
-    'allow create: if isSelf(memberUid)',
-  ],
   ['M09', 'owner changes itself', 'memberUid != request.auth.uid\n              && ', ''],
   [
     'M10',
@@ -1051,8 +1041,8 @@ const MUTANTS = [
   [
     'M18',
     'founding member for another account',
-    'allow create: if isSelf(memberUid)\n          && emailVerified()',
-    'allow create: if signedIn()\n          && emailVerified()',
+    'allow create: if isSelf(memberUid)\n          && isValidMember',
+    'allow create: if signedInWithGoogle()\n          && isValidMember',
   ],
   [
     'M19',
@@ -1076,8 +1066,8 @@ const MUTANTS = [
   ['G02', 'memberships of anyone', '\n        && resource.data.uid == request.auth.uid', ''],
   [
     'G03',
-    'memberships for anonymous',
-    'allow list: if signedIn()\n        && request.query.limit <= 20',
+    'memberships for any session, or none',
+    'allow list: if signedInWithGoogle()\n        && request.query.limit <= 20',
     'allow list: if request.query.limit <= 20',
   ],
   [
@@ -1295,17 +1285,15 @@ const WHOLE_STRING =
 // The pieces of the founding batch vouch for one another, so some checks are written twice on
 // purpose: breaking one copy changes nothing while the other stands.
 const VERIFIED_BY_CONTROL =
-  'the piece needs foundedNow(d), so the control document is created in the same request, and that requires a verified e-mail';
+  'the piece needs foundedNow(d), so the control document is created in the same request, and that requires a session of Google with a verified e-mail';
 // An acceptance is two writes that vouch for each other: the field of the profile demands its
 // history entry stamped now (logsAcceptance) and the entry demands that field stamped now
 // (profileAccepts). A check written on both sides survives while the other side stands.
 const ENTRY_NEEDS_PROFILE =
   'profileAccepts() needs the profile of that account to take the acceptance in this same request';
 const EQUIVALENT = {
-  U22: 'a profile needs its two history entries in the same request (logsAcceptance), and creating an entry requires a verified e-mail (pair of A07)',
   A01: 'the entry it needs is stamped now, so this request creates it, and creating it requires the profile to hold the acceptance stamped with request.time (profileAccepts, pair of A12)',
   A06: `${ENTRY_NEEDS_PROFILE}, and only the account itself writes its profile`,
-  A07: `${ENTRY_NEEDS_PROFILE}, and writing the profile requires a verified e-mail (pair of U22)`,
   A09: 'the profile that takes the acceptance demands, through logsAcceptance(), that this very entry (same id: A08) be stamped with request.time',
   A11: 'the version of an entry must be an allowed one of its text, and each list holds a single version today: the one the profile takes. NOT equivalent once a list has two versions: add then a rules test with an entry of the other version',
   A14: 'the id must be document-version (A08) and profileAccepts() reads the profile field named by the document, which exists only for terms and privacy and only with an allowed version',
@@ -1330,11 +1318,11 @@ const EQUIVALENT = {
   D08: 'the slug it names must point to it once the request is applied; a slug is created only for a distributor founded in the same request and is never deleted, so the slug of a distributor that does not exist yet is created by this request, which needs foundedNow(d) (the slug rule holds the same lock)',
   D10: VERIFIED_BY_CONTROL,
   C02: 'every other piece needs foundedNow(d), which requires the caller as ownerUid of the control document (pair of H07)',
-  C15: 'the distributor, created in the same request, requires a verified e-mail',
+  C15: 'the distributor, created in the same request, requires a session of Google with a verified e-mail',
+  I11: 'both branches of the update need isSelf() or hasRole(), and both already demand a session of Google with a verified e-mail',
+  I12: VERIFIED_BY_CONTROL,
   P09: 'the control document requires the settings to carry the caller as ownerUid',
   M04: 'the control document requires the member of the caller to have role owner',
-  M08: VERIFIED_BY_CONTROL,
-  G03: 'without a session request.auth is null, so comparing resource.data.uid with request.auth.uid fails',
   X07: 'an approval removes the note (H49), and leavesCorrectionMarkAlone() lets a mark survive only while the note is untouched: the shape is a second lock',
   X09: 'only an owner writes the mark, through marksCorrection(), which demands correctedAt == request.time: it is always a timestamp',
   X21: 'the mark needs a change of content in the public profile or in the private settings, and both rules already demand a writable distributor for it (writable(d) in the owner edit, settingsEditAllowed()): a second lock that costs no read, because the control document is the one being written',

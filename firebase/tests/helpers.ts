@@ -95,6 +95,11 @@ export function unverified(env: RulesTestEnvironment, uid: string): Db {
     .firestore();
 }
 
+/** An anonymous Firebase session on that uid: no e-mail at all. The app never starts one. */
+export function signedInAnonymously(env: RulesTestEnvironment, uid: string): Db {
+  return env.authenticatedContext(uid, signedInWith('anonymous')).firestore();
+}
+
 export function anonymous(env: RulesTestEnvironment): Db {
   return env.unauthenticatedContext().firestore();
 }
