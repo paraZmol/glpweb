@@ -86,6 +86,10 @@ describe('a first sign-in — nothing is stored until the person accepts', () =>
       displayName: '',
       phone: null,
     });
+    expect(suggestedProfileOf({ ...session, displayName: '  Ana  Prueba  ' })).toEqual({
+      displayName: 'Ana Prueba',
+      phone: null,
+    });
   });
 
   it('refuses the acceptance, and the profile itself, without a confirmed e-mail', async () => {

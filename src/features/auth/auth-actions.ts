@@ -6,6 +6,7 @@ import {
   type AddressInput,
   prepareAddress,
   prepareUserProfile,
+  tidyName,
   type UserProfileInput,
 } from '../../domain/tenancy/account-input';
 import { type AcceptanceEntry, CURRENT_LEGAL_VERSIONS } from '../../domain/legal/versions';
@@ -17,6 +18,7 @@ import {
 } from '../../domain/tenancy/errors';
 import type { Validated } from '../../domain/tenancy/field-checks';
 import type { Address } from '../../domain/tenancy/types';
+import { announceTermsAccepted } from './terms-elsewhere';
 
 const FALLBACK_DISPLAY_NAME = 'Sin nombre';
 
@@ -27,10 +29,11 @@ function unwrap<T>(result: Validated<T>): T {
 
 /**
  * What the terms step shows as the name of a new account, for the person to confirm or correct
- * before the profile exists: the name its Google account gave. The phone is never known.
+ * before the profile exists: the name its Google account gave, without stray spaces. The phone
+ * is never known.
  */
 export function suggestedProfileOf(session: Session): UserProfileInput {
-  return { displayName: session.displayName ?? '', phone: null };
+  return { displayName: tidyName(session.displayName ?? ''), phone: null };
 }
 
 /** The profile a new account gets when the screen passes no details of its own. */
@@ -62,10 +65,17 @@ export async function acceptLegalDocuments(uid: string, details?: UserProfileInp
   if (session?.uid !== uid) throw authErrorFor('notSignedIn');
   if (!session.emailVerified) throw new EmailNotVerifiedError();
   if (await usersRepo.getUserProfile(uid)) {
-    return usersRepo.acceptLegalVersions(uid, CURRENT_LEGAL_VERSIONS);
+    await usersRepo.acceptLegalVersions(uid, CURRENT_LEGAL_VERSIONS);
+  } else {
+    await createAcceptedProfile(session, details);
   }
+  // Another tab of this browser may be on the same step: it moves on too.
+  announceTermsAccepted(uid);
+}
+
+async function createAcceptedProfile(session: Session, details?: UserProfileInput): Promise<void> {
   const profile = unwrap(prepareUserProfile(details ?? fallbackProfile(session)));
-  await usersRepo.createUserProfile(uid, profile, CURRENT_LEGAL_VERSIONS);
+  await usersRepo.createUserProfile(session.uid, profile, CURRENT_LEGAL_VERSIONS);
   // The session carries a copy of the name; a failure here changes nothing that was accepted.
   await authRepo.setSessionDisplayName(profile.displayName).catch(() => {});
 }

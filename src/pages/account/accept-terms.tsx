@@ -19,6 +19,7 @@ import {
   validateConsents,
   validateProfile,
 } from '@/features/auth/auth-forms';
+import { useTermsAcceptedElsewhere } from '@/features/auth/terms-elsewhere';
 import { usePageTitle } from '@/lib/page-title';
 import { ROUTES } from '@/lib/routes';
 import { useAsyncAction } from '@/lib/use-async-action';
@@ -51,6 +52,7 @@ export function AcceptTermsPage() {
   const [isRecorded, setRecorded] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   useFocusFirstInvalid(formRef, errors);
+  useTermsAcceptedElsewhere(session.uid, reloadProfile);
   const copy = copyFor(profile);
   const isNewAccount = profile === null;
 

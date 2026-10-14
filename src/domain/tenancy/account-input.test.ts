@@ -5,9 +5,22 @@ import {
   firstFreeAddressSlot,
   prepareAddress,
   prepareUserProfile,
+  tidyName,
   type UserProfileInput,
 } from './account-input';
 import { MAX_ADDRESSES_PER_USER } from './constants';
+
+describe('tidyName', () => {
+  it.each([
+    ['  Ana  Prueba  ', 'Ana Prueba'],
+    ['Ñahui\t\nQuispe', 'Ñahui Quispe'],
+    ['   ', ''],
+    ['', ''],
+    ['Z.', 'Z.'],
+  ])('turns %o into %o', (raw, tidy) => {
+    expect(tidyName(raw)).toBe(tidy);
+  });
+});
 
 describe('prepareUserProfile', () => {
   function issuesOf(input: UserProfileInput) {
