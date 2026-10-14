@@ -168,7 +168,7 @@ describe('legal pages (PLAN 2.7)', () => {
   const PUBLISHED = {
     terms: '12 de octubre de 2026',
     privacy: '12 de octubre de 2026',
-    cookies: '12 de octubre de 2026',
+    cookies: '14 de octubre de 2026',
   } as const;
 
   it.each(PAGES)('%s shows its document under the draft banner', (path, page, title, id) => {

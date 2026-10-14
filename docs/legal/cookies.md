@@ -1,6 +1,6 @@
 # Cookies y almacenamiento en tu dispositivo
 
-> **BORRADOR v0.3 (2026-10-12) — pendiente de revisión por un profesional antes del lanzamiento.**
+> **BORRADOR v0.4 (2026-10-14) — pendiente de revisión por un profesional antes del lanzamiento.**
 
 Hornilla guarda en tu navegador solo lo necesario para funcionar. **No usa cookies de publicidad
 ni de seguimiento, ni herramientas de analítica de terceros.**
@@ -10,7 +10,7 @@ ni de seguimiento, ni herramientas de analítica de terceros.**
 | Qué | Para qué | Cuánto dura |
 |---|---|---|
 | Sesión iniciada | No pedirte ingresar con Google cada vez | Hasta que cierres sesión |
-| Copia local de tus datos recientes (tu perfil, las distribuidoras que consultaste y, cuando existan, tus direcciones) | Abrir rápido, funcionar con mala señal y gastar menos datos | Hasta que cierres sesión: al cerrarla se borra de este dispositivo. Si el navegador no deja borrarla en ese momento, se borra la próxima vez que abras Hornilla, antes de usarla. Si usas Hornilla sin cuenta, la copia solo contiene fichas públicas de distribuidoras y dura hasta que borres los datos del sitio |
+| Copia local de tus datos recientes (tu perfil, las distribuidoras que consultaste con sus productos y precios y, cuando existan, tus direcciones) | Abrir rápido, funcionar con mala señal y gastar menos datos | Hasta que cierres sesión: al cerrarla se borra de este dispositivo. Si el navegador no deja borrarla en ese momento, se borra la próxima vez que abras Hornilla, antes de usarla. Si usas Hornilla sin cuenta, la copia solo contiene fichas públicas de distribuidoras y los productos y precios que publican, y dura hasta que borres los datos del sitio |
 | Último punto desde el que buscaste distribuidoras: sus coordenadas, redondeadas a tres decimales (unos cien metros), la fecha y la hora en que se guardó y si las dio tu dispositivo o las escribiste. Se guarda aunque no tengas cuenta | Mostrarte otra vez quién llega hasta ahí sin volver a preguntártelo | Hasta que toques "Olvidar esta ubicación", busques desde otro punto (que lo reemplaza) o cierres sesión. Con cuenta o sin ella, caduca a los 30 días de haberse guardado: volver a ver la lista no renueva ese plazo. Pasado el plazo se borra la siguiente vez que abres el buscador de Hornilla; si no vuelves a abrirlo, queda sin usar hasta que borres los datos del sitio |
 | Distribuidora elegida, junto con el identificador interno de tu cuenta (solo si trabajas en una distribuidora) | Abrir tu panel en la última distribuidora que elegiste | Hasta que elijas otra o cierres sesión |
 | Marca interna de la sesión en este dispositivo (un código al azar, que no te identifica) | Saber qué copia local hay que borrar al cerrar sesión y terminar de borrarla si quedó pendiente | Hasta que se borra la copia local |
@@ -66,6 +66,9 @@ con enlace a esta página, y no un panel de consentimiento. **Si en el futuro se
 publicidad, antes se pedirá tu consentimiento expreso** y esta página se actualizará.
 
 ## Historial de cambios
+- 0.4 (2026-10-14): la copia local incluye ahora los productos y precios que publican las
+  distribuidoras consultadas (catálogo, paso 3.1 del plan), también si usas Hornilla sin cuenta.
+  No se guarda nada nuevo de ti.
 - 0.3 (2026-10-12): a Hornilla se ingresa solo con una cuenta de Google. Sale de la tabla el
   nombre y el celular que antes esperaban en la pestaña entre el registro y la aceptación de los
   términos: ya no existe ese registro, y Hornilla deja de usar el almacenamiento de sesión de la

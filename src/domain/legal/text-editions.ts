@@ -10,7 +10,7 @@
 import { PRIVACY_VERSION, TERMS_VERSION } from './versions';
 
 /** Nobody accepts the cookie notice, but it is published with a version and a date like the others. */
-export const COOKIES_VERSION = '0.3';
+export const COOKIES_VERSION = '0.4';
 
 export const LEGAL_TEXT_IDS = ['terms', 'privacy', 'cookies'] as const;
 export type LegalTextId = (typeof LEGAL_TEXT_IDS)[number];
@@ -79,6 +79,11 @@ export const LEGAL_TEXT_EDITIONS: Record<LegalTextId, readonly LegalTextEdition[
       version: '0.3',
       publishedOn: '2026-10-12',
       sha256: '2ed09db53cc01972265e5015aac597806f0a14b19269deb81b9783617b065c85',
+    },
+    {
+      version: '0.4',
+      publishedOn: '2026-10-14',
+      sha256: '3b1eca355cbc2fcaa4e1a801a43a0f601519a3ac9da1b1af5e288baea90f7b4b',
     },
   ],
 };
