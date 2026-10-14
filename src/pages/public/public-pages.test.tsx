@@ -82,9 +82,10 @@ describe('home with the finder (PLAN 2.6)', () => {
     expect(text).not.toMatch(/S\/ \d/);
   });
 
-  it('leads owners to the sign-up of their distributor', () => {
+  // PLAN §11 (2026-10-14): a visitor goes there through the screen for somebody new.
+  it('leads owners to the sign-up of their distributor, through "Crear cuenta"', () => {
     expect(text).toContain('¿Tienes una distribuidora de gas?');
-    expect(linksTo(html, '/distribuidora/nueva').length).toBeGreaterThan(0);
+    expect(linksTo(html, '/registro?desde=%2Fdistribuidora%2Fnueva')).toHaveLength(1);
   });
 });
 
@@ -101,7 +102,7 @@ describe.each([
     '/registro',
     <RegisterPage key="r" />,
     'Crea tu cuenta en Hornilla.',
-    'Necesitas una cuenta de Google: es la única forma de entrar y no hay contraseña que crear. La misma cuenta te sirve como cliente y para trabajar con tu distribuidora. Sigue: confirmar tus datos y aceptar los términos.',
+    'Necesitas una cuenta de Google: es la única forma de entrar y no hay contraseña que crear. La misma cuenta te sirve como cliente y para trabajar con tu distribuidora. Sigue: confirmar tus datos y aceptar los términos. Si ya tienes cuenta, el mismo botón te hace ingresar.',
   ],
 ] as const)('entry screen %s', (path, page, title, lead) => {
   const html = inPublicShell(page, path);

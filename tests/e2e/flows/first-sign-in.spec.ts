@@ -84,17 +84,17 @@ test('a new person signs in, confirms the data, accepts the terms and lands on t
 });
 
 // PLAN 2.2, 2.11 ("que el registro conserve el destino"). Defect reported by flow-tester on
-// 2026-10-10: a visitor taps "Súmala a Hornilla", is asked to sign in at
-// /ingresar?desde=/distribuidora/nueva and, having no account, signs in with Google there (since
-// 2026-10-14 the screen no longer links to /registro: it is the same button). The destination
-// must travel with the person through the sign-in and the terms.
+// 2026-10-10: a visitor taps "Súmala a Hornilla" and, having no account, signs in with Google.
+// Since 2026-10-14 (PLAN §11) the band takes a visitor to /registro?desde=/distribuidora/nueva,
+// the screen that tells somebody new that the account is the Google one. The destination must
+// travel with the person through the sign-in and the terms.
 test('entering from "¿Tienes una distribuidora?" ends on the sign-up of the distributor', async ({
   page,
 }, testInfo) => {
   await page.goto('/');
   await page.getByRole('link', { name: 'Súmala a Hornilla' }).click();
-  await expect(page).toHaveURL(/\/ingresar\?desde=%2Fdistribuidora%2Fnueva$/);
-  await expect(page.getByText('Ingresa para continuar.')).toBeVisible();
+  await expect(page).toHaveURL(/\/registro\?desde=%2Fdistribuidora%2Fnueva$/);
+  await expect(heading(page)).toHaveText('Crea tu cuenta en Hornilla.');
 
   await signInHere(page, newcomer(uniqueTag(testInfo)));
   await expect(page).toHaveURL(/\/aceptar-terminos$/);

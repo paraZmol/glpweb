@@ -2,13 +2,14 @@ import { ArrowRight } from 'lucide-react';
 import { BurnerRing } from '@/components/brand/burner-ring';
 import { ButtonLink } from '@/components/common/button';
 import { ICON_STROKE } from '@/lib/icons';
-import { ROUTES } from '@/lib/routes';
 
 /**
  * Closing band for owners (PLAN 2.2, 2.6): the way from the finder to the sign-up of a
  * distributor. It promises only what the sign-up gives today.
+ * `to`: the sign-up itself for a signed-in account; for a visitor, `/registro` on the way to it,
+ * because an owner who arrives here most likely has no account yet (PLAN §11, 2026-10-14).
  */
-export function OwnersBand() {
+export function OwnersBand({ to }: { to: string }) {
   return (
     <section
       aria-labelledby="para-distribuidoras"
@@ -26,7 +27,7 @@ export function OwnersBand() {
         </p>
       </div>
       <ButtonLink
-        to={ROUTES.newDistributor}
+        to={to}
         variant="primary"
         size="lg"
         className="relative mt-5 w-full lg:mt-0 lg:w-auto"

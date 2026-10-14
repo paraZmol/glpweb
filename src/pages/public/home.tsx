@@ -9,6 +9,10 @@ import { OwnersBand } from '@/components/finder/owners-band';
 import { useDeliveryLocation } from '@/features/location/use-delivery-location';
 import { ICON_STROKE } from '@/lib/icons';
 import { usePageTitle } from '@/lib/page-title';
+import { registerPathFrom, ROUTES } from '@/lib/routes';
+
+/** A visitor who owns a distributor most likely has no account yet: `/registro` explains it. */
+const OWNERS_ENTRY = registerPathFrom(ROUTES.newDistributor);
 
 /** The kitchen photo with the ring behind it. The photo stays clean. */
 function HeroPhoto() {
@@ -69,7 +73,7 @@ export function HomePage() {
       </div>
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 py-10 lg:gap-20 lg:px-8 lg:py-20">
         <ComingNext />
-        <OwnersBand />
+        <OwnersBand to={OWNERS_ENTRY} />
       </div>
     </>
   );

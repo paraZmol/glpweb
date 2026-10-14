@@ -37,7 +37,7 @@ const COPY = {
   register: {
     pageTitle: 'Crear cuenta',
     title: 'Crea tu cuenta en',
-    lead: 'Necesitas una cuenta de Google: es la única forma de entrar y no hay contraseña que crear. La misma cuenta te sirve como cliente y para trabajar con tu distribuidora. Sigue: confirmar tus datos y aceptar los términos.',
+    lead: 'Necesitas una cuenta de Google: es la única forma de entrar y no hay contraseña que crear. La misma cuenta te sirve como cliente y para trabajar con tu distribuidora. Sigue: confirmar tus datos y aceptar los términos. Si ya tienes cuenta, el mismo botón te hace ingresar.',
   },
 } as const;
 
