@@ -186,11 +186,16 @@ describe('catalogue — who adds a product', () => {
     await assertSucceeds(add(verified(env, 'owner-a')));
   });
 
+  // PLAN §11, 2026-10-15: the dispatcher sets products and prices too.
+  it('lets the dispatcher add a product', async () => {
+    await assertSucceeds(add(verified(env, 'dispatcher-a')));
+  });
+
   it('lets the owner of a listing that waits for review prepare its catalogue', async () => {
     await assertSucceeds(add(verified(env, 'owner-pending'), WORLD.pending.d));
   });
 
-  it.each(['dispatcher-a', 'driver-a', 'owner-b', CUSTOMER_UID, ADMIN_UID])(
+  it.each(['driver-a', 'owner-b', 'dispatcher-b', CUSTOMER_UID, ADMIN_UID])(
     'blocks %s from adding a product to A',
     async (uid) => {
       await assertFails(add(verified(env, uid)));
@@ -332,11 +337,19 @@ describe('catalogue — who edits a product', () => {
     await assertSucceeds(edit('owner-a', change));
   });
 
+  it.each([
+    ['change both prices', { refillPriceCents: 5400, fullPriceCents: 19000 }],
+    ['take it off sale', { active: false }],
+    ['move it in the list', { sortOrder: 4 }],
+  ])('lets the dispatcher %s', async (_case, change) => {
+    await assertSucceeds(edit('dispatcher-a', change));
+  });
+
   it('lets the owner put a withdrawn product back on sale', async () => {
     await assertSucceeds(edit('owner-a', { active: true }, A, 'p01'));
   });
 
-  it.each(['dispatcher-a', 'driver-a', 'owner-b', CUSTOMER_UID, ADMIN_UID])(
+  it.each(['driver-a', 'owner-b', 'dispatcher-b', CUSTOMER_UID, ADMIN_UID])(
     'blocks %s from changing a price of A',
     async (uid) => {
       await assertFails(edit(uid, { refillPriceCents: 100 }));

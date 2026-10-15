@@ -27,7 +27,7 @@ test.slow();
 
 const CATALOG_PATH = '/central/catalogo';
 const STAFF_READS =
-  'Los productos y los precios los cambia quien es titular. Aquí los ves tal como están, también los que no están a la venta.';
+  'Los productos y los precios los cambian el titular y la central. Aquí los ves tal como están, también los que no están a la venta.';
 const NOT_ABOVE = 'El balón completo lleva gas y envase: debe costar más que la recarga.';
 const CATALOG_FULL = 'Puedes tener hasta 30 productos, también los que no están a la venta.';
 const MAX_PRODUCTS = 30;
@@ -173,16 +173,51 @@ test('the owner loads, edits, orders and withdraws products; visitors see exactl
   expect([...owner.errors, ...admin.errors, ...visitor.errors]).toEqual([]);
 });
 
-// PLAN 3.1: only the owner writes the catalogue; the dispatcher reads all of it.
-test('the dispatcher sees the whole catalogue without a single control', async ({ actors }) => {
+// PLAN §11, 2026-10-15: the dispatcher sets products and prices too, like the owner.
+test('the dispatcher sees the whole catalogue and can change it', async ({ actors }) => {
   const { page, errors } = await actors.openSeed('dispatcherA');
   await page.getByRole('link', { name: 'Catálogo' }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Catálogo y precios.');
-  await expect(page.getByText(STAFF_READS)).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tu catálogo.');
+  await expect(page.getByText(STAFF_READS)).toHaveCount(0);
   await expect(productNames(page)).toHaveCount(SEED_DISTRIBUTORS.a.products.length);
   await expect(page.getByText('Fuera de venta', { exact: true })).toBeVisible();
-  await expect(page.getByRole('main').getByRole('button')).toHaveCount(0);
+  await expect(button(page, 'Añadir producto')).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+// The seeded catalogue of A is read by other specs: the dispatcher writes in a distributor of
+// its own test, where it works as it would after accepting an invitation (PLAN 3.2).
+test('a dispatcher adds a product to the catalogue of its distributor', async ({
+  actors,
+}, testInfo) => {
+  const tag = uniqueTag(testInfo);
+  const { owner, name, id } = await foundedOwner(actors, tag);
+  const account = await createTestAccount(`${tag}-central`);
+  const now = new Date();
+  await writeDocument(`distributors/${id}/members/${account.uid}`, {
+    uid: account.uid,
+    distributorId: id,
+    role: 'dispatcher',
+    active: true,
+    displayName: account.displayName,
+    distributorName: name,
+    createdAt: now,
+    updatedAt: now,
+  });
+  const dispatcher = await actors.open(DESKTOP);
+  await signInAs(dispatcher.page, account, '/central');
+  await dispatcher.page.getByRole('link', { name: 'Catálogo' }).click();
+
+  await expect(dispatcher.page.getByRole('heading', { level: 1 })).toHaveText('Tu catálogo.');
+  await addProduct(
+    dispatcher.page,
+    { brand: 'Marca Central', weight: '10 kg', refill: '41' },
+    'Balón 10 kg · Marca Central',
+  );
+
+  const stored = await readDocument(`distributors/${id}/products/p00`);
+  expect(stored).toMatchObject({ brand: 'Marca Central', refillPriceCents: 4100 });
+  expect([...owner.errors, ...dispatcher.errors]).toEqual([]);
 });
 
 // PLAN 3.1: a suspended distributor keeps its catalogue in sight and nothing else.

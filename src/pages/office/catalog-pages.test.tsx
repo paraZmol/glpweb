@@ -16,15 +16,15 @@ import { SetupChecklist } from './setup-checklist';
 
 const DISTRIBUTOR = distributorOf('d-norte');
 
-type HeaderCase = { isOwner?: boolean; isWritable?: boolean; total?: number | null };
+type HeaderCase = { managesCatalog?: boolean; isWritable?: boolean; total?: number | null };
 
-function header({ isOwner = true, isWritable = true, total = 3 }: HeaderCase = {}) {
+function header({ managesCatalog = true, isWritable = true, total = 3 }: HeaderCase = {}) {
   const status: Distributor['status'] = isWritable ? 'active' : 'suspended';
   return textOf(
     renderStatic(
       <CatalogHeader
         distributor={{ ...DISTRIBUTOR, status }}
-        isOwner={isOwner}
+        managesCatalog={managesCatalog}
         isWritable={isWritable}
         total={total}
         isEditing={false}
@@ -36,7 +36,7 @@ function header({ isOwner = true, isWritable = true, total = 3 }: HeaderCase = {
 
 // PLAN 3.1: /central/catalogo.
 describe('catalogue of the office', () => {
-  it('gives the owner of a writable distributor the one way to add a product', () => {
+  it('gives the owner or the dispatcher of a writable distributor the one way to add a product', () => {
     const text = header();
 
     expect(text).toContain('Tu catálogo.');
@@ -44,8 +44,8 @@ describe('catalogue of the office', () => {
     expect(text).not.toContain(STAFF_READS);
   });
 
-  it('tells the dispatcher it only reads, with nothing to add', () => {
-    const text = header({ isOwner: false });
+  it('tells an account that does not set prices that it only reads, with nothing to add', () => {
+    const text = header({ managesCatalog: false });
 
     expect(text).toContain('Catálogo y precios.');
     expect(text).toContain(STAFF_READS);

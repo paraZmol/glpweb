@@ -105,10 +105,10 @@ function productDocument(product: NewProduct, currency: string, sortOrder: numbe
 }
 
 /**
- * Owner only, while the distributor is writable: adds `product` (from `prepareNewProduct`) in
+ * Owner or dispatcher, while the distributor is writable: adds `product` (from `prepareNewProduct`) in
  * the first free slot, after every other product, in the currency of the distributor. Returns
  * its id. Throws `CatalogFullError` when the 30 slots are taken, `StaleCatalogError` when another
- * tab took the same slot meanwhile, `PermissionDeniedError` (not an owner, read-only distributor)
+ * tab took the same slot meanwhile, `PermissionDeniedError` (a driver or someone outside, read-only distributor)
  * or `OfflineError` (it is not queued without a connection).
  * Cost: the catalogue (one read per product) + 2 reads + 1 write, and 1 more write when the
  * summary of the profile changes. The rules add 1 lookup for the list, up to 3 for the reads and
@@ -131,7 +131,7 @@ export async function createProduct(d: string, product: NewProduct): Promise<str
 }
 
 /**
- * Owner only, while the distributor is writable: writes `patch` (from `prepareProductEdit`,
+ * Owner or dispatcher, while the distributor is writable: writes `patch` (from `prepareProductEdit`,
  * only what changes, never empty) on product `productId`. Taking it off sale or back is a patch
  * of `active`. Throws `ProductNotFoundError`, `PermissionDeniedError` (also when the patch would
  * leave the full cylinder at or below the refill price stored by another tab meanwhile) or
@@ -165,7 +165,7 @@ export async function updateProduct(
 }
 
 /**
- * Owner only, while the distributor is writable: leaves the catalogue in the order of
+ * Owner or dispatcher, while the distributor is writable: leaves the catalogue in the order of
  * `orderedIds`, which must name every product exactly once (`moveInCatalog` builds it). Writes
  * only the products whose position changes, all at once. Throws `StaleCatalogError` when the
  * ids are not those of the catalogue (it changed in another tab), `PermissionDeniedError` or

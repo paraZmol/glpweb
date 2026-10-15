@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Bone, LoadingRegion } from '@/components/common/skeleton';
 import { ErrorState } from '@/components/common/state-views';
+import { canEditCatalog } from '@/domain/catalog/permissions';
 import { OfflineError } from '@/domain/tenancy/errors';
 import { useAccount } from '@/features/account/account-context';
 import { useCatalog } from '@/features/catalog/use-catalog';
@@ -21,8 +22,9 @@ function CatalogPageSkeleton() {
 
 /**
  * `/central/catalogo` (PLAN 3.1): the products of the distributor and their prices. Its owner
- * adds, edits, orders and takes products off sale; the dispatcher reads it as it is; a read-only
- * distributor (suspended, payment pending, trial over) shows it without a single control.
+ * and its dispatcher (PLAN §11, 2026-10-15) add, edit, order and take products off sale; a
+ * read-only distributor (suspended, payment pending, trial over) shows it without a single
+ * control.
  */
 export function CatalogPage() {
   usePageTitle('Catálogo');
@@ -41,14 +43,14 @@ export function CatalogPage() {
   if (current.status !== 'ready') return <CatalogPageSkeleton />;
 
   const { distributor, membership, isWritable } = current;
-  const isOwner = membership.role === 'owner';
-  const canEdit = isOwner && isWritable;
+  const managesCatalog = canEditCatalog(membership.role);
+  const canEdit = managesCatalog && isWritable;
 
   return (
     <div className="flex flex-col gap-6">
       <CatalogHeader
         distributor={distributor}
-        isOwner={isOwner}
+        managesCatalog={managesCatalog}
         isWritable={isWritable}
         total={products?.length ?? null}
         isEditing={editing !== null}

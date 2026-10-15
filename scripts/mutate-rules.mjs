@@ -1318,13 +1318,13 @@ const MUTANTS = [
   [
     'K06',
     'product added by any staff',
-    "&& hasRole(d, ['owner'])\n          && writable(d)\n          && request.resource.data.currency",
+    "&& hasRole(d, ['owner', 'dispatcher'])\n          && writable(d)\n          && request.resource.data.currency",
     '&& isStaff(d)\n          && writable(d)\n          && request.resource.data.currency',
   ],
   [
     'K07',
     'price changed by any staff',
-    "&& hasRole(d, ['owner'])\n          && writable(d);\n\n        // No delete: orders",
+    "&& hasRole(d, ['owner', 'dispatcher'])\n          && writable(d);\n\n        // No delete: orders",
     '&& isStaff(d)\n          && writable(d);\n\n        // No delete: orders',
   ],
   [
@@ -1356,8 +1356,8 @@ const MUTANTS = [
   [
     'K14',
     'product created with dates of the client',
-    "\n          && stampedNow(request.resource.data)\n          && hasRole(d, ['owner'])\n          && writable(d)\n          && request.resource.data.currency",
-    "\n          && hasRole(d, ['owner'])\n          && writable(d)\n          && request.resource.data.currency",
+    "\n          && stampedNow(request.resource.data)\n          && hasRole(d, ['owner', 'dispatcher'])\n          && writable(d)\n          && request.resource.data.currency",
+    "\n          && hasRole(d, ['owner', 'dispatcher'])\n          && writable(d)\n          && request.resource.data.currency",
   ],
   [
     'K15',
@@ -1465,6 +1465,43 @@ const MUTANTS = [
     '(data.priceFromCents is number &&',
   ],
   ['K39', 'more brands than are checked', 'brands.size() <= 8', 'brands.size() <= 9'],
+  // PLAN §11, 2026-10-15: the dispatcher edits the catalogue and its copy in the profile.
+  [
+    'K40',
+    'catalogue copy rewritten by the dispatcher as it stands',
+    "\n            && !unchanged(['brands', 'priceFromCents'])",
+    '',
+  ],
+  [
+    'K41',
+    'catalogue copy written by any staff',
+    "&& !unchanged(['brands', 'priceFromCents'])\n            && hasRole(d, ['dispatcher'])",
+    "&& !unchanged(['brands', 'priceFromCents'])\n            && isStaff(d)",
+  ],
+  [
+    'K42',
+    'catalogue copy written by the dispatcher while read-only',
+    "&& hasRole(d, ['dispatcher'])\n            && writable(d)\n          )",
+    "&& hasRole(d, ['dispatcher'])\n          )",
+  ],
+  [
+    'K44',
+    'product added by the owner only (the dispatcher refused)',
+    "&& hasRole(d, ['owner', 'dispatcher'])\n          && writable(d)\n          && request.resource.data.currency",
+    "&& hasRole(d, ['owner'])\n          && writable(d)\n          && request.resource.data.currency",
+  ],
+  [
+    'K45',
+    'price changed by the owner only (the dispatcher refused)',
+    "&& hasRole(d, ['owner', 'dispatcher'])\n          && writable(d);\n\n        // No delete: orders",
+    "&& hasRole(d, ['owner'])\n          && writable(d);\n\n        // No delete: orders",
+  ],
+  [
+    'K43',
+    'dispatcher edits more of the profile with the copy',
+    "onlyChanges(['brands', 'priceFromCents', 'updatedAt'])",
+    "onlyChanges(['brands', 'priceFromCents', 'coverageRadiusKm', 'acceptingOrders', 'updatedAt'])",
+  ],
   // PLAN 3.2: visible text (V0x), the text of the review note (V1x), invitations (N), joining
   // with one (J), managing the staff (M3x) and helpers (W).
   [
@@ -1944,6 +1981,10 @@ const VERIFIED_BY_CONTROL =
 // (profileAccepts). A check written on both sides survives while the other side stands.
 const ENTRY_NEEDS_PROFILE =
   'profileAccepts() needs the profile of that account to take the acceptance in this same request';
+// The invitation is used only by the request that creates the member naming it, and that member
+// is created only with the invitation marked used by the caller: each side checks the author.
+const INVITE_PAIR =
+  'the member that names the invitation is created only in this request, and its rule demands after.acceptedBy == request.auth.uid; the invitation rule demands the same author: one lock is enough while the other stands';
 const EQUIVALENT = {
   A01: 'the entry it needs is stamped now, so this request creates it, and creating it requires the profile to hold the acceptance stamped with request.time (profileAccepts, pair of A12)',
   A06: `${ENTRY_NEEDS_PROFILE}, and only the account itself writes its profile`,
@@ -1978,6 +2019,17 @@ const EQUIVALENT = {
   M04: 'the control document requires the member of the caller to have role owner',
   X07: 'an approval removes the note (H49), and leavesCorrectionMarkAlone() lets a mark survive only while the note is untouched: the shape is a second lock',
   X09: 'only an owner writes the mark, through marksCorrection(), which demands correctedAt == request.time: it is always a timestamp',
+  // PLAN 3.2: using an invitation is two writes that vouch for each other, like an acceptance.
+  M11: 'the founder is an owner, and only the founder manages another owner, never itself (memberUid != request.auth.uid): the founder check is a second lock (PLAN 3.2)',
+  K31: 'a visible text has a letter or digit, so it is never empty: the lower bound is a second lock',
+  H52: 'nobody writes the mark except a platform admin through writesNoteWithItsText(), which demands reviewNoteAt == request.time: it is always a timestamp',
+  V11: 'the text needs the mark of the control document stamped now, and only a platform admin writes that mark',
+  V13: 'a new mark in the control document demands getAfter(review).writtenAt == request.time (writesNoteWithItsText), and the text is only written together with a new mark',
+  V18: 'the text written with the mark demands getAfter(control).reviewNoteAt == request.time: the same date from the other side',
+  N21: INVITE_PAIR,
+  J10: INVITE_PAIR,
+  N25: 'the member that the same request must create checks after.status == "accepted" (usesInvitation), and the invitation can only change to that status in this branch',
+  J08: 'the invitation can only be marked used while it waits: its update rule demands resource.data.status == "pending", and the member rule demands it marked used in the same request',
   X21: 'the mark needs a change of content in the public profile or in the private settings, and both rules already demand a writable distributor for it (writable(d) in the owner edit, settingsEditAllowed()): a second lock that costs no read, because the control document is the one being written',
 };
 

@@ -134,7 +134,8 @@ rules_version = '2';
 //                                  way rules can cap it (30 products). Never deleted: a product
 //                                  leaves the sale with active = false. Anyone reads the products
 //                                  on sale while the distributor takes orders; its staff reads
-//                                  them all; only an owner writes, while it is writable.
+//                                  them all; the owner and the dispatcher write, while it is
+//                                  writable (the dispatcher also the copy in the profile).
 //   brand: visible text 1..30 · brandColor: null | '#rrggbb' lowercase · name: visible text
 //   2..60
 //   weightKg: int 1..100 (immutable: another weight is another product)
@@ -790,6 +791,16 @@ service cloud.firestore {
             && writable(d)
             && (changesIdentity() ? returnsToReview() : unchanged(['acceptingOrders']))
           )
+          // The dispatcher edits the catalogue too (PLAN §11, 2026-10-15), so it keeps the copy
+          // of it up to date in the same transaction: those two fields and nothing else, only
+          // when they change. Last, so the owner's edit never evaluates it (limit of
+          // expressions, PLAN §9).
+          || (
+            onlyChanges(['brands', 'priceFromCents', 'updatedAt'])
+            && !unchanged(['brands', 'priceFromCents'])
+            && hasRole(d, ['dispatcher'])
+            && writable(d)
+          )
         );
 
       // No delete from the app.
@@ -1151,14 +1162,15 @@ service cloud.firestore {
         allow get: if isOnSale() || isStaff(d);
         allow list: if request.query.limit <= 30 && (isOnSale() || isStaff(d));
 
-        // Only an owner sets prices and decides what is sold (PLAN §11, 2026-10-14), and only
-        // while the distributor is writable. A taken slot makes this an update, which must keep
-        // the creation date: no product is replaced by another one.
+        // The owner and the dispatcher set prices and decide what is sold (PLAN §11,
+        // 2026-10-15; CATALOG_EDITOR_ROLES in src/domain/catalog/permissions.ts), and only while
+        // the distributor is writable. A taken slot makes this an update, which must keep the
+        // creation date: no product is replaced by another one.
         // Reads added by rules: 3 (get member, get control, get distributor).
         allow create: if isValidProduct(request.resource.data)
           && productId.matches('^p[0-2][0-9]$')
           && stampedNow(request.resource.data)
-          && hasRole(d, ['owner'])
+          && hasRole(d, ['owner', 'dispatcher'])
           && writable(d)
           && request.resource.data.currency == get(distributorPath(d)).data.currency;
 
@@ -1168,7 +1180,7 @@ service cloud.firestore {
         allow update: if isValidProduct(request.resource.data)
           && unchanged(['weightKg', 'currency', 'createdAt'])
           && request.resource.data.updatedAt == request.time
-          && hasRole(d, ['owner'])
+          && hasRole(d, ['owner', 'dispatcher'])
           && writable(d);
 
         // No delete: orders (phase 4) and the plant stock (3.4) name products by their slot.

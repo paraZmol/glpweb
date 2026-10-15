@@ -12,7 +12,7 @@ import { distributorPath, ROUTES } from '@/lib/routes';
 import { isSuspended, SuspendedNotice } from './read-only-notice';
 
 export const STAFF_READS =
-  'Los productos y los precios los cambia quien es titular. Aquí los ves tal como están, también los que no están a la venta.';
+  'Los productos y los precios los cambian el titular y la central. Aquí los ves tal como están, también los que no están a la venta.';
 const PLAN_READ_ONLY =
   'Tu distribuidora está en solo lectura: puedes ver tu catálogo, pero no cambiarlo hasta regularizar el plan.';
 
@@ -47,7 +47,8 @@ export function CatalogFullNotice() {
 
 type CatalogHeaderProps = {
   distributor: Distributor;
-  isOwner: boolean;
+  /** The account sets products and prices (owner or dispatcher, `canEditCatalog`). */
+  managesCatalog: boolean;
   isWritable: boolean;
   /** How many products there are, once known. */
   total: number | null;
@@ -58,8 +59,8 @@ type CatalogHeaderProps = {
 
 /** Title, what this screen is, who may change it and the one main action (PLAN 3.1). */
 export function CatalogHeader(props: CatalogHeaderProps) {
-  const { distributor, isOwner, isWritable, total, isEditing, onAdd } = props;
-  const canAdd = isOwner && isWritable && !isEditing && total !== null && total > 0;
+  const { distributor, managesCatalog, isWritable, total, isEditing, onAdd } = props;
+  const canAdd = managesCatalog && isWritable && !isEditing && total !== null && total > 0;
   const isFull = total !== null && total >= MAX_PRODUCTS;
 
   const aside = canAdd ? (
@@ -76,9 +77,9 @@ export function CatalogHeader(props: CatalogHeaderProps) {
     <>
       <PageHeader
         dense
-        title={isOwner ? 'Tu catálogo.' : 'Catálogo y precios.'}
+        title={managesCatalog ? 'Tu catálogo.' : 'Catálogo y precios.'}
         lead={
-          isOwner
+          managesCatalog
             ? 'Los balones que vendes, con su marca y sus precios. Tus clientes los ven en tu página en este mismo orden.'
             : `Los balones de ${distributor.name}, con el precio de la recarga y del balón completo.`
         }
@@ -89,7 +90,7 @@ export function CatalogHeader(props: CatalogHeaderProps) {
           {isSuspended(distributor.status) ? <SuspendedNotice /> : PLAN_READ_ONLY}
         </InlineAlert>
       )}
-      {!isOwner && <InlineAlert tone="info">{STAFF_READS}</InlineAlert>}
+      {!managesCatalog && <InlineAlert tone="info">{STAFF_READS}</InlineAlert>}
     </>
   );
 }

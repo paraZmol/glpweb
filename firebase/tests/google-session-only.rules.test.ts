@@ -249,6 +249,11 @@ const DISTRIBUTOR: Case[] = [
   ],
   ['add a product', OWNER, (db) => setDoc(doc(db, productPath(A, 'p01')), productDoc())],
   [
+    'add a product as the dispatcher',
+    'dispatcher-a',
+    (db) => setDoc(doc(db, productPath(A, 'p02')), productDoc()),
+  ],
+  [
     'change a price',
     OWNER,
     (db) => updateDoc(doc(db, productPath(A, 'p00')), { refillPriceCents: 5400, ...stamp }),

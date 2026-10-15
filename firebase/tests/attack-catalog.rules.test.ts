@@ -449,8 +449,8 @@ describe('catalogue attacks — batches', () => {
     await assertFails(batch.commit());
   });
 
-  it('rejects a batch of a dispatcher hidden behind a legitimate write of its own', async () => {
-    const db = verified(env, 'dispatcher-a');
+  it('rejects a batch of a driver hidden behind a legitimate write of its own', async () => {
+    const db = verified(env, 'driver-a');
     const batch = writeBatch(db);
     batch.update(productOf(db, A, 'p00'), { sortOrder: 4, ...stamp });
     await assertFails(batch.commit());
@@ -508,7 +508,52 @@ describe('catalogue attacks — the copy in the public profile (brands, priceFro
     await assertFails(editProfile('owner-a', { brands: ['Marca Uno'], ...change }));
   });
 
-  it.each(['dispatcher-a', 'driver-a', 'owner-b', CUSTOMER_UID, ADMIN_UID])(
+  // PLAN §11, 2026-10-15: the dispatcher edits the catalogue, so it keeps the copy up to date
+  // in the same transaction. That copy, and nothing else of the profile, and only a real change.
+  it.each([
+    ['a new "from" price', { priceFromCents: 3900 }],
+    ['other brands', { brands: ['Marca Uno'] }],
+  ])('lets the dispatcher of A write the copy with %s', async (_case, change) => {
+    await assertSucceeds(editProfile('dispatcher-a', change));
+  });
+
+  it('rejects the dispatcher rewriting the copy as it stands', async () => {
+    const profile = (await getDoc(profileOf(verified(env, 'owner-a'), A))).data();
+    await assertFails(
+      editProfile('dispatcher-a', {
+        brands: profile?.brands,
+        priceFromCents: profile?.priceFromCents,
+      }),
+    );
+  });
+
+  it.each([
+    ['a new name', { name: 'Gas Nuevo' }],
+    ['another radius', { coverageRadiusKm: 9 }],
+    ['opening itself to visitors', { acceptingOrders: false }],
+    ['a "from" price of zero', { priceFromCents: 0 }],
+    ['a blank brand', { brands: [' '] }],
+  ])('rejects the dispatcher riding the copy with %s', async (_case, change) => {
+    await assertFails(editProfile('dispatcher-a', { priceFromCents: 3900, ...change }));
+  });
+
+  it('rejects the dispatcher of a distributor that cannot be written', async () => {
+    await seedDoc(
+      env,
+      `distributors/${WORLD.suspended.d}/members/dispatcher-suspended`,
+      memberDoc(WORLD.suspended.d, 'dispatcher-suspended', 'dispatcher', {
+        createdAt: AT,
+        updatedAt: AT,
+      }),
+    );
+    const db = verified(env, 'dispatcher-suspended');
+    await assertFails(
+      updateDoc(profileOf(db, WORLD.suspended.d), { priceFromCents: 3900, ...stamp }),
+    );
+    await assertFails(setDoc(productOf(db, WORLD.suspended.d, 'p05'), productDoc()));
+  });
+
+  it.each(['driver-a', 'owner-b', 'dispatcher-b', CUSTOMER_UID, ADMIN_UID])(
     'rejects %s writing the copy of A',
     async (uid) => {
       await assertFails(editProfile(uid, { priceFromCents: 1 }));

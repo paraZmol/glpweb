@@ -145,14 +145,22 @@ describe('createProduct', () => {
     );
   });
 
-  it.each([SEED_USERS.dispatcherA, SEED_USERS.driverA])(
-    'refuses a product from $displayName: prices are for the owner',
-    async (user) => {
-      await signInAs(user);
+  it('refuses a product from the driver: prices are for the owner and the dispatcher', async () => {
+    await signInAs(SEED_USERS.driverA);
 
-      await expect(createProduct(A.id, NEW_PRODUCT)).rejects.toBeInstanceOf(PermissionDeniedError);
-    },
-  );
+    await expect(createProduct(A.id, NEW_PRODUCT)).rejects.toBeInstanceOf(PermissionDeniedError);
+  });
+
+  // PLAN §11, 2026-10-15: the dispatcher sets products and prices, and the copy of the profile
+  // follows in the same transaction.
+  it('lets the dispatcher add a product, and the summary of the profile follows', async () => {
+    await signInAs(SEED_USERS.dispatcherA);
+
+    const id = await createProduct(A.id, { ...NEW_PRODUCT, refillPriceCents: 3000 });
+
+    expect(idsOf(await listCatalog(A.id))).toContain(id);
+    expect(await summaryOf(A.id)).toMatchObject({ priceFromCents: 3000 });
+  });
 });
 
 describe('updateProduct', () => {
@@ -230,8 +238,8 @@ describe('reorderProducts', () => {
     await expect(reorderProducts(A.id, ['p01', 'p00'])).rejects.toBeInstanceOf(StaleCatalogError);
   });
 
-  it('refuses a reorder from the dispatcher', async () => {
-    await signInAs(SEED_USERS.dispatcherA);
+  it('refuses a reorder from the driver', async () => {
+    await signInAs(SEED_USERS.driverA);
 
     await expect(reorderProducts(A.id, ['p04', 'p03', 'p02', 'p01', 'p00'])).rejects.toBeInstanceOf(
       PermissionDeniedError,

@@ -49,7 +49,7 @@ export function DriverCatalogPage() {
             <div className="py-5">
               <CatalogEmpty
                 title="Todavía no hay productos."
-                description="Los carga quien es titular de la distribuidora."
+                description="Los cargan el titular o la central de la distribuidora."
               />
             </div>
           ) : (

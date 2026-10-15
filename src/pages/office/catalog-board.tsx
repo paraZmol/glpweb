@@ -61,7 +61,7 @@ export function CatalogBoard(props: CatalogBoardProps) {
         description={
           canEdit
             ? 'Añade el primero con su marca, su peso y el precio de la recarga. Tus clientes lo ven en tu página, en el orden que elijas.'
-            : 'Los productos y sus precios los carga quien es titular de la distribuidora.'
+            : 'Los productos y sus precios los cargan el titular o la central de la distribuidora.'
         }
         action={canEdit && <AddProductButton onAdd={() => onEdit({ product: null })} isFirst />}
       />

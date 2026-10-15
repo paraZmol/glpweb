@@ -13,12 +13,13 @@ import { forgetVisibleDistributors } from '../tenancy/visible-distributors';
 // shows, so each one forgets the cached search list.
 
 /**
- * Owner only (PLAN 3.1): adds a product, on sale unless `input.active` is false, at the end of
- * the list. Prices are integer cents (`parseMoneyCents` reads what the person typed). Returns its
- * id. Throws `InvalidInputError` (per-field issues; `fullPriceCents: notAbove` when the full
- * cylinder does not cost more than the refill), `CatalogFullError`, `StaleCatalogError` (try
- * again), `PermissionDeniedError` (not an owner, or the distributor is read-only: suspended,
- * payment pending, trial over) or `OfflineError`.
+ * Owner or dispatcher (PLAN 3.1; §11, 2026-10-15): adds a product, on sale unless
+ * `input.active` is false, at the end of the list. Prices are integer cents (`parseMoneyCents`
+ * reads what the person typed). Returns its id. Throws `InvalidInputError` (per-field issues;
+ * `fullPriceCents: notAbove` when the full cylinder does not cost more than the refill),
+ * `CatalogFullError`, `StaleCatalogError` (try again), `PermissionDeniedError` (a driver or
+ * someone outside, or the distributor is read-only: suspended, payment pending, trial over) or
+ * `OfflineError`.
  */
 export async function addProduct(distributorId: string, input: ProductInput): Promise<string> {
   const prepared = prepareNewProduct(input);
@@ -29,8 +30,8 @@ export async function addProduct(distributorId: string, input: ProductInput): Pr
 }
 
 /**
- * Owner only: edits `current` (as the screen has it) with `patch`. Weight and currency cannot
- * change: another weight is another product. Orders already made keep their prices (phase 4).
+ * Owner or dispatcher: edits `current` (as the screen has it) with `patch`. Weight and currency
+ * cannot change: another weight is another product. Orders already made keep their prices (phase 4).
  * Throws `InvalidInputError`, `NothingChangedError` (nothing was written), `ProductNotFoundError`,
  * `PermissionDeniedError` or `OfflineError`.
  */
@@ -47,7 +48,7 @@ export async function editProduct(
 }
 
 /**
- * Owner only: puts a product on sale or takes it off (customers stop seeing it; nothing is
+ * Owner or dispatcher: puts a product on sale or takes it off (customers stop seeing it; nothing is
  * deleted). Same errors as `editProduct`.
  */
 export function setProductOnSale(
@@ -59,8 +60,8 @@ export function setProductOnSale(
 }
 
 /**
- * Owner only: moves `productId` to position `toIndex` of `catalog` (the list as the screen shows
- * it; clamped to its ends). Writes only the products whose position changes, in one batch.
+ * Owner or dispatcher: moves `productId` to position `toIndex` of `catalog` (the list as the
+ * screen shows it; clamped to its ends). Writes only the products whose position changes, in one batch.
  * Throws `StaleCatalogError` when the catalogue changed in another tab (reload it),
  * `PermissionDeniedError` or `OfflineError`.
  */
