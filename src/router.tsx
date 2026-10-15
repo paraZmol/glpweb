@@ -80,7 +80,11 @@ const accountRoutes: RouteObject = {
       'customer',
       (m) => m.CustomerGate,
       (m) => m.FocusShell,
-      [{ path: ROUTES.newDistributor, lazy: from('customer', (m) => m.NewDistributorPage) }],
+      [
+        { path: ROUTES.newDistributor, lazy: from('customer', (m) => m.NewDistributorPage) },
+        // An invitation link (PLAN 3.2): any account with its terms accepted may open it.
+        { path: ROUTES.join, lazy: from('customer', (m) => m.JoinPage) },
+      ],
     ),
     guarded(
       'driver',
@@ -99,6 +103,7 @@ const accountRoutes: RouteObject = {
         { path: ROUTES.officeHome, lazy: from('office', (m) => m.OfficeHomePage) },
         { path: ROUTES.officeProfile, lazy: from('office', (m) => m.EditProfilePage) },
         { path: ROUTES.officeCatalog, lazy: from('office', (m) => m.CatalogPage) },
+        { path: ROUTES.officeStaff, lazy: from('office', (m) => m.StaffPage) },
       ],
     ),
     guarded(
