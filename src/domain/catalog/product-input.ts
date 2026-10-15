@@ -2,7 +2,7 @@ import { normalizeBrandColor, isValidBrandColor } from '../tenancy/contact';
 import {
   type Check,
   checkInteger,
-  checkText,
+  checkVisibleText,
   collectIssues,
   type FieldIssue,
   type Validated,
@@ -68,7 +68,7 @@ type Checked = Omit<NewProduct, 'weightKg'> & { weightKg?: number };
 
 function issuesOf(product: Checked): FieldIssue[] {
   return collectIssues([
-    ['brand', checkText(product.brand, 1, BRAND_NAME_MAX_LENGTH)],
+    ['brand', checkVisibleText(product.brand, 1, BRAND_NAME_MAX_LENGTH)],
     [
       'brandColor',
       product.brandColor === null || isValidBrandColor(product.brandColor) ? null : 'invalid',
@@ -79,7 +79,7 @@ function issuesOf(product: Checked): FieldIssue[] {
         ? null
         : checkInteger(product.weightKg, MIN_WEIGHT_KG, MAX_WEIGHT_KG),
     ],
-    ['name', checkText(product.name, PRODUCT_NAME_MIN_LENGTH, PRODUCT_NAME_MAX_LENGTH)],
+    ['name', checkVisibleText(product.name, PRODUCT_NAME_MIN_LENGTH, PRODUCT_NAME_MAX_LENGTH)],
     ['refillPriceCents', checkPriceCents(product.refillPriceCents)],
     ['fullPriceCents', checkFullPrice(product.fullPriceCents, product.refillPriceCents)],
   ]);

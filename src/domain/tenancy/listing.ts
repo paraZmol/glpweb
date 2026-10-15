@@ -1,7 +1,7 @@
 import { REVIEW_NOTE_MAX_LENGTH } from './constants';
 import { checkText, type Validated } from './field-checks';
 import { isWritable } from './status';
-import type { DistributorControl, DistributorStatus } from './types';
+import type { DistributorControl, DistributorStatus, ReviewNoteDocument } from './types';
 
 type ListingInput = Pick<DistributorControl, 'status' | 'trialEndsAt' | 'listingApproved'>;
 
@@ -26,11 +26,20 @@ export function isOpenToPublic(control: ListingInput, now: Date): boolean {
 export type ListingState =
   'inReview' | 'changesRequested' | 'correctionsSent' | 'listed' | 'notOperating';
 
-type ReviewTrail = Pick<DistributorControl, 'listingApproved' | 'reviewNote' | 'correctedAt'>;
+type NoteTrail = Pick<DistributorControl, 'reviewNoteAt' | 'reviewNote'>;
+type ReviewTrail = Pick<DistributorControl, 'listingApproved' | 'correctedAt'> & NoteTrail;
+
+/**
+ * Whether a platform admin left a note: the mark every reader of the control document sees, or
+ * the text a control document older than PLAN 3.2 kept in place.
+ */
+export function hasReviewNote(control: NoteTrail): boolean {
+  return control.reviewNoteAt !== null || Boolean(control.reviewNote);
+}
 
 export function listingStateOf(control: ListingInput & ReviewTrail, now: Date): ListingState {
   if (control.listingApproved) return isWritable(control, now) ? 'listed' : 'notOperating';
-  if (!control.reviewNote) return 'inReview';
+  if (!hasReviewNote(control)) return 'inReview';
   return control.correctedAt ? 'correctionsSent' : 'changesRequested';
 }
 
@@ -40,7 +49,20 @@ export function listingStateOf(control: ListingInput & ReviewTrail, now: Date): 
  * the same condition (the mark is refused anywhere else).
  */
 export function answersReviewNote(control: Omit<ReviewTrail, 'correctedAt'>): boolean {
-  return !control.listingApproved && Boolean(control.reviewNote);
+  return !control.listingApproved && hasReviewNote(control);
+}
+
+/**
+ * The text of the note that goes with the control document: the one written together with its
+ * mark (same server time), so a text left behind by an older decision is never shown as the
+ * current one. Null when there is no such text.
+ */
+export function noteTextFor(
+  control: Pick<DistributorControl, 'reviewNoteAt'>,
+  stored: ReviewNoteDocument | null,
+): string | null {
+  if (stored === null || control.reviewNoteAt === null) return null;
+  return stored.writtenAt.getTime() === control.reviewNoteAt.getTime() ? stored.note : null;
 }
 
 /**

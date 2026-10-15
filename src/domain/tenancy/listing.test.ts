@@ -6,6 +6,7 @@ import {
   isInPlatformList,
   isOpenToPublic,
   listingStateOf,
+  noteTextFor,
   PLATFORM_LIST_FILTERS,
   platformListOf,
   prepareReviewNote,
@@ -22,6 +23,7 @@ const control = (status: DistributorStatus, trialEndsAt: Date, listingApproved: 
   status,
   trialEndsAt,
   listingApproved,
+  reviewNoteAt: null as Date | null,
   reviewNote: null as string | null,
   correctedAt: null as Date | null,
 });
@@ -53,6 +55,12 @@ describe('listingStateOf', () => {
 
   it('asks for changes when it was sent back with a note', () => {
     const sentBack = { ...control('trial', LATER, false), reviewNote: 'El RUC no coincide.' };
+    expect(listingStateOf(sentBack, NOW)).toBe('changesRequested');
+  });
+
+  // PLAN 3.2: the staff that cannot read the text still sees that a note waits.
+  it('asks for changes when only the mark of the note is known', () => {
+    const sentBack = { ...control('trial', LATER, false), reviewNoteAt: BEFORE };
     expect(listingStateOf(sentBack, NOW)).toBe('changesRequested');
   });
 
@@ -140,7 +148,30 @@ describe('answersReviewNote', () => {
     ['an approved listing', true, null, false],
     ['an approved listing that kept a note by mistake', true, 'Revisa.', false],
   ])('%s → %s', (_case, listingApproved, reviewNote, expected) => {
-    expect(answersReviewNote({ listingApproved, reviewNote })).toBe(expected);
+    expect(answersReviewNote({ listingApproved, reviewNote, reviewNoteAt: null })).toBe(expected);
+  });
+
+  it('counts the mark of a note the account cannot read (PLAN 3.2)', () => {
+    expect(
+      answersReviewNote({ listingApproved: false, reviewNote: null, reviewNoteAt: BEFORE }),
+    ).toBe(true);
+  });
+});
+
+describe('noteTextFor', () => {
+  const stored = { note: 'Revisa el RUC.', writtenAt: BEFORE };
+
+  it('gives the text written together with the mark', () => {
+    expect(noteTextFor({ reviewNoteAt: BEFORE }, stored)).toBe('Revisa el RUC.');
+  });
+
+  it('ignores a text left behind by an earlier decision', () => {
+    expect(noteTextFor({ reviewNoteAt: NOW }, stored)).toBeNull();
+  });
+
+  it('gives nothing without a mark or without a text', () => {
+    expect(noteTextFor({ reviewNoteAt: null }, stored)).toBeNull();
+    expect(noteTextFor({ reviewNoteAt: BEFORE }, null)).toBeNull();
   });
 });
 

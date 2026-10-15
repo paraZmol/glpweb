@@ -103,6 +103,16 @@ describe('prepareNewProduct', () => {
     ['a full price that is not an integer', { fullPriceCents: 18500.5 }, 'fullPriceCents:invalid'],
     ['a full price equal to the refill', { fullPriceCents: 5200 }, 'fullPriceCents:notAbove'],
     ['a full price below the refill', { fullPriceCents: 5100 }, 'fullPriceCents:notAbove'],
+    // rules-breaker (PLAN 3.2): invisible or control characters, and brands that look blank.
+    ['a brand made of a zero-width space', { brand: '​' }, 'brand:invalid'],
+    ['a brand with a zero-width space inside', { brand: 'Marca​Uno' }, 'brand:invalid'],
+    ['a brand with a NUL inside', { brand: 'Marca\u0000Uno' }, 'brand:invalid'],
+    ['a brand with a bell inside', { brand: 'Marca\u0007' }, 'brand:invalid'],
+    ['a brand with a right-to-left override', { brand: '‮onU acraM' }, 'brand:invalid'],
+    ['a brand of punctuation only', { brand: '---' }, 'brand:invalid'],
+    ['a name with a zero-width space inside', { name: 'Balón​10 kg' }, 'name:invalid'],
+    ['a name with a soft hyphen inside', { name: 'Balón­10 kg' }, 'name:invalid'],
+    ['a name of punctuation only', { name: '...' }, 'name:invalid'],
   ] as const)('rejects %s', (_case, change, issue) => {
     expect(fieldsWithIssues(prepareNewProduct({ ...INPUT, ...change }))).toEqual([issue]);
   });

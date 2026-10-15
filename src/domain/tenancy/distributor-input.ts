@@ -28,6 +28,7 @@ import {
   checkPhone,
   checkRange,
   checkText,
+  checkVisibleText,
   collectIssues,
   type FieldIssue,
   type Validated,
@@ -76,15 +77,12 @@ export type DistributorProfilePatch = Partial<
 >;
 
 /**
- * A business name carries at least one letter or digit: punctuation, emoji or invisible
- * characters alone are not a name. firebase/firestore.rules repeats the check (isBusinessName).
+ * A business name carries at least one letter or digit and no control or invisible format
+ * character: punctuation, emoji or invisible characters alone are not a name.
+ * firebase/firestore.rules repeats the check (isBusinessName).
  */
-const LETTER_OR_DIGIT = /[\p{L}\p{N}]/u;
-
 function checkName(name: string): Check {
-  const length = checkText(name, DISTRIBUTOR_NAME_MIN_LENGTH, DISTRIBUTOR_NAME_MAX_LENGTH);
-  if (length) return length;
-  return LETTER_OR_DIGIT.test(name) ? null : 'invalid';
+  return checkVisibleText(name, DISTRIBUTOR_NAME_MIN_LENGTH, DISTRIBUTOR_NAME_MAX_LENGTH);
 }
 
 function checkSchedule(schedule: Schedule): Check {
@@ -99,7 +97,7 @@ function checkSchedule(schedule: Schedule): Check {
 
 function checkBrands(brands: string[]): Check {
   if (brands.length > MAX_BRANDS) return 'tooLong';
-  const valid = brands.every((brand) => checkText(brand, 1, BRAND_NAME_MAX_LENGTH) === null);
+  const valid = brands.every((brand) => checkVisibleText(brand, 1, BRAND_NAME_MAX_LENGTH) === null);
   return valid ? null : 'invalid';
 }
 

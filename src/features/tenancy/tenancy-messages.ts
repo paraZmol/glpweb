@@ -23,6 +23,7 @@ const ISSUE_MESSAGES: Record<FieldIssue['code'], string> = {
   notAbove: 'Debe ser mayor.',
   invalidCharacters: 'Usa solo letras minúsculas, números y guiones.',
   reserved: 'Ese enlace está reservado. Prueba con otro.',
+  founderOnly: 'Solo quien registró la distribuidora puede elegir esta opción.',
 };
 
 const FIELD_MESSAGES: Record<string, string> = {

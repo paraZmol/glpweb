@@ -71,7 +71,17 @@ export interface DistributorControl {
   /** When and by which platform admin it was approved; null while it is not. */
   approvedAt: Date | null;
   approvedBy: string | null;
-  /** What the platform admin asks the owner to correct; null when there is no note. */
+  /**
+   * When a platform admin left a note asking the owner to correct something; null when there is
+   * no note. Every account that reads the control document sees it; the text of the note lives
+   * apart (`private/review`) and only the founder and platform admins read it (PLAN 3.2).
+   */
+  reviewNoteAt: Date | null;
+  /**
+   * The text of that note, only where the account may read it (the founder, a platform admin);
+   * null otherwise, and when there is no note. Use `hasReviewNote` to know whether there is one.
+   * A control document older than PLAN 3.2 may carry the text itself.
+   */
   reviewNote: string | null;
   /**
    * When the owner last answered that note with a correction (of the verification data or of
@@ -89,12 +99,24 @@ export interface DistributorControl {
   updatedAt: Date;
 }
 
+/**
+ * `/distributors/{d}/private/review`: the text of the note a platform admin left, stamped with
+ * the same server time as the control document's `reviewNoteAt` (PLAN 3.2). The founder and
+ * platform admins only.
+ */
+export interface ReviewNoteDocument {
+  note: string;
+  writtenAt: Date;
+}
+
 /** The distributor as its own staff sees it: the public profile plus its control data. */
 export interface Distributor extends PublicDistributor {
   ownerUid: string;
   status: DistributorStatus;
   trialEndsAt: Date;
   listingApproved: boolean;
+  reviewNoteAt: Date | null;
+  /** Only for the founder (see `DistributorControl.reviewNote`). */
   reviewNote: string | null;
   correctedAt: Date | null;
 }

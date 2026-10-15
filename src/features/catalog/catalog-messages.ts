@@ -15,6 +15,8 @@ const PRICE_FORMAT = 'Escribe el precio en soles, por ejemplo 52.00.';
 const PRODUCT_MESSAGES: Record<string, string> = {
   'brand:required': 'Escribe la marca del gas.',
   'brand:tooLong': 'La marca admite hasta 30 caracteres.',
+  'brand:invalid': 'Escribe la marca con letras o números, sin caracteres invisibles.',
+  'name:invalid': 'Escribe el nombre con letras o números, sin caracteres invisibles.',
   'weightKg:outOfRange': `Escribe el peso en kilos, de ${MIN_WEIGHT_KG} a ${MAX_WEIGHT_KG}.`,
   'weightKg:invalid': 'Escribe el peso en kilos enteros, por ejemplo 10.',
   'name:tooShort': 'El nombre necesita al menos 2 caracteres.',

@@ -10,7 +10,9 @@ export type FieldIssueCode =
   /** A brand colour that cannot be told apart from the page background. */
   | 'tooFaint'
   /** A value that must be greater than another field of the same form (full vs refill price). */
-  | 'notAbove';
+  | 'notAbove'
+  /** Only the account that founded the distributor may choose it (inviting an owner). */
+  | 'founderOnly';
 
 /** One rejected form field. Screens map `code` to a message in Spanish. */
 export interface FieldIssue {
@@ -29,6 +31,27 @@ export function checkText(value: string, min: number, max: number): Check {
   if (value.length === 0) return min > 0 ? 'required' : null;
   if (value.length < min) return 'tooShort';
   return value.length > max ? 'tooLong' : null;
+}
+
+/**
+ * Text a person reads as written: no control or format characters anywhere (U+0000, U+0007,
+ * U+200B, U+202E…), no white space at either end, and at least one letter or digit, so
+ * punctuation, emoji or invisible characters alone are not a name. Same pattern as
+ * `isVisibleText` in firebase/firestore.rules (RE2 there, so no look-ahead).
+ */
+const VISIBLE_TEXT =
+  /^(?:[^\p{Z}\p{Cc}\p{Cf}][^\p{Cc}\p{Cf}]*)?[\p{L}\p{N}](?:[^\p{Cc}\p{Cf}]*[^\p{Z}\p{Cc}\p{Cf}])?$/u;
+
+export function isVisibleText(value: string): boolean {
+  return VISIBLE_TEXT.test(value);
+}
+
+/** `checkText`, and then `isVisibleText` (`invalid`): for names and brands people read. */
+export function checkVisibleText(value: string, min: number, max: number): Check {
+  const length = checkText(value, min, max);
+  if (length) return length;
+  if (value.length === 0) return null;
+  return isVisibleText(value) ? null : 'invalid';
 }
 
 export function checkRange(value: number, min: number, max: number): Check {
