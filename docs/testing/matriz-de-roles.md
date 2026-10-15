@@ -6,8 +6,8 @@ después prueba cada celda en la interfaz **y** con el intento directo contra la
 
 Alcance de hoy: lo construido hasta la fase 2 (cuentas, distribuidoras, aprobación previa), el
 catálogo (paso 3.1: datos, reglas y pantallas) y el lado de datos del personal (paso 3.2:
-invitaciones, cambios de rol, ayudantes y la nota de la plataforma; solo reglas y repositorio,
-sin pantallas). Los pedidos, la jornada y los mapas llegan en las fases 4 a 6: sus filas se
+invitaciones, cambios de rol, ayudantes y la nota de la plataforma, con sus pantallas
+`/central/personal` y `/unirme` desde el 2026-10-15). Los pedidos, la jornada y los mapas llegan en las fases 4 a 6: sus filas se
 agregan con cada paso.
 
 ## Cómo leerla
@@ -37,8 +37,8 @@ Columnas:
 | DS | Dueño de una suspendida (C) o con la prueba vencida (D) | `ownerC`, `ownerD` |
 | SA | Super admin de la plataforma | `admin` |
 
-Repartidor y central existen por semilla y, desde el paso 3.2, por invitación aceptada (solo
-lado de datos: todavía no hay pantalla para invitar ni para aceptar). Su recorrido se hace con las
+Repartidor y central existen por semilla y, desde el paso 3.2, por invitación aceptada (desde el
+2026-10-15 con pantalla: `/central/personal` invita y `/unirme` acepta). Su recorrido se hace con las
 cuentas `driverA` y `dispatcherA`; la semilla deja en A una invitación de reparto pendiente
 (`SEED_INVITE_CODE`) y dos ayudantes. Una distribuidora "en revisión" se recorre con
 `ownerE` y con distribuidoras fundadas por la propia prueba.
@@ -85,6 +85,9 @@ Una sola puerta (PLAN §11, 2026-10-14): el encabezado público ofrece "Ingresar
 | `/central` | → ingresar | ve el aviso | → `/aceptar-terminos` | → su área | → su área | ve (la de A) | ve (la de A) | ve (la de B, nada de A) | ve, con aviso de solo lectura | → su área |
 | `/central/ficha` | → ingresar | ve el aviso | → `/aceptar-terminos` | → su área | → su área | ve "la edita quien es titular" | ve | ve (la de B) | ve como solo lectura: campos deshabilitados, sin "Guardar cambios", con el aviso | → su área |
 | `/central/catalogo` (3.1) | → ingresar | ve el aviso | → `/aceptar-terminos` | → su área | → su área | ve el de A con "Añadir producto", editar, subir y bajar, quitar y poner a la venta, igual que el titular (PLAN §11, 2026-10-15) | ve el de A con "Añadir producto", editar, subir y bajar, quitar y poner a la venta | ve el de B, nada de A | ve el suyo en solo lectura bajo el aviso, sin botones (vacío: "Todavía no hay productos.") | → su área |
+| `/central/personal` (3.2) | → ingresar | ve el aviso | → `/aceptar-terminos` | → su área | → su área | → `/central` con el aviso "Esa sección no está disponible" (sin "Personal" en la navegación) | ve el personal de A, las invitaciones que esperan y los ayudantes, con "Invitar a alguien" | ve el de B, nada de A | ve el suyo en solo lectura bajo el aviso: sin invitar, cambiar ni añadir; solo "Anular" | → su área |
+| `/unirme#d=…&c=…` (3.2) | → `/ingresar?desde=%2Funirme` con el fragmento y "Ingresa con tu cuenta de Google para ver tu invitación." | ve el aviso | → `/aceptar-terminos`, y al aceptar vuelve a `/unirme` con el fragmento | ve la invitación ("Gas Demo Norte te invita como repartidor.") y "Unirme" | de A: "Ya formas parte de Gas Demo Norte." con "Ir a mi panel"; de otra: ve y puede unirse | igual que RE | igual que RE | ve y puede unirse a A | ve; al unirse a C o D lo rechaza con el mensaje de la distribuidora que no puede sumar personal | ve y puede unirse |
+| `/unirme` sin fragmento o con un código de otra forma | — | ve el aviso | → `/aceptar-terminos` | ve "Este enlace de invitación no está completo." | igual | igual | igual | igual | igual | igual |
 | `/plataforma` y sus tres listas (`?estado=`) | → ingresar | ve el aviso | → `/aceptar-terminos` | → su área | → su área | → su área | → su área | → su área | → su área | ve |
 | `/plataforma/altas/{id}` | → ingresar | ve el aviso | → `/aceptar-terminos` | → su área | → su área | → su área | → su área | → su área | → su área | ve, bajo la lista a la que pertenece (y "no existe" si el id no existe) |
 | Cualquier otra ruta | ve "no existe" con "Ingresar" | ve "no existe" con "Ir a mi inicio" | igual | igual | igual | igual | igual | igual | igual | igual |
@@ -122,6 +125,15 @@ Una sola puerta (PLAN §11, 2026-10-14): el encabezado público ofrece "Ingresar
 | Enviar la corrección sin cambiar nada ("Corregir mis datos") | — | — | — | — | — | no ve | ve "No cambiaste nada todavía"; nada se marca | — | rechaza | — |
 | Elegir otra de sus distribuidoras en el selector (cabecera) | — | — | — | — | — | — | puede; con la ficha a medio editar descarta lo escrito y no guarda nada en la otra | — | — | — |
 | Registrar una cuarta distribuidora | — | — | — | — | — | — | ve "Ya registraste 3 distribuidoras" en `/cuenta` y en `/distribuidora/nueva` | — | — | — |
+| Personal (3.2): invitar central o reparto en `/central/personal` (correo opcional, recomendado) y ver el enlace listo; "Compartir por WhatsApp" (`wa.me/?text=`) y "Copiar enlace" | — | — | — | — | — | no ve | puede | puede en la suya | no ve (solo lectura) | — |
+| Personal: invitar a un titular (con su correo de Google) | — | — | — | — | — | no ve | puede solo quien fundó (un co-titular no ve "Titular" entre los roles) | igual en la suya | no ve | — |
+| Personal: anular una invitación que espera (pregunta antes) | — | — | — | — | — | no ve | puede | puede en la suya | puede | — |
+| Personal: cambiar el rol de otro, desactivarlo o reactivarlo (pregunta antes de desactivar y reactivar) | — | — | — | — | — | no ve | puede con central y reparto; con otro titular solo quien fundó; nunca consigo ni con quien fundó (sin botones en esas filas) | igual en la suya | no ve | — |
+| Personal: ayudantes — añadir, renombrar, activar y desactivar (tope 30) | — | — | — | — | — | no ve | puede | puede en la suya | no ve | — |
+| Unirse con un enlace vigente en `/unirme` | — | — | puede tras aceptar los términos | puede: entra al área de su rol con esa distribuidora elegida | puede en otra distribuidora | igual | igual | puede | rechaza en C o D (aviso en la tarjeta) | puede |
+| Abrir un enlace vencido, usado, anulado o atado a otro correo | — | — | — | ve "Esta invitación venció." / "ya se usó." / "fue anulada." / "es para otra cuenta de Google." (con su correo y "Cerrar sesión") | igual | igual | igual | igual | igual | igual |
+| Perder el acceso con el panel abierto porque su titular lo desactivó | — | — | — | — | → `/inicio` al momento, con el aviso | → `/inicio` al momento, con el aviso | — | — | — | — |
+| Ver "Cambios pedidos" en `/central` cuando hay nota | — | — | — | — | — | ve el estado y "La nota de Hornilla con el detalle la ve quien registró la distribuidora…" | quien fundó ve la nota; un co-titular, el mismo aviso que la central | — | — | — |
 | Ver que la distribuidora quedó suspendida, con el panel abierto | — | — | — | — | ve, sin recargar (aviso: no depende de quien reparte, que avise a su titular) | ve, sin recargar | ve, sin recargar | — | — | — |
 | Perder el rol con el panel abierto (cambia de rol, se desactiva o baja de titular) | — | — | — | — | → su área nueva, con aviso | → su área nueva, con aviso | la ficha pasa a "la edita quien es titular" | — | — | — |
 | Corregir RUC, razón social o registro tras una nota | — | — | — | — | — | no ve | puede (quien fundó) | — | rechaza | — |
@@ -225,9 +237,8 @@ Se anotan aquí con el motivo; una celda no recorrida no se da por buena.
 - **Personal y ayudantes (3.2)**: sus filas de §3 están probadas contra las reglas
   (`firebase/tests/invites.rules.test.ts`, `staff.rules.test.ts`, `helpers.rules.test.ts`,
   `review-note.rules.test.ts`) y el repositorio (`src/data/staff-repo.emu.test.ts`,
-  `helpers-repo.emu.test.ts`). **No hay pantallas todavía** (invitar, aceptar desde el enlace,
-  lista del personal, ayudantes): cuando existan, se agregan sus filas a §1 y §2 y role-walker
-  las recorre.
+  `helpers-repo.emu.test.ts`). Las pantallas existen desde el 2026-10-15 con sus filas en §1 y
+  §2 y su E2E en `tests/e2e/flows/staff.spec.ts`; **falta que role-walker las recorra**.
 
 ## 4b. Celdas que hoy no cumplen lo que dice la matriz
 
@@ -265,4 +276,5 @@ reactivar, volver a revisión, eliminar la cuenta) se responde con un doble clic
 | 2026-10-14 | Tercera pasada, sobre el ingreso solo con Google: primera entrada con el botón y la ventana del emulador (cuenta nueva, cancelar, doble clic, Atrás, Adelante y recarga en `/aceptar-terminos`, eliminar y volver a entrar, cerrar sesión ahí); destino `desde` conservado con y sin términos, y valores raros ignorados; `/restablecer` y `/verificar-correo` con y sin sesión; todos los enlaces y textos de portada, entrada, pie, no existe, contacto, documentos legales y `/cuenta`; recorrido completo de CL, RE, CE, DU, DO, DS (C y D), SA, ST y SV con recarga y Atrás; cierre de sesión con dos pestañas y cambio de cuenta en la misma; intento directo con sesiones de otro proveedor y anónimas sobre cuentas con perfil y membresía, y con una sesión de Google sin perfil. Sin CRÍTICO ni ALTO; 1 medio y 4 bajos (§4b) | `fase-2/pendientes-del-cierre` |
 | 2026-10-14 | Arreglos de la tercera pasada (no es una pasada nueva): los cinco de §4b. Además, el nombre de Google llega a términos sin espacios sobrantes y la banda "¿Tienes una distribuidora?" de la portada lleva a una visita a `/registro?desde=/distribuidora/nueva` (PLAN §11). Quedan con `test.fail` las dos del alta de §4b | `fase-2/pendientes-del-cierre` |
 | 2026-10-15 | No es una pasada: filas de §3 para el personal, los ayudantes y la nota de la plataforma (paso 3.2, solo lado de datos). La fila "darse un rol" deja de incluir "cambiar el rol de otro", que ahora puede el titular con sus límites | `fase-3/catalogo` |
+| 2026-10-15 | No es una pasada: filas de `/central/personal` y `/unirme` en §1 y §2 (pantallas del paso 3.2). **Falta la pasada de `role-walker`** | `fase-3/catalogo` |
 | 2026-10-15 | No es una pasada: la central cambia el catálogo y los precios igual que el titular (decisión del usuario, PLAN §11); filas de `/central/catalogo` en §1, §2 y §3. **Falta la pasada de `role-walker`** | `fase-3/catalogo` |
