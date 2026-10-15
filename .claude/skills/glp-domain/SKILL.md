@@ -60,6 +60,10 @@ Estados (`ShiftStatus`): `requested → approved ⇄ paused → closed`, o `requ
 - Pausa: no recibe pedidos nuevos; termina primero el que lleva.
 - Stock del repartidor = `approved` − items de sus pedidos `delivered` en esa jornada (se calcula, no se guarda aparte).
 - Un ayudante no puede estar en dos jornadas el mismo día. Una jornada abierta por repartidor.
+- Ayudante (PLAN 3.2, `src/domain/staff/helper.ts`): solo un dato, sin cuenta ni contacto —
+  nombre y activo, en 30 casillas fijas `h00`…`h29` que nunca se borran (la jornada lo nombra
+  por su casilla). Lo crea y edita el titular; lo lee todo el personal. La jornada (fase 5) solo
+  ofrece los activos.
 
 ## 3. Cobro
 - En persona: `cash`, `yape`, `plin`. Solo se registra; no hay pasarela ni estado "pago fallido".

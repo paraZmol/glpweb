@@ -88,7 +88,7 @@ skill `glp-domain`: la válida pasa, las inválidas fallan. Un cambio de reglas 
 `firebase deploy --only firestore:rules,database,hosting` es una acción hacia afuera: confirmar
 con el usuario. Nunca desplegar reglas con tests en rojo. Índices en `firestore.indexes.json`.
 
-## 10. Decisiones posteriores (al día: 2026-10-12, ingreso solo con Google incluido)
+## 10. Decisiones posteriores (al día: 2026-10-15, personal e invitaciones del paso 3.2 incluidos)
 Cuando esta sección y los §2–§3 chocan, manda esta. La fuente exacta es la cabecera de
 `firebase/firestore.rules` (modelo de datos campo por campo) y `docs/PLAN.md` §11.
 
@@ -96,13 +96,21 @@ Cuando esta sección y los §2–§3 chocan, manda esta. La fuente exacta es la 
 - **`/distributors/{d}` — ficha pública mínima.** Solo lo que el cliente necesita, más
   `acceptingOrders`. Sin estado de pago, fin de prueba ni cuenta fundadora.
 - **`/distributors/{d}/private/control` — dónde está con la plataforma.** `ownerUid`, `status`,
-  `trialEndsAt`, la aprobación (`listingApproved`, `approvedAt`, `approvedBy`), la nota de
-  revisión (`reviewNote`), la marca de corrección (`correctedAt`) y copia del nombre y del enlace
-  (`distributorName`, `slug`). Lo lee su personal activo y el super admin. **Es el documento que
+  `trialEndsAt`, la aprobación (`listingApproved`, `approvedAt`, `approvedBy`), la **marca** de
+  que hay una nota de revisión (`reviewNoteAt`; el texto vive aparte, ver abajo), la marca de
+  corrección (`correctedAt`) y copia del nombre y del enlace (`distributorName`, `slug`). Lo lee su personal activo y el super admin. **Es el documento que
   leen las reglas**: `writable(d)` y `foundedNow(d)` leen el control, no la ficha (el §3 muestra
   la forma antigua).
 - **`/distributors/{d}/private/settings` — datos de quien fundó y de verificación** (RUC, razón
   social, registro de hidrocarburos). Solo quien fundó y el super admin: ni un co-dueño.
+- **`/distributors/{d}/private/review` — el texto de la nota de la plataforma** (`note`,
+  `writtenAt`), PLAN 3.2. Solo quien fundó y el super admin: la nota puede hablar del RUC, y el
+  control lo lee todo el personal (y el panel en vivo lo escucha). El super admin escribe la
+  marca del control y el texto en el mismo lote, los dos con `request.time` (comprobado con
+  `getAfter` en los dos sentidos) y los borra juntos al aprobar. En el cliente, `noteTextFor`
+  empareja el texto con la marca (un texto de una decisión anterior no se muestra);
+  `useFounderReviewNote` lo lee solo para quien fundó y solo mientras hay marca (1 lectura por
+  nota). Un control anterior con `reviewNote` dentro solo puede perderlo.
 
 ### 10.2 Aprobación previa (PLAN 2.11)
 - Una distribuidora **nace sin listar**: `listingApproved: false` y `acceptingOrders: false`.
@@ -194,9 +202,33 @@ correos.
   no la borra.
 
 ### 10.4 Otras
-- **Miembros solo por invitación.** Un dueño no puede crear miembros directamente; el fundador
-  entra en el lote de alta y los demás por invitación aceptada (fase 3). Cada miembro lleva
-  `distributorName`, fijado por reglas igual al nombre de la distribuidora.
+- **Miembros solo por invitación** (PLAN 3.2). Un dueño no puede crear miembros directamente;
+  el fundador entra en el lote de alta (sin `inviteId`) y los demás por invitación aceptada. Cada
+  miembro lleva `distributorName`, fijado por reglas igual al nombre de la distribuidora.
+- **Invitaciones sin servidor** (`invites/{code}`). El id es el secreto: el que genera el SDK
+  (20 letras y números, ~119 bits), comprobado con `isInviteCode`. `get` para cualquier sesión
+  de Google que tenga el código; `list` solo del titular (tope 50); ninguna consulta de grupo.
+  El enlace lleva distribuidora y código en el **fragmento** (`#d=…&c=…`, `inviteLinkOf`): no
+  viaja al servidor ni a la vista previa del chat. Usarla es **un lote** que crea el `members`
+  propio con el rol exacto de la invitación y la marca `accepted` por quien la usa; cada mitad
+  exige la otra con `getAfter` (miembro: `get` y `getAfter` de la invitación; invitación:
+  `getAfter` del miembro con `inviteId == code`). Caduca a los 7 días contados desde su
+  `createdAt` (hora del servidor), un solo uso (la segunda cuenta encuentra `accepted`),
+  anulable por el titular (también en solo lectura). Exige perfil (términos aceptados) y
+  distribuidora escribible. Correo opcional (`email`, en minúsculas, comparado con
+  `request.auth.token.email.lower()`); **obligatorio para invitar a un titular, que solo invita
+  quien fundó**. La copia del nombre de una invitación pendiente se reescribe en el lote del
+  cambio de nombre (solo al nombre público). Patrón general: **un secreto como id + `get` sin
+  `list` + lote atado con `getAfter`** sustituye al servidor para "quien tenga el enlace".
+- **Gestión del personal.** Solo un titular, con la distribuidora escribible, cambia `role` o
+  `active` de **otro** miembro; quien fundó nunca cambia (la distribuidora siempre conserva un
+  titular); solo quien fundó hace, deshace o desactiva a otro titular. Nadie se cambia a sí
+  mismo. No se borra a nadie: se desactiva. Mismas condiciones en `memberChangeRefusal`.
+- **Ayudantes** (`helpers/{h00..h29}`): `name` (texto visible) y `active`, sin cuenta ni datos
+  de contacto. Los lee todo el personal (tope 30), los escribe el titular; no se borran.
+- **Texto visible** (`isVisibleText` en reglas y dominio): una letra o número, sin `\p{Cc}` ni
+  `\p{Cf}` en ningún lugar, sin espacios en los extremos. Para nombres que alguien lee: nombre
+  de la distribuidora, marcas de la ficha, marca y nombre de producto, nombre de ayudante.
 - **Consentimientos.** `users/{uid}` guarda `terms` y `privacy` (`{ version, acceptedAt }`), con
   versión permitida y `acceptedAt == request.time`; no se pueden borrar.
 - **Historial de aceptaciones.** Cada versión aceptada deja una línea en
@@ -246,7 +278,8 @@ correos.
   profile at once, eight brands included`), añadiendo al principio de la regla N copias de
   `&& request.time == request.time`: antes del cambio pasaba con 6 y fallaba con 7; la sesión de
   Google en `hasRole()` costó una; leer el miembro una sola vez (`holdsRole`) y un solo patrón
-  de espacios en `isText()` la dejaron en **pasa con 13, falla con 14**. Una escritura que se
+  de espacios en `isText()` la dejaron en **pasa con 13, falla con 14**; con `isVisibleText` en
+  las marcas (2026-10-15), **pasa con 15, falla con 16**. Una escritura que se
   pasa del límite se rechaza aunque fuera legítima. Antes de añadirle condiciones: validar solo
   lo que cambia o partir el documento (PLAN §9).
 - **Datos locales.** Cerrar sesión borra la caché de Firestore y las claves `hornilla.*` salvo

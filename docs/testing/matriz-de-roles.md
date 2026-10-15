@@ -4,9 +4,11 @@ Fuente: `docs/PLAN.md` (§3 roles, §5.4 datos, fase 2 y paso 2.11). La mantiene
 **role-walker**: antes de recorrer la app completa la matriz con las rutas y acciones nuevas, y
 después prueba cada celda en la interfaz **y** con el intento directo contra las reglas.
 
-Alcance de hoy: lo construido hasta la fase 2 (cuentas, distribuidoras, aprobación previa) y el
-catálogo (paso 3.1: datos, reglas y pantallas). Los pedidos, el
-personal, la jornada y los mapas llegan en las fases 3 a 6: sus filas se agregan con cada paso.
+Alcance de hoy: lo construido hasta la fase 2 (cuentas, distribuidoras, aprobación previa), el
+catálogo (paso 3.1: datos, reglas y pantallas) y el lado de datos del personal (paso 3.2:
+invitaciones, cambios de rol, ayudantes y la nota de la plataforma; solo reglas y repositorio,
+sin pantallas). Los pedidos, la jornada y los mapas llegan en las fases 4 a 6: sus filas se
+agregan con cada paso.
 
 ## Cómo leerla
 
@@ -35,9 +37,10 @@ Columnas:
 | DS | Dueño de una suspendida (C) o con la prueba vencida (D) | `ownerC`, `ownerD` |
 | SA | Super admin de la plataforma | `admin` |
 
-Repartidor y central solo existen por semilla: las invitaciones de personal llegan en la fase 3
-(paso 3.2). Hasta entonces no hay forma de crear esos roles desde la interfaz, y su recorrido se
-hace con las cuentas `driverA` y `dispatcherA`. Una distribuidora "en revisión" se recorre con
+Repartidor y central existen por semilla y, desde el paso 3.2, por invitación aceptada (solo
+lado de datos: todavía no hay pantalla para invitar ni para aceptar). Su recorrido se hace con las
+cuentas `driverA` y `dispatcherA`; la semilla deja en A una invitación de reparto pendiente
+(`SEED_INVITE_CODE`) y dos ayudantes. Una distribuidora "en revisión" se recorre con
 `ownerE` y con distribuidoras fundadas por la propia prueba.
 
 Se ingresa solo con Google (PLAN 2.1, 2026-10-12): no hay registro con correo y contraseña, ni
@@ -155,7 +158,7 @@ Lo que cada rol consigue llamando a la base con su propia sesión, sin pasar por
 | Marcar "correcciones enviadas" sin corregir nada (lote que solo mueve `updatedAt` o el indicador) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 | Reescribir `acceptingOrders` con el valor que ya tiene (mueve la versión que nombra una aprobación) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | puede, junto a su decisión |
 | Cambiar el estado (`status`) de una distribuidora a mano | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza (solo con la decisión completa) |
-| Darse un rol en `members` · cambiar el rol de otro · borrar un miembro | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
+| Darse un rol en `members` (crear el propio sin invitación, o cambiar el propio) · borrar un miembro | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 | Darse super admin (`platformAdmins/{yo}`) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 | Crear o editar el perfil propio a mano, sin los consentimientos | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 | Guardar cualquier dato propio (perfil, aceptación, dirección, distribuidora) sin correo confirmado | — | rechaza | — | — | — | — | — | — | — | — |
@@ -168,6 +171,22 @@ Lo que cada rol consigue llamando a la base con su propia sesión, sin pasar por
 | Catálogo: añadir un producto, cambiar un precio, quitar o volver a poner a la venta, reordenar | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza (decisión pendiente, PLAN §11) | puede | rechaza | rechaza (solo lectura) | rechaza |
 | Catálogo: producto fuera de las 30 casillas, precio no entero, de 0, negativo o de más de S/ 999, balón completo igual o más barato que la recarga, otra moneda, campos de más; cambiar el peso o la moneda | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 | Catálogo: borrar un producto | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
+| Personal (3.2): crear una invitación de central o reparto en A (por enlace, o atada a un correo) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | puede | rechaza | rechaza (solo lectura) | rechaza |
+| Personal: crear una invitación de **titular** (siempre atada a un correo de Google) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | puede solo quien fundó; un co-titular no | rechaza | rechaza | rechaza |
+| Personal: leer una invitación **con su código** (`get`) | rechaza | rechaza | rechaza | puede | puede | puede | puede | puede | puede | puede |
+| Personal: listar las invitaciones de A · buscarlas en todas las distribuidoras | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | puede listar las suyas (tope 50); buscar en todas, no | rechaza | rechaza | rechaza |
+| Personal: usar una invitación vigente (crea su `members` con el rol de la invitación y la marca usada, en un lote) | rechaza | rechaza | rechaza (sin perfil) | puede | rechaza (ya es miembro) | rechaza (ya es miembro) | rechaza (ya es miembro) | puede | puede si la distribuidora de la invitación puede escribirse | puede |
+| Personal: usar una invitación vencida (7 días), usada, anulada, de otra distribuidora, atada a otro correo, o en una distribuidora en solo lectura | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
+| Personal: anular una invitación pendiente | rechaza | rechaza | rechaza | rechaza (aunque tenga el enlace) | rechaza | rechaza | puede (también en solo lectura) | rechaza | puede las suyas | rechaza |
+| Personal: cambiar el rol de central o reparto, desactivarlo o reactivarlo | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | puede | rechaza | rechaza (solo lectura) | rechaza |
+| Personal: hacer titular a alguien, o cambiar o desactivar a un co-titular | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | puede solo quien fundó | rechaza | rechaza | rechaza |
+| Personal: cambiar o desactivar a quien fundó · cambiarse o desactivarse a sí mismo | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
+| Ayudantes (3.2): leer y listar los de A (tope 30) | rechaza | rechaza | rechaza | rechaza | puede | puede | puede | rechaza | rechaza | rechaza |
+| Ayudantes: añadir (casillas `h00`…`h29`), renombrar, desactivar | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | puede | rechaza | rechaza (solo lectura) | rechaza |
+| Ayudantes: borrar | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
+| Nota de la plataforma (3.2): leer su texto (`private/review`) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | puede solo quien fundó (un co-titular no) | rechaza | puede solo la suya, quien fundó | puede |
+| Nota de la plataforma: saber que hay una (marca `reviewNoteAt` en `private/control`) | rechaza | rechaza | rechaza | rechaza | puede | puede | puede | rechaza | puede la suya | puede |
+| Nota de la plataforma: escribir o borrar su texto | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | puede, junto a su marca |
 | Realtime Database: leer o escribir cualquier ruta | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 
 ## 4. Celdas sin probar
@@ -202,6 +221,13 @@ Se anotan aquí con el motivo; una celda no recorrida no se da por buena.
   (`src/data/products-repo.emu.test.ts`). Las pantallas (`/central/catalogo`,
   `/reparto/catalogo` y los productos de `/d/{slug}`) existen desde el 2026-10-14 con su E2E en
   `tests/e2e/flows/catalog.spec.ts`; falta que **role-walker** recorra sus filas de §1 y §2.
+
+- **Personal y ayudantes (3.2)**: sus filas de §3 están probadas contra las reglas
+  (`firebase/tests/invites.rules.test.ts`, `staff.rules.test.ts`, `helpers.rules.test.ts`,
+  `review-note.rules.test.ts`) y el repositorio (`src/data/staff-repo.emu.test.ts`,
+  `helpers-repo.emu.test.ts`). **No hay pantallas todavía** (invitar, aceptar desde el enlace,
+  lista del personal, ayudantes): cuando existan, se agregan sus filas a §1 y §2 y role-walker
+  las recorre.
 
 ## 4b. Celdas que hoy no cumplen lo que dice la matriz
 
@@ -238,3 +264,4 @@ reactivar, volver a revisión, eliminar la cuenta) se responde con un doble clic
 | 2026-10-12 | No es una pasada: la matriz se pone al día con el ingreso solo con Google (PLAN 2.1). Salen `/restablecer` y `/verificar-correo`; `/registro` es la misma pantalla que `/ingresar`; la columna SV cambia de sentido (una sesión que no debería existir y que no obtiene nada); filas nuevas de reglas para el proveedor de ingreso. **Falta la pasada de `role-walker` sobre estas celdas** | `fase-2/pendientes-del-cierre` |
 | 2026-10-14 | Tercera pasada, sobre el ingreso solo con Google: primera entrada con el botón y la ventana del emulador (cuenta nueva, cancelar, doble clic, Atrás, Adelante y recarga en `/aceptar-terminos`, eliminar y volver a entrar, cerrar sesión ahí); destino `desde` conservado con y sin términos, y valores raros ignorados; `/restablecer` y `/verificar-correo` con y sin sesión; todos los enlaces y textos de portada, entrada, pie, no existe, contacto, documentos legales y `/cuenta`; recorrido completo de CL, RE, CE, DU, DO, DS (C y D), SA, ST y SV con recarga y Atrás; cierre de sesión con dos pestañas y cambio de cuenta en la misma; intento directo con sesiones de otro proveedor y anónimas sobre cuentas con perfil y membresía, y con una sesión de Google sin perfil. Sin CRÍTICO ni ALTO; 1 medio y 4 bajos (§4b) | `fase-2/pendientes-del-cierre` |
 | 2026-10-14 | Arreglos de la tercera pasada (no es una pasada nueva): los cinco de §4b. Además, el nombre de Google llega a términos sin espacios sobrantes y la banda "¿Tienes una distribuidora?" de la portada lleva a una visita a `/registro?desde=/distribuidora/nueva` (PLAN §11). Quedan con `test.fail` las dos del alta de §4b | `fase-2/pendientes-del-cierre` |
+| 2026-10-15 | No es una pasada: filas de §3 para el personal, los ayudantes y la nota de la plataforma (paso 3.2, solo lado de datos). La fila "darse un rol" deja de incluir "cambiar el rol de otro", que ahora puede el titular con sus límites | `fase-3/catalogo` |
