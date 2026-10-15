@@ -98,6 +98,20 @@ function useStandingWatch(
   }, [membership, current, reloadMemberships]);
 }
 
+/**
+ * When the distributor can no longer be read while the account holds a membership there, the
+ * likeliest reason is that its access was withdrawn (switched off, PLAN 3.2): the memberships
+ * are read again once per failure, and the guards act on what they say now.
+ */
+function useAccessLossWatch(failure: unknown, membership: Member | null, reload: () => void) {
+  const judged = useRef<unknown>(null);
+  useEffect(() => {
+    if (failure === null || membership === null || judged.current === failure) return;
+    judged.current = failure;
+    reload();
+  }, [failure, membership, reload]);
+}
+
 /** The choice made in this visit, falling back to the one remembered on this device. */
 function useSelection(uid: string | null) {
   const [selection, setSelection] = useState<{ uid: string; distributorId: string } | null>(null);
@@ -141,6 +155,11 @@ export function useCurrentDistributor(): CurrentDistributor {
   const reloadMemberships = memberships.reload;
   useRepairedCopies(view, membership);
   useStandingWatch(membership, view?.member, reloadMemberships);
+  useAccessLossWatch(
+    distributor.status === 'error' ? distributor.error : null,
+    membership,
+    reloadMemberships,
+  );
   const reloadDistributor = distributor.reload;
   const reload = useCallback(() => {
     reloadMemberships();

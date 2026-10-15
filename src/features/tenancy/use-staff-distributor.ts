@@ -19,6 +19,11 @@ interface Kept {
   view: StaffDistributorView | null;
 }
 
+interface Failure {
+  distributorId: string;
+  error: unknown;
+}
+
 /**
  * The distributor of `membership` as its staff sees it. Read once (two reads) while no screen
  * asked for it live; followed live (`useLiveDistributor`) while one does, and the last value
@@ -33,6 +38,10 @@ export function useStaffDistributor(
   const distributorId = membership?.distributorId ?? null;
   const uid = membership?.uid ?? '';
   const [kept, setKept] = useState<Kept | null>(null);
+  // A live source that failed stays failed until `reload()`, also once no screen watches it: the
+  // guard that shows the error unmounts the screen that watched, and falling back to the last
+  // known view would mount it again, fail again, and loop (PLAN 3.2: access withdrawn live).
+  const [failure, setFailure] = useState<Failure | null>(null);
   const known = kept !== null && kept.distributorId === distributorId ? kept : null;
 
   const live = useLiveResource<StaffDistributorView | null>(
@@ -46,6 +55,14 @@ export function useStaffDistributor(
       return distributor && { distributor };
     },
   );
+  if (
+    distributorId !== null &&
+    live.status === 'error' &&
+    failure?.distributorId !== distributorId
+  ) {
+    setFailure({ distributorId, error: live.error });
+  }
+  const failed = failure !== null && failure.distributorId === distributorId ? failure : null;
   const source = isWatched ? live : once;
   if (distributorId !== null && source.status === 'ready' && known?.view !== source.data) {
     setKept({ distributorId, view: source.data });
@@ -55,11 +72,13 @@ export function useStaffDistributor(
   const reloadOnce = once.reload;
   const reload = useCallback(() => {
     setKept(null);
+    setFailure(null);
     reloadLive();
     reloadOnce();
   }, [reloadLive, reloadOnce]);
 
   if (distributorId === null) return { status: 'idle', reload };
+  if (failed) return { status: 'error', error: failed.error, reload };
   // A source that failed (access withdrawn, malformed document) is not papered over with what
   // was known before.
   if (source.status === 'error') return { ...source, reload };
