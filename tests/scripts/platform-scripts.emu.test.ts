@@ -107,16 +107,25 @@ describe('set-distributor-status.mjs — approve', () => {
   });
 
   it('removes the note that was left for the owner, and the mark of its correction', async () => {
+    const reviewPath = `distributors/${PENDING.id}/private/review`;
     await env.withSecurityRulesDisabled(async (context) => {
-      const { Timestamp, updateDoc } = await import('firebase/firestore');
+      const { setDoc, Timestamp, updateDoc } = await import('firebase/firestore');
+      const at = Timestamp.now();
       const control = doc(context.firestore(), `distributors/${PENDING.id}/private/control`);
-      await updateDoc(control, { reviewNote: 'Falta el registro.', correctedAt: Timestamp.now() });
+      await updateDoc(control, { reviewNoteAt: at, correctedAt: at });
+      await setDoc(doc(context.firestore(), reviewPath), { note: 'Falta.', writtenAt: at });
     });
 
     await act(PENDING.id, 'approve', '--by', ADMIN);
 
-    expect(await controlOf(PENDING.id)).not.toHaveProperty('reviewNote');
-    expect(await controlOf(PENDING.id)).not.toHaveProperty('correctedAt');
+    const control = await controlOf(PENDING.id);
+    expect(control).not.toHaveProperty('reviewNoteAt');
+    expect(control).not.toHaveProperty('correctedAt');
+    let note: unknown = 'not read';
+    await env.withSecurityRulesDisabled(async (context) => {
+      note = (await getDoc(doc(context.firestore(), reviewPath))).data();
+    });
+    expect(note).toBeUndefined();
   });
 
   it.each([

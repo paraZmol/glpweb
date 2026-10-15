@@ -11,10 +11,13 @@ import {
   parseAcceptanceEntry,
   parseAddress,
   parseControl,
+  parseHelper,
+  parseInvite,
   parsePublicDistributor,
   parseMember,
   parsePrivateSettings,
   parseProduct,
+  parseReviewNote,
   parseUserProfile,
 } from './converters';
 
@@ -136,6 +139,7 @@ describe('parseControl', () => {
       listingApproved: false,
       approvedAt: null,
       approvedBy: null,
+      reviewNoteAt: null,
       reviewNote: null,
       correctedAt: null,
       distributorName: null,
@@ -180,11 +184,22 @@ describe('parseControl', () => {
     });
   });
 
-  it('reads the note of a listing that was sent back', () => {
-    const sentBack = { ...CONTROL, listingApproved: false, reviewNote: 'Falta el registro.' };
+  // PLAN 3.2: the control document keeps the mark; the text lives in private/review.
+  it('reads the mark of a note of a listing that was sent back', () => {
+    const sentBack = { ...CONTROL, listingApproved: false, reviewNoteAt: stamp };
 
     expect(parseControl('control', path, sentBack)).toMatchObject({
       listingApproved: false,
+      reviewNoteAt: AT,
+      reviewNote: null,
+    });
+  });
+
+  it('still reads the text a control document older than PLAN 3.2 kept', () => {
+    const older = { ...CONTROL, listingApproved: false, reviewNote: 'Falta el registro.' };
+
+    expect(parseControl('control', path, older)).toMatchObject({
+      reviewNoteAt: null,
       reviewNote: 'Falta el registro.',
     });
   });
@@ -451,5 +466,78 @@ describe('parseProduct', () => {
     ['no weight', { weightKg: undefined }],
   ])('refuses a document with %s', (_case, change) => {
     expect(() => parseProduct('p00', PATH, { ...STORED, ...change })).toThrow(CorruptDocumentError);
+  });
+});
+
+// PLAN 3.2
+describe('parseReviewNote', () => {
+  it('reads the text of the note and when it was written', () => {
+    const path = 'distributors/dist-a/private/review';
+    expect(parseReviewNote('review', path, { note: 'Revisa el RUC.', writtenAt: stamp })).toEqual({
+      note: 'Revisa el RUC.',
+      writtenAt: AT,
+    });
+  });
+});
+
+describe('parseInvite', () => {
+  const path = 'distributors/dist-a/invites/Invite0000000000000A';
+  const INVITE = {
+    role: 'driver',
+    email: null,
+    distributorName: 'Gas Demo',
+    status: 'pending',
+    createdBy: 'owner-a',
+    createdAt: stamp,
+    updatedAt: stamp,
+  };
+
+  it('reads a waiting invitation, with its distributor taken from the path', () => {
+    expect(parseInvite('Invite0000000000000A', path, INVITE)).toEqual({
+      id: 'Invite0000000000000A',
+      distributorId: 'dist-a',
+      role: 'driver',
+      email: null,
+      distributorName: 'Gas Demo',
+      status: 'pending',
+      createdBy: 'owner-a',
+      createdAt: AT,
+      updatedAt: AT,
+      acceptedBy: null,
+      acceptedAt: null,
+      revokedBy: null,
+      revokedAt: null,
+    });
+  });
+
+  it('refuses an invitation with a role it does not know', () => {
+    expect(() => parseInvite('x', path, { ...INVITE, role: 'admin' })).toThrow(
+      CorruptDocumentError,
+    );
+  });
+
+  it('refuses an invitation with a status it does not know', () => {
+    expect(() => parseInvite('x', path, { ...INVITE, status: 'maybe' })).toThrow(
+      CorruptDocumentError,
+    );
+  });
+});
+
+describe('parseHelper', () => {
+  const path = 'distributors/dist-a/helpers/h00';
+
+  it('reads a helper', () => {
+    const helper = { name: 'P. Ayudante', active: true, createdAt: stamp, updatedAt: stamp };
+    expect(parseHelper('h00', path, helper)).toEqual({
+      id: 'h00',
+      name: 'P. Ayudante',
+      active: true,
+      createdAt: AT,
+      updatedAt: AT,
+    });
+  });
+
+  it('never offers a helper without the flag', () => {
+    expect(parseHelper('h00', path, { name: 'P. Ayudante', createdAt: stamp }).active).toBe(false);
   });
 });

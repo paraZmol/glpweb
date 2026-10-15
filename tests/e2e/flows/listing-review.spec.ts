@@ -290,8 +290,12 @@ test('the admin asks for changes with a note, the founder corrects the data, and
   await expect(chip(owner.page, 'Cambios pedidos')).toHaveCount(0);
   await expect(owner.page.getByText(NOTE)).toBeVisible();
   const corrected = await readDocument(`distributors/${id}/private/control`);
-  expect(corrected).toMatchObject({ listingApproved: false, reviewNote: NOTE });
+  expect(corrected).toMatchObject({ listingApproved: false });
+  expect(corrected).toHaveProperty('reviewNoteAt');
   expect(corrected).toHaveProperty('correctedAt');
+  // PLAN 3.2: the text lives apart from the control document, which the whole staff reads.
+  expect(corrected).not.toHaveProperty('reviewNote');
+  expect(await readDocument(`distributors/${id}/private/review`)).toMatchObject({ note: NOTE });
   expect(corrected).not.toHaveProperty('approvedAt');
   await expectPage(visitor.page, listing, false);
 

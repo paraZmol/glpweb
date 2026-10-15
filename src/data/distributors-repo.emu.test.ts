@@ -103,6 +103,7 @@ describe('createDistributor', () => {
       status: 'trial',
       ownerUid: founder.uid,
       listingApproved: false,
+      reviewNoteAt: null,
       reviewNote: null,
     });
     expect(distributor && isWritable(distributor, now)).toBe(true);

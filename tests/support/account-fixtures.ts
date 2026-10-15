@@ -50,6 +50,7 @@ export function distributorOf(id: string, patch: Partial<Distributor> = {}): Dis
     status: 'trial',
     trialEndsAt: IN_TWELVE_DAYS,
     listingApproved: true,
+    reviewNoteAt: null,
     reviewNote: null,
     correctedAt: null,
     schedule: { days: [1, 2, 3, 4, 5, 6], opensAt: '07:00', closesAt: '20:00' },
@@ -70,6 +71,7 @@ export function publicDistributorOf(patch: Partial<PublicDistributor> = {}): Pub
     status: _status,
     trialEndsAt: _trialEndsAt,
     listingApproved: _listingApproved,
+    reviewNoteAt: _reviewNoteAt,
     reviewNote: _reviewNote,
     correctedAt: _correctedAt,
     ...shown

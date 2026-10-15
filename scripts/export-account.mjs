@@ -83,16 +83,19 @@ async function signInAccount(sdk, uid) {
 
 async function foundedDistributor(db, distributorId) {
   const base = `distributors/${distributorId}`;
-  const [profile, control, settings] = await Promise.all([
+  const [profile, control, settings, review] = await Promise.all([
     db.doc(base).get(),
     db.doc(`${base}/private/control`).get(),
     db.doc(`${base}/private/settings`).get(),
+    db.doc(`${base}/private/review`).get(),
   ]);
   return {
     distributorId,
     publicProfile: profile.data() ?? null,
     control: control.data() ?? null,
     privateSettings: settings.data() ?? null,
+    // The note of the platform to the founder (PLAN 3.2), when one waits.
+    reviewNote: review.data() ?? null,
   };
 }
 

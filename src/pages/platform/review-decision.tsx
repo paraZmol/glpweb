@@ -97,7 +97,8 @@ export function ReviewDecision({
             Nota para la distribuidora
           </label>
           <p id={`${id}-help`} className="mb-1.5 text-[0.8125rem] text-muted-foreground">
-            No escribas el RUC ni datos personales: la nota la lee todo su personal.
+            La lee solo quien registró la distribuidora. Aun así, escribe solo lo necesario para
+            corregir.
           </p>
           <textarea
             id={`${id}-note`}

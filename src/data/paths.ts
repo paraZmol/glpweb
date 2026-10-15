@@ -11,10 +11,16 @@ export const paths = {
   distributor: (d: string) => `distributors/${d}`,
   distributorControl: (d: string) => `distributors/${d}/private/control`,
   distributorPrivateSettings: (d: string) => `distributors/${d}/private/settings`,
+  /** The text of the platform's note: the founder and platform admins only (PLAN 3.2). */
+  distributorReview: (d: string) => `distributors/${d}/private/review`,
   members: (d: string) => `distributors/${d}/members`,
   member: (d: string, uid: string) => `distributors/${d}/members/${uid}`,
   invites: (d: string) => `distributors/${d}/invites`,
+  /** `code` is the secret of the link: 20 letters and digits (`isInviteCode`). */
+  invite: (d: string, code: string) => `distributors/${d}/invites/${code}`,
   helpers: (d: string) => `distributors/${d}/helpers`,
+  /** `slot` is `h00` … `h29` (HELPER_SLOT_IDS in src/domain/staff/helper.ts). */
+  helper: (d: string, slot: string) => `distributors/${d}/helpers/${slot}`,
   vehicles: (d: string) => `distributors/${d}/vehicles`,
   products: (d: string) => `distributors/${d}/products`,
   /** `slot` is `p00` … `p29` (PRODUCT_SLOT_IDS in src/domain/catalog/catalog.ts). */
@@ -29,7 +35,7 @@ export const paths = {
 /** Collection ids for collection-group queries. */
 export const collectionGroups = {
   members: 'members',
-  /** `private/control` and `private/settings` of every distributor. */
+  /** `private/control`, `private/settings` and `private/review` of every distributor. */
   private: 'private',
 } as const;
 

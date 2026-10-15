@@ -21,8 +21,10 @@
 //
 // What each action writes, always in ONE transaction over the control document and the public
 // one, so the two never disagree (the security rules demand the same from the app):
-//   approve     control: listingApproved true, approvedAt now, approvedBy <--by>, no reviewNote
-//               and no correctedAt (the mark the owner leaves when it answers a note).
+//   approve     control: listingApproved true, approvedAt now, approvedBy <--by>, no note
+//               (reviewNoteAt, and reviewNote in a document older than PLAN 3.2) and no
+//               correctedAt (the mark the owner leaves when it answers a note); the text of the
+//               note (private/review) is deleted.
 //               `--by` must be a platform admin: an approval always says who looked at it.
 //   suspend     control: status 'suspended'. The approval is kept.
 //   reactivate  control: status back to 'trial' while the trial still runs, else 'active'.
@@ -68,6 +70,7 @@ function controlChange(sdk, action, after) {
     listingApproved: true,
     approvedAt: now,
     approvedBy: after.approvedBy,
+    reviewNoteAt: sdk.FieldValue.delete(),
     reviewNote: sdk.FieldValue.delete(),
     correctedAt: sdk.FieldValue.delete(),
     updatedAt: now,
@@ -109,6 +112,7 @@ export async function setDistributorStatus(
     const acceptingOrders = after.listingApproved === true && mayOperate(after, now);
     if (!dryRun) {
       tx.update(controlRef, controlChange(sdk, action, after));
+      if (action === 'approve') tx.delete(db.doc(`distributors/${distributorId}/private/review`));
       tx.update(profileRef, { acceptingOrders, updatedAt: sdk.FieldValue.serverTimestamp() });
     }
     const snapshotOf = (data, flag) => ({

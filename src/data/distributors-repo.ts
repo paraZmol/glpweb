@@ -48,12 +48,15 @@ import type {
   DistributorPrivateSettings,
   Member,
   PublicDistributor,
+  ReviewNoteDocument,
 } from '../domain/tenancy/types';
+import { INVITES_QUERY_MAX } from '../domain/staff/constants';
 import {
   controlConverter,
   memberConverter,
   privateSettingsConverter,
   publicDistributorConverter,
+  reviewNoteConverter,
   userProfileConverter,
 } from './converters';
 import { guarded, toDataError } from './errors';
@@ -257,8 +260,30 @@ export async function getStaffDistributor(d: string): Promise<Distributor | null
 }
 
 function staffDistributorOf(profile: PublicDistributor, control: DistributorControl): Distributor {
-  const { ownerUid, status, trialEndsAt, listingApproved, reviewNote, correctedAt } = control;
-  return { ...profile, ownerUid, status, trialEndsAt, listingApproved, reviewNote, correctedAt };
+  return {
+    ...profile,
+    ownerUid: control.ownerUid,
+    status: control.status,
+    trialEndsAt: control.trialEndsAt,
+    listingApproved: control.listingApproved,
+    reviewNoteAt: control.reviewNoteAt,
+    reviewNote: control.reviewNote,
+    correctedAt: control.correctedAt,
+  };
+}
+
+/**
+ * The text of the note a platform admin left (PLAN 3.2), apart from the control document, which
+ * the whole staff reads: only the founder and platform admins may read it (anybody else gets
+ * `PermissionDeniedError`). Null when there is none. Pair it with the control document through
+ * `noteTextFor`: a text left behind by an earlier decision is not the current one.
+ * One read, plus one by the rules (the control document; two for a platform admin).
+ */
+export function getReviewNote(d: string): Promise<ReviewNoteDocument | null> {
+  return guarded(async () => {
+    const ref = doc(db, paths.distributorReview(d)).withConverter(reviewNoteConverter);
+    return (await getDoc(ref)).data() ?? null;
+  });
 }
 
 /** A distributor as one account of its staff sees it right now. */
@@ -404,12 +429,14 @@ function controlChangeOf({ document, isBackInReview, answersNote }: ProfileEdit)
  * An edit that reaches more than the public document is one batch (PLAN 2.11). A new name,
  * phone, address or plant: the edit itself, which also unlists the distributor; the listing back
  * to review in the control document, with its copy of the name; and, for a new name, the copy
- * every member keeps of it (up to the cap of the staff list; anyone beyond it corrects its own copy the next time
- * it opens the panel). An edit that answers a note of the platform: the edit and the correction
- * mark in the control document.
- * Cost: 2 writes, plus one read and one write per member when the name changes. The rules add 3
- * lookups for the profile, 3 for the control document (4 when it carries the correction mark)
- * and 2 per member.
+ * every member keeps of it (up to the cap of the staff list; anyone beyond it corrects its own
+ * copy the next time it opens the panel) and the one of each invitation that waits (PLAN 3.2).
+ * An edit that answers a note of the platform: the edit and the correction mark in the control
+ * document.
+ * Cost: 2 writes, plus, when the name changes, one read and one write per member and per
+ * invitation that waits (minimum one read each). The rules add 3 lookups for the profile, 3 for
+ * the control document (4 when it carries the correction mark), 2 per member and 2 per
+ * invitation (the same documents for all of them).
  */
 async function editWithControl(edit: ProfileEdit, controlChange: Record<string, unknown>) {
   const { d, document, isBackInReview } = edit;
@@ -420,12 +447,27 @@ async function editWithControl(edit: ProfileEdit, controlChange: Record<string, 
   );
   batch.update(controlRef(d), controlChange);
   if (document.name !== undefined) {
-    const staff = query(collection(db, paths.members(d)), limit(MEMBERS_QUERY_LIMIT));
-    for (const member of (await getDocs(staff)).docs) {
-      batch.update(member.ref, { distributorName: document.name, updatedAt: serverTimestamp() });
+    for (const ref of await copiesOfTheName(d)) {
+      batch.update(ref, { distributorName: document.name, updatedAt: serverTimestamp() });
     }
   }
   await batch.commit();
+}
+
+/**
+ * Every document that keeps a copy of the distributor's name and follows a rename: the members
+ * (up to the cap of the staff list) and the invitations that still wait (PLAN 3.2), so whoever
+ * joins later writes the new name, the only one its member may carry.
+ */
+async function copiesOfTheName(d: string) {
+  const staff = query(collection(db, paths.members(d)), limit(MEMBERS_QUERY_LIMIT));
+  const waiting = query(
+    collection(db, paths.invites(d)),
+    where('status', '==', 'pending'),
+    limit(INVITES_QUERY_MAX),
+  );
+  const [members, invites] = await Promise.all([getDocs(staff), getDocs(waiting)]);
+  return [...members.docs, ...invites.docs].map((snapshot) => snapshot.ref);
 }
 
 /**

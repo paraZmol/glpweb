@@ -5,6 +5,8 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { defaultProductName, type Product } from '../domain/catalog/product';
+import type { Helper } from '../domain/staff/helper';
+import { INVITE_STATUSES, type Invite } from '../domain/staff/invite';
 import { type GeoPoint, isValidGeoPoint } from '../domain/geo/distance';
 import {
   ACCEPTED_TEXTS,
@@ -28,6 +30,7 @@ import {
   type Member,
   MEMBER_ROLES,
   type PublicDistributor,
+  type ReviewNoteDocument,
   type Schedule,
   type UserProfile,
 } from '../domain/tenancy/types';
@@ -215,6 +218,9 @@ export const parseControl: Parser<DistributorControl> = (_id, path, data) => {
     listingApproved: read.flag('listingApproved', false),
     approvedAt: read.dateOrNull('approvedAt'),
     approvedBy: read.textOrNull('approvedBy'),
+    reviewNoteAt: read.dateOrNull('reviewNoteAt'),
+    // Only a control document older than PLAN 3.2 kept the text here; it lives in
+    // private/review now (`noteTextFor`).
     reviewNote: read.textOrNull('reviewNote'),
     correctedAt: read.dateOrNull('correctedAt'),
     distributorName: read.textOrNull('distributorName'),
@@ -254,6 +260,45 @@ export const parseMember: Parser<Member> = (id, path, data) => {
     active: read.flag('active', false),
     displayName: read.text('displayName', ''),
     distributorName: read.text('distributorName', ''),
+    createdAt,
+    updatedAt: read.date('updatedAt', createdAt),
+  };
+};
+
+export const parseReviewNote: Parser<ReviewNoteDocument> = (_id, path, data) => {
+  const read = new FieldReader(path, data);
+  return { note: read.text('note'), writtenAt: read.date('writtenAt') };
+};
+
+/** `distributorId` is the parent of the parent: the invitation does not repeat it. */
+export const parseInvite: Parser<Invite> = (id, path, data) => {
+  const read = new FieldReader(path, data);
+  const createdAt = read.date('createdAt');
+  return {
+    id,
+    distributorId: path.split('/')[1] ?? '',
+    role: read.oneOf('role', MEMBER_ROLES),
+    email: read.textOrNull('email'),
+    distributorName: read.text('distributorName', ''),
+    status: read.oneOf('status', INVITE_STATUSES),
+    createdBy: read.text('createdBy', ''),
+    createdAt,
+    updatedAt: read.date('updatedAt', createdAt),
+    acceptedBy: read.textOrNull('acceptedBy'),
+    acceptedAt: read.dateOrNull('acceptedAt'),
+    revokedBy: read.textOrNull('revokedBy'),
+    revokedAt: read.dateOrNull('revokedAt'),
+  };
+};
+
+export const parseHelper: Parser<Helper> = (id, path, data) => {
+  const read = new FieldReader(path, data);
+  const createdAt = read.date('createdAt');
+  return {
+    id,
+    name: read.text('name'),
+    // A helper without the flag is not offered: never send someone who was not added as active.
+    active: read.flag('active', false),
     createdAt,
     updatedAt: read.date('updatedAt', createdAt),
   };
@@ -314,3 +359,6 @@ export const controlConverter = readOnlyConverter(parseControl);
 export const privateSettingsConverter = readOnlyConverter(parsePrivateSettings);
 export const memberConverter = readOnlyConverter(parseMember);
 export const productConverter = readOnlyConverter(parseProduct);
+export const reviewNoteConverter = readOnlyConverter(parseReviewNote);
+export const inviteConverter = readOnlyConverter(parseInvite);
+export const helperConverter = readOnlyConverter(parseHelper);

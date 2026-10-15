@@ -154,6 +154,26 @@ function writeDistributor(batch: Batch, db: Db, distributor: SeedDistributor) {
   }
 }
 
+/** Invitations and helpers (PLAN 3.2). Invitations are dated now: they last 7 days. */
+function writeStaffExtras(batch: Batch, db: Db, distributor: SeedDistributor) {
+  const { id } = distributor;
+  const now = Timestamp.now();
+  for (const invite of distributor.invites ?? []) {
+    batch.set(doc(db, `distributors/${id}/invites/${invite.code}`), {
+      role: invite.role,
+      email: invite.email,
+      distributorName: distributor.name,
+      status: 'pending',
+      createdBy: founderOf(distributor).uid,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+  for (const { id: slot, ...helper } of distributor.helpers ?? []) {
+    batch.set(doc(db, `distributors/${id}/helpers/${slot}`), { ...helper, ...stamps });
+  }
+}
+
 function writeProfiles(batch: Batch, db: Db, distributors: SeedDistributor[]) {
   for (const user of Object.values(SEED_USERS)) {
     if (!user.hasProfile) continue;
@@ -231,7 +251,10 @@ export async function seedEmulators(options: SeedOptions = {}): Promise<SeedSumm
     await env.withSecurityRulesDisabled(async (context) => {
       const db = context.firestore();
       const batch = writeBatch(db);
-      for (const distributor of distributors) writeDistributor(batch, db, distributor);
+      for (const distributor of distributors) {
+        writeDistributor(batch, db, distributor);
+        writeStaffExtras(batch, db, distributor);
+      }
       writeProfiles(batch, db, distributors);
       await batch.commit();
     });

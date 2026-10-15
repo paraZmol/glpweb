@@ -87,7 +87,20 @@ export interface SeedDistributor {
   products: SeedProduct[];
   /** The first owner listed is the founder. */
   members: { user: SeedUser; role: SeedRole }[];
+  /**
+   * Invitations that wait (PLAN 3.2), created by the founder when the seed runs, so they are
+   * inside their 7 days. `code` has the shape of an automatic id (20 letters and digits).
+   */
+  invites?: { code: string; role: SeedRole; email: string | null }[];
+  /** Helpers (PLAN 3.2): people who go with a truck and never sign in. `id` is a slot. */
+  helpers?: { id: string; name: string; active: boolean }[];
 }
+
+/**
+ * The invitation of A that waits: a driver, for any Google account with the link. Tests that
+ * use it must reseed afterwards (it works once).
+ */
+export const SEED_INVITE_CODE = 'SeedInviteA000000001';
 
 /** Versions of the terms and of the privacy policy every seeded profile accepted. */
 export const SEED_TERMS_VERSION = '0.4';
@@ -189,6 +202,11 @@ export const SEED_DISTRIBUTORS = {
       { user: SEED_USERS.ownerA, role: 'owner' },
       { user: SEED_USERS.dispatcherA, role: 'dispatcher' },
       { user: SEED_USERS.driverA, role: 'driver' },
+    ],
+    invites: [{ code: SEED_INVITE_CODE, role: 'driver', email: null }],
+    helpers: [
+      { id: 'h00', name: 'P. Ayudante', active: true },
+      { id: 'h01', name: 'Q. Ayudante', active: false },
     ],
   },
   /** Healthy, paying; the "other distributor" of every isolation test. */
