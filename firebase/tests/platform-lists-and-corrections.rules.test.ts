@@ -39,9 +39,11 @@ import {
   editIdentity,
   foundDistributor,
   type FoundingOptions,
+  leaveNote,
   memberDoc,
   newDistributorId,
   reviewedMarks,
+  reviewPath,
   seedDoc,
   seedProfile,
   seedWorld,
@@ -222,7 +224,7 @@ describe('a control document older than the copies', () => {
   });
 
   it('accepts a decision of the admin that does not add them', async () => {
-    await assertSucceeds(updateDoc(controlOf(admin(), PENDING), { reviewNote: NOTE, ...stamp }));
+    await assertSucceeds(leaveNote(admin(), PENDING, NOTE));
   });
 
   it('accepts their true values from the admin, and only those', async () => {
@@ -369,8 +371,7 @@ function correctProfile(db: Db, d: string, control: Record<string, unknown> = ma
   return batch.commit();
 }
 
-const sendNote = (d: string, reviewNote: string) =>
-  updateDoc(controlOf(admin(), d), { reviewNote, correctedAt: deleteField(), ...stamp });
+const sendNote = (d: string, note: string) => leaveNote(admin(), d, note);
 
 describe('answering a note of the platform — the correction mark', () => {
   const owner = () => verified(env, 'owner-pending');
@@ -384,7 +385,7 @@ describe('answering a note of the platform — the correction mark', () => {
 
     const control = await storedControl(PENDING);
     expect(control.correctedAt).toBeInstanceOf(Timestamp);
-    expect(control.reviewNote).toBe(NOTE);
+    expect(control.reviewNoteAt).toBeInstanceOf(Timestamp);
     expect(control.listingApproved).toBe(false);
     expect(control).not.toHaveProperty('approvedAt');
     await assertFails(getDoc(profileOf(anonymous(env), PENDING)));
@@ -399,10 +400,9 @@ describe('answering a note of the platform — the correction mark', () => {
   it('lets an owner mark it together with a new name', async () => {
     await assertSucceeds(editIdentity(owner(), PENDING, { name: NEW_NAME }, mark()));
 
-    expect(await storedControl(PENDING)).toMatchObject({
-      distributorName: NEW_NAME,
-      reviewNote: NOTE,
-    });
+    const control = await storedControl(PENDING);
+    expect(control.distributorName).toBe(NEW_NAME);
+    expect(control.reviewNoteAt).toBeInstanceOf(Timestamp);
   });
 
   it('lets an owner who did not found the distributor mark a correction of the profile', async () => {
@@ -458,8 +458,9 @@ describe('answering a note of the platform — the correction mark', () => {
       'approves itself in the name of the admin',
       { listingApproved: true, approvedAt: serverTimestamp(), approvedBy: ADMIN_UID },
     ],
-    ['removes the note', { reviewNote: deleteField() }],
-    ['rewrites the note', { reviewNote: 'Todo en orden.' }],
+    ['removes the note', { reviewNoteAt: deleteField() }],
+    ['re-dates the note', { reviewNoteAt: serverTimestamp() }],
+    ['writes the text of a note where the staff reads it', { reviewNote: 'Todo en orden.' }],
     ['makes its plan active', { status: 'active' }],
     ['extends its trial', { trialEndsAt: daysFromNow(365) }],
     ['hands the distributor to another account', { ownerUid: 'driver-pending' }],
@@ -529,7 +530,7 @@ describe('the correction mark — only where a note waits', () => {
       controlDoc('owner-suspended', {
         status: 'suspended',
         slug: WORLD.suspended.slug,
-        reviewNote: NOTE,
+        reviewNoteAt: PAST,
         ...old,
       }),
     );
@@ -571,7 +572,15 @@ describe('the correction mark — what the platform admin does with it', () => {
     await correctSettings(owner(), PENDING);
     const control = controlOf(admin(), PENDING);
 
-    await assertFails(updateDoc(control, { reviewNote: 'Falta el registro.', ...stamp }));
+    const db = admin();
+    const keepsTheMark = writeBatch(db);
+    keepsTheMark.update(controlOf(db, PENDING), { reviewNoteAt: serverTimestamp(), ...stamp });
+    keepsTheMark.set(doc(db, reviewPath(PENDING)), {
+      note: 'Falta el registro.',
+      writtenAt: serverTimestamp(),
+    });
+    await assertFails(keepsTheMark.commit());
+    await assertFails(updateDoc(control, { reviewNoteAt: serverTimestamp(), ...stamp }));
     await assertSucceeds(sendNote(PENDING, 'Falta el registro.'));
     expect(await storedControl(PENDING)).not.toHaveProperty('correctedAt');
   });
@@ -580,9 +589,9 @@ describe('the correction mark — what the platform admin does with it', () => {
     await correctSettings(owner(), PENDING);
     const control = controlOf(admin(), PENDING);
 
-    await assertFails(updateDoc(control, { reviewNote: deleteField(), ...stamp }));
+    await assertFails(updateDoc(control, { reviewNoteAt: deleteField(), ...stamp }));
     await assertSucceeds(
-      updateDoc(control, { reviewNote: deleteField(), correctedAt: deleteField(), ...stamp }),
+      updateDoc(control, { reviewNoteAt: deleteField(), correctedAt: deleteField(), ...stamp }),
     );
   });
 
@@ -593,7 +602,7 @@ describe('the correction mark — what the platform admin does with it', () => {
       approvedAt: serverTimestamp(),
       approvedBy: ADMIN_UID,
       ...(await reviewedMarks(env, PENDING)),
-      reviewNote: deleteField(),
+      reviewNoteAt: deleteField(),
       ...stamp,
     };
     const approve = (control: Record<string, unknown>) => {

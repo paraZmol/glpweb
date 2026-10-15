@@ -9,6 +9,7 @@ import {
 import {
   collection,
   collectionGroup,
+  deleteDoc,
   deleteField,
   doc,
   getDoc,
@@ -60,6 +61,7 @@ const stamp = { updatedAt: serverTimestamp() };
 const admin = () => verified(env, ADMIN_UID);
 const controlOf = (db: Db, d: string) => doc(db, `distributors/${d}/private/control`);
 const profileOf = (db: Db, d: string) => doc(db, `distributors/${d}`);
+const reviewOf = (db: Db, d: string) => doc(db, `distributors/${d}/private/review`);
 
 beforeAll(async () => {
   env = await createEnv('listing-approval');
@@ -95,20 +97,27 @@ async function approve(db: Db, d: string, options: ApprovalOptions = {}): Promis
     approvedAt: serverTimestamp(),
     approvedBy: uid,
     ...reviewed,
+    reviewNoteAt: deleteField(),
+    // A control document older than PLAN 3.2 may still carry the text: the approval removes it.
     reviewNote: deleteField(),
     ...stamp,
   });
+  batch.delete(reviewOf(db, d));
   if (acceptingOrders !== null) batch.update(profileOf(db, d), { acceptingOrders, ...stamp });
   return batch.commit();
 }
 
-/** What a platform admin sends to return a listing to its owner, with or without a note. */
-function sendBack(db: Db, d: string, reviewNote?: unknown, unlist = false): Promise<void> {
+/**
+ * What a platform admin sends to return a listing to its owner, with or without a note: the
+ * mark in the control document and the text in private/review (PLAN 3.2).
+ */
+function sendBack(db: Db, d: string, note?: unknown, unlist = false): Promise<void> {
   const batch = writeBatch(db);
   batch.update(controlOf(db, d), {
     ...backToReview(),
-    ...(reviewNote === undefined ? {} : { reviewNote }),
+    ...(note === undefined ? {} : { reviewNoteAt: serverTimestamp() }),
   });
+  if (note !== undefined) batch.set(reviewOf(db, d), { note, writtenAt: serverTimestamp() });
   if (unlist) batch.update(profileOf(db, d), { acceptingOrders: false, ...stamp });
   return batch.commit();
 }
@@ -176,7 +185,7 @@ describe('approving a listing — platform admin only', () => {
     ['with the date as text', { approvedAt: '2026-10-11', approvedBy: ADMIN_UID }],
     [
       'while leaving a note for the owner',
-      { approvedAt: serverTimestamp(), approvedBy: ADMIN_UID, reviewNote: 'Todo en orden.' },
+      { approvedAt: serverTimestamp(), approvedBy: ADMIN_UID, reviewNoteAt: serverTimestamp() },
     ],
     ['with an extra field', { approvedAt: serverTimestamp(), approvedBy: ADMIN_UID, vip: true }],
   ])('blocks an approval %s', async (_case, signature) => {
@@ -256,8 +265,12 @@ describe('sending a listing back to its owner', () => {
   it('lets the admin leave a note on a listing that waits', async () => {
     await assertSucceeds(sendBack(admin(), PENDING, 'El RUC no coincide con la razón social.'));
 
-    const seenByOwner = await getDoc(controlOf(verified(env, 'owner-pending'), PENDING));
-    expect(seenByOwner.data()?.reviewNote).toBe('El RUC no coincide con la razón social.');
+    const owner = verified(env, 'owner-pending');
+    const seenByOwner = await getDoc(reviewOf(owner, PENDING));
+    expect(seenByOwner.data()?.note).toBe('El RUC no coincide con la razón social.');
+    const control = (await getDoc(controlOf(owner, PENDING))).data();
+    expect(control?.reviewNoteAt).toEqual(seenByOwner.data()?.writtenAt);
+    expect(control).not.toHaveProperty('reviewNote');
   });
 
   it('lets the admin withdraw an approval, which closes the listing to visitors', async () => {
@@ -293,10 +306,14 @@ describe('sending a listing back to its owner', () => {
     ['the owner of another distributor', 'owner-a'],
   ])('blocks %s from writing, changing or removing the note', async (_who, uid) => {
     await sendBack(admin(), PENDING, 'Falta el número de registro.');
-    const control = controlOf(verified(env, uid), PENDING);
+    const db = verified(env, uid);
+    const control = controlOf(db, PENDING);
 
     await assertFails(updateDoc(control, { reviewNote: 'Ya lo corregí.', ...stamp }));
-    await assertFails(updateDoc(control, { reviewNote: deleteField(), ...stamp }));
+    await assertFails(updateDoc(control, { reviewNoteAt: serverTimestamp(), ...stamp }));
+    await assertFails(updateDoc(control, { reviewNoteAt: deleteField(), ...stamp }));
+    await assertFails(updateDoc(reviewOf(db, PENDING), { note: 'Ya lo corregí.' }));
+    await assertFails(deleteDoc(reviewOf(db, PENDING)));
   });
 });
 
@@ -324,6 +341,7 @@ describe('the control document of a listing that waits — who else may touch it
     ['its trial end', { trialEndsAt: daysFromNow(365) }],
     ['its founder', { ownerUid: 'driver-pending' }],
     ['a note', { reviewNote: 'Ya lo corregí.' }],
+    ['the mark of a note', { reviewNoteAt: serverTimestamp() }],
   ])(
     'blocks its owner from changing %s together with the return to review',
     async (_case, change) => {

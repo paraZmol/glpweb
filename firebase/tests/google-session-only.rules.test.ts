@@ -29,6 +29,7 @@ import {
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import { CATALOG_QUERY_LIMIT } from '../../src/domain/catalog/constants';
+import { HELPERS_QUERY_LIMIT, INVITES_QUERY_LIMIT } from '../../src/domain/staff/constants';
 import { MAX_ACCEPTANCE_ENTRIES, TERMS_VERSION } from '../../src/domain/legal/versions';
 import {
   MAX_ADDRESSES_PER_USER,
@@ -41,15 +42,27 @@ import {
   addressDoc,
   anonymous,
   createEnv,
+  CUSTOMER_UID,
   type Db,
   DISTRIBUTOR_NAME,
   editIdentity,
   entryPath,
   foundDistributor,
+  helperDoc,
+  helperPath,
+  INVITE_CODE,
+  inviteDoc,
+  invitePath,
+  joinWith,
+  leaveNote,
   newDistributorId,
+  OTHER_INVITE_CODE,
   productDoc,
   productPath,
+  reviewPath,
+  revokeInvite,
   seedDoc,
+  seedInvite,
   seedWorld,
   signedInAnonymously,
   unverified,
@@ -84,6 +97,7 @@ beforeEach(async () => {
     productPath(A, 'p00'),
     productDoc({ active: false, createdAt: AT, updatedAt: AT }),
   );
+  await seedInvite(env, A, INVITE_CODE);
 });
 
 afterAll(async () => {
@@ -198,6 +212,41 @@ const DISTRIBUTOR: Case[] = [
       getDocs(query(collection(db, `distributors/${A}/products`), limit(CATALOG_QUERY_LIMIT))),
   ],
   ['read a product off sale', OWNER, (db) => getDoc(doc(db, productPath(A, 'p00')))],
+  // PLAN 3.2: staff, invitations, helpers and the note of the platform.
+  [
+    'invite a driver',
+    OWNER,
+    (db) => setDoc(doc(db, invitePath(A, OTHER_INVITE_CODE)), inviteDoc()),
+  ],
+  [
+    'list its invitations',
+    OWNER,
+    (db) => getDocs(query(collection(db, `distributors/${A}/invites`), limit(INVITES_QUERY_LIMIT))),
+  ],
+  ['revoke an invitation', OWNER, (db) => revokeInvite(db, A, INVITE_CODE, OWNER)],
+  [
+    'make a driver a dispatcher',
+    OWNER,
+    (db) =>
+      updateDoc(doc(db, `distributors/${A}/members/driver-a`), { role: 'dispatcher', ...stamp }),
+  ],
+  [
+    'list its helpers',
+    OWNER,
+    (db) => getDocs(query(collection(db, `distributors/${A}/helpers`), limit(HELPERS_QUERY_LIMIT))),
+  ],
+  ['add a helper', OWNER, (db) => setDoc(doc(db, helperPath(A, 'h01')), helperDoc())],
+  ['read the note of the platform', OWNER, (db) => getDoc(doc(db, reviewPath(A)))],
+  [
+    'read an invitation it was sent',
+    CUSTOMER_UID,
+    (db) => getDoc(doc(db, invitePath(A, INVITE_CODE))),
+  ],
+  [
+    'join a distributor with an invitation',
+    CUSTOMER_UID,
+    (db) => joinWith(db, { d: A, code: INVITE_CODE, uid: CUSTOMER_UID }),
+  ],
   ['add a product', OWNER, (db) => setDoc(doc(db, productPath(A, 'p01')), productDoc())],
   [
     'change a price',
@@ -250,6 +299,7 @@ const PLATFORM: Case[] = [
     ADMIN_UID,
     (db) => getDoc(doc(db, entryPath(OWNER, 'terms'))),
   ],
+  ['leave a note for an owner', ADMIN_UID, (db) => leaveNote(db, PENDING, 'Revisa el RUC.')],
   [
     'suspend a distributor',
     ADMIN_UID,

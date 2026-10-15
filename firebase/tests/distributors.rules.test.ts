@@ -197,7 +197,8 @@ describe('founding a distributor (PLAN 2.2)', () => {
     ['with the approval as text', { listingApproved: 'true' }],
     ['with an approval date while not approved', { approvedAt: serverTimestamp() }],
     ['with an approver while not approved', { approvedBy: ADMIN_UID }],
-    ['with a note written by itself', { reviewNote: 'Todo en orden.' }],
+    ['with a note written by itself', { reviewNoteAt: serverTimestamp() }],
+    ['with the text of a note in it', { reviewNote: 'Todo en orden.' }],
   ])('blocks founding one whose control document is %s', async (_case, change) => {
     const control = controlDoc(FOUNDER, change);
     await assertFails(foundDistributor(verified(env, FOUNDER), { ...NEW, control }));
@@ -276,6 +277,11 @@ describe('founding a distributor (PLAN 2.2)', () => {
     ],
     ['member with an extra field', { member: memberDoc(NEW.d, FOUNDER, 'owner', { admin: true }) }],
     ['member for another distributor', { member: memberDoc(WORLD.a.d, FOUNDER, 'owner') }],
+    // PLAN 3.2: only a member that joined through an invitation names one.
+    [
+      'member that names an invitation',
+      { member: memberDoc(NEW.d, FOUNDER, 'owner', { inviteId: 'Invite0000000000000A' }) },
+    ],
     [
       'member that names the distributor differently',
       { member: memberDoc(NEW.d, FOUNDER, 'owner', { distributorName: 'Otro Nombre' }) },

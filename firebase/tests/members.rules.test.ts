@@ -428,8 +428,9 @@ describe('members — the copy of the distributor name', () => {
 
 describe('everything not opened yet stays closed', () => {
   it.each([
-    'invites/token-1',
-    'helpers/h1',
+    // invites and helpers: opened in PLAN 3.2 (invites.rules.test.ts, helpers.rules.test.ts).
+    'invites/Ab3dEf6hIj9lMn2pQr5t/secrets/s1',
+    'helpers/h00/history/h1',
     'vehicles/v1',
     // Opened in PLAN 3.1 (catalog.rules.test.ts); what hangs below a product stays closed.
     'products/p00/history/h1',
@@ -450,7 +451,7 @@ describe('everything not opened yet stays closed', () => {
     }
   });
 
-  it('blocks accepting an invitation by writing the invite or the member directly', async () => {
+  it('blocks reading an invitation stored under an id that is not a code', async () => {
     await seedDoc(env, `distributors/${A}/invites/token-1`, { role: 'driver' });
     const db = verified(env, CUSTOMER_UID);
     await assertFails(getDoc(doc(db, `distributors/${A}/invites/token-1`)));

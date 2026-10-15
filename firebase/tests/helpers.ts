@@ -12,6 +12,7 @@ import {
   serverTimestamp,
   setDoc,
   Timestamp,
+  updateDoc,
   writeBatch,
 } from 'firebase/firestore';
 import { EMULATOR_HOST, emulatorPorts } from '../../scripts/lane-ports.mjs';
@@ -326,6 +327,108 @@ export function productDoc(change: Record<string, unknown> = {}) {
 
 export const productPath = (d: string, slot: string) => `distributors/${d}/products/${slot}`;
 
+/** The name every profile of the seeded world carries (`userDoc`). */
+export const PROFILE_NAME = 'C. Persona';
+
+/** Invitation codes with the shape of an automatic id (20 letters and digits). */
+export const INVITE_CODE = 'Invite0000000000000A';
+export const OTHER_INVITE_CODE = 'Invite0000000000000B';
+
+export const invitePath = (d: string, code: string) => `distributors/${d}/invites/${code}`;
+
+/** An invitation as an owner's client creates it (PLAN 3.2): a driver, tied to nobody. */
+export function inviteDoc(change: Record<string, unknown> = {}) {
+  return {
+    role: 'driver',
+    email: null,
+    distributorName: DISTRIBUTOR_NAME,
+    status: 'pending',
+    createdBy: 'owner-a',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...change,
+  };
+}
+
+/**
+ * A pending invitation written with the rules disabled, created `ageMs` ago (now by default)
+ * by the owner of A.
+ */
+export function seedInvite(
+  env: RulesTestEnvironment,
+  d: string,
+  code: string,
+  change: Record<string, unknown> = {},
+  ageMs = 0,
+): Promise<void> {
+  const at = Timestamp.fromMillis(Date.now() - ageMs);
+  return seedDoc(env, invitePath(d, code), inviteDoc({ createdAt: at, updatedAt: at, ...change }));
+}
+
+export interface JoinOptions {
+  d: string;
+  code: string;
+  uid: string;
+  /** Role of the member it creates; the invitation's role, `driver`, by default. */
+  role?: MemberRole;
+  /** Replaces, or adds to, the member document; `null` leaves it out of the batch. */
+  member?: Record<string, unknown> | null;
+  /** Replaces, or adds to, what the invitation receives; `null` leaves it out of the batch. */
+  invite?: Record<string, unknown> | null;
+}
+
+/**
+ * What the app sends to use an invitation (PLAN 3.2): the account creates its own member with
+ * the role of the invitation and the name of its profile, and marks the invitation used by
+ * itself, in one batch.
+ */
+export function joinWith(db: Db, options: JoinOptions): Promise<void> {
+  const { d, code, uid } = options;
+  const batch = writeBatch(db);
+  if (options.member !== null) {
+    batch.set(doc(db, `distributors/${d}/members/${uid}`), {
+      ...memberDoc(d, uid, options.role ?? 'driver', {
+        displayName: PROFILE_NAME,
+        inviteId: code,
+      }),
+      ...options.member,
+    });
+  }
+  if (options.invite !== null) {
+    batch.update(doc(db, invitePath(d, code)), {
+      status: 'accepted',
+      acceptedBy: uid,
+      acceptedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      ...options.invite,
+    });
+  }
+  return batch.commit();
+}
+
+/** What an owner sends to withdraw an invitation. */
+export function revokeInvite(db: Db, d: string, code: string, uid: string): Promise<void> {
+  return updateDoc(doc(db, invitePath(d, code)), {
+    status: 'revoked',
+    revokedBy: uid,
+    revokedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export const helperPath = (d: string, slot: string) => `distributors/${d}/helpers/${slot}`;
+
+/** A helper (PLAN 3.2) as the owner's client writes it. */
+export function helperDoc(change: Record<string, unknown> = {}) {
+  return {
+    name: 'P. Ayudante',
+    active: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...change,
+  };
+}
+
 export function privateDoc(ownerUid: string, change: Record<string, unknown> = {}) {
   return {
     ownerUid,
@@ -438,6 +541,40 @@ export async function reviewedMarks(
     };
   });
   return marks;
+}
+
+export const reviewPath = (d: string) => `distributors/${d}/private/review`;
+
+/**
+ * What a platform admin writes to leave a note for the owner (PLAN 3.2): the mark in the control
+ * document — which also clears the mark of a correction, as a new note is a new question — and
+ * the text in private/review, stamped with the same server time. `control` adds to, or replaces,
+ * what the control document receives.
+ */
+export function noteWrites(note: unknown, control: Record<string, unknown> = {}) {
+  return {
+    control: {
+      reviewNoteAt: serverTimestamp(),
+      correctedAt: deleteField(),
+      updatedAt: serverTimestamp(),
+      ...control,
+    },
+    review: { note, writtenAt: serverTimestamp() },
+  };
+}
+
+/** Leaves a note as `db` (a platform admin, when it is meant to pass), in one batch. */
+export function leaveNote(
+  db: Db,
+  d: string,
+  note: unknown,
+  control: Record<string, unknown> = {},
+): Promise<void> {
+  const writes = noteWrites(note, control);
+  const batch = writeBatch(db);
+  batch.update(doc(db, `distributors/${d}/private/control`), writes.control);
+  batch.set(doc(db, reviewPath(d)), writes.review);
+  return batch.commit();
 }
 
 /**

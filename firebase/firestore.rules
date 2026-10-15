@@ -45,7 +45,8 @@ rules_version = '2';
 //                                  trial date, no account id. While `acceptingOrders` is false
 //                                  (not approved yet, suspended, trial over) only its staff and
 //                                  platform admins read it. {d} is a Firestore automatic id.
-//   name: string 2..60 with at least one letter or digit · slug (immutable)
+//   name: visible text 2..60 (isVisibleText: a letter or digit, nothing invisible) · slug
+//   (immutable)
 //   contactPhone, whatsapp: '9' + 8 digits · addressLine: string 0..160
 //   plant: { lat, lng } · coverageRadiusKm: number 1..50 · brandColor: '#rrggbb' lowercase
 //   acceptingOrders: bool — derived: whoever writes it must write exactly "the control document
@@ -57,7 +58,7 @@ rules_version = '2';
 //     review: that edit must leave acceptingOrders false and the control document with
 //     listingApproved false. Staff may only write the flag when its value really changes.
 //   schedule: { days: list 1..7 of 0..6 without repeats, opensAt: 'HH:MM', closesAt: 'HH:MM' }
-//   maxCylindersPerOrder: int 1..20 · brands: list ≤ 8 of string 1..30
+//   maxCylindersPerOrder: int 1..20 · brands: list ≤ 8 of visible text 1..30
 //   priceFromCents: null | int 1..99900 · currency: 'PEN' · createdAt (immutable), updatedAt
 //
 // /distributors/{d}/private/control    staff of {d} and platform admins only; read by the rules
@@ -72,8 +73,12 @@ rules_version = '2';
 //     review screen was opened cannot be approved from it (every write of those two documents
 //     moves its updatedAt to request.time). Written with the approval and removed with it;
 //     optional only in documents approved before the fields existed.
-//   reviewNote: optional string 1..300, only while listingApproved is false; platform admin only
-//   correctedAt: optional timestamp, only next to a reviewNote — "the owner answered the note".
+//   reviewNoteAt: optional timestamp, only while listingApproved is false; platform admin only —
+//     "a platform admin left a note", written = request.time together with its text in
+//     private/review. The text is not here: every member of the staff reads this document, and
+//     the note is for the founder (PLAN 3.2). A document older than that may still carry the
+//     text as `reviewNote`: it can no longer be written, only removed by a platform admin.
+//   correctedAt: optional timestamp, only next to a reviewNoteAt — "the owner answered the note".
 //     Only an owner writes it, always = request.time and only in a request that also changes
 //     the content of the public profile or of the private settings (a write that only moves
 //     updatedAt or the public flag corrects nothing). A platform admin can only remove it, and
@@ -95,19 +100,43 @@ rules_version = '2';
 //   terms: { version, acceptedAt } and authorityDeclaredAt: both = request.time at founding,
 //     immutable (the founder accepted the terms and declared it may represent the business)
 //
+// /distributors/{d}/private/review    the founder and platform admins only (PLAN 3.2)
+//   note: string 1..300 — what a platform admin asks the owner to correct
+//   writtenAt: timestamp = request.time, equal to the control's reviewNoteAt of that request
+//
 // /distributors/{d}/members/{uid}
 //   uid (= document id) · distributorId (= d) · role: owner | dispatcher | driver
 //   active: bool · displayName: string 1..80
 //   distributorName: string 2..60 — copy of the public name, so the selector of distributors
 //     needs no extra read; it can only ever be written equal to the public name
+//   inviteId: optional — the code of the invitation it joined with (immutable; never on the
+//     founder's own member). There are two ways in and no other: the founding batch, or an invitation used in
+//     the same request.
 //   createdAt (immutable), updatedAt
+//
+// /distributors/{d}/invites/{code}  invitations of staff (PLAN 3.2). {code} is the secret of the
+//                                   link: 20 letters and digits, the shape of an automatic id.
+//                                   Anyone signed in with Google who knows it may `get` it;
+//                                   only an owner lists them; nobody else can find one.
+//   role: owner | dispatcher | driver · email: null | lowercase address it is tied to (required
+//   to invite an owner) · distributorName: the public name — written equal to it, and rewritten
+//     by an owner only to a new public name while the invitation waits
+//   status: pending | accepted | revoked — pending → accepted (by whoever holds it, once, in the
+//     request that creates its member) or pending → revoked (an owner); nothing else
+//   createdBy: uid of the owner · createdAt, updatedAt — usable for 7 days after createdAt
+//   acceptedBy, acceptedAt: only once accepted · revokedBy, revokedAt: only once revoked
+//
+// /distributors/{d}/helpers/{h}    people who go with a truck and never sign in (PLAN 3.2). {h} is
+//                                  a slot, h00 … h29 (caps them at 30); never deleted.
+//   name: visible text 1..60 · active: bool · createdAt (immutable), updatedAt
 //
 // /distributors/{d}/products/{p}   the catalogue (PLAN 3.1). {p} is a slot, p00 … p29: the only
 //                                  way rules can cap it (30 products). Never deleted: a product
 //                                  leaves the sale with active = false. Anyone reads the products
 //                                  on sale while the distributor takes orders; its staff reads
 //                                  them all; only an owner writes, while it is writable.
-//   brand: string 1..30 · brandColor: null | '#rrggbb' lowercase · name: string 2..60
+//   brand: visible text 1..30 · brandColor: null | '#rrggbb' lowercase · name: visible text
+//   2..60
 //   weightKg: int 1..100 (immutable: another weight is another product)
 //   refillPriceCents: int 1..99900 — what a refill costs (the customer hands an empty cylinder)
 //   fullPriceCents: null (the cylinder is not sold with its container) | int above
@@ -178,6 +207,10 @@ service cloud.firestore {
       return /databases/$(database)/documents/distributors/$(d)/private/settings;
     }
 
+    function reviewPath(d) {
+      return /databases/$(database)/documents/distributors/$(d)/private/review;
+    }
+
     // Same condition as isWritable() in src/domain/tenancy/status.ts, over the control document.
     function isWritableData(control) {
       return control.status == 'active'
@@ -230,11 +263,22 @@ service cloud.firestore {
         && !value.matches('(?s)^[\\s\\x0b\\pZ\\x{feff}].*|.*[\\s\\x0b\\pZ\\x{feff}]$');
     }
 
-    // The public name of a distributor carries at least one letter or digit: punctuation, emoji
-    // or invisible characters alone are not a name (same check as checkName in
+    // Text a person reads: trimmed like isText(), with no control or format character anywhere
+    // (U+0000, U+0007, U+200B, U+202E…) and at least one letter or digit, so punctuation, emoji
+    // or invisible characters alone are not a name. One pattern, because RE2 has no look-ahead:
+    // an optional run that starts with a visible character, a letter or digit, and an optional
+    // run that ends with a visible one. Same check as isVisibleText in
+    // src/domain/tenancy/field-checks.ts. It runs for every brand of the public profile, whose
+    // update rule is close to the limit of expressions (PLAN §9): it costs no more than isText.
+    function isVisibleText(value, min, max) {
+      return value is string && value.size() >= min && value.size() <= max
+        && value.matches('^(?:[^\\pZ\\p{Cc}\\p{Cf}][^\\p{Cc}\\p{Cf}]*)?[\\pL\\pN](?:[^\\p{Cc}\\p{Cf}]*[^\\pZ\\p{Cc}\\p{Cf}])?$');
+    }
+
+    // The public name of a distributor (same check as checkName in
     // src/domain/tenancy/distributor-input.ts).
     function isBusinessName(value) {
-      return isText(value, 2, 60) && value.matches('(?s).*[\\pL\\pN].*');
+      return isVisibleText(value, 2, 60);
     }
 
     function isPhone(value) {
@@ -353,7 +397,7 @@ service cloud.firestore {
 
     // Rules cannot loop: the list is capped at 8 and each position is checked by hand.
     function isBrandAt(brands, index) {
-      return brands.size() <= index || isText(brands[index], 1, 30);
+      return brands.size() <= index || isVisibleText(brands[index], 1, 30);
     }
 
     function isBrandList(brands) {
@@ -421,7 +465,7 @@ service cloud.firestore {
         ])
         && data.keys().hasOnly([
           'ownerUid', 'status', 'trialEndsAt', 'listingApproved', 'approvedAt', 'approvedBy',
-          'reviewedProfileAt', 'reviewedSettingsAt', 'reviewNote', 'correctedAt',
+          'reviewedProfileAt', 'reviewedSettingsAt', 'reviewNoteAt', 'correctedAt',
           'distributorName', 'slug', 'createdAt', 'updatedAt'
         ])
         && data.ownerUid is string
@@ -437,7 +481,7 @@ service cloud.firestore {
     function isApprovedShape(data) {
       return data.approvedAt is timestamp
         && data.approvedBy is string
-        && !('reviewNote' in data)
+        && !('reviewNoteAt' in data)
         && !('correctedAt' in data);
     }
 
@@ -448,8 +492,8 @@ service cloud.firestore {
         && !('approvedBy' in data)
         && !('reviewedProfileAt' in data)
         && !('reviewedSettingsAt' in data)
-        && (!('reviewNote' in data) || isText(data.reviewNote, 1, 300))
-        && (!('correctedAt' in data) || ('reviewNote' in data && data.correctedAt is timestamp));
+        && (!('reviewNoteAt' in data) || data.reviewNoteAt is timestamp)
+        && (!('correctedAt' in data) || ('reviewNoteAt' in data && data.correctedAt is timestamp));
     }
 
     function isValidPrivateSettings(data) {
@@ -483,11 +527,11 @@ service cloud.firestore {
           'brand', 'brandColor', 'weightKg', 'name', 'refillPriceCents', 'fullPriceCents',
           'currency', 'active', 'sortOrder', 'createdAt', 'updatedAt'
         ])
-        && isText(data.brand, 1, 30)
+        && isVisibleText(data.brand, 1, 30)
         && (data.brandColor == null
           || (data.brandColor is string && data.brandColor.matches('^#[0-9a-f]{6}$')))
         && data.weightKg is int && data.weightKg >= 1 && data.weightKg <= 100
-        && isText(data.name, 2, 60)
+        && isVisibleText(data.name, 2, 60)
         && isPriceCents(data.refillPriceCents)
         && (data.fullPriceCents == null
           || (isPriceCents(data.fullPriceCents) && data.fullPriceCents > data.refillPriceCents))
@@ -499,8 +543,12 @@ service cloud.firestore {
     }
 
     function isValidMember(data, d, memberUid) {
-      return hasExactly(data, [
+      return data.keys().hasAll([
           'uid', 'distributorId', 'role', 'active', 'displayName', 'distributorName',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid', 'distributorId', 'role', 'active', 'displayName', 'distributorName', 'inviteId',
           'createdAt', 'updatedAt'
         ])
         && data.uid == memberUid
@@ -509,6 +557,40 @@ service cloud.firestore {
         && data.active is bool
         && isText(data.displayName, 1, 80)
         && isText(data.distributorName, 2, 60)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // The shape of a code the SDK generates (same as isInviteCode in src/domain/staff/invite.ts):
+    // the secret of the link, so never a short or chosen-looking one.
+    function isInviteCode(value) {
+      return value is string && value.matches('^[A-Za-z0-9]{20}$');
+    }
+
+    // Same pattern as EMAIL_PATTERN in src/domain/staff/invite-input.ts, in lowercase: the token
+    // of the session is compared in lowercase too.
+    function isInviteEmail(value) {
+      return value is string && value.size() <= 254
+        && value.matches('^[^@\\s]+@[^@\\s]+[.][^@\\s]+$')
+        && value == value.lower();
+    }
+
+    // An invitation as its owner creates it: waiting, with nothing about its use yet.
+    function isNewInvite(data) {
+      return hasExactly(data, [
+          'role', 'email', 'distributorName', 'status', 'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && data.role in ['owner', 'dispatcher', 'driver']
+        && (data.email == null || isInviteEmail(data.email))
+        && data.status == 'pending'
+        && data.createdBy == request.auth.uid;
+    }
+
+    // Same check as prepareHelperName in src/domain/staff/helper.ts.
+    function isValidHelper(data) {
+      return hasExactly(data, ['name', 'active', 'createdAt', 'updatedAt'])
+        && isVisibleText(data.name, 1, 60)
+        && data.active is bool
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
@@ -754,7 +836,7 @@ service cloud.firestore {
           && request.resource.data.ownerUid == request.auth.uid
           && request.resource.data.status == 'trial'
           && request.resource.data.listingApproved == false
-          && !('reviewNote' in request.resource.data)
+          && !('reviewNoteAt' in request.resource.data)
           && request.resource.data.trialEndsAt > request.time + duration.value(29, 'd')
           && request.resource.data.trialEndsAt <= request.time + duration.value(721, 'h')
           && stampedNow(request.resource.data)
@@ -792,8 +874,8 @@ service cloud.firestore {
         // public name and link can only be written as they stand in the public profile.
         // Reads added by rules: 2 for a platform admin (exists platformAdmins, getAfter
         // distributor) and 4 when it approves (get distributor, get settings: the versions it
-        // says it reviewed), 3 for an owner (exists platformAdmins, get member, getAfter
-        // distributor); marking a correction adds the stored public profile (get distributor: 4)
+        // says it reviewed) or 3 when it leaves a note (getAfter review), 3 for an owner (exists
+        // platformAdmins, get member, getAfter distributor); marking a correction adds the stored public profile (get distributor: 4)
         // and, when the correction is not there, the private settings before and after (get and
         // getAfter settings: 6).
         allow update: if isValidControl(request.resource.data)
@@ -803,11 +885,12 @@ service cloud.firestore {
               isPlatformAdmin()
               && onlyChanges([
                 'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewedProfileAt',
-                'reviewedSettingsAt', 'reviewNote', 'correctedAt', 'distributorName', 'slug',
-                'updatedAt'
+                'reviewedSettingsAt', 'reviewNoteAt', 'reviewNote', 'correctedAt',
+                'distributorName', 'slug', 'updatedAt'
               ])
               && approvalIsSigned()
               && leavesCorrectionMarkAlone()
+              && writesNoteWithItsText()
             )
             || (
               onlyChanges([
@@ -827,7 +910,20 @@ service cloud.firestore {
         // it answers changed: a new note is a new question.
         function leavesCorrectionMarkAlone() {
           return !('correctedAt' in request.resource.data)
-            || unchanged(['correctedAt', 'reviewNote']);
+            || unchanged(['correctedAt', 'reviewNoteAt']);
+        }
+
+        // A new note is stamped now and its text lands in private/review in the same request,
+        // where only the founder reads it (PLAN 3.2). `reviewNote` in the list of changes above
+        // only lets an admin remove the text a document older than that kept here: the shape
+        // refuses it as a field.
+        function writesNoteWithItsText() {
+          return unchanged(['reviewNoteAt'])
+            || !('reviewNoteAt' in request.resource.data)
+            || (
+              request.resource.data.reviewNoteAt == request.time
+              && getAfter(reviewPath(d)).data.writtenAt == request.time
+            );
         }
 
         // "Corrected now", and only together with a correction of what the platform reviews: the
@@ -919,6 +1015,31 @@ service cloud.firestore {
         }
       }
 
+      // ------------------------------------------------------------------ private/review ----
+      // The text of the note a platform admin leaves for the owner when it sends a listing back
+      // (PLAN 3.2). Apart from the control document, which the whole staff reads: the note may
+      // speak of the RUC or the record of the founder, so only the founder and platform admins
+      // read it. The control document keeps the mark (`reviewNoteAt`) for everyone else.
+      match /private/review {
+        // Reads added by rules: 1 for the founder (get control), 2 for a platform admin (get
+        // control, exists platformAdmins).
+        allow get: if signedInWithGoogle()
+          && (get(controlPath(d)).data.ownerUid == request.auth.uid || isPlatformAdmin());
+
+        // Written together with its mark, stamped with the same server time.
+        // Reads added by rules: 2 (exists platformAdmins, getAfter control).
+        allow create, update: if isPlatformAdmin()
+          && hasExactly(request.resource.data, ['note', 'writtenAt'])
+          && isText(request.resource.data.note, 1, 300)
+          && request.resource.data.writtenAt == request.time
+          && getAfter(controlPath(d)).data.get('reviewNoteAt', null) == request.time;
+
+        // Removed in the request that removes its mark (an approval, a decision without a note).
+        // Reads added by rules: 2 (exists platformAdmins, getAfter control).
+        allow delete: if isPlatformAdmin()
+          && !('reviewNoteAt' in getAfter(controlPath(d)).data);
+      }
+
       // ------------------------------------------------------------------------- members ----
       match /members/{memberUid} {
         // Reads added by rules: 0 for the own document, 1 otherwise.
@@ -927,21 +1048,31 @@ service cloud.firestore {
         // Reads added by rules: 1.
         allow list: if request.query.limit <= 100 && hasRole(d, ['owner', 'dispatcher']);
 
-        // One way in, and no other: the founder's own member, as owner, inside the founding
-        // batch. Nobody creates a member document for itself or for anyone else outside it.
-        // Invitations (phase 3) will add the second, equally explicit, way: the invited account
-        // creates its own member with exactly the role of a valid invitation.
-        // Reads added by rules: 2 (getAfter distributor, getAfter control).
+        // Two ways in, and no other. The founder's own member, as owner, inside the founding
+        // batch; or an account that uses an invitation (PLAN 3.2): it creates its own member
+        // with exactly the role of a usable invitation of this distributor and, in the same
+        // request, marks that invitation used by itself, so it works once. Nobody creates a
+        // member document for anyone else.
+        // Reads added by rules: 2 for the founder (getAfter distributor, getAfter control); 5
+        // through an invitation (getAfter distributor, get and getAfter invitation, get control,
+        // get profile).
         allow create: if isSelf(memberUid)
           && isValidMember(request.resource.data, d, memberUid)
           && stampedNow(request.resource.data)
-          && request.resource.data.role == 'owner'
           && request.resource.data.active == true
           && carriesPublicName()
-          && foundedNow(d);
+          && (
+            (
+              request.resource.data.role == 'owner'
+              && !('inviteId' in request.resource.data)
+              && foundedNow(d)
+            )
+            || joinsByInvitation()
+          );
 
         // An owner changes others, never itself, and never the founder: the acting owner and
-        // the founder always stay, so a distributor cannot be left without an owner.
+        // the founder always stay, so a distributor cannot be left without an owner. Only the
+        // founder makes, unmakes or switches off another owner (PLAN 3.2).
         // Reads added by rules: 2 (get member, get control).
         //
         // Second kind of update: refreshing the copy of the distributor's name. Any member may
@@ -956,7 +1087,7 @@ service cloud.firestore {
               memberUid != request.auth.uid
               && onlyChanges(['role', 'active', 'displayName', 'updatedAt'])
               && hasRole(d, ['owner'])
-              && writableAndNotFounder(memberUid)
+              && managesMember(memberUid)
             )
             || (
               onlyChanges(['distributorName', 'updatedAt'])
@@ -967,9 +1098,39 @@ service cloud.firestore {
 
         // No delete: staff is deactivated (`active: false`), so history keeps its author.
 
-        function writableAndNotFounder(uid) {
+        // Same conditions as memberChangeRefusal in src/domain/staff/member-management.ts.
+        function managesMember(uid) {
           let control = get(controlPath(d)).data;
-          return isWritableData(control) && control.ownerUid != uid;
+          return isWritableData(control)
+            && control.ownerUid != uid
+            && (
+              control.ownerUid == request.auth.uid
+              || (resource.data.role != 'owner' && request.resource.data.role != 'owner')
+            );
+        }
+
+        // The account's own profile must exist (nothing is stored for an account without the
+        // accepted terms and privacy policy), and the staff sees the name it chose there.
+        function joinsByInvitation() {
+          let code = request.resource.data.inviteId;
+          let invite = /databases/$(database)/documents/distributors/$(d)/invites/$(code);
+          return isInviteCode(code)
+            && usesInvitation(get(invite).data, getAfter(invite).data)
+            && writable(d)
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName
+              == request.resource.data.displayName;
+        }
+
+        // The invitation was waiting and within its seven days (INVITE_TTL_DAYS), it is for this
+        // role and, when it names an address, for this account; once the request is applied it
+        // is used, by the caller.
+        function usesInvitation(before, after) {
+          return before.status == 'pending'
+            && before.createdAt + duration.value(7, 'd') > request.time
+            && before.role == request.resource.data.role
+            && (before.email == null || before.email == request.auth.token.email.lower())
+            && after.status == 'accepted'
+            && after.acceptedBy == request.auth.uid;
         }
 
         function carriesPublicName() {
@@ -1018,8 +1179,103 @@ service cloud.firestore {
         }
       }
 
-      // invites, helpers, vehicles, plantStock, customers, orders, shifts: closed until their
-      // phase opens them.
+      // ------------------------------------------------------------------------- invites ----
+      // Invitations of staff (PLAN 3.2). Without a server there is no e-mail to send: an owner
+      // shares a link that carries the code, and the code is the only secret. Nobody but an
+      // owner can list them, and the code has the 119 bits of an automatic id, so an invitation
+      // cannot be found or guessed; whoever has the link reads it (to see where and as what it
+      // is invited) and may use it once, within its days.
+      match /invites/{code} {
+        // Reads added by rules: 0.
+        allow get: if signedInWithGoogle() && isInviteCode(code);
+
+        // The owner's list, to share a link again or revoke it. Reads added by rules: 1.
+        allow list: if request.query.limit <= 50 && hasRole(d, ['owner']);
+
+        // Any owner invites a dispatcher or a driver; only the founder invites an owner, and
+        // only tied to the address of that Google account: an owner can do almost everything
+        // the founder can, so a forwarded link must not be enough. Only while writable.
+        // Reads added by rules: 3 (get member, get distributor, get control).
+        allow create: if isInviteCode(code)
+          && isNewInvite(request.resource.data)
+          && stampedNow(request.resource.data)
+          && hasRole(d, ['owner'])
+          && request.resource.data.distributorName == get(distributorPath(d)).data.name
+          && mayInvite(get(controlPath(d)).data);
+
+        // Used: by whoever holds it, only in the request that creates its own member, whose
+        // rule checks that it is still usable and for this account. Revoked: by an owner while
+        // it waits, also when the distributor is read-only (it only takes access away). Its copy
+        // of the name follows a new public name: an owner rewrites it, only to that name, in the
+        // batch that renames the distributor (whoever joins writes it into its member, whose
+        // rule wants the public name).
+        // Reads added by rules: 1 to use it (getAfter member), 1 to revoke it (get member), 2 to
+        // refresh the name (get member, getAfter distributor).
+        allow update: if resource.data.status == 'pending'
+          && request.resource.data.updatedAt == request.time
+          && (
+            (
+              onlyChanges(['status', 'acceptedBy', 'acceptedAt', 'updatedAt'])
+              && request.resource.data.status == 'accepted'
+              && request.resource.data.acceptedBy == request.auth.uid
+              && request.resource.data.acceptedAt == request.time
+              && signedInWithGoogle()
+              && getAfter(/databases/$(database)/documents/distributors/$(d)/members/$(request.auth.uid)).data.inviteId == code
+            )
+            || (
+              onlyChanges(['status', 'revokedBy', 'revokedAt', 'updatedAt'])
+              && request.resource.data.status == 'revoked'
+              && request.resource.data.revokedBy == request.auth.uid
+              && request.resource.data.revokedAt == request.time
+              && hasRole(d, ['owner'])
+            )
+            || (
+              onlyChanges(['distributorName', 'updatedAt'])
+              && request.resource.data.distributorName == getAfter(distributorPath(d)).data.name
+              && hasRole(d, ['owner'])
+            )
+          );
+
+        // No delete: a used invitation says how its member joined.
+
+        function mayInvite(control) {
+          return isWritableData(control)
+            && (
+              request.resource.data.role != 'owner'
+              || (control.ownerUid == request.auth.uid && request.resource.data.email != null)
+            );
+        }
+      }
+
+      // ------------------------------------------------------------------------- helpers ----
+      // Helpers (ayudantes, PLAN 3.2): they go with a truck, never sign in and receive no orders.
+      // The staff reads them (the driver picks one when it opens a shift, phase 5); only an owner
+      // writes them, while the distributor is writable.
+      match /helpers/{helperId} {
+        // Reads added by rules: 1 (get member).
+        allow get: if isStaff(d);
+        allow list: if request.query.limit <= 30 && isStaff(d);
+
+        // Fixed slots, h00 … h29: the only way the rules can cap them. A taken slot makes this
+        // an update, which keeps the creation date. Reads added by rules: 2 (get member, get
+        // control).
+        allow create: if helperId.matches('^h[0-2][0-9]$')
+          && isValidHelper(request.resource.data)
+          && stampedNow(request.resource.data)
+          && hasRole(d, ['owner'])
+          && writable(d);
+
+        // Reads added by rules: 2 (get member, get control).
+        allow update: if isValidHelper(request.resource.data)
+          && unchanged(['createdAt'])
+          && request.resource.data.updatedAt == request.time
+          && hasRole(d, ['owner'])
+          && writable(d);
+
+        // No delete: a shift (phase 5) names its helper by the slot.
+      }
+
+      // vehicles, plantStock, customers, orders, shifts: closed until their phase opens them.
     }
 
     // "My memberships" (selector of distributors): a collection-group query that must filter
