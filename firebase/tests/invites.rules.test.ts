@@ -441,6 +441,33 @@ describe('invitations — using one', () => {
     await assertFails(joinWith(db, { d: A, code: INVITE_CODE, uid: 'someone-else' }));
   });
 
+  it('compares the address of the session in lowercase, as Google may write it otherwise', async () => {
+    await seedInvite(env, A, OTHER_INVITE_CODE, { email: 'c.persona@example.com' });
+    const db = env
+      .authenticatedContext(NEWBIE, {
+        email: 'C.Persona@Example.com',
+        email_verified: true,
+        firebase: { sign_in_provider: 'google.com', identities: {} },
+      } as never)
+      .firestore();
+
+    await assertSucceeds(joinWith(db, { d: A, code: OTHER_INVITE_CODE, uid: NEWBIE }));
+  });
+
+  it('blocks joining through a document whose id is not a code', async () => {
+    await seedDoc(env, invitePath(A, 'token-1'), inviteDoc({ createdAt: Timestamp.now() }));
+    const db = verified(env, NEWBIE);
+
+    await assertFails(joinWith(db, { d: A, code: 'token-1', uid: NEWBIE }));
+  });
+
+  it('blocks using it without a fresh date on the invitation', async () => {
+    const db = verified(env, NEWBIE);
+    const invite = { updatedAt: Timestamp.fromMillis(Date.now() - DAY_MS) };
+
+    await assertFails(joinWith(db, { d: A, code: INVITE_CODE, uid: NEWBIE, invite }));
+  });
+
   it('blocks an account without a profile: nothing is stored before the terms', async () => {
     const db = verified(env, 'no-profile');
     await assertFails(joinWith(db, { d: A, code: INVITE_CODE, uid: 'no-profile' }));
@@ -537,6 +564,35 @@ describe('invitations — revoking one', () => {
     await assertFails(
       updateDoc(inviteOf(ownerA(), A), { ...change, updatedAt: serverTimestamp() }),
     );
+  });
+
+  it.each([
+    ['its role', { role: 'dispatcher' }],
+    ['its creation date, to give it new days', { createdAt: serverTimestamp() }],
+  ])('blocks the owner from changing %s while revoking it', async (_case, change) => {
+    const revoke = {
+      status: 'revoked',
+      revokedBy: 'owner-a',
+      revokedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+    await assertFails(updateDoc(inviteOf(ownerA(), A), { ...revoke, ...change }));
+  });
+
+  it.each(['accepted', 'pending'])(
+    'blocks the owner from leaving it %s through a revocation',
+    async (status) => {
+      const signed = { revokedBy: 'owner-a', revokedAt: serverTimestamp() };
+      await assertFails(
+        updateDoc(inviteOf(ownerA(), A), { status, ...signed, updatedAt: serverTimestamp() }),
+      );
+    },
+  );
+
+  it('blocks revoking without a fresh date', async () => {
+    const stale = Timestamp.fromMillis(Date.now() - DAY_MS);
+    const revoke = { status: 'revoked', revokedBy: 'owner-a', revokedAt: serverTimestamp() };
+    await assertFails(updateDoc(inviteOf(ownerA(), A), { ...revoke, updatedAt: stale }));
   });
 
   it('blocks deleting an invitation, also for its owner', async () => {

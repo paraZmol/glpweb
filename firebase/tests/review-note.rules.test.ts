@@ -33,6 +33,7 @@ import {
   type Db,
   leaveNote,
   memberDoc,
+  reviewedMarks,
   reviewPath,
   seedDoc,
   seedWorld,
@@ -177,5 +178,48 @@ describe('the note — who writes it', () => {
     await assertFails(setDoc(reviewOf(db), { note: 'Ya está.', writtenAt: serverTimestamp() }));
     await assertFails(updateDoc(reviewOf(db), { note: 'Ya está.' }));
     await assertFails(deleteDoc(reviewOf(db)));
+  });
+});
+
+describe('the note — when nothing waits any more', () => {
+  // A text left behind once its mark is gone (an older client, a decision without a note).
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (context) => {
+      await updateDoc(doc(context.firestore(), `distributors/${PENDING}/private/control`), {
+        reviewNoteAt: deleteField(),
+      });
+    });
+  });
+
+  it('lets only a platform admin delete a text left behind', async () => {
+    for (const uid of ['owner-pending', 'co-owner', 'driver-pending', 'owner-a', CUSTOMER_UID]) {
+      await assertFails(deleteDoc(reviewOf(verified(env, uid))));
+    }
+    await assertSucceeds(deleteDoc(reviewOf(admin())));
+  });
+});
+
+describe('the note — an approval takes it away', () => {
+  async function approve(control: Record<string, unknown>) {
+    const db = admin();
+    const batch = writeBatch(db);
+    batch.update(controlOf(db), {
+      listingApproved: true,
+      approvedAt: serverTimestamp(),
+      approvedBy: ADMIN_UID,
+      ...(await reviewedMarks(env, PENDING)),
+      ...control,
+      ...stamp,
+    });
+    batch.update(doc(db, `distributors/${PENDING}`), { acceptingOrders: true, ...stamp });
+    return batch.commit();
+  }
+
+  it('blocks an approval that keeps the mark of the note', async () => {
+    await assertFails(approve({}));
+  });
+
+  it('accepts the same approval once it removes the mark', async () => {
+    await assertSucceeds(approve({ reviewNoteAt: deleteField() }));
   });
 });
