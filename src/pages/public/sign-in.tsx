@@ -9,7 +9,7 @@ import { AuthFrame } from '@/components/layout/auth-frame';
 import { SIGN_IN_REQUIRED } from '@/components/layout/require-access';
 import { useSession } from '@/features/auth/use-session';
 import { usePageTitle } from '@/lib/page-title';
-import { RETURN_PARAM, ROUTES, safeReturnPath } from '@/lib/routes';
+import { RETURN_PARAM, ROUTES, safeReturnPath, withFragment } from '@/lib/routes';
 import { useOnlineStatus } from '@/lib/use-online-status';
 
 const OFFLINE_TEXT = 'Sin conexión: para ingresar necesitas internet.';
@@ -55,7 +55,9 @@ function EntryPage({ mode }: { mode: EntryMode }) {
   const [searchParams] = useSearchParams();
   const [error, setError] = useState<string>();
   const target = safeReturnPath(searchParams.get(RETURN_PARAM));
-  const after = target ?? ROUTES.appEntry;
+  // The fragment of the address goes on with the destination (an invitation link, PLAN 3.2).
+  const after = target ? withFragment(target, location.hash) : ROUTES.appEntry;
+  const isInvited = target?.split(/[?#]/)[0] === ROUTES.join;
 
   if (session.status === 'signedIn') return <Navigate to={after} replace />;
 
@@ -70,7 +72,9 @@ function EntryPage({ mode }: { mode: EntryMode }) {
     >
       {cameFromGuard(location.state) && (
         <InlineAlert tone="info" className="mb-6">
-          Ingresa para continuar.
+          {isInvited
+            ? 'Ingresa con tu cuenta de Google para ver tu invitación.'
+            : 'Ingresa para continuar.'}
         </InlineAlert>
       )}
       <div className="flex flex-col gap-5">

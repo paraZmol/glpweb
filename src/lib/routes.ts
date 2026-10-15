@@ -27,6 +27,10 @@ export const ROUTES = {
   officeProfile: '/central/ficha',
   /** Products and prices: the owner edits them, the dispatcher reads them (PLAN 3.1). */
   officeCatalog: '/central/catalogo',
+  /** The staff, the invitations and the helpers: owners only (PLAN 3.2). */
+  officeStaff: '/central/personal',
+  /** Receives an invitation link; the invitation travels in the fragment (`#d=…&c=…`). */
+  join: '/unirme',
   platformHome: '/plataforma',
   /** One listing under review; build a real path with `platformListingPath`. */
   platformListing: '/plataforma/altas/:distributorId',
@@ -102,6 +106,16 @@ export function signInPathFrom(from: string): string {
   return `${ROUTES.signIn}?${RETURN_PARAM}=${encodeURIComponent(target)}`;
 }
 
+/**
+ * `path` with the fragment of the address it came from (`#…`). The fragment rides beside
+ * `desde`, never inside it: a query string reaches the server on a reload, a fragment never
+ * does — and the code of an invitation travels in one (PLAN 3.2).
+ */
+export function withFragment(path: string, hash: string): string {
+  if (hash === '' || hash === '#') return path;
+  return `${path}${hash.startsWith('#') ? hash : `#${hash}`}`;
+}
+
 /** Path of the "crear cuenta" screen that remembers where the visitor was going (PLAN 2.11). */
 export function registerPathFrom(from: string | null | undefined): string {
   const target = safeReturnPath(from);
@@ -138,7 +152,11 @@ export type TransitionDirection = 'forward' | 'back' | 'fade';
 const FINDER_SCREENS: readonly string[] = [ROUTES.home, ROUTES.customerHome];
 
 /** Destinations of the navigation bar under an area home: siblings of it, not its details. */
-const TAB_SCREENS: readonly string[] = [ROUTES.officeCatalog, ROUTES.driverCatalog];
+const TAB_SCREENS: readonly string[] = [
+  ROUTES.officeCatalog,
+  ROUTES.officeStaff,
+  ROUTES.driverCatalog,
+];
 
 function isDetailOf(child: string, parent: string): boolean {
   if (TAB_SCREENS.includes(child)) return false;

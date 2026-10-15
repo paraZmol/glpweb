@@ -12,6 +12,7 @@ import {
   screenKeyOf,
   signInPathFrom,
   transitionDirection,
+  withFragment,
 } from './routes';
 
 describe('routes', () => {
@@ -159,5 +160,32 @@ describe('paths of the screens of PLAN 2.11', () => {
     expect(platformListingPath('abc123')).toBe('/plataforma/altas/abc123');
     expect(transitionDirection(ROUTES.platformHome, platformListingPath('abc123'))).toBe('forward');
     expect(transitionDirection(ROUTES.officeProfile, ROUTES.officeHome)).toBe('back');
+  });
+});
+
+// PLAN 3.2: the code of an invitation travels in the fragment and must survive the sign-in and
+// the terms step without ever going into a query string (which reaches the server).
+describe('fragment carried through the sign-in', () => {
+  const FRAGMENT = '#d=seed-dist-a&c=SeedInviteA000000001';
+
+  it('puts the fragment after the whole address, never inside `desde`', () => {
+    const path = withFragment(signInPathFrom(ROUTES.join), FRAGMENT);
+
+    expect(path).toBe(`/ingresar?desde=%2Funirme${FRAGMENT}`);
+    expect(new URL(path, 'https://example.com').search).not.toContain('SeedInvite');
+  });
+
+  it.each([
+    ['', '/unirme'],
+    ['#', '/unirme'],
+    ['d=x&c=y', '/unirme#d=x&c=y'],
+  ])('reads %j as the fragment of /unirme → %s', (hash, expected) => {
+    expect(withFragment(ROUTES.join, hash)).toBe(expected);
+  });
+
+  it('keeps the fragment of the destination through the terms step', () => {
+    const state = destinationState(withFragment(ROUTES.join, FRAGMENT));
+
+    expect(destinationOf(state)).toBe(`/unirme${FRAGMENT}`);
   });
 });

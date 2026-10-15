@@ -7,7 +7,14 @@ import { type AccessGate, decideAccess } from '@/domain/auth/access';
 import { accessInputFor } from '@/features/account/access-input';
 import { type AccountGateValue, useAccountGate } from '@/features/account/account-context';
 import { signOut } from '@/features/auth/auth-actions';
-import { AREA_HOME, destinationOf, destinationState, ROUTES, signInPathFrom } from '@/lib/routes';
+import {
+  AREA_HOME,
+  destinationOf,
+  destinationState,
+  ROUTES,
+  signInPathFrom,
+  withFragment,
+} from '@/lib/routes';
 import { AreaLoading } from './area-loading';
 import { UnconfirmedEmail } from './unconfirmed-email';
 
@@ -17,7 +24,7 @@ const DENIED_TOAST_ID = 'access-denied';
 export const SIGN_IN_REQUIRED = 'signInRequired';
 
 /** Leaves an area the account has no role for, saying why (never a blank page). */
-function DeniedRedirect({ to }: { to: string }) {
+export function DeniedRedirect({ to }: { to: string }) {
   useEffect(() => {
     toast.info(DENIED_NOTICE, { id: DENIED_TOAST_ID });
   }, []);
@@ -72,8 +79,16 @@ export function RequireAccess({ gate }: { gate: AccessGate }) {
     return <Navigate to={after ?? home} replace />;
   }
   if (decision.to === 'acceptTerms') {
-    // The destination rides along in the navigation state, from the screen that was asked for.
-    return <Navigate to={ROUTES.acceptTerms} replace state={destinationState(from)} />;
+    // The destination rides along in the navigation state, from the screen that was asked for,
+    // with its fragment (an invitation link keeps its code through the terms step, PLAN 3.2).
+    const after = destinationState(withFragment(from, location.hash));
+    return <Navigate to={ROUTES.acceptTerms} replace state={after} />;
   }
-  return <Navigate to={signInPathFrom(from)} replace state={{ notice: SIGN_IN_REQUIRED }} />;
+  return (
+    <Navigate
+      to={withFragment(signInPathFrom(from), location.hash)}
+      replace
+      state={{ notice: SIGN_IN_REQUIRED }}
+    />
+  );
 }
