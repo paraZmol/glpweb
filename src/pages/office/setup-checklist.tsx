@@ -1,56 +1,10 @@
-import { ArrowRight, Check } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { ArrowRight } from 'lucide-react';
 import { ButtonLink } from '@/components/common/button';
 import { Panel } from '@/components/layout/page-header';
 import type { PublicDistributor } from '@/domain/tenancy/types';
-import { GLYPH_STROKE, ICON_STROKE } from '@/lib/icons';
+import { ICON_STROKE } from '@/lib/icons';
 import { distributorPath, ROUTES } from '@/lib/routes';
-import { cn } from '@/lib/utils';
-
-const COMING_SOON = 'Llega pronto';
-
-type TaskProps = {
-  title: string;
-  detail: string;
-  isDone?: boolean;
-  /** What the owner can do about it today; a task without it is not available yet. */
-  action?: ReactNode;
-};
-
-function Task({ title, detail, isDone = false, action }: TaskProps) {
-  return (
-    // Phone: the action goes under the words, which keep the whole width of the row.
-    <li className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 py-3">
-      <span
-        aria-hidden="true"
-        className={cn(
-          'grid size-7 shrink-0 place-items-center rounded-full',
-          isDone
-            ? 'bg-state-free text-state-free-foreground'
-            : 'inset-ring-[1.5px] inset-ring-input',
-        )}
-      >
-        {isDone && <Check className="size-4" strokeWidth={GLYPH_STROKE} />}
-      </span>
-      <p className={cn('min-w-0 text-muted-foreground', action && 'max-sm:col-span-2')}>
-        <strong className="block font-heading text-base text-foreground">
-          {title}
-          {isDone && <span className="sr-only"> (hecho)</span>}
-        </strong>
-        {detail}
-      </p>
-      {action ? (
-        <div className="max-sm:col-span-2 max-sm:col-start-2">{action}</div>
-      ) : (
-        !isDone && (
-          <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[0.8125rem] font-bold text-muted-foreground">
-            {COMING_SOON}
-          </span>
-        )
-      )}
-    </li>
-  );
-}
+import { Task } from './setup-task';
 
 /**
  * PLAN 3.1: done once a product is on sale. The profile already says so without reading the
@@ -96,7 +50,7 @@ type SetupChecklistProps = {
 
 /**
  * "Completa tu distribuidora" (PLAN 2.2): what the owner has done and what comes next. The
- * catalogue is real since PLAN 3.1; the staff arrives with 3.2 and is said to be on its way.
+ * catalogue is real since PLAN 3.1 and the staff since PLAN 3.2.
  */
 export function SetupChecklist(props: SetupChecklistProps) {
   const { distributor, isListed, canEdit = true } = props;
@@ -138,7 +92,24 @@ export function SetupChecklist(props: SetupChecklistProps) {
           }
         />
         <CatalogTask hasProductsOnSale={distributor.priceFromCents !== null} canEdit={canEdit} />
-        <Task title="Suma a tu personal" detail="Central y repartidores, por invitación." />
+        <Task
+          title="Suma a tu personal"
+          detail={
+            canEdit
+              ? 'Central y repartidores, con un enlace que les envías por WhatsApp.'
+              : 'Mira quién trabaja contigo. En solo lectura no se puede invitar.'
+          }
+          action={
+            <ButtonLink
+              to={ROUTES.officeStaff}
+              variant={canEdit ? 'soft' : 'line'}
+              size="sm"
+              className="shrink-0"
+            >
+              {canEdit ? 'Invitar' : 'Ver personal'}
+            </ButtonLink>
+          }
+        />
       </ul>
     </Panel>
   );

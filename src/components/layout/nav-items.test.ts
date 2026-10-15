@@ -58,11 +58,21 @@ describe('navItemsFor', () => {
 
   // PLAN 3.1: the catalogue joins the office and the driver areas.
   it.each([
-    ['office', ['Monitor', 'Catálogo', 'Cuenta']],
+    ['office', ['Monitor', 'Catálogo', 'Personal', 'Cuenta']],
     ['driver', ['Reparto', 'Catálogo', 'Cuenta']],
     ['platform', ['Distribuidoras', 'Cuenta']],
   ] as const)('keeps the %s area to its own screens and the account', (area, expected) => {
     expect(labels(area, { role: 'owner', isPlatformAdmin: true })).toEqual(expected);
+  });
+});
+
+// PLAN 3.2: the staff is managed by its owners; the dispatcher does not get the link.
+describe('staff destination', () => {
+  it.each([
+    ['owner', true],
+    ['dispatcher', false],
+  ] as const)('a %s of the office sees "Personal": %s', (role, isShown) => {
+    expect(labels('office', { role, isPlatformAdmin: false }).includes('Personal')).toBe(isShown);
   });
 });
 

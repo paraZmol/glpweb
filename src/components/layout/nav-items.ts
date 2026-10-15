@@ -7,6 +7,7 @@ import {
   Map as MapIcon,
   Tags,
   User,
+  Users,
 } from 'lucide-react';
 import { type AppArea, areaForRole } from '@/domain/auth/access';
 import type { MemberRole } from '@/domain/tenancy/types';
@@ -29,6 +30,9 @@ const CUSTOMER: NavItem[] = [
 ];
 
 type WorkArea = Exclude<AppArea, 'customer'>;
+
+/** The staff of the distributor: only its owners manage it (PLAN 3.2). */
+const STAFF: NavItem = { to: ROUTES.officeStaff, label: 'Personal', icon: Users };
 
 /** Destinations of a work area after its home (PLAN 3.1: the catalogue, read-only for staff). */
 const MORE: Record<WorkArea, NavItem[]> = {
@@ -71,7 +75,10 @@ export function workAreasOf({ role, isPlatformAdmin }: NavAccount): WorkArea[] {
  * shortcut: who may open what is decided by the guards and, for the data, by the rules.
  */
 export function navItemsFor(area: AppArea, account: NavAccount): NavItem[] {
-  if (area !== 'customer') return [WORK[area].own, ...MORE[area], ACCOUNT];
+  if (area !== 'customer') {
+    const staff = area === 'office' && account.role === 'owner' ? [STAFF] : [];
+    return [WORK[area].own, ...MORE[area], ...staff, ACCOUNT];
+  }
   const shortcuts = workAreasOf(account).map((workArea) => WORK[workArea].shortcut);
   return [...CUSTOMER, ...shortcuts, ACCOUNT].slice(0, MAX_NAV_ITEMS);
 }
