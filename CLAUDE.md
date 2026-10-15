@@ -118,6 +118,9 @@ central, repartidor, cliente.
   prueba gratis, cobros o lo que se promete al venderles Hornilla → **business-strategist**. Su
   recomendación vive en `.private/negocio/` (no se publica); al plan pasa solo lo que el usuario
   decida.
+- **Impuestos y comprobantes**: antes del primer cobro a una distribuidora, al decidir IGV,
+  comprobantes o régimen tributario → **accountant** (prepara lo que confirma un contador
+  colegiado; su trabajo vive en `.private/contabilidad/`).
 - **Legal**: si tocó registro, datos personales o de ubicación, promociones o precios visibles,
   permisos, o una dependencia que envíe datos a terceros → **legal-compliance**. Prohibido añadir
   analítica, publicidad o cualquier rastreo sin pasar antes por el plan: `docs/legal/cookies.md`
