@@ -114,6 +114,10 @@ central, repartidor, cliente.
   Ninguna pantalla en blanco al cargar; duraciones y curvas solo por fichas.
 - **Oferta y textos de venta**: antes de diseñar productos, precios, promociones o textos que el
   cliente lee para comprar → **marketing-advisor** (deja su recomendación en `docs/marketing/`).
+- **Negocio con las distribuidoras**: antes de fijar o cambiar planes, precios del servicio,
+  prueba gratis, cobros o lo que se promete al venderles Hornilla → **business-strategist**. Su
+  recomendación vive en `.private/negocio/` (no se publica); al plan pasa solo lo que el usuario
+  decida.
 - **Legal**: si tocó registro, datos personales o de ubicación, promociones o precios visibles,
   permisos, o una dependencia que envíe datos a terceros → **legal-compliance**. Prohibido añadir
   analítica, publicidad o cualquier rastreo sin pasar antes por el plan: `docs/legal/cookies.md`
