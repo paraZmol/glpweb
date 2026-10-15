@@ -91,7 +91,8 @@ Estados (`ShiftStatus`): `requested → approved ⇄ paused → closed`, o `requ
   promoción, no un precio de lista. La recarga siempre se vende.
 - Hasta 30 productos, en casillas fijas `p00`…`p29`; nunca se borran (se retiran con
   `active: false`). El peso y la moneda no cambian: otro peso es otro producto.
-- Precios y catálogo los escribe **solo el titular** (la central y el reparto leen). El público
+- Precios y catálogo los escriben **el titular y la central** (PLAN §11, 2026-10-15;
+  `canEditCatalog`); el reparto lee. El público
   ve solo lo `active` y solo mientras la distribuidora atiende pedidos.
 - "Recarga desde" y las marcas del buscador se derivan del catálogo (`summarizeCatalog`): la
   recarga a la venta más barata, nunca un balón completo ni un precio que exija comprar dos.
