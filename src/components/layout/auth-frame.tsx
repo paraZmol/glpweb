@@ -7,7 +7,7 @@ import { useIsDesktop } from '@/lib/use-media-query';
 
 // Only what already works (PLAN 2.9); what is still being built is said as such, like the
 // "En construcción" stamp of the home.
-const PROMISES = ['Distribuidoras de tu zona', 'Sin instalar nada', 'Sin publicidad ni rastreo'];
+const PROMISES = ['Distribuidoras de tu zona', 'Sin instalar nada', 'Sin publicidad ni analítica'];
 const COMING_NEXT = 'Pronto: pedir y ver llegar tu gas';
 
 /** Desktop only: the kitchen photo with the burner ring and a floating card. The photo stays clean. */

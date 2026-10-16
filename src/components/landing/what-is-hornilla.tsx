@@ -6,17 +6,17 @@ const POINTS = [
   {
     icon: Tag,
     title: 'Precios a la vista',
-    text: 'Cada distribuidora publica el precio final de su balón.',
+    text: 'Cada distribuidora publica el precio total de su balón, con entrega incluida.',
   },
   {
     icon: HandCoins,
     title: 'Tú eliges',
-    text: 'La marca y la distribuidora que prefieras, sin intermediarios en el pago.',
+    text: 'La marca y la distribuidora que prefieras. Le pagas directo a ella: Hornilla no cobra tus pedidos.',
   },
   {
     icon: EyeOff,
-    title: 'Sin rastreo',
-    text: 'No usamos publicidad ni analítica que te siga.',
+    title: 'Sin publicidad ni analítica',
+    text: 'No usamos cookies de publicidad ni herramientas de analítica. Tu ubicación solo se usa para tu pedido.',
   },
 ];
 

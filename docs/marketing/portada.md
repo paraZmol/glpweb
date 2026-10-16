@@ -48,9 +48,11 @@ punto. Si conoces una, cuéntale de Hornilla.**
   marcas, precios, horario y hasta dónde reparten. Tú eliges a quién comprarle. El gas, el precio
   y la entrega son de cada distribuidora: Hornilla no vende gas ni lo reparte.**
 - Tres puntos cortos (icono + texto):
-  - **Precios a la vista** — Cada distribuidora publica el precio final de su balón.
-  - **Tú eliges** — La marca y la distribuidora que prefieras, sin intermediarios en el pago.
-  - **Sin rastreo** — No usamos publicidad ni analítica que te siga.
+  - **Precios a la vista** — Cada distribuidora publica el precio total de su balón, con entrega incluida.
+  - **Tú eliges** — La marca y la distribuidora que prefieras. Le pagas directo a ella: Hornilla no cobra tus
+    pedidos.
+  - **Sin publicidad ni analítica** — No usamos cookies de publicidad ni herramientas de
+    analítica. Tu ubicación solo se usa para tu pedido.
 
 ### 4. Así va a funcionar [PRONTO]
 Etiqueta **Pronto** visible. Texto: **Hoy ya puedes ver qué distribuidoras llegan a tu puerta y
@@ -70,8 +72,9 @@ Ayuda a no pagar envase sin querer; coherente con `oferta-y-promociones.md`.
 
 ### 6. Seguridad [HOY]
 - Título: **Tu seguridad primero**
-- Texto: **Compra a distribuidoras formales. Al recibir, revisa que el balón tenga su precinto y
-  no huela a gas. Nunca trasvases gas entre balones.**
+- Texto: **Compra a distribuidoras formales. Al recibir, revisa que el balón tenga su precinto de
+  seguridad intacto y que no huela a gas; si huele, no lo aceptes, ventila y no prendas fuego ni
+  interruptores. Nunca trasvases gas entre balones.**
 (Revisar con legal-compliance si se cita norma; no prometer que Hornilla certifica balones.)
 
 ### 7. Bloque para distribuidoras [HOY]
@@ -130,14 +133,15 @@ el resto igual.
    Etiqueta **Pronto** en cada uno; sin fechas.
 4. **Cómo empiezas** — 1. Te registras con tus datos y los de tu negocio. 2. Revisamos tu ficha.
    3. Apareces en el buscador.
-5. **Lo que te pedimos** — RUC, razón social y registro de Osinergmin (no se muestran al
-   público). Qué sí es público: nombre, teléfono, WhatsApp, dirección, zona, horario, precios.
-6. **Precio** — *30 días gratis y sin tarjeta. El precio del plan se informa antes de contratarlo;
-   sin plan no se cobra nada.* (Sin cifras en el repo hasta que el usuario las decida.)
+5. **Lo que te pedimos** — RUC, razón social y registro de Osinergmin (solo los ve el equipo
+   de Hornilla para revisar tu alta; no se muestran al público). Qué sí es público: nombre, teléfono, WhatsApp, dirección, zona, horario, precios.
+6. **Precio** — *30 días gratis y sin tarjeta. El precio de cada plan se informa antes de contratarlo.
+   Si no contratas, no hay ningún cobro.* (Sin cifras en el repo hasta que el usuario las decida.)
 7. **Preguntas del dueño** — *¿Me quitan comisión por balón?* (respuesta según lo que decida el
    usuario; hoy no hay cobro por pedido) · *¿Necesito saber de computadoras?* *Si usas WhatsApp,
    puedes usar Hornilla.* · *¿Qué pasa si no pago al terminar la prueba?* *Tu panel queda en
-   solo lectura y dejas de aparecer; no se te cobra nada.* · *¿Mis precios los pongo yo?* *Sí,
+   solo lectura y tu página deja de verse. No hay cobro automático: solo pagas si contratas un
+   plan.* · *¿Mis precios los pongo yo?* *Sí,
    siempre.*
 8. Botón final **Registrar mi distribuidora**.
 

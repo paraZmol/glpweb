@@ -30,8 +30,9 @@ export function SafetyFirst() {
           Tu seguridad primero
         </h2>
         <p className="mt-3 text-lg text-pretty">
-          Compra a distribuidoras formales. Al recibir, revisa que el balón tenga su precinto y no
-          huela a gas. Nunca trasvases gas entre balones.
+          Compra a distribuidoras formales. Al recibir, revisa que el balón tenga su precinto de
+          seguridad intacto y que no huela a gas; si huele, no lo aceptes, ventila y no prendas
+          fuego ni interruptores. Nunca trasvases gas entre balones.
         </p>
       </div>
     </section>

@@ -22,15 +22,18 @@ export function OwnersTerms() {
   return (
     <div className="grid gap-4 lg:grid-cols-3 lg:gap-6">
       <Card id="te-pedimos" icon={Lock} title="Lo que te pedimos">
-        <p>RUC, razón social y registro de Osinergmin. No se muestran al público.</p>
+        <p>
+          RUC, razón social y registro de Osinergmin. Solo los ve el equipo de Hornilla para revisar
+          tu alta; no se muestran al público.
+        </p>
       </Card>
       <Card id="es-publico" icon={Eye} title="Qué sí es público">
         <p>Nombre, teléfono, WhatsApp, dirección, zona, horario y precios.</p>
       </Card>
       <Card id="precio" icon={Wallet} title="Precio">
         <p>
-          <strong className="text-foreground">{TRIAL_NOTE}</strong> El precio del plan se informa
-          antes de contratarlo; sin plan no se cobra nada.
+          <strong className="text-foreground">{TRIAL_NOTE}</strong> El precio de cada plan se
+          informa antes de contratarlo. Si no contratas, no hay ningún cobro.
         </p>
       </Card>
     </div>

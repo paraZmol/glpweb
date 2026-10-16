@@ -20,7 +20,8 @@ const OWNER_FAQ: readonly FaqItem[] = [
   },
   {
     question: '¿Qué pasa si no pago al terminar la prueba?',
-    answer: 'Tu panel queda en solo lectura y dejas de aparecer; no se te cobra nada.',
+    answer:
+      'Tu panel queda en solo lectura y tu página deja de verse. No hay cobro automático: solo pagas si contratas un plan.',
   },
   { question: '¿Mis precios los pongo yo?', answer: 'Sí, siempre.' },
 ];
