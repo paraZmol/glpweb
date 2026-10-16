@@ -18,8 +18,9 @@
 // the profile, the addresses, the history of acceptances (every version of the terms and of the
 // privacy policy the account accepted, and when), every membership and, for each distributor the
 // account founded,
-// its public profile, its control document and its private settings. Orders and shifts will be
-// added when those collections exist.
+// its public profile, its control document, its private settings and the text of a note of the
+// platform (private/review), and every invitation tied to the e-mail of the sign-in account
+// (PLAN 3.2). Orders and shifts will be added when those collections exist.
 import { existsSync, realpathSync, writeFileSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -99,6 +100,17 @@ async function foundedDistributor(db, distributorId) {
   };
 }
 
+/** Invitations tied to the address of the account (stored in lowercase), capped. */
+async function invitationsFor(db, email) {
+  if (email === null) return [];
+  const found = await db
+    .collectionGroup('invites')
+    .where('email', '==', email.toLowerCase())
+    .limit(500)
+    .get();
+  return found.docs;
+}
+
 /** Everything stored about `uid`, as plain JSON (timestamps as ISO text). */
 export async function exportAccount(sdk, uid) {
   const db = sdk.getFirestore();
@@ -113,6 +125,7 @@ export async function exportAccount(sdk, uid) {
   ]);
   const owned = profile.data()?.ownedDistributorIds ?? [];
   const founded = await Promise.all(owned.map((id) => foundedDistributor(db, id)));
+  const invitations = await invitationsFor(db, account?.email ?? null);
   return toPlainJson({
     exportedAt: new Date().toISOString(),
     uid,
@@ -122,6 +135,7 @@ export async function exportAccount(sdk, uid) {
     legalAcceptances: acceptances.docs.map((entry) => ({ id: entry.id, ...entry.data() })),
     memberships: memberships.docs.map((member) => ({ path: member.ref.path, ...member.data() })),
     isPlatformAdmin: adminGrant.exists,
+    invitations: invitations.map((invite) => ({ path: invite.ref.path, ...invite.data() })),
     foundedDistributors: founded.filter((entry) => entry.control?.ownerUid === uid),
   });
 }

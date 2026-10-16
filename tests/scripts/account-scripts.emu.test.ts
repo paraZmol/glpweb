@@ -8,6 +8,7 @@ import { EMULATOR_HOST, EMULATOR_PROJECT_ID, emulatorPorts } from '../../scripts
 import {
   SEED_CREATED_AT,
   SEED_DISTRIBUTORS,
+  SEED_INVITE_CODE,
   SEED_PRIVACY_VERSION,
   SEED_TERMS_VERSION,
   SEED_USERS,
@@ -21,6 +22,11 @@ const EMULATOR_ENV = {
 };
 const NOT_A_DEMO_PROJECT = 'some-real-project';
 const AT = Timestamp.fromDate(new Date('2026-02-01T12:00:00Z'));
+/** PLAN 3.2: invitations tied to the customer's address, one waiting and one used. */
+const WAITING_FOR_CUSTOMER = `distributors/${SEED_DISTRIBUTORS.b.id}/invites/InviteForCustomer001`;
+const USED_BY_CUSTOMER = `distributors/${SEED_DISTRIBUTORS.a.id}/invites/InviteUsedByCustomer`;
+const REVIEW_OF_A = `distributors/${SEED_DISTRIBUTORS.a.id}/private/review`;
+const SEEDED_INVITE_OF_A = `distributors/${SEED_DISTRIBUTORS.a.id}/invites/${SEED_INVITE_CODE}`;
 /** The date of everything the seed writes, as the export prints a timestamp. */
 const SEEDED_AT = new Date(SEED_CREATED_AT).toISOString();
 
@@ -107,6 +113,27 @@ beforeAll(async () => {
       address,
     );
     await setDoc(doc(context.firestore(), `users/${SEED_USERS.ownerA.uid}/addresses/a0`), address);
+    const tiedToCustomer = {
+      role: 'driver',
+      email: SEED_USERS.customer.email,
+      distributorName: SEED_DISTRIBUTORS.b.name,
+      createdAt: AT,
+      updatedAt: AT,
+    };
+    await setDoc(doc(context.firestore(), WAITING_FOR_CUSTOMER), {
+      ...tiedToCustomer,
+      status: 'pending',
+      createdBy: SEED_USERS.ownerB.uid,
+    });
+    await setDoc(doc(context.firestore(), USED_BY_CUSTOMER), {
+      ...tiedToCustomer,
+      distributorName: SEED_DISTRIBUTORS.a.name,
+      status: 'accepted',
+      createdBy: SEED_USERS.ownerA.uid,
+      acceptedBy: SEED_USERS.customer.uid,
+      acceptedAt: AT,
+    });
+    await setDoc(doc(context.firestore(), REVIEW_OF_A), { note: 'Revisa el RUC.', writtenAt: AT });
   });
 });
 
@@ -181,10 +208,22 @@ describe('export-account.mjs', () => {
           publicProfile: { name: SEED_DISTRIBUTORS.a.name },
           control: { status: 'active', ownerUid: ownerA.uid },
           privateSettings: { ownerEmail: ownerA.email },
+          // PLAN 3.2: the text of the note of the platform to the founder.
+          reviewNote: { note: 'Revisa el RUC.' },
         },
       ],
     });
     expect(result.stdout).not.toMatch(/passwordHash|passwordSalt/);
+  });
+
+  // PLAN 3.2: an invitation keeps the address it is tied to, readable by whoever has the link.
+  it('exports the invitations tied to the e-mail of the account', async () => {
+    const result = await run('export-account.mjs', forUid(SEED_USERS.customer.uid));
+
+    const { invitations } = JSON.parse(result.stdout) as { invitations: { path: string }[] };
+    expect(invitations.map((invite) => invite.path).sort()).toEqual(
+      [USED_BY_CUSTOMER, WAITING_FOR_CUSTOMER].sort(),
+    );
   });
 
   it('exports an account that only signed in, with nothing else to show', async () => {
@@ -226,6 +265,12 @@ describe('delete-account.mjs', () => {
     expect(await stored(`users/${customer.uid}`)).toBeUndefined();
     expect(await countIn(`users/${customer.uid}/addresses`)).toBe(0);
     expect(await countIn(`users/${customer.uid}/acceptances`)).toBe(0);
+  });
+
+  // PLAN 3.2: a waiting invitation without its address would open to anyone with the link.
+  it('deleted the waiting invitation tied to its e-mail and emptied the used one', async () => {
+    expect(await stored(WAITING_FOR_CUSTOMER)).toBeUndefined();
+    expect(await stored(USED_BY_CUSTOMER)).toMatchObject({ status: 'accepted', email: null });
   });
 
   it('anonymises the membership of a member of the staff and leaves the distributor working', async () => {
@@ -278,6 +323,13 @@ describe('delete-account.mjs', () => {
     expect(await stored(`distributors/${a.id}/members/${dispatcherA.uid}`)).toMatchObject({
       displayName: dispatcherA.displayName,
       active: true,
+    });
+    // PLAN 3.2: the note may talk about the RUC; the invitation it created keeps working,
+    // without its name.
+    expect(await stored(REVIEW_OF_A)).toBeUndefined();
+    expect(await stored(SEEDED_INVITE_OF_A)).toMatchObject({
+      status: 'pending',
+      invitedByName: 'Cuenta eliminada',
     });
     expect(await stored(`users/${ownerA.uid}`)).toBeUndefined();
     expect(await countIn(`users/${ownerA.uid}/addresses`)).toBe(0);
