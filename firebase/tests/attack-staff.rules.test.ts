@@ -1,7 +1,7 @@
 // PLAN 3.2 — rules-breaker, 2026-10-15. A modified client with the SDK against invitations,
 // staff management, helpers, the platform note and the dispatcher's copy of the catalogue in
 // the public profile. Every case is "rejects X" unless it pins the exact reach of a risk the plan
-// accepts (PLAN §9); `it.fails` marks a hole found and left to the coordinator (see its comment).
+// accepts (PLAN §9). The one hole it found (names nobody can read) is closed (PLAN §11, 2026-10-15).
 import {
   assertFails,
   assertSucceeds,
@@ -33,6 +33,7 @@ import {
   createEnv,
   CUSTOMER_UID,
   type Db,
+  DISTRIBUTOR_NAME,
   helperDoc,
   helperPath,
   INVITE_CODE,
@@ -678,9 +679,9 @@ describe('attack: helpers', () => {
   it.each([
     ['empty', ''],
     ['blank', '   '],
-    ['a zero-width space alone', '​'],
-    ['a name with a zero-width space inside', 'Ana​Maria'],
-    ['a name that flips the writing', '‮anA'],
+    ['a zero-width space alone', '\u200b'],
+    ['a name with a zero-width space inside', 'Ana\u200bMaria'],
+    ['a name that flips the writing', '\u202eanA'],
     ['a name with a null character', 'Ana\u0000'],
     ['punctuation alone', '...'],
     ['an emoji alone', '\u{1F600}'],
@@ -806,8 +807,8 @@ describe('attack: the dispatcher and the public profile', () => {
 
   it.each([
     ['nine brands', { brands: ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9'] }],
-    ['an invisible brand', { brands: ['​'] }],
-    ['a brand that flips the writing', { brands: ['‮aMarca'] }],
+    ['an invisible brand', { brands: ['\u200b'] }],
+    ['a brand that flips the writing', { brands: ['\u202eaMarca'] }],
     ['a brand too long', { brands: ['a'.repeat(31)] }],
     ['brands as text', { brands: 'Marca Uno' }],
     ['a "from" price above the cap', { priceFromCents: 99901 }],
@@ -903,17 +904,14 @@ describe('attack: the dispatcher and the public profile', () => {
 });
 
 // ============================================================ names that are hard to read ====
-// Hole left to the coordinator (rules-breaker, 2026-10-15; BAJO): the name a member joins with
-// is the name of its profile, checked with isText (trimmed), not isVisibleText, so a name made
-// of invisible characters or one that flips the writing reaches the owner's list of staff; an
-// owner may also rename a member that way. Fixing it touches the profile (`users.displayName`,
-// `checkText` in src/domain/tenancy/account-input.ts) and profiles already stored, so it is a
-// decision for the plan. `it.fails`: these turn red the day the rules refuse it, to be swapped
-// for plain tests then.
-describe('names of the staff that nobody can read (open, BAJO)', () => {
-  it.fails.each([
-    ['a zero-width space alone', '​'],
-    ['a name that flips the writing', '‮odalucinaS'],
+// Found by rules-breaker (2026-10-15, BAJO) and closed the same day (PLAN §11): the name a member
+// joins with is the name of its profile, and the staff reads it in its list, so it must be
+// visible text whenever it is written — not a name of invisible characters nor one that flips
+// the writing. A member stored before that check can still be switched off.
+describe('names of the staff that nobody can read', () => {
+  it.each([
+    ['a zero-width space alone', '\u200b'],
+    ['a name that flips the writing', '\u202eodalucinaS'],
   ])('rejects joining with a profile named %s', async (_case, name) => {
     await seedDoc(env, `users/${NEWBIE}`, userDoc({ displayName: name, ...seeded }));
     await assertFails(
@@ -921,7 +919,55 @@ describe('names of the staff that nobody can read (open, BAJO)', () => {
     );
   });
 
-  it.fails('rejects the founder renaming a member to an invisible name', async () => {
-    await assertFails(updateDoc(memberOf(as(FOUNDER), 'driver-a'), { displayName: '​', ...stamp }));
+  it('rejects the founder renaming a member to an invisible name', async () => {
+    await assertFails(
+      updateDoc(memberOf(as(FOUNDER), 'driver-a'), { displayName: '\u200b', ...stamp }),
+    );
+  });
+
+  it('rejects the founder renaming a member to a name with a control character', async () => {
+    await assertFails(
+      updateDoc(memberOf(as(FOUNDER), 'driver-a'), { displayName: 'Ana\u0007', ...stamp }),
+    );
+  });
+
+  it('lets the founder rename a member to a visible name', async () => {
+    await assertSucceeds(
+      updateDoc(memberOf(as(FOUNDER), 'driver-a'), { displayName: 'R. Ñahui', ...stamp }),
+    );
+  });
+
+  describe('a member stored with an invisible name before the check', () => {
+    beforeEach(async () => {
+      await seedDoc(
+        env,
+        memberPath(A, 'driver-a'),
+        memberDoc(A, 'driver-a', 'driver', { displayName: '\u200b', ...seeded }),
+      );
+    });
+
+    it('can still be switched off and back on by the founder', async () => {
+      await assertSucceeds(
+        updateDoc(memberOf(as(FOUNDER), 'driver-a'), { active: false, ...stamp }),
+      );
+      await assertSucceeds(
+        updateDoc(memberOf(as(FOUNDER), 'driver-a'), { active: true, ...stamp }),
+      );
+    });
+
+    it('can have its role changed without touching the name', async () => {
+      await assertSucceeds(
+        updateDoc(memberOf(as(FOUNDER), 'driver-a'), { role: 'dispatcher', ...stamp }),
+      );
+    });
+
+    it('can refresh its copy of the distributor name by itself', async () => {
+      await assertSucceeds(
+        updateDoc(memberOf(as('driver-a'), 'driver-a'), {
+          distributorName: DISTRIBUTOR_NAME,
+          ...stamp,
+        }),
+      );
+    });
   });
 });

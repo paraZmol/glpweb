@@ -150,6 +150,11 @@ describe('/users/{uid} — create', () => {
     ['empty name', { displayName: '' }],
     ['oversized name', { displayName: 'n'.repeat(DISPLAY_NAME_MAX_LENGTH + 1) }],
     ['megabyte name', { displayName: 'n'.repeat(900_000) }],
+    // PLAN 3.2: the staff of a distributor reads this name.
+    ['name of a zero-width space', { displayName: '\u200b' }],
+    ['name that flips the writing', { displayName: '\u202eodalucinaS' }],
+    ['name with a control character', { displayName: 'Ana\u0007' }],
+    ['name of punctuation only', { displayName: '...' }],
     ['numeric phone', { phone: 900000010 }],
     ['landline phone', { phone: '012345678' }],
     ['phone with prefix', { phone: '+51900000010' }],
@@ -326,9 +331,24 @@ describe('/users/{uid} — update and delete', () => {
     ['an invalid phone', { phone: '123' }],
     ['an oversized name', { displayName: 'n'.repeat(DISPLAY_NAME_MAX_LENGTH + 1) }],
     ['an empty name', { displayName: '' }],
+    ['an invisible name', { displayName: '\u200b' }],
+    ['a name that flips the writing', { displayName: '\u202eodalucinaS' }],
     ['a new createdAt', { createdAt: serverTimestamp() }],
   ])('blocks an update that sets %s', async (_case, change) => {
     await assertFails(updateDoc(own(), { ...change, ...stamp }));
+  });
+
+  // PLAN §11 (2026-10-15): the check applies when the name is written, so a profile stored
+  // before it keeps working until its holder changes the name.
+  it('lets a profile stored with an invisible name change its phone, and then its name', async () => {
+    await seedDoc(
+      env,
+      `users/${CUSTOMER_UID}`,
+      userDoc({ displayName: '\u200b', createdAt: PAST, updatedAt: PAST }),
+    );
+
+    await assertSucceeds(updateDoc(own(), { phone: '900000011', ...stamp }));
+    await assertSucceeds(updateDoc(own(), { displayName: 'C. Persona', ...stamp }));
   });
 
   it('blocks an update without a fresh updatedAt', async () => {

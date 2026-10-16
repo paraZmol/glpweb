@@ -13,7 +13,8 @@ rules_version = '2';
 //
 // /users/{uid}                     private to the account; nothing is stored for an address
 //                                  nobody proved
-//   displayName: string 1..80 · phone: null | '9' + 8 digits
+//   displayName: string 1..80, visible text whenever it is written (a profile stored before that
+//     check keeps its name until it changes it) · phone: null | '9' + 8 digits
 //   ownedDistributorIds: list ≤ 3 — grows only inside a founding batch (caps distributors/account)
 //   terms: { version: an allowed terms version, acceptedAt: timestamp = request.time when it
 //     is written } — required from creation, never removed. It can only be written in a request
@@ -59,7 +60,12 @@ rules_version = '2';
 //     listingApproved false. Staff may only write the flag when its value really changes.
 //   schedule: { days: list 1..7 of 0..6 without repeats, opensAt: 'HH:MM', closesAt: 'HH:MM' }
 //   maxCylindersPerOrder: int 1..20 · brands: list ≤ 8 of visible text 1..30
-//   priceFromCents: null | int 1..99900 · currency: 'PEN' · createdAt (immutable), updatedAt
+//   priceFromCents: null | int 1..99900 · priceFromWeightKg: optional, null | int 1..100 — the
+//     weight of the product the "desde" price belongs to; the three are copies of the catalogue
+//     the rules cannot check (null at founding)
+//   complaintsBookUrl: optional, null | https link ≤ 300 to its virtual complaints book (not part
+//     of what identifies the business: no new review)
+//   currency: 'PEN' · createdAt (immutable), updatedAt
 //
 // /distributors/{d}/private/control    staff of {d} and platform admins only; read by the rules
 //   ownerUid (founder, immutable) · status: trial | active | pastDue | suspended (only a
@@ -106,7 +112,8 @@ rules_version = '2';
 //
 // /distributors/{d}/members/{uid}
 //   uid (= document id) · distributorId (= d) · role: owner | dispatcher | driver
-//   active: bool · displayName: string 1..80
+//   active: bool · displayName: string 1..80, visible text when the member is created or the
+//     name changes (a member stored before that check can still be switched off)
 //   distributorName: string 2..60 — copy of the public name, so the selector of distributors
 //     needs no extra read; it can only ever be written equal to the public name
 //   inviteId: optional — the code of the invitation it joined with (immutable; never on the
@@ -121,6 +128,9 @@ rules_version = '2';
 //   role: owner | dispatcher | driver · email: null | lowercase address it is tied to (required
 //   to invite an owner) · distributorName: the public name — written equal to it, and rewritten
 //     by an owner only to a new public name while the invitation waits
+//   invitedByName: optional — the name the member of the inviting owner carries (visible text)
+//   brandColor: optional — the brand colour of the public profile when it was created; neither
+//     copy is rewritten afterwards, and invitations older than them stay valid
 //   status: pending | accepted | revoked — pending → accepted (by whoever holds it, once, in the
 //     request that creates its member) or pending → revoked (an owner); nothing else
 //   createdBy: uid of the owner · createdAt, updatedAt — usable for 7 days after createdAt
@@ -350,12 +360,12 @@ service cloud.firestore {
     // Acceptance of the terms (docs/legal). Same list as TERMS_VERSIONS in
     // src/domain/legal/versions.ts.
     function acceptedTermsVersions() {
-      return ['0.4'];
+      return ['0.5'];
     }
 
     // Same list as PRIVACY_VERSIONS in src/domain/legal/versions.ts.
     function acceptedPrivacyVersions() {
-      return ['0.4'];
+      return ['0.5'];
     }
 
     function isAcceptance(acceptance, versions) {
@@ -396,6 +406,19 @@ service cloud.firestore {
         && entry.data.acceptedAt == request.time;
     }
 
+    // Whole kilograms of gas in a cylinder (MIN_WEIGHT_KG, MAX_WEIGHT_KG).
+    function isWeightKg(value) {
+      return value is int && value <= 100 && value >= 1;
+    }
+
+    // The link to the virtual complaints book of a distributor: https only, a lowercase host
+    // with a dot, no port nor credentials, and only characters an address carries unescaped.
+    // Same pattern and cap as isComplaintsBookUrl in src/domain/tenancy/complaints-book.ts.
+    function isComplaintsBookUrl(value) {
+      return value is string && value.size() <= 300
+        && value.matches('https://[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)+(/[A-Za-z0-9._~%!$&()*+,;=:@/?#-]*)?');
+    }
+
     // Rules cannot loop: the list is capped at 8 and each position is checked by hand.
     function isBrandAt(brands, index) {
       return brands.size() <= index || isVisibleText(brands[index], 1, 30);
@@ -433,12 +456,22 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    // Two optional fields (PLAN §11, 2026-10-15): absent in profiles written before, and null
+    // means "none". Validated in one comparison each while absent: this runs in the update rule
+    // of the public profile, close to the limit of expressions (PLAN §9). The whitelist is
+    // written once: every field it names, and all 16 that are not optional (once the optional
+    // ones are taken out, 16 keys of the list remain only if none is missing).
     function isValidDistributor(data) {
-      return hasExactly(data, [
+      return data.keys().hasOnly([
           'name', 'slug', 'contactPhone', 'whatsapp', 'addressLine', 'plant',
           'coverageRadiusKm', 'brandColor', 'acceptingOrders', 'schedule',
-          'maxCylindersPerOrder', 'brands', 'priceFromCents', 'currency', 'createdAt', 'updatedAt'
+          'maxCylindersPerOrder', 'brands', 'priceFromCents', 'priceFromWeightKg',
+          'complaintsBookUrl', 'currency', 'createdAt', 'updatedAt'
         ])
+        && data.keys().removeAll(['priceFromWeightKg', 'complaintsBookUrl']).size() == 16
+        && (data.get('priceFromWeightKg', null) == null || isWeightKg(data.priceFromWeightKg))
+        && (data.get('complaintsBookUrl', null) == null
+          || isComplaintsBookUrl(data.complaintsBookUrl))
         && isBusinessName(data.name)
         && data.slug is string
         && isPhone(data.contactPhone)
@@ -576,10 +609,16 @@ service cloud.firestore {
         && value == value.lower();
     }
 
-    // An invitation as its owner creates it: waiting, with nothing about its use yet.
+    // An invitation as its owner creates it: waiting, with nothing about its use yet. The copies
+    // of who invites and of the brand colour are optional (PLAN §11, 2026-10-15): an invitation
+    // created before them is still valid.
     function isNewInvite(data) {
-      return hasExactly(data, [
+      return data.keys().hasAll([
           'role', 'email', 'distributorName', 'status', 'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'role', 'email', 'distributorName', 'invitedByName', 'brandColor', 'status',
+          'createdBy', 'createdAt', 'updatedAt'
         ])
         && data.role in ['owner', 'dispatcher', 'driver']
         && (data.email == null || isInviteEmail(data.email))
@@ -606,6 +645,7 @@ service cloud.firestore {
       // session that came in through Google with a verified e-mail (PLAN 2.1, 2.11).
       allow create: if isSelf(uid)
         && isValidUserProfile(request.resource.data)
+        && isVisibleText(request.resource.data.displayName, 1, 80)
         && request.resource.data.ownedDistributorIds.size() == 0
         // Reads added by rules: 2 (getAfter of the two history entries).
         && logsAcceptance(uid, 'terms', request.resource.data.terms)
@@ -618,6 +658,9 @@ service cloud.firestore {
         && isValidUserProfile(request.resource.data)
         && unchanged(['createdAt'])
         && request.resource.data.updatedAt == request.time
+        // The name is visible text whenever it is written (PLAN 3.2: the staff reads it); one
+        // stored before that check stays until the account changes it.
+        && (unchanged(['displayName']) || isVisibleText(request.resource.data.displayName, 1, 80))
         // A text is accepted now and leaves its line in the history, or it is not touched; the
         // validator already forbids removing an acceptance. A profile older than `privacy`
         // gains it the same way.
@@ -753,6 +796,7 @@ service cloud.firestore {
         // The catalogue does not exist yet; these are filled from it later.
         && request.resource.data.brands.size() == 0
         && request.resource.data.priceFromCents == null
+        && request.resource.data.get('priceFromWeightKg', null) == null
         && getAfter(/databases/$(database)/documents/slugs/$(request.resource.data.slug)).data.distributorId == d
         && foundedNow(d);
 
@@ -782,22 +826,21 @@ service cloud.firestore {
             && ((flipsTheFlag() && isStaff(d)) || isPlatformAdmin())
           )
           || (
-            onlyChanges([
-              'name', 'contactPhone', 'whatsapp', 'addressLine', 'plant', 'coverageRadiusKm',
-              'brandColor', 'schedule', 'maxCylindersPerOrder', 'brands', 'priceFromCents',
-              'acceptingOrders', 'updatedAt'
-            ])
+            // Every field the validator lists but these three (EDITABLE_PROFILE_FIELDS, the flag
+            // and updatedAt), written as what never changes: a list of 15 names costs
+            // expressions this rule does not have (PLAN §9).
+            unchanged(['slug', 'currency', 'createdAt'])
             && hasRole(d, ['owner'])
             && writable(d)
             && (changesIdentity() ? returnsToReview() : unchanged(['acceptingOrders']))
           )
           // The dispatcher edits the catalogue too (PLAN §11, 2026-10-15), so it keeps the copy
-          // of it up to date in the same transaction: those two fields and nothing else, only
-          // when they change. Last, so the owner's edit never evaluates it (limit of
-          // expressions, PLAN §9).
+          // of it up to date in the same transaction: those fields (the brands, the "desde"
+          // price and its weight) and nothing else, only when they change. Last, so the owner's
+          // edit never evaluates it (limit of expressions, PLAN §9).
           || (
-            onlyChanges(['brands', 'priceFromCents', 'updatedAt'])
-            && !unchanged(['brands', 'priceFromCents'])
+            onlyChanges(['brands', 'priceFromCents', 'priceFromWeightKg', 'updatedAt'])
+            && !unchanged(['brands', 'priceFromCents', 'priceFromWeightKg'])
             && hasRole(d, ['dispatcher'])
             && writable(d)
           )
@@ -1069,6 +1112,7 @@ service cloud.firestore {
         // get profile).
         allow create: if isSelf(memberUid)
           && isValidMember(request.resource.data, d, memberUid)
+          && isVisibleText(request.resource.data.displayName, 1, 80)
           && stampedNow(request.resource.data)
           && request.resource.data.active == true
           && carriesPublicName()
@@ -1097,6 +1141,8 @@ service cloud.firestore {
             (
               memberUid != request.auth.uid
               && onlyChanges(['role', 'active', 'displayName', 'updatedAt'])
+              && (unchanged(['displayName'])
+                || isVisibleText(request.resource.data.displayName, 1, 80))
               && hasRole(d, ['owner'])
               && managesMember(memberUid)
             )
@@ -1213,7 +1259,23 @@ service cloud.firestore {
           && stampedNow(request.resource.data)
           && hasRole(d, ['owner'])
           && request.resource.data.distributorName == get(distributorPath(d)).data.name
+          && copiesHold(request.resource.data, get(distributorPath(d)).data)
           && mayInvite(get(controlPath(d)).data);
+
+        // Whoever receives the link reads neither the profile nor the staff: the invitation says
+        // who invites and in which colour. Each copy, when present, is the truth: the name the
+        // member of the owner carries (the one the role was read from; visible text) and the
+        // brand colour of the public profile.
+        function copiesHold(invite, profile) {
+          return (!('brandColor' in invite) || invite.brandColor == profile.brandColor)
+            && (
+              !('invitedByName' in invite)
+              || (
+                invite.invitedByName == member(d).displayName
+                && isVisibleText(invite.invitedByName, 1, 80)
+              )
+            );
+        }
 
         // Used: by whoever holds it, only in the request that creates its own member, whose
         // rule checks that it is still usable and for this account. Revoked: by an owner while

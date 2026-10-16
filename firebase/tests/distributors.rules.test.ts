@@ -21,6 +21,7 @@ import {
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
+  COMPLAINTS_BOOK_URL_MAX_LENGTH,
   DISTRIBUTOR_SEARCH_LIMIT,
   MAX_BRANDS,
   MAX_DISTRIBUTORS_PER_ACCOUNT,
@@ -710,6 +711,9 @@ describe('/distributors/{d} — owner edit', () => {
     maxCylindersPerOrder: 5,
     brands: ['Marca Uno', 'Marca Dos'],
     priceFromCents: 3800,
+    priceFromWeightKg: 10,
+    // The longest link (PLAN §11, 2026-10-15): the heaviest edit of the profile must carry it.
+    complaintsBookUrl: `https://example.com/${'a'.repeat(COMPLAINTS_BOOK_URL_MAX_LENGTH - 20)}`,
   };
 
   const isIdentity = (field: string) => (IDENTITY_FIELDS as readonly string[]).includes(field);

@@ -320,14 +320,14 @@ const MUTANTS = [
   [
     'U07',
     'profile createdAt editable',
-    "&& unchanged(['createdAt'])\n        && request.resource.data.updatedAt == request.time\n        // A text is",
-    '&& request.resource.data.updatedAt == request.time\n        // A text is',
+    "&& unchanged(['createdAt'])\n        && request.resource.data.updatedAt == request.time\n        // The name is",
+    '&& request.resource.data.updatedAt == request.time\n        // The name is',
   ],
   [
     'U08',
     'profile updatedAt free',
-    "&& unchanged(['createdAt'])\n        && request.resource.data.updatedAt == request.time\n        // A text is",
-    "&& unchanged(['createdAt'])\n        // A text is",
+    "&& unchanged(['createdAt'])\n        && request.resource.data.updatedAt == request.time\n        // The name is",
+    "&& unchanged(['createdAt'])\n        // The name is",
   ],
   ['U09', 'owned list may drop old ids', '\n          && after.hasAll(before)', ''],
   ['U10', 'owned list id not founded now', '\n          && foundedNow(after[before.size()])', ''],
@@ -593,8 +593,8 @@ const MUTANTS = [
   [
     'D17',
     'owner whitelist includes the slug',
-    "'brands', 'priceFromCents',\n              'acceptingOrders', 'updatedAt'\n            ])",
-    "'brands', 'priceFromCents',\n              'acceptingOrders', 'updatedAt', 'slug'\n            ])",
+    "unchanged(['slug', 'currency', 'createdAt'])\n            && hasRole(d, ['owner'])",
+    "unchanged(['currency', 'createdAt'])\n            && hasRole(d, ['owner'])",
   ],
   [
     'D18',
@@ -617,8 +617,8 @@ const MUTANTS = [
   [
     'D21',
     'owner whitelist includes createdAt',
-    "'brands', 'priceFromCents',\n              'acceptingOrders', 'updatedAt'\n            ])",
-    "'brands', 'priceFromCents',\n              'acceptingOrders', 'updatedAt', 'createdAt', 'currency'\n            ])",
+    "unchanged(['slug', 'currency', 'createdAt'])\n            && hasRole(d, ['owner'])",
+    "unchanged(['slug', 'currency'])\n            && hasRole(d, ['owner'])",
   ],
   [
     'D22',
@@ -1069,8 +1069,8 @@ const MUTANTS = [
   [
     'M21',
     'member stamps free on founding',
-    '&& isValidMember(request.resource.data, d, memberUid)\n          && stampedNow(request.resource.data)',
-    '&& isValidMember(request.resource.data, d, memberUid)',
+    '&& isVisibleText(request.resource.data.displayName, 1, 80)\n          && stampedNow(request.resource.data)',
+    '&& isVisibleText(request.resource.data.displayName, 1, 80)',
   ],
   ['G01', 'memberships without limit', '\n        && request.query.limit <= 20', ''],
   ['G02', 'memberships of anyone', '\n        && resource.data.uid == request.auth.uid', ''],
@@ -1469,14 +1469,14 @@ const MUTANTS = [
   [
     'K40',
     'catalogue copy rewritten by the dispatcher as it stands',
-    "\n            && !unchanged(['brands', 'priceFromCents'])",
+    "\n            && !unchanged(['brands', 'priceFromCents', 'priceFromWeightKg'])",
     '',
   ],
   [
     'K41',
     'catalogue copy written by any staff',
-    "&& !unchanged(['brands', 'priceFromCents'])\n            && hasRole(d, ['dispatcher'])",
-    "&& !unchanged(['brands', 'priceFromCents'])\n            && isStaff(d)",
+    "&& !unchanged(['brands', 'priceFromCents', 'priceFromWeightKg'])\n            && hasRole(d, ['dispatcher'])",
+    "&& !unchanged(['brands', 'priceFromCents', 'priceFromWeightKg'])\n            && isStaff(d)",
   ],
   [
     'K42',
@@ -1499,8 +1499,137 @@ const MUTANTS = [
   [
     'K43',
     'dispatcher edits more of the profile with the copy',
+    "onlyChanges(['brands', 'priceFromCents', 'priceFromWeightKg', 'updatedAt'])",
+    "onlyChanges(['brands', 'priceFromCents', 'priceFromWeightKg', 'coverageRadiusKm', 'acceptingOrders', 'updatedAt'])",
+  ],
+  // PLAN §11, 2026-10-15 (corrections after the reviews of phase 3): names the staff reads are
+  // visible text when written (Q01–Q06), the copies an invitation carries (Q07–Q11), the weight
+  // of the "desde" price (Q12–Q16, Q24, Q25), the link to the complaints book (Q17–Q23) and the owner whitelist (Q26).
+  [
+    'Q01',
+    'profile created with an invisible name',
+    '\n        && isVisibleText(request.resource.data.displayName, 1, 80)\n        && request.resource.data.ownedDistributorIds.size() == 0',
+    '\n        && request.resource.data.ownedDistributorIds.size() == 0',
+  ],
+  [
+    'Q02',
+    'profile renamed to an invisible name',
+    "&& (unchanged(['displayName']) || isVisibleText(request.resource.data.displayName, 1, 80))\n        // A text",
+    '// A text',
+  ],
+  [
+    'Q03',
+    'a profile stored with an invisible name can no longer be edited',
+    "&& (unchanged(['displayName']) || isVisibleText(request.resource.data.displayName, 1, 80))\n        // A text",
+    '&& isVisibleText(request.resource.data.displayName, 1, 80)\n        // A text',
+  ],
+  [
+    'Q04',
+    'member created with an invisible name',
+    '\n          && isVisibleText(request.resource.data.displayName, 1, 80)\n          && stampedNow(request.resource.data)\n          && request.resource.data.active == true',
+    '\n          && stampedNow(request.resource.data)\n          && request.resource.data.active == true',
+  ],
+  [
+    'Q05',
+    'member renamed to an invisible name',
+    "\n              && (unchanged(['displayName'])\n                || isVisibleText(request.resource.data.displayName, 1, 80))",
+    '',
+  ],
+  [
+    'Q06',
+    'a member stored with an invisible name can no longer be switched off',
+    "\n              && (unchanged(['displayName'])\n                || isVisibleText(request.resource.data.displayName, 1, 80))",
+    '\n              && isVisibleText(request.resource.data.displayName, 1, 80)',
+  ],
+  ['Q07', 'invitation with any brand colour', 'invite.brandColor == profile.brandColor', 'true'],
+  [
+    'Q08',
+    'invitation in the name of anyone',
+    'invite.invitedByName == member(d).displayName',
+    'true',
+  ],
+  [
+    'Q09',
+    'invitation in an invisible name',
+    '\n                && isVisibleText(invite.invitedByName, 1, 80)',
+    '',
+  ],
+  [
+    'Q10',
+    'copies of an invitation not checked',
+    '\n          && copiesHold(request.resource.data, get(distributorPath(d)).data)',
+    '',
+  ],
+  [
+    'Q11',
+    'invitation with extra fields',
+    "'role', 'email', 'distributorName', 'invitedByName', 'brandColor', 'status',",
+    "'role', 'email', 'distributorName', 'invitedByName', 'brandColor', 'status', 'invitedByPhone',",
+  ],
+  [
+    'Q12',
+    'weight above the cap',
+    'value is int && value <= 100 &&',
+    'value is int && value <= 1000 &&',
+  ],
+  ['Q13', 'weight of zero', 'value <= 100 && value >= 1;', 'value <= 100 && value >= 0;'],
+  ['Q14', 'weight with decimals', 'return value is int && value <= 100', 'return value <= 100'],
+  ['Q15', 'weight not validated', '|| isWeightKg(data.priceFromWeightKg))', '|| true)'],
+  [
+    'Q16',
+    'founding with a weight',
+    "\n        && request.resource.data.get('priceFromWeightKg', null) == null",
+    '',
+  ],
+  [
+    'Q17',
+    'complaints book not validated',
+    '|| isComplaintsBookUrl(data.complaintsBookUrl))',
+    '|| true)',
+  ],
+  ['Q18', 'complaints book ten times longer', 'value.size() <= 300', 'value.size() <= 3000'],
+  ['Q19', 'complaints book over plain http', "value.matches('https://", "value.matches('https?://"],
+  [
+    'Q20',
+    'complaints book with any character after the host',
+    "(/[A-Za-z0-9._~%!$&()*+,;=:@/?#-]*)?');",
+    "(/.*)?');",
+  ],
+  [
+    'Q21',
+    'complaints book with a host in capitals',
+    "'https://[a-z0-9]([a-z0-9-]*[a-z0-9])?",
+    "'https://[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?",
+  ],
+  [
+    'Q22',
+    'complaints book on a host without a dot',
+    '([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)+(/',
+    '([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)*(/',
+  ],
+  [
+    'Q23',
+    'complaints book written by the dispatcher',
+    "onlyChanges(['brands', 'priceFromCents', 'priceFromWeightKg', 'updatedAt'])",
+    "onlyChanges(['brands', 'priceFromCents', 'priceFromWeightKg', 'complaintsBookUrl', 'updatedAt'])",
+  ],
+  [
+    'Q24',
+    'dispatcher cannot write the weight',
+    "onlyChanges(['brands', 'priceFromCents', 'priceFromWeightKg', 'updatedAt'])",
     "onlyChanges(['brands', 'priceFromCents', 'updatedAt'])",
-    "onlyChanges(['brands', 'priceFromCents', 'coverageRadiusKm', 'acceptingOrders', 'updatedAt'])",
+  ],
+  [
+    'Q25',
+    'dispatcher cannot write the weight alone',
+    "&& !unchanged(['brands', 'priceFromCents', 'priceFromWeightKg'])",
+    "&& !unchanged(['brands', 'priceFromCents'])",
+  ],
+  [
+    'Q26',
+    'owner changes the currency',
+    "unchanged(['slug', 'currency', 'createdAt'])\n            && hasRole(d, ['owner'])",
+    "unchanged(['slug', 'createdAt'])\n            && hasRole(d, ['owner'])",
   ],
   // PLAN 3.2: visible text (V0x), the text of the review note (V1x), invitations (N), joining
   // with one (J), managing the staff (M3x) and helpers (W).
