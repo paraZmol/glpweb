@@ -72,7 +72,7 @@ export function ProductFields({ form, errors, set, fixedWeightKg }: ProductField
         {...priceProps}
         label="Precio de la recarga (S/)"
         name="refillPrice"
-        hint="Quien compra te entrega su balón vacío y recibe uno lleno. Escribe 38, 38.50 o 38,50."
+        hint="Precio final: lo que paga quien compra, con impuestos y el reparto en tu zona. Quien compra te entrega su balón vacío y recibe uno lleno. Escribe 38, 38.50 o 38,50."
         value={form.refillPrice}
         error={errors.refillPrice}
         onChange={(event) => set('refillPrice', event.target.value)}
@@ -93,7 +93,7 @@ export function ProductFields({ form, errors, set, fixedWeightKg }: ProductField
             {...priceProps}
             label="Precio del balón completo (S/)"
             name="fullPrice"
-            hint="Incluye el envase, por eso cuesta más que la recarga."
+            hint="Precio final: lo que paga quien compra, con impuestos y el reparto en tu zona. Incluye el envase, por eso cuesta más que la recarga."
             value={form.fullPrice}
             error={errors.fullPrice}
             onChange={(event) => set('fullPrice', event.target.value)}

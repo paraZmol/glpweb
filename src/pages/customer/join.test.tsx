@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { accountOf } from '../../../tests/support/account-fixtures';
-import { count, renderStatic, textOf } from '../../../tests/support/render-static';
+import { count, renderStatic, tags, textOf } from '../../../tests/support/render-static';
 import { FocusShell } from '../../components/layout/focus-shell';
 import {
   AlreadyMemberError,
@@ -39,7 +39,9 @@ const INVITE: Invite = {
 
 const refused = (refusal: Error, email: string | null = 'persona@example.com') =>
   textOf(
-    renderStatic(<JoinRefused refusal={refusal} distributorName="Gas Demo Norte" email={email} />),
+    renderStatic(
+      <JoinRefused refusal={refusal} distributorName="Gas Demo Norte" email={email} linkHash="" />,
+    ),
   );
 
 // PLAN 3.2: /unirme.
@@ -111,7 +113,7 @@ describe('the screen an invitation link opens', () => {
   });
 
   it.each([
-    [new InviteNotFoundError(), 'No encontramos esta invitación.'],
+    [new InviteNotFoundError(), 'Esta invitación es para otra cuenta o no existe.'],
     [new InviteExpiredError(), 'Esta invitación venció.'],
     [new InviteUsedError(), 'Esta invitación ya se usó.'],
     [new InviteRevokedError(), 'Esta invitación fue anulada.'],
@@ -133,6 +135,30 @@ describe('the screen an invitation link opens', () => {
     expect(text).toContain('Esta invitación es para otra cuenta de Google.');
     expect(text).toContain('Ahora estás con persona@example.com. Cierra sesión');
     expect(text).toContain('Cerrar sesión');
+  });
+
+  // PLAN §11 (2026-10-16): the address of somebody else, said why it is there.
+  it('says why an invitation tied to the address carries it, with the privacy policy', () => {
+    const tied = { ...INVITE, email: 'persona@example.com', invitedByName: 'A. Dueña' };
+    const card = (invite: typeof INVITE) =>
+      renderStatic(
+        <JoinCard
+          invite={invite}
+          you={{ name: 'P', email: 'persona@example.com' }}
+          isRunning={false}
+          isOnline
+          onJoin={() => {}}
+        />,
+      );
+    const why = 'lleva tu correo porque A. Dueña lo escribió para que solo tu cuenta pueda usarla.';
+
+    expect(textOf(card(tied))).toContain(why);
+    expect(tags(card(tied), 'a').some((tag) => tag.includes('href="/privacidad"'))).toBe(true);
+    expect(textOf(card({ ...INVITE, email: null }))).not.toContain('lleva tu correo');
+  });
+
+  it('offers another account on an invitation it cannot read', () => {
+    expect(refused(new InviteNotFoundError())).toContain('Cerrar sesión');
   });
 
   it('says that a link without its fragment is not complete', () => {

@@ -2,6 +2,7 @@ import { BrandTheme } from '@/components/brand/brand-theme';
 import { HornillaLogo } from '@/components/brand/hornilla-logo';
 import { OutsideLink } from '@/components/common/outside-link';
 import { TextLink } from '@/components/common/text-link';
+import { complaintsBookHostOf } from '@/domain/tenancy/complaints-book';
 import { DEFAULT_TIMEZONE } from '@/domain/tenancy/constants';
 import { describeOpenStatus, openStatusAt } from '@/domain/tenancy/schedule';
 import type { PublicDistributor } from '@/domain/tenancy/types';
@@ -47,6 +48,19 @@ function ContactBar({ distributor }: { distributor: PublicDistributor }) {
   );
 }
 
+/**
+ * Its own virtual book (PLAN §11, 2026-10-15), a site Hornilla does not review: the host stays
+ * in sight next to the link, so a visitor sees where it leads before opening it (2026-10-16).
+ */
+function ComplaintsBookLink({ url, name }: { url: string; name: string }) {
+  return (
+    <span className="inline-flex flex-wrap items-baseline justify-center gap-x-1.5">
+      <OutsideLink href={url}>Libro de Reclamaciones de {name}</OutsideLink>
+      <span className="break-all">· {complaintsBookHostOf(url)}</span>
+    </span>
+  );
+}
+
 type DistributorViewProps = {
   distributor: PublicDistributor;
   /** The moment the page is drawn, to say whether it attends right now. */
@@ -76,11 +90,8 @@ export function DistributorView({ distributor, now }: DistributorViewProps) {
               Página en <HornillaLogo size={FOOT_LOGO_PX} />
             </p>
             <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-              {/* Its own virtual book, when it gave the link (PLAN §11, 2026-10-15). */}
               {distributor.complaintsBookUrl && (
-                <OutsideLink href={distributor.complaintsBookUrl}>
-                  Libro de Reclamaciones
-                </OutsideLink>
+                <ComplaintsBookLink url={distributor.complaintsBookUrl} name={distributor.name} />
               )}
               <TextLink to={ROUTES.contact}>Reportar esta distribuidora</TextLink>
             </div>

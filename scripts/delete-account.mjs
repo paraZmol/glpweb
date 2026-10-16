@@ -33,8 +33,10 @@
 //      distributor (privacy policy §7): if it should keep working, do not run this script yet.
 //   5. Invitations (PLAN 3.2): every invitation tied to the e-mail of the account — still
 //      waiting: deleted (an invitation without its e-mail would work for anyone with the link);
-//      used or revoked: the e-mail emptied. Every invitation the account created keeps working,
-//      but the copy of its name (`invitedByName`) becomes "Cuenta eliminada". The e-mail comes
+//      used or revoked: the e-mail emptied. Every invitation the account created stops working:
+//      the rules honour an invitation only while its author is an active owner, and step 3
+//      switches that member off (PLAN §11, 2026-10-16). The copy of its name (`invitedByName`)
+//      still becomes "Cuenta eliminada", for whoever opens such a link. The e-mail comes
 //      from the sign-in account; once that is gone, pass it with --email.
 //   6. The Firebase Auth account: deleted.
 // Steps 1 to 5 are one atomic batch. The script can be run again: it tolerates what is already

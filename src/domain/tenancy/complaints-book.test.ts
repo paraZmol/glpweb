@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   checkComplaintsBookUrl,
+  complaintsBookHostOf,
   isComplaintsBookUrl,
   normalizeComplaintsBookUrl,
 } from './complaints-book';
@@ -15,6 +16,8 @@ describe('isComplaintsBookUrl', () => {
     'https://libro.example.com/reclamaciones?empresa=Gas-Demo&ruc=20000000001',
     'https://example.com/libro#formulario',
     'https://a.pe',
+    'https://example.com/xn--libro',
+    'https://libroxn--a.example.com',
     LONGEST,
   ])('accepts %s', (url) => {
     expect(isComplaintsBookUrl(url)).toBe(true);
@@ -36,6 +39,8 @@ describe('isComplaintsBookUrl', () => {
     ['a letter outside ASCII in the host', 'https://reclamación.pe'],
     ['an invisible character', 'https://example.com/\u200blibro'],
     ['a line break', 'https://example.com/\nlibro'],
+    ['a host in punycode', 'https://xn--reclamacin-6db.pe/libro'],
+    ['a punycode label inside the host', 'https://libro.xn--80ak6aa92e.com'],
     ['one character too many', `${LONGEST}a`],
   ])('refuses %s', (_case, url) => {
     expect(isComplaintsBookUrl(url)).toBe(false);
@@ -62,5 +67,20 @@ describe('checkComplaintsBookUrl', () => {
     [`${LONGEST}a`, 'tooLong'],
   ])('checks %s as %s', (url, expected) => {
     expect(checkComplaintsBookUrl(url)).toBe(expected);
+  });
+});
+
+describe('complaintsBookHostOf', () => {
+  it.each([
+    ['https://reclamos.ejemplo.pe', 'reclamos.ejemplo.pe'],
+    ['https://reclamos.ejemplo.pe/libro?empresa=1', 'reclamos.ejemplo.pe'],
+    ['https://a.pe#formulario', 'a.pe'],
+    ['https://a.pe?x=1', 'a.pe'],
+  ])('reads the host of %s as %s', (url, host) => {
+    expect(complaintsBookHostOf(url)).toBe(host);
+  });
+
+  it('reads nothing from something that is not such a link', () => {
+    expect(complaintsBookHostOf('javascript:alert(1)')).toBe('');
   });
 });

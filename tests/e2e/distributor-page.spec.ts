@@ -41,10 +41,10 @@ test('shows the public profile of a seeded distributor to anybody', async ({ pag
   );
   // PLAN §11 (2026-10-15): the weight of the "desde" price, and its own complaints book.
   await expect(page.getByText('recarga 5 kg desde').first()).toBeVisible();
-  await expect(page.getByRole('link', { name: /Libro de Reclamaciones/ })).toHaveAttribute(
-    'href',
-    a.complaintsBookUrl,
-  );
+  const book = new RegExp(`Libro de Reclamaciones de ${a.name}`);
+  await expect(page.getByRole('link', { name: book })).toHaveAttribute('href', a.complaintsBookUrl);
+  // PLAN §11 (2026-10-16): its host, in sight next to the link.
+  await expect(page.getByText('· example.com', { exact: true })).toBeVisible();
 
   // Links built from the stored numbers, with the message encoded.
   await expect(page.getByRole('link', { name: /WhatsApp/ }).first()).toHaveAttribute(
