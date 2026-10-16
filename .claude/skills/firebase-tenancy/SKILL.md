@@ -215,7 +215,10 @@ correos.
   `getAfter` del miembro con `inviteId == code`). Caduca a los 7 días contados desde su
   `createdAt` (hora del servidor), un solo uso (la segunda cuenta encuentra `accepted`),
   anulable por el titular (también en solo lectura). Exige perfil (términos aceptados) y
-  distribuidora escribible. Correo opcional (`email`, en minúsculas, comparado con
+  distribuidora escribible, y **que quien la creó siga siendo titular activo** (`stillVouchedFor`,
+  +1 `get` de su `members`; la de titular, además, que lo creara quien fundó). Desactivar o
+  quitar el rol a un titular anula sus invitaciones que esperan en la misma transacción
+  (`stopsBeingActiveOwner`, PLAN §11 2026-10-16). Correo opcional (`email`, en minúsculas, comparado con
   `request.auth.token.email.lower()`); **obligatorio para invitar a un titular, que solo invita
   quien fundó**. La copia del nombre de una invitación pendiente se reescribe en el lote del
   cambio de nombre (solo al nombre público). Patrón general: **un secreto como id + `get` sin
@@ -241,8 +244,8 @@ correos.
   verdad**.
 - **Libro de Reclamaciones** (`complaintsBookUrl` en la ficha, opcional, `null` = ninguno):
   `https://`, host en minúsculas con punto, sin puerto ni credenciales, solo caracteres de URL
-  sin escapar, tope 300 (`isComplaintsBookUrl`, mismo patrón en `src/domain/tenancy/
-  complaints-book.ts`). No es identidad: el titular lo cambia sin volver a revisión; la central
+  sin escapar, ninguna etiqueta del host en punycode (`xn--`), tope 300 (`isComplaintsBookUrl`,
+  mismo patrón en `src/domain/tenancy/complaints-book.ts`). La página muestra el host como texto. No es identidad: el titular lo cambia sin volver a revisión; la central
   no. El convertidor descarta un enlace guardado que no pase el patrón: un `href` solo se arma
   con un enlace validado.
 - **Consentimientos.** `users/{uid}` guarda `terms` y `privacy` (`{ version, acceptedAt }`), con
@@ -297,7 +300,8 @@ correos.
   de espacios en `isText()` la dejaron en **pasa con 13, falla con 14**; con `isVisibleText` en
   las marcas (2026-10-15), **pasa con 15, falla con 16**; con el peso del "desde" y el enlace al
   Libro de Reclamaciones (campos opcionales, el test lleva el enlace más largo), **pasa con 8,
-  falla con 9** (2026-10-15): la lista blanca del titular pasó a `unchanged(['slug', 'currency',
+  falla con 9** (2026-10-15); con el rechazo de `xn--` en el enlace al libro, **pasa con 7, falla
+  con 8** (2026-10-16): la lista blanca del titular pasó a `unchanged(['slug', 'currency',
   'createdAt'])` (el validador ya fija las claves) para no perder más. Una escritura que se
   pasa del límite se rechaza aunque fuera legítima. Antes de añadirle condiciones: validar solo
   lo que cambia o partir el documento (PLAN §9).
