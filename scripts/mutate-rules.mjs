@@ -1588,12 +1588,17 @@ const MUTANTS = [
     '|| true)',
   ],
   ['Q18', 'complaints book ten times longer', 'value.size() <= 300', 'value.size() <= 3000'],
-  ['Q19', 'complaints book over plain http', "value.matches('https://", "value.matches('https?://"],
+  [
+    'Q19',
+    'complaints book over plain http',
+    "value.matches('https://[a-z0-9]",
+    "value.matches('https?://[a-z0-9]",
+  ],
   [
     'Q20',
     'complaints book with any character after the host',
-    "(/[A-Za-z0-9._~%!$&()*+,;=:@/?#-]*)?');",
-    "(/.*)?');",
+    "(/[A-Za-z0-9._~%!$&()*+,;=:@/?#-]*)?')",
+    "(/.*)?')",
   ],
   [
     'Q21',
@@ -1606,6 +1611,19 @@ const MUTANTS = [
     'complaints book on a host without a dot',
     '([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)+(/',
     '([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)*(/',
+  ],
+  // PLAN §11, 2026-10-16: no punycode label in the host of the complaints book.
+  [
+    'Q27',
+    'complaints book on a host in punycode',
+    "\n        && !value.matches('https://([a-z0-9-]+[.])*xn--.*')",
+    '',
+  ],
+  [
+    'Q28',
+    'complaints book with punycode past the first label',
+    "!value.matches('https://([a-z0-9-]+[.])*xn--.*')",
+    "!value.matches('https://xn--.*')",
   ],
   [
     'Q23',
@@ -1750,14 +1768,14 @@ const MUTANTS = [
   [
     'N01',
     'invitation read under any id',
-    'allow get: if signedInWithGoogle() && isInviteCode(code);',
-    'allow get: if signedInWithGoogle();',
+    'allow get: if signedInWithGoogle()\n          && isInviteCode(code)\n',
+    'allow get: if signedInWithGoogle()\n',
   ],
   [
     'N02',
     'invitation read without a session of Google',
-    'allow get: if signedInWithGoogle() && isInviteCode(code);',
-    'allow get: if isInviteCode(code);',
+    'allow get: if signedInWithGoogle()\n          && isInviteCode(code)\n',
+    'allow get: if isInviteCode(code)\n',
   ],
   [
     'N03',
@@ -1883,8 +1901,8 @@ const MUTANTS = [
   [
     'N24',
     'invitation used and changed on the way',
-    "onlyChanges(['status', 'acceptedBy', 'acceptedAt', 'updatedAt'])",
-    "onlyChanges(['status', 'acceptedBy', 'acceptedAt', 'role', 'createdAt', 'updatedAt'])",
+    "onlyChanges(['status', 'acceptedBy', 'acceptedAt', 'email', 'updatedAt'])",
+    "onlyChanges(['status', 'acceptedBy', 'acceptedAt', 'email', 'role', 'createdAt', 'updatedAt'])",
   ],
   [
     'N25',
@@ -1943,8 +1961,8 @@ const MUTANTS = [
   [
     'J02',
     'member joins a read-only distributor',
-    '\n            && writable(d)\n            && get(/databases/$(database)/documents/users',
-    '\n            && get(/databases/$(database)/documents/users',
+    '\n            && writable(d)\n            && stillVouchedFor',
+    '\n            && stillVouchedFor',
   ],
   [
     'J03',
@@ -2000,6 +2018,69 @@ const MUTANTS = [
     'address compared as typed',
     'before.email == request.auth.token.email.lower()',
     'before.email == request.auth.token.email',
+  ],
+  // PLAN §11 (2026-10-16): an invitation works only while who created it is an active owner.
+  [
+    'J13',
+    'invitation keeps working after its author stops being an owner',
+    '\n            && stillVouchedFor(get(invite).data)',
+    '',
+  ],
+  [
+    'J14',
+    'invitation of an owner switched off still lets in',
+    "return holdsRole(\n              get(/databases/$(database)/documents/distributors/$(d)/members/$(invite.createdBy)).data,\n              ['owner']\n            )",
+    "return get(/databases/$(database)/documents/distributors/$(d)/members/$(invite.createdBy)).data.role == 'owner'",
+  ],
+  [
+    'J15',
+    'invitation of an owner demoted still lets in',
+    "return holdsRole(\n              get(/databases/$(database)/documents/distributors/$(d)/members/$(invite.createdBy)).data,\n              ['owner']\n            )",
+    'return get(/databases/$(database)/documents/distributors/$(d)/members/$(invite.createdBy)).data.active == true',
+  ],
+  [
+    'J16',
+    'invitation of an account that is no longer staff still lets in',
+    "return holdsRole(\n              get(/databases/$(database)/documents/distributors/$(d)/members/$(invite.createdBy)).data,\n              ['owner']\n            )",
+    'return true',
+  ],
+  [
+    'J17',
+    'invitation to an owner from a co-owner lets in',
+    "\n            && (invite.role != 'owner' || invite.createdBy == get(controlPath(d)).data.ownerUid);",
+    ';',
+  ],
+  // PLAN §11, 2026-10-16: the address of an invitation is read only by its account and an
+  // owner, and using the invitation clears it.
+  [
+    'J18',
+    'invitation tied to an address read by anyone with the link',
+    "resource.data.email == null\n            || resource.data.email == request.auth.token.email.lower()\n            || hasRole(d, ['owner'])",
+    'true',
+  ],
+  [
+    'J19',
+    'invitation tied to an address read by any staff',
+    "|| resource.data.email == request.auth.token.email.lower()\n            || hasRole(d, ['owner'])",
+    '|| resource.data.email == request.auth.token.email.lower()\n            || isStaff(d)',
+  ],
+  [
+    'J20',
+    'address of the reader compared as typed',
+    'resource.data.email == request.auth.token.email.lower()',
+    'resource.data.email == request.auth.token.email',
+  ],
+  [
+    'J21',
+    'invitation used keeping the address',
+    '\n              && request.resource.data.email == null\n',
+    '\n',
+  ],
+  [
+    'J22',
+    'invitation used rewriting the address',
+    '\n              && request.resource.data.email == null\n',
+    "\n              && request.resource.data.email != 'x'\n",
   ],
   [
     'M30',
@@ -2506,6 +2587,7 @@ const EQUIVALENT = {
   Z25: 'the stock reads the movement it names with getAfter, and a name that is not an automatic id cannot be the id of a movement, whose rule demands isAutoId(movementId)',
   Z34: `${STOCK_PAIR}: the stock of that product must name the movement and demands movement.productId == its own id, and a stock is only created for a product that exists (slots p00 … p29)`,
   Z40: 'a change that is not an integer leaves a count that is not one, and the stock demands integers (isStockCount)',
+  Q26: "isValidDistributor() pins currency == 'PEN', so no update can change it while there is a single currency: the whitelist is a second lock. NOT equivalent the day a second currency is allowed: the test 'blocks the owner from changing its currency' then kills it",
   X21: 'the mark needs a change of content in the public profile or in the private settings, and both rules already demand a writable distributor for it (writable(d) in the owner edit, settingsEditAllowed()): a second lock that costs no read, because the control document is the one being written',
 };
 

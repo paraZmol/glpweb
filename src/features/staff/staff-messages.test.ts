@@ -54,7 +54,7 @@ describe('staff messages', () => {
   });
 
   it.each([
-    [new InviteNotFoundError(), 'No encontramos esta invitación'],
+    [new InviteNotFoundError(), 'Esta invitación es para otra cuenta o no existe.'],
     [new InviteExpiredError(), 'Esta invitación venció: dura 7 días.'],
     [new InviteUsedError(), 'Esta invitación ya se usó.'],
     [new InviteRevokedError(), 'Esta invitación fue anulada.'],

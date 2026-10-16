@@ -72,7 +72,7 @@ const ASK_AGAIN = 'Pide una invitación nueva a quien te la envió.';
 /** Message in Spanish for what using an invitation can throw. */
 export function describeJoinError(error: unknown): string {
   if (error instanceof InviteNotFoundError) {
-    return `No encontramos esta invitación. Revisa que el enlace esté completo o ${ASK_AGAIN.toLowerCase()}`;
+    return `Esta invitación es para otra cuenta o no existe. Revisa que el enlace esté completo o ${ASK_AGAIN.toLowerCase()}`;
   }
   if (error instanceof InviteExpiredError) {
     return `Esta invitación venció: dura ${INVITE_TTL_DAYS} días. ${ASK_AGAIN}`;

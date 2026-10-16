@@ -1,6 +1,7 @@
 // Words of /central/personal (PLAN 3.2), shared by its panels and its tests.
 
-export const EMAIL_RECOMMENDED = 'Recomendado: así solo esa cuenta de Google puede usarla.';
+export const EMAIL_RECOMMENDED =
+  'Recomendado: así solo esa cuenta de Google puede usarla. Escríbelo solo si la persona sabe que la invitas.';
 export const EMAIL_REQUIRED_FOR_OWNER =
   'Obligatorio para un titular: solo esa cuenta de Google podrá usarla.';
 export const ANY_ACCOUNT = 'Cualquier cuenta de Google con el enlace';

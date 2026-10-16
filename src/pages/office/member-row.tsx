@@ -83,6 +83,7 @@ export function MemberRow(props: MemberRowProps) {
             type="button"
             variant={member.active ? 'quiet' : 'soft'}
             size="sm"
+            className="min-w-28"
             disabled={isLocked}
             onClick={() => setMode('active')}
           >

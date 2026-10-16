@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react';
-import { useLocation } from 'react-router';
 import { HornillaLogo } from '@/components/brand/hornilla-logo';
 import { Button, ButtonLink } from '@/components/common/button';
-import { InviteForAnotherAccountError } from '@/domain/staff/errors';
+import { InviteForAnotherAccountError, InviteNotFoundError } from '@/domain/staff/errors';
 import { useSignOut } from '@/features/account/use-sign-out';
 import { describeJoinError } from '@/features/staff/staff-messages';
 import { ROUTES, signInPathFrom, withFragment } from '@/lib/routes';
@@ -28,7 +27,9 @@ export function JoinStop({ title, description, actions }: JoinStopProps) {
         <HornillaLogo variant="symbol" tone="mono" size={SYMBOL_PX} />
       </span>
       <div>
-        <h1 className="text-[1.75rem] font-extrabold text-balance lg:text-[2rem]">{title}</h1>
+        <h1 className="text-[1.75rem] font-extrabold text-balance wrap-break-word lg:text-[2rem]">
+          {title}
+        </h1>
         <p className="mt-2 max-w-prose text-muted-foreground">{description}</p>
       </div>
       <div className="flex flex-wrap gap-3">{actions}</div>
@@ -55,20 +56,24 @@ type JoinRefusedProps = {
   email: string | null;
   /** Already an active member there: go to its panel instead. */
   onEnter?: () => void;
+  /** The fragment of the link, kept in memory once the address bar no longer shows it. */
+  linkHash: string;
 };
 
 /** Why this account cannot use the invitation, and the way on (PLAN 3.2). */
-export function JoinRefused({ refusal, distributorName, email, onEnter }: JoinRefusedProps) {
+export function JoinRefused(props: JoinRefusedProps) {
+  const { refusal, distributorName, email, onEnter, linkHash } = props;
   // Signing out here is to come back with another account: to the sign-in, then to this same
   // invitation (its code rides in the fragment, never in `desde`).
-  const { hash } = useLocation();
-  const { signOut, isSigningOut } = useSignOut(withFragment(signInPathFrom(ROUTES.join), hash));
+  const { signOut, isSigningOut } = useSignOut(withFragment(signInPathFrom(ROUTES.join), linkHash));
   const name = distributorName ?? 'esta distribuidora';
   const copy = joinStopCopyOf(refusal, name) ?? {
     title: 'No pudimos usar esta invitación.',
     description: describeJoinError(refusal),
   };
-  const isOtherAccount = refusal instanceof InviteForAnotherAccountError;
+  // A link it cannot read may be for another account too: the way back is the same.
+  const isOtherAccount =
+    refusal instanceof InviteForAnotherAccountError || refusal instanceof InviteNotFoundError;
   return (
     <JoinStop
       title={copy.title}

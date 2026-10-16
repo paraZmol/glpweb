@@ -11,7 +11,7 @@ import {
   type Transaction,
   where,
 } from 'firebase/firestore';
-import { INVITES_QUERY_LIMIT } from '../domain/staff/constants';
+import { INVITES_QUERY_LIMIT, INVITES_QUERY_MAX } from '../domain/staff/constants';
 import {
   AlreadyMemberError,
   InviteNotFoundError,
@@ -25,9 +25,11 @@ import { type Invite, type InviteRef, isInviteCode } from '../domain/staff/invit
 import { inviteRefusalFor, type Joiner, type NewInvite } from '../domain/staff/invite-input';
 import {
   type MemberChange,
+  mayStopAnOwner,
   memberChangeOf,
   memberChangeRefusal,
   sortMembers,
+  stopsBeingActiveOwner,
 } from '../domain/staff/member-management';
 import { MEMBERS_QUERY_LIMIT } from '../domain/tenancy/constants';
 import {
@@ -123,14 +125,21 @@ export function listPendingInvites(d: string): Promise<Invite[]> {
 /**
  * The invitation of a link, for whoever holds it (any account signed in with Google). Null
  * when no invitation has that code there — also for a code of another shape, which is never
- * looked up. One read, none by the rules.
+ * looked up — and when the rules refuse it: one tied to the address of another account is read
+ * only by that account and by an owner, and the rules refuse a code nobody created alike (PLAN
+ * §11, 2026-10-16). One read, none by the rules (1 for an owner reading one tied to another).
  */
-export function getInvite({ distributorId, code }: InviteRef): Promise<Invite | null> {
-  if (!isInviteCode(code)) return Promise.resolve(null);
-  return guarded(async () => {
-    const snapshot = await getDoc(inviteRef(distributorId, code).withConverter(inviteConverter));
-    return snapshot.data() ?? null;
-  });
+export async function getInvite({ distributorId, code }: InviteRef): Promise<Invite | null> {
+  if (!isInviteCode(code)) return null;
+  try {
+    return await guarded(async () => {
+      const ref = inviteRef(distributorId, code).withConverter(inviteConverter);
+      return (await getDoc(ref)).data() ?? null;
+    });
+  } catch (error) {
+    if (error instanceof PermissionDeniedError) return null;
+    throw error;
+  }
 }
 
 /**
@@ -211,23 +220,26 @@ async function joinInTransaction(tx: Transaction, { ref, joiner, now }: JoinRequ
     status: 'accepted',
     acceptedBy: joiner.uid,
     acceptedAt: serverTimestamp(),
+    // The address has no purpose once used; the rules demand it cleared (PLAN §11, 2026-10-16).
+    email: null,
     updatedAt: serverTimestamp(),
   });
   return { distributorId: d, role: invite.role };
 }
 
 /**
- * Why the rules refused a join the transaction had found acceptable: another request of the
- * same moment got there first (the invitation was used, or this account joined in another
- * tab). Two reads. Null when the documents say nothing new.
+ * Why the rules refused a join: another request of the same moment got there first (the
+ * invitation was used, or this account joined in another tab), or the invitation cannot be
+ * read — tied to another address, or missing, which the rules refuse alike and this reports as
+ * `InviteNotFoundError` (PLAN §11, 2026-10-16). Two reads. Null when the documents say nothing
+ * new.
  */
 async function explainJoinRefusal({ ref, joiner, now }: JoinRequest): Promise<Error | null> {
-  const { distributorId: d, code } = ref;
   const [invite, member] = await Promise.all([
-    getDoc(inviteRef(d, code).withConverter(inviteConverter)),
-    getDoc(memberRef(d, joiner.uid).withConverter(memberConverter)),
+    getInvite(ref),
+    getDoc(memberRef(ref.distributorId, joiner.uid).withConverter(memberConverter)),
   ]);
-  return joinRefusal(invite.data(), member.data(), joiner, now);
+  return joinRefusal(invite ?? undefined, member.data(), joiner, now);
 }
 
 /**
@@ -281,18 +293,54 @@ export interface StaffChange {
 }
 
 /**
+ * The codes of the invitations `uid` created that still wait, up to the rules' cap
+ * (`INVITES_QUERY_MAX`). Owner only. Cost: one read per invitation (one when there is none),
+ * plus 1 by the rules. Equality filters only: no composite index.
+ */
+async function pendingInviteCodesBy(d: string, uid: string): Promise<string[]> {
+  const waiting = query(
+    collection(db, paths.invites(d)),
+    where('createdBy', '==', uid),
+    where('status', '==', 'pending'),
+    limit(INVITES_QUERY_MAX),
+  );
+  return (await getDocs(waiting)).docs.map((invite) => invite.id);
+}
+
+/** Revokes, inside `tx`, the invitations of `codes` that still wait (read in the transaction). */
+async function revokeWaitingInvites(tx: Transaction, d: string, codes: string[], by: string) {
+  const refs = codes.map((code) => inviteRef(d, code));
+  const invites = await Promise.all(refs.map((ref) => tx.get(ref.withConverter(inviteConverter))));
+  refs.forEach((ref, index) => {
+    if (invites[index]?.data()?.status !== 'pending') return;
+    tx.update(ref, {
+      status: 'revoked',
+      revokedBy: by,
+      revokedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  });
+}
+
+/**
  * Owner only, while the distributor is writable: changes the role of another member or switches
  * it off or back on (PLAN 3.2). Nobody changes itself, the founder is never changed, and only
  * the founder makes, unmakes or switches off another owner (`memberChangeRefusal`; the rules
- * hold the same). Staff is never deleted. Writes only what changes.
+ * hold the same). Staff is never deleted. Writes only what changes. When an owner is switched
+ * off or demoted, the same transaction revokes the invitations it created that still wait, up
+ * to `INVITES_QUERY_MAX` (PLAN §11, 2026-10-16): the rules already refuse them, and switching
+ * the person back on does not bring them back.
  * Throws `MemberNotFoundError`, `MemberChangeNotAllowedError` (with its reason),
  * `NothingChangedError`, `PermissionDeniedError` (not an owner, read-only distributor) or
  * `OfflineError`.
- * Cost: 2 reads + 1 write, plus 2 lookups by the rules for the reads and 2 for the write.
+ * Cost: 2 reads + 1 write, plus 2 lookups by the rules for the reads and 2 for the write. When
+ * the change could leave an owner as something else, 1 query first (one read per waiting
+ * invitation of that person, at least one) and, when it does, 1 read + 1 write per invitation.
  */
 export function changeStaffMember({ distributorId: d, actorUid, uid, change }: StaffChange) {
-  return guarded(() =>
-    runTransaction(db, async (tx) => {
+  return guarded(async () => {
+    const waiting = mayStopAnOwner(change) ? await pendingInviteCodesBy(d, uid) : [];
+    return runTransaction(db, async (tx) => {
       const controlRef = doc(db, paths.distributorControl(d)).withConverter(controlConverter);
       const control = (await tx.get(controlRef)).data();
       const target = (await tx.get(memberRef(d, uid).withConverter(memberConverter))).data();
@@ -302,7 +350,10 @@ export function changeStaffMember({ distributorId: d, actorUid, uid, change }: S
       if (reason) throw new MemberChangeNotAllowedError(reason);
       const changed = memberChangeOf(target, change);
       if (Object.keys(changed).length === 0) throw new NothingChangedError();
+      if (stopsBeingActiveOwner(target, changed)) {
+        await revokeWaitingInvites(tx, d, waiting, actorUid);
+      }
       tx.update(memberRef(d, uid), { ...changed, updatedAt: serverTimestamp() });
-    }),
-  );
+    });
+  });
 }

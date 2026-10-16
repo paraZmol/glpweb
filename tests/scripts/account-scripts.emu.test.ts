@@ -324,8 +324,8 @@ describe('delete-account.mjs', () => {
       displayName: dispatcherA.displayName,
       active: true,
     });
-    // PLAN 3.2: the note may talk about the RUC; the invitation it created keeps working,
-    // without its name.
+    // PLAN 3.2: the note may talk about the RUC. The invitation it created stays as it was,
+    // without its name; the rules no longer honour it, its author is switched off (2026-10-16).
     expect(await stored(REVIEW_OF_A)).toBeUndefined();
     expect(await stored(SEEDED_INVITE_OF_A)).toMatchObject({
       status: 'pending',

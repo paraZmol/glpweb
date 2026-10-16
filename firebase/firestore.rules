@@ -123,17 +123,20 @@ rules_version = '2';
 //
 // /distributors/{d}/invites/{code}  invitations of staff (PLAN 3.2). {code} is the secret of the
 //                                   link: 20 letters and digits, the shape of an automatic id.
-//                                   Anyone signed in with Google who knows it may `get` it;
+//                                   Anyone signed in with Google who knows it may `get` it
+//                                   (when tied to an address, only that account or an owner);
 //                                   only an owner lists them; nobody else can find one.
 //   role: owner | dispatcher | driver · email: null | lowercase address it is tied to (required
-//   to invite an owner) · distributorName: the public name — written equal to it, and rewritten
+//   to invite an owner; set to null when it is used; only that account and an owner read an
+//   invitation that carries one) · distributorName: the public name — written equal to it, and rewritten
 //     by an owner only to a new public name while the invitation waits
 //   invitedByName: optional — the name the member of the inviting owner carries (visible text)
 //   brandColor: optional — the brand colour of the public profile when it was created; neither
 //     copy is rewritten afterwards, and invitations older than them stay valid
 //   status: pending | accepted | revoked — pending → accepted (by whoever holds it, once, in the
 //     request that creates its member) or pending → revoked (an owner); nothing else
-//   createdBy: uid of the owner · createdAt, updatedAt — usable for 7 days after createdAt
+//   createdBy: uid of the owner · createdAt, updatedAt — usable for 7 days after createdAt, and
+//     only while createdBy is still an active owner (the founder, for an owner invitation)
 //   acceptedBy, acceptedAt: only once accepted · revokedBy, revokedAt: only once revoked
 //
 // /distributors/{d}/helpers/{h}    people who go with a truck and never sign in (PLAN 3.2). {h} is
@@ -387,12 +390,12 @@ service cloud.firestore {
     // Acceptance of the terms (docs/legal). Same list as TERMS_VERSIONS in
     // src/domain/legal/versions.ts.
     function acceptedTermsVersions() {
-      return ['0.5'];
+      return ['0.6'];
     }
 
     // Same list as PRIVACY_VERSIONS in src/domain/legal/versions.ts.
     function acceptedPrivacyVersions() {
-      return ['0.5'];
+      return ['0.6'];
     }
 
     function isAcceptance(acceptance, versions) {
@@ -440,10 +443,13 @@ service cloud.firestore {
 
     // The link to the virtual complaints book of a distributor: https only, a lowercase host
     // with a dot, no port nor credentials, and only characters an address carries unescaped.
-    // Same pattern and cap as isComplaintsBookUrl in src/domain/tenancy/complaints-book.ts.
+    // No label of the host in punycode (`xn--`): it can spell a name that looks like another
+    // one (PLAN §11, 2026-10-16). Same pattern and cap as isComplaintsBookUrl in
+    // src/domain/tenancy/complaints-book.ts.
     function isComplaintsBookUrl(value) {
       return value is string && value.size() <= 300
-        && value.matches('https://[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)+(/[A-Za-z0-9._~%!$&()*+,;=:@/?#-]*)?');
+        && value.matches('https://[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)+(/[A-Za-z0-9._~%!$&()*+,;=:@/?#-]*)?')
+        && !value.matches('https://([a-z0-9-]+[.])*xn--.*');
     }
 
     // Rules cannot loop: the list is capped at 8 and each position is checked by hand.
@@ -1201,9 +1207,9 @@ service cloud.firestore {
         // with exactly the role of a usable invitation of this distributor and, in the same
         // request, marks that invitation used by itself, so it works once. Nobody creates a
         // member document for anyone else.
-        // Reads added by rules: 2 for the founder (getAfter distributor, getAfter control); 5
+        // Reads added by rules: 2 for the founder (getAfter distributor, getAfter control); 6
         // through an invitation (getAfter distributor, get and getAfter invitation, get control,
-        // get profile).
+        // get profile, get member of the owner who invited).
         allow create: if isSelf(memberUid)
           && isValidMember(request.resource.data, d, memberUid)
           && isVisibleText(request.resource.data.displayName, 1, 80)
@@ -1268,6 +1274,7 @@ service cloud.firestore {
           return isInviteCode(code)
             && usesInvitation(get(invite).data, getAfter(invite).data)
             && writable(d)
+            && stillVouchedFor(get(invite).data)
             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName
               == request.resource.data.displayName;
         }
@@ -1282,6 +1289,20 @@ service cloud.firestore {
             && (before.email == null || before.email == request.auth.token.email.lower())
             && after.status == 'accepted'
             && after.acceptedBy == request.auth.uid;
+        }
+
+        // An invitation speaks for the owner who created it, so it works only while that person
+        // is still an active owner here (not switched off, not demoted, account not deleted: its
+        // member is then off or missing, which denies); one for an owner, only while its author
+        // is the founder, the only one who invites owners (PLAN §11, 2026-10-16). The app also
+        // revokes them when it switches that owner off or demotes it (stopsBeingActiveOwner in
+        // src/domain/staff/member-management.ts); this is the lock that does not trust it.
+        function stillVouchedFor(invite) {
+          return holdsRole(
+              get(/databases/$(database)/documents/distributors/$(d)/members/$(invite.createdBy)).data,
+              ['owner']
+            )
+            && (invite.role != 'owner' || invite.createdBy == get(controlPath(d)).data.ownerUid);
         }
 
         function carriesPublicName() {
@@ -1338,8 +1359,17 @@ service cloud.firestore {
       // cannot be found or guessed; whoever has the link reads it (to see where and as what it
       // is invited) and may use it once, within its days.
       match /invites/{code} {
-        // Reads added by rules: 0.
-        allow get: if signedInWithGoogle() && isInviteCode(code);
+        // The address an owner typed is data of somebody else (PLAN §11, 2026-10-16): an
+        // invitation tied to one is read only by that Google account (compared in lowercase, as
+        // when it is used) and by an owner; one without an address, by whoever has the link.
+        // Reads added by rules: 0, or 1 for an owner reading one tied to another address.
+        allow get: if signedInWithGoogle()
+          && isInviteCode(code)
+          && (
+            resource.data.email == null
+            || resource.data.email == request.auth.token.email.lower()
+            || hasRole(d, ['owner'])
+          );
 
         // The owner's list, to share a link again or revoke it. Reads added by rules: 1.
         allow list: if request.query.limit <= 50 && hasRole(d, ['owner']);
@@ -1372,7 +1402,8 @@ service cloud.firestore {
         }
 
         // Used: by whoever holds it, only in the request that creates its own member, whose
-        // rule checks that it is still usable and for this account. Revoked: by an owner while
+        // rule checks that it is still usable and for this account; using it clears the address
+        // it was tied to, which has no purpose any more (PLAN §11, 2026-10-16). Revoked: by an owner while
         // it waits, also when the distributor is read-only (it only takes access away). Its copy
         // of the name follows a new public name: an owner rewrites it, only to that name, in the
         // batch that renames the distributor (whoever joins writes it into its member, whose
@@ -1383,7 +1414,8 @@ service cloud.firestore {
           && request.resource.data.updatedAt == request.time
           && (
             (
-              onlyChanges(['status', 'acceptedBy', 'acceptedAt', 'updatedAt'])
+              onlyChanges(['status', 'acceptedBy', 'acceptedAt', 'email', 'updatedAt'])
+              && request.resource.data.email == null
               && request.resource.data.status == 'accepted'
               && request.resource.data.acceptedBy == request.auth.uid
               && request.resource.data.acceptedAt == request.time

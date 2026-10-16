@@ -270,6 +270,21 @@ describe('public profile — the link to the complaints book', () => {
     await assertSucceeds(editProfile('owner-a', { complaintsBookUrl: longest }));
   });
 
+  // PLAN §11, 2026-10-16: a punycode label can spell a host that looks like another one.
+  it.each([
+    ['in the path', 'https://example.com/xn--libro'],
+    ['inside a label', 'https://libroxn--a.example.com'],
+  ])('accepts "xn--" %s, which is not a punycode label of the host', async (_case, url) => {
+    await assertSucceeds(editProfile('owner-a', { complaintsBookUrl: url }));
+  });
+
+  it.each([
+    ['a host in punycode', 'https://xn--reclamacin-6db.pe/libro'],
+    ['a punycode label inside the host', 'https://libro.xn--80ak6aa92e.com'],
+  ])('rejects a link with %s', async (_case, url) => {
+    await assertFails(editProfile('owner-a', { complaintsBookUrl: url }));
+  });
+
   it.each([
     ['plain http', 'http://example.com/libro'],
     ['a script', 'javascript:alert(1)'],

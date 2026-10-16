@@ -1,7 +1,9 @@
+import { Check } from 'lucide-react';
 import { useId } from 'react';
 import { CHIP_CLASS } from '@/components/catalog/weight-choice';
 import { ROLE_DUTIES, ROLE_LABELS } from '@/components/layout/role-labels';
 import type { MemberRole } from '@/domain/tenancy/types';
+import { GLYPH_STROKE } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 type RoleChoiceProps = {
@@ -19,6 +21,21 @@ const CARD_CLASS = [
   'inset-ring-[1.5px] inset-ring-input hover:bg-muted',
   'aria-checked:bg-primary-soft aria-checked:inset-ring-2 aria-checked:inset-ring-primary-text',
 ].join(' ');
+
+/** The radio of a card: the choice is said by a mark, not by the tint alone. */
+function RadioMark({ isChecked }: { isChecked: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'mt-0.5 grid size-5 shrink-0 place-items-center rounded-full',
+        isChecked ? 'bg-primary-text text-background' : 'inset-ring-[1.5px] inset-ring-input',
+      )}
+    >
+      {isChecked && <Check className="size-3.5" strokeWidth={GLYPH_STROKE} />}
+    </span>
+  );
+}
 
 /** The role of a person of the staff (PLAN 3.2): never a drop-down, the choices in sight. */
 export function RoleChoice({ label, roles, value, onChange, withDuties = false }: RoleChoiceProps) {
@@ -44,7 +61,10 @@ export function RoleChoice({ label, roles, value, onChange, withDuties = false }
           >
             {withDuties ? (
               <>
-                <span className="font-heading text-base font-bold">{ROLE_LABELS[role]}</span>
+                <span className="flex w-full items-start justify-between gap-3">
+                  <span className="font-heading text-base font-bold">{ROLE_LABELS[role]}</span>
+                  <RadioMark isChecked={value === role} />
+                </span>
                 <span className="text-sm text-muted-foreground">{ROLE_DUTIES[role]}</span>
               </>
             ) : (

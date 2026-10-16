@@ -18,7 +18,7 @@ import { forgetVisibleDistributors } from '../tenancy/visible-distributors';
  * `input.active` is false, at the end of the list. Prices are integer cents (`parseMoneyCents`
  * reads what the person typed). Returns its id. Throws `InvalidInputError` (per-field issues;
  * `fullPriceCents: notAbove` when the full cylinder does not cost more than the refill),
- * `CatalogFullError`, `StaleCatalogError` (try again), `PermissionDeniedError` (a driver or
+ * `CatalogFullError`, `PermissionDeniedError` (a driver or
  * someone outside, or the distributor is read-only: suspended, payment pending, trial over) or
  * `OfflineError`.
  */
