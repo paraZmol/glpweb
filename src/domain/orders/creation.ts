@@ -55,17 +55,27 @@ export type CreationRefusal =
   | 'outOfCoverage'
   | LineRequestIssue;
 
+/**
+ * The address lies outside the distributor's coverage circle. It refuses a customer's order;
+ * a phone order goes through with this flag, so the office sees "Fuera de tu zona" and the
+ * order keeps it (decided by the user on 2026-10-16).
+ */
+export function isOutsideCoverage(
+  request: Pick<CreationRequest, 'plant' | 'destination' | 'coverageRadiusKm'>,
+): boolean {
+  return !isWithinCoverage(request.plant, request.destination, request.coverageRadiusKm);
+}
+
 function customerRefusal(request: CreationRequest): CreationRefusal | null {
   if (!request.acceptingOrders) return 'notAcceptingOrders';
   if (request.hasAliveOrder) return 'aliveOrderExists';
-  const { plant, destination, coverageRadiusKm } = request;
-  return isWithinCoverage(plant, destination, coverageRadiusKm) ? null : 'outOfCoverage';
+  return isOutsideCoverage(request) ? 'outOfCoverage' : null;
 }
 
 /**
  * Why the order cannot be created, or null (glp-domain §1, PLAN 4.2 and 4.4). Prices are not
- * checked here: they come from `freezeLines`. A phone order needs neither an account nor the
- * coverage circle: the office decides whether it goes (PLAN §11, 2026-10-16, to confirm).
+ * checked here: they come from `freezeLines`. A phone order needs no account and may fall
+ * outside the coverage circle (`isOutsideCoverage` flags it; PLAN §11, 2026-10-16).
  */
 export function creationRefusal(request: CreationRequest): CreationRefusal | null {
   const origin = originFor(request.role);

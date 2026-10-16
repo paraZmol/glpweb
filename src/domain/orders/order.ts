@@ -34,6 +34,11 @@ export interface Order {
   /** The distributor's currency; every price of the order is in it. */
   currency: string;
   totalCents: number;
+  /**
+   * A phone order the office took outside the coverage circle ("Fuera de tu zona"). False when
+   * the document has no such field.
+   */
+  outsideCoverage: boolean;
   /** Minutes promised when the order was made, to measure punctuality (`promisedMinutesFor`). */
   promisedMinutes: number;
   /** The driver carrying it; null while `pending` and after the office takes it back. */

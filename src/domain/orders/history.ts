@@ -1,6 +1,6 @@
 import { OrderTransitionError } from './errors';
 import type { TransitionRequest } from './guards';
-import { transitionRefusal } from './guards';
+import { isReassignment, transitionRefusal } from './guards';
 import type { Order } from './order';
 import type { CancelReason } from './reasons';
 import type { OrderStatus } from './status';
@@ -18,11 +18,13 @@ export interface OrderLogEntry {
   at: Date;
   byUid: string;
   byRole: OrderActorRole;
-  /**
-   * The driver concerned: the one that gets it (`assigned`), the one taken off (back to
-   * `pending`) or the one carrying it; null when there is none.
-   */
+  /** The driver of the order after the change; null when it has none. */
   driverUid: string | null;
+  /**
+   * The driver it had before, when the change took it away (reassigned or back to `pending`);
+   * null otherwise.
+   */
+  previousDriverUid: string | null;
   reason: CancelReason | null;
   note: string | null;
 }
@@ -53,22 +55,29 @@ function patchFor(request: TransitionRequest, at: Date): OrderPatch {
   return patch;
 }
 
-/** Only a cancellation and taking the driver off carry a note. */
+/** Only a cancellation and moving the driver (off, or to another one) carry a note. */
 function noteOf(request: TransitionRequest): string | null {
   if (request.to === 'cancelled') return request.cancellation?.note ?? null;
-  return request.to === 'pending' ? (request.note ?? null) : null;
+  return request.to === 'pending' || isReassignment(request) ? (request.note ?? null) : null;
+}
+
+function driversOf(request: TransitionRequest) {
+  const { order, to } = request;
+  if (to === 'pending') return { driverUid: null, previousDriverUid: order.driverUid };
+  if (to !== 'assigned') return { driverUid: order.driverUid, previousDriverUid: null };
+  const previousDriverUid = isReassignment(request) ? order.driverUid : null;
+  return { driverUid: request.assignee?.uid ?? null, previousDriverUid };
 }
 
 function entryFor(request: TransitionRequest, at: Date): OrderLogEntry {
   const { order, to, actor } = request;
-  const isAssignment = to === 'assigned';
   return {
     from: order.status,
     to,
     at,
     byUid: actor.uid,
     byRole: actor.role,
-    driverUid: isAssignment ? (request.assignee?.uid ?? null) : order.driverUid,
+    ...driversOf(request),
     reason: to === 'cancelled' ? (request.cancellation?.reason ?? null) : null,
     note: noteOf(request),
   };
@@ -100,6 +109,7 @@ export function creationEntry(
     byUid: order.createdBy,
     byRole,
     driverUid: null,
+    previousDriverUid: null,
     reason: null,
     note: null,
   };

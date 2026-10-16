@@ -41,6 +41,8 @@ const CARRYING_DRIVER = { driver: 'ownDelivery' } as const;
 export const ORDER_TRANSITIONS: readonly OrderTransition[] = [
   { from: 'pending', to: 'assigned', by: { ...OFFICE, driver: 'takesIt' } },
   { from: 'assigned', to: 'pending', by: OFFICE },
+  // Reassignment in one write, so no other driver takes it in between (user, 2026-10-16).
+  { from: 'assigned', to: 'assigned', by: OFFICE },
   { from: 'assigned', to: 'onTheWay', by: CARRYING_DRIVER },
   { from: 'onTheWay', to: 'arrived', by: CARRYING_DRIVER },
   { from: 'arrived', to: 'delivered', by: CARRYING_DRIVER },

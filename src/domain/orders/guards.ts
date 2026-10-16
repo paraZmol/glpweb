@@ -31,21 +31,29 @@ export interface TransitionRequest {
   actor: OrderActor;
   /** The distributor accepts business writes (`isWritable` of tenancy). */
   writable: boolean;
-  /** `pending → assigned`. */
+  /** `pending → assigned` and `assigned → assigned` (reassignment). */
   assignee?: Assignee;
   /** `→ cancelled`. */
   cancellation?: Cancellation;
-  /** `assigned → pending`: why the office takes the driver off. */
+  /** `assigned → pending` and `assigned → assigned`: why the office moves the driver. */
   note?: string;
   /** `arrived → delivered`. */
   payment?: Payment;
 }
 
 export type AssignmentIssue =
-  'driverRequired' | 'driverNotOnShift' | 'driverBusy' | 'notEnoughStock';
+  | 'driverRequired'
+  /** A reassignment to the driver that already has it. */
+  | 'sameDriver'
+  | 'driverNotOnShift'
+  | 'driverBusy'
+  | 'notEnoughStock';
 
 export type OrderRefusal =
-  /** The distributor is read-only: suspended, past due or with its trial over (§6.10). */
+  /**
+   * The distributor is read-only: suspended, past due or with its trial over (§6.10). Except
+   * for the customer cancelling its pending order.
+   */
   | 'readOnly'
   /** That change of status is not in the table (glp-domain §6.2). */
   | 'notATransition'
@@ -66,9 +74,21 @@ export function stockShortfall(
     .map(([productId]) => productId);
 }
 
+/** A change that moves the driver: a reassignment (`assigned → assigned`) or taking it off. */
+export function isReassignment(request: Pick<TransitionRequest, 'order' | 'to'>): boolean {
+  return request.order.status === 'assigned' && request.to === 'assigned';
+}
+
+const hasNote = (request: TransitionRequest) =>
+  request.note !== undefined && isOrderNote(request.note);
+
 function assignmentIssue(request: TransitionRequest): OrderRefusal | null {
   const { assignee, actor, order } = request;
   if (!assignee) return 'driverRequired';
+  if (isReassignment(request)) {
+    if (assignee.uid === order.driverUid) return 'sameDriver';
+    if (!hasNote(request)) return 'noteRequired';
+  }
   if (actor.role === 'driver' && assignee.uid !== actor.uid) return 'notAllowed';
   if (!assignee.readiness.shiftApproved) return 'driverNotOnShift';
   if (assignee.readiness.hasOrderWithDriver) return 'driverBusy';
@@ -82,8 +102,21 @@ function requirementIssue(request: TransitionRequest): OrderRefusal | null {
   if (to === 'assigned') return assignmentIssue(request);
   if (to === 'cancelled') return cancellationIssue(request.cancellation, actor.role === 'customer');
   if (to === 'delivered') return paymentIssue(request.payment, order.totalCents);
-  if (to === 'pending') return request.note && isOrderNote(request.note) ? null : 'noteRequired';
+  if (to === 'pending') return hasNote(request) ? null : 'noteRequired';
   return null;
+}
+
+/**
+ * The customer cancelling its pending order: the one change a read-only distributor still
+ * accepts (decided by the user on 2026-10-16), so nobody is left with an order nobody serves.
+ * Whether it is really its order is checked like any other change.
+ */
+export function isCustomerCancellation(request: Pick<TransitionRequest, 'order' | 'to' | 'actor'>) {
+  return (
+    request.order.status === 'pending' &&
+    request.to === 'cancelled' &&
+    request.actor.role === 'customer'
+  );
 }
 
 /**
@@ -92,7 +125,7 @@ function requirementIssue(request: TransitionRequest): OrderRefusal | null {
  * order, so the status it checks is the one it writes over.
  */
 export function transitionRefusal(request: TransitionRequest): OrderRefusal | null {
-  if (!request.writable) return 'readOnly';
+  if (!request.writable && !isCustomerCancellation(request)) return 'readOnly';
   if (!findTransition(request.order.status, request.to)) return 'notATransition';
   if (!mayMove(request.order, request.to, request.actor)) return 'notAllowed';
   return requirementIssue(request);
