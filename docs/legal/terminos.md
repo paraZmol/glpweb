@@ -1,6 +1,6 @@
 # Términos y condiciones de Hornilla
 
-> **BORRADOR v0.4 (2026-10-12) — pendiente de revisión por un profesional antes del lanzamiento.**
+> **BORRADOR v0.5 (2026-10-15) — pendiente de revisión por un profesional antes del lanzamiento.**
 > Los datos entre corchetes se completan cuando exista la razón social. Este texto se muestra en
 > la aplicación marcado como borrador en revisión (paso 2.7 del plan) y su número de versión queda
 > registrado con cada aceptación. Mientras queden corchetes en la sección 1 no debe registrarse a
@@ -12,9 +12,9 @@
 > la que queda registrada, con su número y su fecha, cuando alguien la acepta. Antes de abrir
 > Hornilla al público se publicará una versión revisada por un profesional y se pedirá aceptarla
 > de nuevo para seguir usando la aplicación. Hoy la aplicación permite ingresar con una cuenta de
-> Google, registrar una distribuidora, buscar las distribuidoras que llegan a un punto y ver su página; los
-> pedidos, los precios, las promociones y el seguimiento todavía no funcionan, y las secciones 4,
-> 5 y 6 describen cómo funcionarán.
+> Google, registrar una distribuidora, buscar las distribuidoras que llegan a un punto y ver su
+> página con sus productos y precios; los pedidos, las promociones y el seguimiento todavía no
+> funcionan, y las secciones 5 y 6 describen cómo funcionarán.
 
 ## 1. Qué es Hornilla
 Hornilla es una plataforma que conecta a personas que quieren comprar gas doméstico (GLP) con
@@ -77,15 +77,19 @@ de las suyas esté suspendida, con un pago pendiente o con el periodo de prueba 
 ## 4. Precios, productos y promociones
 1. Los precios, productos, horarios, zonas de reparto, promociones y descuentos que se muestran
    **los publica cada distribuidora y son de su exclusiva responsabilidad**.
-2. La distribuidora se obliga a que sus promociones sean veraces: precio final real, vigencia,
+2. La distribuidora publica precios finales en soles: lo que paga el cliente, con los impuestos y
+   el reparto dentro de su zona incluidos, sin recargos que no se muestren antes. Los mantiene al
+   día y respeta el precio publicado mientras esté a la vista. El «Recarga desde» del buscador es
+   la recarga más barata que la distribuidora tiene a la venta e indica su peso.
+3. La distribuidora se obliga a que sus promociones sean veraces: precio final real, vigencia,
    condiciones y unidades disponibles cuando corresponda, y a cumplirlas mientras estén publicadas.
-3. **Hornilla no responde por promociones, precios o información falsos, engañosos o incumplidos
+4. **Hornilla no responde por promociones, precios o información falsos, engañosos o incumplidos
    por una distribuidora.** El reclamo corresponde a la distribuidora que hizo la oferta.
-4. Hornilla pone medios para reducir errores (vigencia obligatoria, tope por pedido, bloqueo del
+5. Hornilla pone medios para reducir errores (vigencia obligatoria, tope por pedido, bloqueo del
    precio "antes"), pero no revisa ni aprueba cada promoción antes de publicarse.
-5. Hornilla puede retirar una promoción o suspender a una distribuidora cuando reciba reclamos
+6. Hornilla puede retirar una promoción o suspender a una distribuidora cuando reciba reclamos
    fundados o detecte información engañosa.
-6. El precio de un pedido queda fijado al confirmarlo; un cambio posterior no lo altera.
+7. El precio de un pedido queda fijado al confirmarlo; un cambio posterior no lo altera.
 
 Nada de lo anterior limita los derechos que la ley reconoce a los consumidores.
 
@@ -96,7 +100,8 @@ Nada de lo anterior limita los derechos que la ley reconoce a los consumidores.
    distribuidora.
 3. En una **recarga** el cliente entrega un balón vacío por cada balón que recibe. Sin balón
    vacío, la distribuidora puede no completar la entrega. El **balón completo** incluye el envase
-   y no incluye regulador ni manguera salvo que la distribuidora lo indique.
+   y no incluye regulador ni manguera salvo que la distribuidora lo diga expresamente en el nombre
+   del producto.
 4. El tiempo estimado de llegada es una referencia, no una garantía.
 5. El cliente puede cancelar sin costo mientras el pedido no haya sido asignado.
 
@@ -114,7 +119,9 @@ fuego, ventilar, cerrar la válvula y llamar a los bomberos (116).
 
 ## 8. Reclamos
 - Sobre un pedido, un precio o una promoción: ante la distribuidora, que debe contar con su
-  Libro de Reclamaciones.
+  Libro de Reclamaciones. Si la distribuidora tiene un Libro de Reclamaciones virtual y dio su
+  enlace, su página en Hornilla lo muestra; ese libro es de la distribuidora, no de Hornilla, y
+  si no lo muestra puedes pedírselo por sus datos de contacto.
 - Para avisar a Hornilla de un precio o una promoción engañosos, o de una ficha que suplanta a
   otro negocio o tiene datos falsos: a [correo de contacto]. La página de cada distribuidora
   tiene el enlace "Reportar esta distribuidora", que lleva a "Contacto y reclamos"; el aviso se
@@ -148,8 +155,8 @@ entonces puede seguir apareciendo aunque ya no reciba pedidos.
 
 Mientras la distribuidora está aprobada y puede operar, su ficha es pública: cualquiera puede ver
 su nombre, su enlace, el teléfono y el WhatsApp del negocio, su dirección y la ubicación de su
-planta, su zona de reparto, su horario, sus marcas y precios, su tope de balones por pedido y las
-fechas en que se registró y en que cambió su ficha por última vez. El registro avisa de los
+planta, su zona de reparto, su horario, sus marcas, productos y precios, el enlace a su Libro de
+Reclamaciones virtual si lo dio, su tope de balones por pedido y las fechas en que se registró y en que cambió su ficha por última vez. El registro avisa de los
 principales antes de crear la distribuidora. Su situación con Hornilla (revisión, prueba, plan,
 pagos o suspensión), su RUC, su razón social y su número de registro de Osinergmin (Registro de
 Hidrocarburos) no son públicos: los ven solo quien registró la distribuidora y la administración
@@ -165,6 +172,11 @@ requieren aceptación para seguir usándola.
 Estos términos se rigen por las leyes de la República del Perú.
 
 ## Historial de cambios
+- 0.5 (2026-10-15): ya se ven los productos y precios de cada distribuidora; la distribuidora
+  publica precios finales con impuestos y reparto incluidos y los mantiene al día (sección 4); la
+  0.4 deja de poder aceptarse. El balón completo incluye regulador o manguera solo si la
+  distribuidora lo dice expresamente en el nombre del producto (sección 5). La página de una
+  distribuidora puede mostrar el enlace a su Libro de Reclamaciones virtual (secciones 8 y 10).
 - 0.4 (2026-10-12): a Hornilla se ingresa solo con una cuenta de Google; desaparecen el registro
   con correo y contraseña, el correo de verificación y el restablecimiento de contraseña, y
   Hornilla no guarda ninguna contraseña (sección 3). El dato que antes se llamaba "número de ficha

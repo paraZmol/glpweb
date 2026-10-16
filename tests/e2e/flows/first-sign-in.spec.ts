@@ -10,8 +10,8 @@ test.skip(
 
 const TERMS_BOX = /Acepto los Términos y condiciones/;
 const PRIVACY_BOX = /Leí la Política de privacidad/;
-const CURRENT_TERMS = '0.4';
-const CURRENT_PRIVACY = '0.4';
+const CURRENT_TERMS = '0.5';
+const CURRENT_PRIVACY = '0.5';
 const GOOGLE_NAME = 'Y. De Google';
 const CONFIRMED_NAME = 'Y. Confirmada';
 /** Follows the fake pattern 9000000xx of the seed. */
