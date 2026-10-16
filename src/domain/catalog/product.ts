@@ -32,6 +32,13 @@ export interface Product {
   active: boolean;
   /** Position chosen by the distributor; lower first. */
   sortOrder: number;
+  /**
+   * Until when its list prices may not go up nor its full cylinder stop being sold (PLAN 3.5,
+   * §11 2026-10-16): the latest end of the promotions that cover it. A promotion only applies to
+   * a product whose mark reaches its end (`isCoveredBy` in src/domain/pricing). Absent or null in
+   * products that never had one.
+   */
+  promotedUntil?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -95,4 +102,23 @@ export function raisesListPrice(
   if (after.refillPriceCents > before.refillPriceCents) return true;
   if (before.fullPriceCents === null || after.fullPriceCents === null) return false;
   return after.fullPriceCents > before.fullPriceCents;
+}
+
+/**
+ * Whether going from `before` to `after` is refused while a promotion covers the product: a raise
+ * of either list price, or no longer selling the full cylinder (taking it away and putting it
+ * back dearer would be a raise in two steps). Lowering a price is always allowed. Same check as
+ * `keepsPromotionLock()` in firebase/firestore.rules.
+ */
+export function breaksPromotionLock(
+  before: Pick<Product, 'refillPriceCents' | 'fullPriceCents'>,
+  after: Pick<Product, 'refillPriceCents' | 'fullPriceCents'>,
+): boolean {
+  if (raisesListPrice(before, after)) return true;
+  return before.fullPriceCents !== null && after.fullPriceCents === null;
+}
+
+/** Whether a promotion still holds the list prices of `product` at `now`. */
+export function isPriceLocked(product: Pick<Product, 'promotedUntil'>, now: Date): boolean {
+  return product.promotedUntil != null && product.promotedUntil.getTime() > now.getTime();
 }

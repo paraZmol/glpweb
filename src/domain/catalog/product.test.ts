@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   defaultProductName,
   productTitle,
+  breaksPromotionLock,
+  isPriceLocked,
   raisesListPrice,
   sellsFullCylinder,
   toProductOffer,
@@ -73,5 +75,39 @@ describe('raisesListPrice', () => {
   it('does not count starting to sell the full cylinder as a raise', () => {
     const before = { refillPriceCents: 5200, fullPriceCents: null };
     expect(raisesListPrice(before, { refillPriceCents: 5200, fullPriceCents: 18500 })).toBe(false);
+  });
+});
+
+// PLAN 3.5, §11 2026-10-16: what a promotion that covers the product forbids.
+describe('breaksPromotionLock', () => {
+  const BOTH = { refillPriceCents: 5200, fullPriceCents: 18500 };
+
+  it.each([
+    ['a higher refill', { refillPriceCents: 5201, fullPriceCents: 18500 }, true],
+    ['a higher full price', { refillPriceCents: 5200, fullPriceCents: 18501 }, true],
+    ['no longer selling the full cylinder', { refillPriceCents: 5200, fullPriceCents: null }, true],
+    ['lower prices', { refillPriceCents: 5000, fullPriceCents: 18000 }, false],
+    ['the same prices', BOTH, false],
+  ])('says %s is %s', (_case, after, expected) => {
+    expect(breaksPromotionLock(BOTH, after)).toBe(expected);
+  });
+
+  it('lets a product start selling the full cylinder', () => {
+    const before = { refillPriceCents: 5200, fullPriceCents: null };
+    expect(breaksPromotionLock(before, BOTH)).toBe(false);
+  });
+});
+
+describe('isPriceLocked', () => {
+  const NOW = new Date('2026-10-16T15:00:00Z');
+
+  it.each([
+    ['a mark still ahead', new Date('2026-10-16T15:00:01Z'), true],
+    ['a mark exactly now', NOW, false],
+    ['a mark already past', new Date('2026-10-01T00:00:00Z'), false],
+    ['no mark', null, false],
+    ['a product older than the mark', undefined, false],
+  ])('says %s is %s', (_case, promotedUntil, expected) => {
+    expect(isPriceLocked({ promotedUntil }, NOW)).toBe(expected);
   });
 });
