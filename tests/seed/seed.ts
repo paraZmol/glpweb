@@ -18,6 +18,7 @@ import {
   SEED_PRIVACY_VERSION,
   SEED_TERMS_VERSION,
   SEED_USERS,
+  seedMovementIdOf,
   type SeedDistributor,
   type SeedUser,
 } from './data.ts';
@@ -179,6 +180,37 @@ function writeStaffExtras(batch: Batch, db: Db, distributor: SeedDistributor) {
   }
 }
 
+/** Vehicles (PLAN 3.3), and the plant stock with the movement of its first count (PLAN 3.4). */
+function writeFleetAndStock(batch: Batch, db: Db, distributor: SeedDistributor) {
+  const { id } = distributor;
+  for (const { id: slot, ...vehicle } of distributor.vehicles ?? []) {
+    batch.set(doc(db, `distributors/${id}/vehicles/${slot}`), { ...vehicle, ...stamps });
+  }
+  const founder = founderOf(distributor);
+  for (const { productId, full, empty } of distributor.plantStock ?? []) {
+    const movementId = seedMovementIdOf(id, productId);
+    batch.set(doc(db, `distributors/${id}/plantStock/${productId}`), {
+      full,
+      empty,
+      lastMovementId: movementId,
+      updatedAt: createdAt,
+    });
+    batch.set(doc(db, `distributors/${id}/stockMovements/${movementId}`), {
+      kind: 'adjustment',
+      productId,
+      reason: 'count',
+      note: null,
+      fullDelta: full,
+      emptyDelta: empty,
+      fullAfter: full,
+      emptyAfter: empty,
+      authorUid: founder.uid,
+      authorName: founder.displayName,
+      createdAt,
+    });
+  }
+}
+
 function writeProfiles(batch: Batch, db: Db, distributors: SeedDistributor[]) {
   for (const user of Object.values(SEED_USERS)) {
     if (!user.hasProfile) continue;
@@ -259,6 +291,7 @@ export async function seedEmulators(options: SeedOptions = {}): Promise<SeedSumm
       for (const distributor of distributors) {
         writeDistributor(batch, db, distributor);
         writeStaffExtras(batch, db, distributor);
+        writeFleetAndStock(batch, db, distributor);
       }
       writeProfiles(batch, db, distributors);
       await batch.commit();

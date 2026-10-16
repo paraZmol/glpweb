@@ -484,6 +484,8 @@ export interface AdjustmentWrite {
   only?: 'stock' | 'movement';
   authorUid?: string;
   authorName?: string;
+  /** A batch that already holds other writes of the attack. */
+  batch?: ReturnType<typeof writeBatch>;
 }
 
 /**
@@ -498,7 +500,7 @@ export function adjustStock(db: Db, write: AdjustmentWrite = {}): Promise<void> 
   const fullDelta = write.fullDelta ?? 20;
   const emptyDelta = write.emptyDelta ?? -12;
   const after = { full: before.full + fullDelta, empty: before.empty + emptyDelta };
-  const batch = writeBatch(db);
+  const batch = write.batch ?? writeBatch(db);
   if (write.only !== 'movement') {
     batch.set(doc(db, plantStockPath(d, productId)), {
       ...after,

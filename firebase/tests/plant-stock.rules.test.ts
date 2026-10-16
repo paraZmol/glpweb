@@ -20,6 +20,7 @@ import {
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -37,6 +38,7 @@ import {
   createEnv,
   CUSTOMER_UID,
   type Db,
+  MOVEMENT_ID,
   movementPath,
   OTHER_MOVEMENT_ID,
   plantStockDoc,
@@ -208,10 +210,17 @@ describe('plant stock — adjust', () => {
     await assertFails(adjustStock(owner(), { only: 'movement' }));
   });
 
-  it('blocks a stock that names an old movement instead of a new one', async () => {
-    await assertFails(
-      adjustStock(owner(), { only: 'stock', stock: { lastMovementId: SEEDED_MOVEMENT_ID } }),
-    );
+  it('blocks replaying an old movement whose numbers would add up again', async () => {
+    // The seeded movement took the stock from zero to 40 and 12; the stock is back at zero.
+    await seedDoc(env, plantStockPath(A, 'p00'), plantStockDoc({ full: 0, empty: 0 }));
+    const replay = {
+      only: 'stock',
+      movementId: SEEDED_MOVEMENT_ID,
+      before: { full: 0, empty: 0 },
+      fullDelta: 40,
+      emptyDelta: 12,
+    } as const;
+    await assertFails(adjustStock(owner(), replay));
   });
 
   it('blocks a stock that names a movement other than the one written', async () => {
@@ -219,8 +228,14 @@ describe('plant stock — adjust', () => {
   });
 
   it.each([
-    ['moves full cylinders by more than it says', { stock: { full: 61 } }],
-    ['moves empty cylinders by more than it says', { stock: { empty: 1 } }],
+    [
+      'moves full cylinders by more than it says',
+      { stock: { full: 61 }, movement: { fullAfter: 61 } },
+    ],
+    [
+      'moves empty cylinders by more than it says',
+      { stock: { empty: 1 }, movement: { emptyAfter: 1 } },
+    ],
     ['says the stock ends with other full cylinders', { movement: { fullAfter: 61 } }],
     ['says the stock ends with other empty cylinders', { movement: { emptyAfter: 1 } }],
     ['was computed from an old count', { before: { full: 30, empty: 12 } }],
@@ -234,6 +249,20 @@ describe('plant stock — adjust', () => {
 
   it('blocks a movement about another product than the stock it changes', async () => {
     await assertFails(adjustStock(owner(), { movement: { productId: 'p01' } }));
+  });
+
+  it('blocks one movement for two products: the second would change without its line', async () => {
+    // Both products hold the same counts, so the same change adds up for each of them.
+    await seedDoc(env, plantStockPath(A, 'p01'), plantStockDoc());
+    const db = owner();
+    const batch = writeBatch(db);
+    batch.set(stockOf(db, A, 'p00'), {
+      full: 60,
+      empty: 0,
+      lastMovementId: MOVEMENT_ID,
+      updatedAt: serverTimestamp(),
+    });
+    await assertFails(adjustStock(db, { productId: 'p01', batch }));
   });
 
   it.each([

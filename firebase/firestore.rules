@@ -576,6 +576,11 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    // p00 … p29: the slots of the catalogue (PRODUCT_SLOT_IDS in src/domain/catalog/catalog.ts).
+    function isProductSlot(value) {
+      return value is string && value.matches('^p[0-2][0-9]$');
+    }
+
     // Integer cents within the sanity cap of S/ 999.00 (MAX_PRICE_CENTS).
     function isPriceCents(value) {
       return value is int && value >= 1 && value <= 99900;
@@ -714,7 +719,7 @@ service cloud.firestore {
           'emptyAfter', 'authorUid', 'authorName', 'createdAt'
         ])
         && data.kind == 'adjustment'
-        && data.productId is string && data.productId.matches('^p[0-2][0-9]$')
+        && isProductSlot(data.productId)
         && data.reason in ['count', 'supplier', 'damaged', 'other']
         && (data.note == null ? data.reason != 'other' : isVisibleText(data.note, 1, 200))
         && isStockDelta(data.fullDelta)
@@ -1303,7 +1308,7 @@ service cloud.firestore {
         // creation date: no product is replaced by another one.
         // Reads added by rules: 3 (get member, get control, get distributor).
         allow create: if isValidProduct(request.resource.data)
-          && productId.matches('^p[0-2][0-9]$')
+          && isProductSlot(productId)
           && stampedNow(request.resource.data)
           && hasRole(d, ['owner', 'dispatcher'])
           && writable(d)
@@ -1447,7 +1452,8 @@ service cloud.firestore {
       match /vehicles/{vehicleId} {
         // Reads added by rules: 1 (get member).
         allow get: if isStaff(d);
-        allow list: if request.query.limit <= 30 && isStaff(d);
+        allow list: if request.query.limit <= 30
+          && isStaff(d);
 
         // Fixed slots, v00 … v29: the only way the rules can cap them. A taken slot makes this
         // an update, which keeps the creation date. Reads added by rules: 2 (get member, get

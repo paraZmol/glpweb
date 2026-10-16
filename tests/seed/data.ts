@@ -63,6 +63,43 @@ const product = (
   sortOrder,
 });
 
+/** A vehicle (PLAN 3.3). Plates are invented and follow no real registration. */
+export interface SeedVehicle {
+  /** Slot, v00 … v29. */
+  id: string;
+  kind: 'motorcycle' | 'tricycle' | 'truck';
+  name: string;
+  plate: string | null;
+  capacityCylinders: number;
+  active: boolean;
+}
+
+/**
+ * The plant stock of one product (PLAN 3.4), as a first physical count left it: the seed writes
+ * the stock and its movement (`count`, by the founder) together, as the rules demand.
+ */
+export interface SeedPlantStock {
+  productId: string;
+  full: number;
+  empty: number;
+}
+
+/**
+ * The id of the movement that left the seeded stock of a product: the shape of an automatic id
+ * (20 letters and digits), fixed so tests can name it.
+ */
+export const seedMovementIdOf = (distributorId: string, productId: string) =>
+  `SeedMove${distributorId.slice(-1).toUpperCase()}${productId}`.padEnd(20, '0');
+
+const vehicle = (
+  id: string,
+  kind: SeedVehicle['kind'],
+  name: string,
+  plate: string | null,
+  capacityCylinders: number,
+  active = true,
+): SeedVehicle => ({ id, kind, name, plate, capacityCylinders, active });
+
 export interface SeedDistributor {
   id: string;
   name: string;
@@ -100,6 +137,8 @@ export interface SeedDistributor {
   invites?: { code: string; role: SeedRole; email: string | null }[];
   /** Helpers (PLAN 3.2): people who go with a truck and never sign in. `id` is a slot. */
   helpers?: { id: string; name: string; active: boolean }[];
+  vehicles?: SeedVehicle[];
+  plantStock?: SeedPlantStock[];
 }
 
 /**
@@ -216,6 +255,17 @@ export const SEED_DISTRIBUTORS = {
       { id: 'h00', name: 'P. Ayudante', active: true },
       { id: 'h01', name: 'Q. Ayudante', active: false },
     ],
+    vehicles: [
+      vehicle('v00', 'motorcycle', 'Moto roja', 'DEM-001', 3),
+      vehicle('v01', 'truck', 'Camión 1', 'DEM-002', 120),
+      vehicle('v02', 'tricycle', 'Trimoto vieja', null, 8, false),
+    ],
+    // p02 and p04 were never moved: they read as zero.
+    plantStock: [
+      { productId: 'p00', full: 40, empty: 12 },
+      { productId: 'p01', full: 25, empty: 6 },
+      { productId: 'p03', full: 4, empty: 1 },
+    ],
   },
   /** Healthy, paying; the "other distributor" of every isolation test. */
   b: {
@@ -245,6 +295,8 @@ export const SEED_DISTRIBUTORS = {
       { user: SEED_USERS.dispatcherB, role: 'dispatcher' },
       { user: SEED_USERS.driverB, role: 'driver' },
     ],
+    vehicles: [vehicle('v00', 'motorcycle', 'Moto azul', 'DEM-101', 3)],
+    plantStock: [{ productId: 'p00', full: 30, empty: 9 }],
   },
   /** Suspended by the platform: read-only, and no longer readable by visitors. */
   c: {

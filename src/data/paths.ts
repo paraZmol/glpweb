@@ -22,10 +22,17 @@ export const paths = {
   /** `slot` is `h00` … `h29` (HELPER_SLOT_IDS in src/domain/staff/helper.ts). */
   helper: (d: string, slot: string) => `distributors/${d}/helpers/${slot}`,
   vehicles: (d: string) => `distributors/${d}/vehicles`,
+  /** `slot` is `v00` … `v29` (VEHICLE_SLOT_IDS in src/domain/vehicles/vehicle.ts). */
+  vehicle: (d: string, slot: string) => `distributors/${d}/vehicles/${slot}`,
   products: (d: string) => `distributors/${d}/products`,
   /** `slot` is `p00` … `p29` (PRODUCT_SLOT_IDS in src/domain/catalog/catalog.ts). */
   product: (d: string, slot: string) => `distributors/${d}/products/${slot}`,
   plantStock: (d: string) => `distributors/${d}/plantStock`,
+  /** Same id as the product: `p00` … `p29`. */
+  plantStockOf: (d: string, productId: string) => `distributors/${d}/plantStock/${productId}`,
+  /** The history of the plant stock (PLAN 3.4): one line per change, never rewritten. */
+  stockMovements: (d: string) => `distributors/${d}/stockMovements`,
+  stockMovement: (d: string, id: string) => `distributors/${d}/stockMovements/${id}`,
   customers: (d: string) => `distributors/${d}/customers`,
   orders: (d: string) => `distributors/${d}/orders`,
   orderHistory: (d: string, orderId: string) => `distributors/${d}/orders/${orderId}/history`,

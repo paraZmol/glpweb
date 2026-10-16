@@ -6,6 +6,13 @@ import {
 } from 'firebase/firestore';
 import { defaultProductName, type Product } from '../domain/catalog/product';
 import type { Helper } from '../domain/staff/helper';
+import type { PlantStock } from '../domain/stock/plant-stock';
+import {
+  ADJUSTMENT_REASONS,
+  STOCK_MOVEMENT_KINDS,
+  type StockMovement,
+} from '../domain/stock/movement';
+import { type Vehicle, VEHICLE_KINDS } from '../domain/vehicles/vehicle';
 import { INVITE_STATUSES, type Invite } from '../domain/staff/invite';
 import { type GeoPoint, isValidGeoPoint } from '../domain/geo/distance';
 import {
@@ -47,7 +54,7 @@ export class FieldReader {
     private readonly data: DocumentData,
   ) {}
 
-  private fail(key: string, expected: string): never {
+  fail(key: string, expected: string): never {
     throw new CorruptDocumentError(this.path, `"${key}" should be ${expected}`);
   }
 
@@ -341,6 +348,57 @@ export const parseProduct: Parser<Product> = (id, path, data) => {
   };
 };
 
+export const parseVehicle: Parser<Vehicle> = (id, path, data) => {
+  const read = new FieldReader(path, data);
+  const createdAt = read.date('createdAt');
+  return {
+    id,
+    kind: read.oneOf('kind', VEHICLE_KINDS),
+    name: read.text('name'),
+    plate: read.textOrNull('plate'),
+    capacityCylinders: wholeCount(read, 'capacityCylinders'),
+    // A vehicle without the flag is not offered: never send out one that was not added as in use.
+    active: read.flag('active', false),
+    createdAt,
+    updatedAt: read.date('updatedAt', createdAt),
+  };
+};
+
+export const parsePlantStock: Parser<PlantStock> = (id, path, data) => {
+  const read = new FieldReader(path, data);
+  return {
+    productId: id,
+    full: wholeCount(read, 'full'),
+    empty: wholeCount(read, 'empty'),
+    lastMovementId: read.textOrNull('lastMovementId'),
+    updatedAt: read.dateOrNull('updatedAt'),
+  };
+};
+
+export const parseStockMovement: Parser<StockMovement> = (id, path, data) => {
+  const read = new FieldReader(path, data);
+  return {
+    id,
+    kind: read.oneOf('kind', STOCK_MOVEMENT_KINDS),
+    productId: read.text('productId'),
+    reason: read.oneOf('reason', ADJUSTMENT_REASONS),
+    note: read.textOrNull('note'),
+    fullDelta: wholeCount(read, 'fullDelta'),
+    emptyDelta: wholeCount(read, 'emptyDelta'),
+    fullAfter: wholeCount(read, 'fullAfter'),
+    emptyAfter: wholeCount(read, 'emptyAfter'),
+    authorUid: read.text('authorUid'),
+    authorName: read.text('authorName', ''),
+    createdAt: read.date('createdAt'),
+  };
+};
+
+/** Counts of cylinders are whole numbers: anything else is a corrupt document, never rounded. */
+function wholeCount(read: FieldReader, key: string): number {
+  const value = read.integerOrNull(key);
+  return value ?? read.fail(key, 'a whole number');
+}
+
 function aboveOrNull(value: number | null, floor: number): number | null {
   return value !== null && value > floor ? value : null;
 }
@@ -373,3 +431,6 @@ export const productConverter = readOnlyConverter(parseProduct);
 export const reviewNoteConverter = readOnlyConverter(parseReviewNote);
 export const inviteConverter = readOnlyConverter(parseInvite);
 export const helperConverter = readOnlyConverter(parseHelper);
+export const vehicleConverter = readOnlyConverter(parseVehicle);
+export const plantStockConverter = readOnlyConverter(parsePlantStock);
+export const stockMovementConverter = readOnlyConverter(parseStockMovement);
