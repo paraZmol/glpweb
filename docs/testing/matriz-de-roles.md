@@ -132,12 +132,12 @@ Una sola puerta (PLAN §11, 2026-10-14): el encabezado público ofrece "Ingresar
 | Personal: ayudantes — añadir, renombrar, activar y desactivar (tope 30) | — | — | — | — | — | no ve | puede | puede en la suya | no ve | — |
 | Unirse con un enlace vigente en `/unirme` | — | — | puede tras aceptar los términos | puede: entra al área de su rol con esa distribuidora elegida | puede en otra distribuidora | igual | igual | puede | rechaza en C o D (aviso en la tarjeta) | puede |
 | Abrir un enlace vencido, usado, anulado o atado a otro correo | — | — | — | ve "Esta invitación venció." / "ya se usó." / "fue anulada." / "es para otra cuenta de Google." (con su correo y "Cerrar sesión") | igual | igual | igual | igual | igual | igual |
-| Perder el acceso con el panel abierto porque su titular lo desactivó | — | — | — | — | → `/inicio` al momento, con un aviso que diga que perdió el acceso a esa distribuidora (hoy: el genérico "Esa sección no está disponible", §4b) | igual | — | — | — | — |
-| Ver al momento un cambio del catálogo hecho en otra pantalla (otra pestaña, la central, el titular) | — | — | — | — | ve, sin recargar (hoy no, §4b) | ve, sin recargar (hoy no) | ve, sin recargar (hoy no) | — | — | — |
-| Reordenar el catálogo con la pantalla atrasada (otra persona lo reordenó un momento antes) | — | — | — | — | — | conserva lo que hizo la otra persona (hoy lo deshace, §4b) | igual | — | — | — |
-| Ver en `/central/personal`, sin recargar, a quien acaba de unirse y que su invitación ya no espera | — | — | — | — | — | — | ve (hoy no, §4b) | igual | — | — |
+| Perder el acceso con el panel abierto porque su titular lo desactivó | — | — | — | — | → `/inicio` al momento, con el aviso "Ya no tienes acceso a {distribuidora}: te desactivaron en su personal…" | igual | — | — | — | — |
+| Ver al momento un cambio del catálogo hecho en otra pantalla (otra pestaña, la central, el titular) | — | — | — | — | ve al volver a la pantalla, sin recargar | ve al volver a la pantalla, sin recargar | ve al volver a la pantalla, sin recargar | — | — | — |
+| Reordenar el catálogo con la pantalla atrasada (otra persona lo reordenó un momento antes) | — | — | — | — | — | conserva lo que hizo la otra persona: el paso se da sobre el orden guardado y ve "El catálogo cambió en otra pantalla… Revisa el orden." | igual | — | — | — |
+| Ver en `/central/personal`, sin recargar, a quien acaba de unirse y que su invitación ya no espera | — | — | — | — | — | — | ve al volver a la pantalla (por ejemplo, tras compartir el enlace por WhatsApp) | igual | — | — |
 | Anular desde una pantalla atrasada una invitación que ya se usó | — | — | — | — | — | — | ve "Esa invitación ya se usó: desactiva a la persona si ya no debe entrar." y la invitación sale de la lista | igual | — | — |
-| "Cerrar sesión" desde "Esta invitación es para otra cuenta de Google." | — | — | — | vuelve a `/ingresar` con el enlace, para entrar con la cuenta correcta (hoy va a la portada y lo pierde, §4b) | igual | igual | igual | igual | igual | igual |
+| "Cerrar sesión" desde "Esta invitación es para otra cuenta de Google." | — | — | — | vuelve a `/ingresar?desde=%2Funirme#…` con el enlace, para entrar con la cuenta correcta | igual | igual | igual | igual | igual | igual |
 | Ver "Cambios pedidos" en `/central` cuando hay nota | — | — | — | — | — | ve el estado y "La nota de Hornilla con el detalle la ve quien registró la distribuidora…" | quien fundó ve la nota; un co-titular, el mismo aviso que la central | — | — | — |
 | Ver que la distribuidora quedó suspendida, con el panel abierto | — | — | — | — | ve, sin recargar (aviso: no depende de quien reparte, que avise a su titular) | ve, sin recargar | ve, sin recargar | — | — | — |
 | Perder el rol con el panel abierto (cambia de rol, se desactiva o baja de titular) | — | — | — | — | → su área nueva, con aviso | → su área nueva, con aviso | la ficha pasa a "la edita quien es titular" | — | — | — |
@@ -252,22 +252,16 @@ distribuidora quedan dos, las dos a la espera de una decisión sobre almacenamie
 - **Recargar a mitad del alta** vacía lo escrito (el borrador vive solo en memoria).
 - **Recargar la central recién creada y pulsar Atrás** muestra el paso 1 del alta vacío.
 
-De la cuarta pasada (2026-10-15, catálogo y personal), nueve, grupo "fourth pass":
-
-- **El catálogo no sigue los cambios hechos en otra pantalla** (`/central/catalogo` en otra
-  pestaña o de otra persona, `/reparto/catalogo`): se lee una vez al abrir.
-- **Reordenar con la pantalla atrasada deshace el orden que otra persona acababa de dejar.**
-- **`/central/personal` no muestra a quien se acaba de unir** ni saca su invitación de "las que
-  esperan" hasta recargar.
-- **Quien es desactivado con el panel abierto** sale a `/inicio` con el aviso genérico "Esa
-  sección no está disponible para tu cuenta"; nada dice que perdió el acceso.
-- **A 1440 px el título de un producto con nombre propio se corta** y la marca no se ve.
-- **En el celular, Atrás con el formulario de producto abierto** sale del catálogo y pierde lo
-  escrito.
-- **El foco se pierde tras "Quitar de la venta" o "Poner a la venta".**
-- **El error del nombre de un ayudante** es solo un aviso pasajero, no queda junto al campo.
-- **"Cerrar sesión" desde una invitación para otra cuenta** lleva a la portada y pierde el
-  enlace.
+Arregladas el 2026-10-15 (sus tests quedaron como tests normales), las nueve de la cuarta
+pasada (catálogo y personal): el catálogo (`/central/catalogo`, `/reparto/catalogo`) y
+`/central/personal` se releen al volver a la pantalla (no en vivo, PLAN §11); subir o bajar un
+producto da el paso sobre el orden guardado y avisa si la pantalla estaba atrasada; quien es
+desactivado lee que perdió el acceso a esa distribuidora; el título de un producto ya no se corta
+a 1440 px; el formulario de producto es un paso del historial (Atrás lo cierra); el foco vuelve
+al botón de venta de su fila; el error del nombre de un ayudante queda bajo su campo; "Cerrar
+sesión" desde una invitación para otra cuenta vuelve a ella pasando por `/ingresar`. Además, las
+invitaciones vencidas se pliegan en "Vencidas (N)" y, a 390 px, cada invitación muestra
+"Compartir por WhatsApp" en una línea y "Copiar enlace" con "Anular" debajo.
 
 Arregladas el 2026-10-14 (sus tests quedaron como tests normales), las cinco de la tercera
 pasada: cerrar la ventana de Google se responde en 1–2 s con "Se canceló el ingreso." y el
@@ -298,3 +292,4 @@ reactivar, volver a revisión, eliminar la cuenta) se responde con un doble clic
 | 2026-10-15 | No es una pasada: filas de `/central/personal` y `/unirme` en §1 y §2 (pantallas del paso 3.2). **Falta la pasada de `role-walker`** | `fase-3/catalogo` |
 | 2026-10-15 | No es una pasada: la central cambia el catálogo y los precios igual que el titular (decisión del usuario, PLAN §11); filas de `/central/catalogo` en §1, §2 y §3. **Falta la pasada de `role-walker`** | `fase-3/catalogo` |
 | 2026-10-15 | Cuarta pasada, sobre el catálogo (3.1) y el personal, las invitaciones y los ayudantes (3.2), a 390 y 1440 px en claro y oscuro: precios raros, balón completo igual o más barato, marcas largas, invisibles o con emojis, "Otro peso", doble clic, reordenar con teclado, quitar y poner a la venta, `/d/{slug}` y el buscador; dos personas editando el mismo producto; Atrás y recarga con el formulario abierto; suspensión en vivo con el formulario abierto; invitar sin y con correo, unirse sin sesión pasando por ingreso y términos, enlace usado, anulado, vencido, cortado, editado, de otra distribuidora o de otra cuenta, cambio de cuenta en la misma pestaña, repartidora en dos distribuidoras; cambio de rol, desactivar y reactivar con el panel abierto; co-titular y nota de la plataforma; ayudantes hasta el tope; ruta e intento directo con el SDK de cada rol contra productos, invitaciones, miembros, ayudantes y la nota (todo lo prohibido, rechazado). Filas nuevas en §2. Sin CRÍTICO ni ALTO; 4 medios y 5 bajos (§4b) | `fase-3/catalogo` |
+| 2026-10-15 | Arreglos de la cuarta pasada (no es una pasada nueva): las nueve de §4b, más las invitaciones vencidas plegadas y los botones de cada invitación a 390 px. Quedan con `test.fail` las dos del alta de §4b | `fase-3/catalogo` |
