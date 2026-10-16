@@ -9,7 +9,7 @@ export const SALE_MODE_NAMES: Record<SaleMode, string> = {
 };
 export const SALE_MODE_SUPPORT: Record<SaleMode, string> = {
   refill: 'Cambias tu balón vacío por uno lleno',
-  full: 'Gas + envase. No entregas vacío · No incluye regulador ni manguera',
+  full: 'Gas + envase. No entregas vacío · Regulador y manguera solo si el nombre lo dice',
 };
 
 type SaleModeSelectorProps = {

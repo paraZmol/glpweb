@@ -120,6 +120,8 @@ describe('public page of a distributor (PLAN 2.5)', () => {
     const [link = ''] = tags(html, 'a').filter((tag) => tag.includes(`href="${url}"`));
 
     expect(textOf(html)).toContain('Libro de Reclamaciones');
+    // PLAN §11 (2026-10-16): where it leads, in sight before it is opened.
+    expect(textOf(html)).toContain('· example.com');
     expect(link).toContain('target="_blank"');
     expect(link).toContain('rel="noopener noreferrer"');
   });

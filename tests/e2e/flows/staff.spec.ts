@@ -71,7 +71,9 @@ test('the owner invites a driver by link; a new person signs in, accepts and joi
   // No address: any Google account with the link may use it, once, for 7 days.
   await button(owner.page, 'Invitar a alguien').click();
   await expect(
-    owner.page.getByText('Recomendado: así solo esa cuenta de Google puede usarla.'),
+    owner.page.getByText(
+      'Recomendado: así solo esa cuenta de Google puede usarla. Escríbelo solo si la persona sabe que la invitas.',
+    ),
   ).toBeVisible();
   await button(owner.page, 'Crear invitación').click();
   await expect(owner.page.getByRole('heading', { name: 'Invitación lista.' })).toBeVisible();

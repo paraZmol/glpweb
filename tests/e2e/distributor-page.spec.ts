@@ -45,6 +45,8 @@ test('shows the public profile of a seeded distributor to anybody', async ({ pag
     'href',
     a.complaintsBookUrl,
   );
+  // PLAN §11 (2026-10-16): its host, in sight next to the link.
+  await expect(page.getByText('· example.com', { exact: true })).toBeVisible();
 
   // Links built from the stored numbers, with the message encoded.
   await expect(page.getByRole('link', { name: /WhatsApp/ }).first()).toHaveAttribute(

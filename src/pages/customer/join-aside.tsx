@@ -11,8 +11,8 @@ const POINTS = [
   },
   {
     icon: UserRound,
-    title: 'Su personal ve tu nombre',
-    text: 'El nombre de tu perfil aparece en su lista de personal. Tu celular y tu correo no.',
+    title: 'Sus titulares y su central ven tu nombre',
+    text: 'El nombre de tu perfil aparece en su lista de personal. Tu celular no; tu correo, solo mientras la invitación espera, lo ven sus titulares.',
   },
   {
     icon: ShieldCheck,
