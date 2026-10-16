@@ -320,3 +320,4 @@ correos.
 - **Mutación de reglas.** `scripts/mutate-rules.mjs` rompe una condición cada vez y exige que un
   test lo note. Al reescribir una regla, su entrada en la lista deja de aplicar: se actualiza en
   el mismo cambio y se añaden las condiciones nuevas (`MUTANTS=ID,… npm run test:mutation`).
+- **Bitácora atada al cambio** (stock de planta, PLAN 3.4): el documento que cambia nombra en `lastMovementId` la línea creada en la misma petición, y la regla la lee con `getAfter` y exige `createdAt == request.time` (no se reusa una vieja), el mismo producto y la diferencia exacta (`nuevo == anterior + delta == after`); la línea solo se crea si el documento la nombra. Ninguna se edita ni se borra. Dos ajustes simultáneos: el perdedor recibe `permission-denied` (las reglas se evalúan contra el valor nuevo), no un conflicto que el SDK reintente; el repositorio relee y reintenta solo si el stock se movió (`adjustPlantStock`).
