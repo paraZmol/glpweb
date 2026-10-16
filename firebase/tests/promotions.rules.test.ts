@@ -312,6 +312,7 @@ describe('promotions — shape (marketing D5, D6, D15, H5)', () => {
   it.each([
     ['a field it does not know', { badge: 'Oferta' }],
     ['the parameter of another kind', { percent: 10 }],
+    ['a percentage with the price of a special price', { ...PERCENT, priceCents: 4800 }],
     ['a kind it does not know', { type: 'gift' }],
     ['an empty title', { title: '' }],
     ['a title too long', { title: 'T'.repeat(PROMOTION_TITLE_MAX_LENGTH + 1) }],
@@ -326,8 +327,10 @@ describe('promotions — shape (marketing D5, D6, D15, H5)', () => {
     ['"unidades limitadas"', { conditions: 'Unidades limitadas' }],
     ['"quedan pocas"', { conditions: 'Quedan pocas' }],
     ['no product', { productIds: [] }],
+    ['no product, for a percentage', { ...PERCENT, productIds: [] }],
     ['a product twice', { ...PERCENT, productIds: ['p00', 'p00'] }],
     ['a product outside the slots', { ...PERCENT, productIds: ['p30'] }],
+    ['a product outside the slots next to a good one', { ...PERCENT, productIds: ['p00', 'p30'] }],
     ['more than one product for a special price', { productIds: ['p00', 'p01'] }],
     ['products that are not a list', { productIds: 'p00' }],
     ['another way of selling', { saleMode: 'both' }],

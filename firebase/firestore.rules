@@ -1427,8 +1427,8 @@ service cloud.firestore {
         // No delete: an order (phase 4) names the promotion it took by its slot.
 
         function isPublished() {
-          return resource.data.active == true
-            && get(distributorPath(d)).data.acceptingOrders == true;
+          return get(distributorPath(d)).data.acceptingOrders == true
+            && resource.data.active == true;
         }
 
         function isOver() {
