@@ -36,7 +36,7 @@ const codeOf = (prefix: string, tag: string) =>
   `${prefix}${tag.replace(/[^A-Za-z0-9]/g, '')}`.padEnd(20, 'x').slice(0, 20);
 
 async function openStaff(owner: Actor) {
-  await owner.page.getByRole('link', { name: 'Personal' }).click();
+  await owner.page.getByRole('link', { name: 'Personal', exact: true }).click();
   await expect(owner.page).toHaveURL(new RegExp(`${STAFF_PATH}$`));
   await expect(heading(owner.page)).toHaveText('Tu personal.');
 }
@@ -71,7 +71,9 @@ test('the owner invites a driver by link; a new person signs in, accepts and joi
   // No address: any Google account with the link may use it, once, for 7 days.
   await button(owner.page, 'Invitar a alguien').click();
   await expect(
-    owner.page.getByText('Recomendado: así solo esa cuenta de Google puede usarla.'),
+    owner.page.getByText(
+      'Recomendado: así solo esa cuenta de Google puede usarla. Escríbelo solo si la persona sabe que la invitas.',
+    ),
   ).toBeVisible();
   await button(owner.page, 'Crear invitación').click();
   await expect(owner.page.getByRole('heading', { name: 'Invitación lista.' })).toBeVisible();
@@ -107,8 +109,9 @@ test('the owner invites a driver by link; a new person signs in, accepts and joi
   await signInHere(driver.page, newcomer);
   await expect(driver.page).toHaveURL(/\/aceptar-terminos$/);
   await acceptTerms(driver.page);
-  await expect(driver.page).toHaveURL(new RegExp(`/unirme${link.hash.replace(/[&]/g, '\\&')}$`));
   await expect(heading(driver.page)).toHaveText(`${A.name} te invita como repartidor.`);
+  // PLAN §11 (2026-10-16): once read, the code is out of the address bar.
+  await expect(driver.page).toHaveURL(/\/unirme$/);
   // PLAN §11 (2026-10-15): who invites travels with the invitation.
   await expect(driver.page.getByText(SEED_USERS.ownerA.displayName, { exact: true })).toBeVisible();
   await button(driver.page, `Unirme a ${A.name}`).click();
@@ -157,7 +160,8 @@ test('an invitation tied to an address refuses another account and lets that one
   const wrong = await actors.open(DESKTOP);
   await signInAs(wrong.page, other, '/inicio');
   await wrong.page.goto(path);
-  await expect(heading(wrong.page)).toHaveText('Esta invitación es para otra cuenta de Google.');
+  // PLAN §11 (2026-10-16): another account cannot even read it, nor tell it from a missing one.
+  await expect(heading(wrong.page)).toHaveText('Esta invitación es para otra cuenta o no existe.');
   await expect(
     wrong.page.getByText(`Ahora estás con ${other.email}.`, { exact: false }),
   ).toBeVisible();
@@ -166,9 +170,15 @@ test('an invitation tied to an address refuses another account and lets that one
   const right = await actors.open(DESKTOP);
   await signInAs(right.page, invited, '/inicio');
   await right.page.goto(path);
+  await expect(
+    right.page.getByText('Esta invitación lleva tu correo porque', { exact: false }),
+  ).toBeVisible();
   await button(right.page, `Unirme a ${A.name}`).click();
   await expect(right.page).toHaveURL(/\/central$/);
   await expect(right.page.getByText(`Te uniste a ${A.name} como Central.`)).toBeVisible();
+  // Used, the invitation no longer keeps the address.
+  const used = await readDocument(`distributors/${A.id}/invites/${path.slice(-20)}`);
+  expect(used?.email).toBeNull();
   // The central does not manage the staff: no link, and the address sends it back.
   await expect(right.page.getByRole('link', { name: 'Personal' })).toHaveCount(0);
   await right.page.goto(STAFF_PATH);
@@ -223,14 +233,19 @@ test('expired, withdrawn, used and broken invitations say so; a member is told i
   expect((await readDocument(`distributors/${A.id}/invites/${withdrawn.slice(-20)}`))?.status).toBe(
     'revoked',
   );
+  // Tied to another address, it is not even readable to this account (PLAN §11, 2026-10-16).
   await visitor.page.goto(withdrawn);
-  await expect(heading(visitor.page)).toHaveText('Esta invitación fue anulada.');
+  await expect(heading(visitor.page)).toHaveText(
+    'Esta invitación es para otra cuenta o no existe.',
+  );
 
   // A link cut short, and a code nobody created.
   await visitor.page.goto('/unirme#d=seed-dist-a&c=corto');
   await expect(heading(visitor.page)).toHaveText('Este enlace de invitación no está completo.');
   await visitor.page.goto(linkTo(codeOf('Nadie', tag)));
-  await expect(heading(visitor.page)).toHaveText('No encontramos esta invitación.');
+  await expect(heading(visitor.page)).toHaveText(
+    'Esta invitación es para otra cuenta o no existe.',
+  );
 
   // Somebody of the staff opens a fresh one: it is a member already.
   const fresh = await invite(owner, 'Reparto');

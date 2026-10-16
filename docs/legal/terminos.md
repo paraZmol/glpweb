@@ -1,6 +1,6 @@
 # Términos y condiciones de Hornilla
 
-> **BORRADOR v0.5 (2026-10-15) — pendiente de revisión por un profesional antes del lanzamiento.**
+> **BORRADOR v0.6 (2026-10-16) — pendiente de revisión por un profesional antes del lanzamiento.**
 > Los datos entre corchetes se completan cuando exista la razón social. Este texto se muestra en
 > la aplicación marcado como borrador en revisión (paso 2.7 del plan) y su número de versión queda
 > registrado con cada aceptación. Mientras queden corchetes en la sección 1 no debe registrarse a
@@ -31,7 +31,9 @@ Titular de la plataforma: [razón social], RUC [número], [domicilio]. Contacto:
   el nombre de su titular y su número de registro de Osinergmin (Registro de Hidrocarburos).
   Hornilla puede pedirle que lo acredite y dejar de mostrar a la distribuidora mientras no lo
   haga.
-- **Personal de la distribuidora**: repartidores y central, invitados por la distribuidora.
+- **Personal de la distribuidora**: otros titulares, central y repartidores, que se suman con una
+  invitación de la distribuidora (un enlace que sirve una vez y vence a los 7 días). Quien escribe
+  en una invitación el correo de otra persona declara que esa persona sabe que la invita.
 
 Todas las personas que crean una cuenta declaran tener 18 años o más.
 
@@ -79,8 +81,10 @@ de las suyas esté suspendida, con un pago pendiente o con el periodo de prueba 
    **los publica cada distribuidora y son de su exclusiva responsabilidad**.
 2. La distribuidora publica precios finales en soles: lo que paga el cliente, con los impuestos y
    el reparto dentro de su zona incluidos, sin recargos que no se muestren antes. Los mantiene al
-   día y respeta el precio publicado mientras esté a la vista. El «Recarga desde» del buscador es
-   la recarga más barata que la distribuidora tiene a la venta e indica su peso.
+   día y respeta el precio publicado mientras esté a la vista. El «Recarga desde» que se ve en el
+   buscador y en la página de la distribuidora sale del catálogo que ella publica: es su recarga
+   más barata a la venta e indica su peso cuando la aplicación lo conoce. La distribuidora
+   responde de que ese precio sea real.
 3. La distribuidora se obliga a que sus promociones sean veraces: precio final real, vigencia,
    condiciones y unidades disponibles cuando corresponda, y a cumplirlas mientras estén publicadas.
 4. **Hornilla no responde por promociones, precios o información falsos, engañosos o incumplidos
@@ -120,16 +124,17 @@ fuego, ventilar, cerrar la válvula y llamar a los bomberos (116).
 ## 8. Reclamos
 - Sobre un pedido, un precio o una promoción: ante la distribuidora, que debe contar con su
   Libro de Reclamaciones. Si la distribuidora tiene un Libro de Reclamaciones virtual y dio su
-  enlace, su página en Hornilla lo muestra; ese libro es de la distribuidora, no de Hornilla, y
-  si no lo muestra puedes pedírselo por sus datos de contacto.
+  enlace, su página en Hornilla lo enlaza; ese libro lo administra la distribuidora, no Hornilla,
+  que no comprueba que el enlace funcione. Si no lo muestra, puedes pedírselo por sus datos de
+  contacto.
 - Para avisar a Hornilla de un precio o una promoción engañosos, o de una ficha que suplanta a
   otro negocio o tiene datos falsos: a [correo de contacto]. La página de cada distribuidora
   tiene el enlace "Reportar esta distribuidora", que lleva a "Contacto y reclamos"; el aviso se
   envía por correo, no desde un formulario. El botón para reportar una promoción concreta se
   añadirá junto con las promociones.
-- Sobre el funcionamiento de la plataforma: a [correo de contacto]. Hornilla contará con su propio
-  Libro de Reclamaciones virtual antes de abrir al público; todavía no está disponible en la
-  aplicación.
+- Sobre el funcionamiento de la plataforma: a [correo de contacto]. Hornilla tendrá su propio
+  Libro de Reclamaciones virtual, con un enlace visible en toda la aplicación, antes de abrir al
+  público; todavía no está disponible. En cualquier caso puedes acudir al Indecopi.
 
 ## 9. Responsabilidad de Hornilla
 Hornilla responde por el funcionamiento de la plataforma con la diligencia razonable. No responde
@@ -172,6 +177,13 @@ requieren aceptación para seguir usándola.
 Estos términos se rigen por las leyes de la República del Perú.
 
 ## Historial de cambios
+- 0.6 (2026-10-16): el personal de la distribuidora incluye a otros titulares y se suma con una
+  invitación que sirve una vez y vence a los 7 días; quien escribe en ella el correo de otra
+  persona declara que esa persona sabe que la invita (sección 2). El «Recarga desde» sale del
+  catálogo que publica la distribuidora, que responde de que ese precio sea real (sección 4). El
+  Libro de Reclamaciones virtual de una distribuidora lo administra ella; Hornilla tendrá el suyo,
+  con un enlace visible en toda la aplicación, antes de abrir al público, y siempre puede
+  acudirse al Indecopi (sección 8). La 0.5 deja de poder aceptarse.
 - 0.5 (2026-10-15): ya se ven los productos y precios de cada distribuidora; la distribuidora
   publica precios finales con impuestos y reparto incluidos y los mantiene al día (sección 4); la
   0.4 deja de poder aceptarse. El balón completo incluye regulador o manguera solo si la
