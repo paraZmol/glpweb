@@ -71,6 +71,7 @@ const accepted = (uid: string) => ({
   status: 'accepted',
   acceptedBy: uid,
   acceptedAt: serverTimestamp(),
+  email: null,
   updatedAt: serverTimestamp(),
 });
 
@@ -220,11 +221,10 @@ describe('invitations — reading one needs its link', () => {
     expect(read.get('role')).toBe('driver');
   });
 
-  it('answers "does not exist" for a code nobody created', async () => {
-    const read = await assertSucceeds(
-      getDoc(inviteOf(verified(env, NEWBIE), A, OTHER_INVITE_CODE)),
-    );
-    expect(read.exists()).toBe(false);
+  // PLAN §11 (2026-10-16): refused like one tied to another account, so a refusal tells the
+  // holder of a link nothing about which of the two it is.
+  it('refuses a code nobody created, like one tied to another account', async () => {
+    await assertFails(getDoc(inviteOf(verified(env, NEWBIE), A, OTHER_INVITE_CODE)));
   });
 
   it.each([
@@ -234,6 +234,68 @@ describe('invitations — reading one needs its link', () => {
     ['a Google session without a verified e-mail', () => unverified(env, NEWBIE)],
   ])('blocks %s from reading it', async (_who, connect) => {
     await assertFails(getDoc(inviteOf(connect(), A)));
+  });
+});
+
+// PLAN §11 (2026-10-16): the address an owner typed is data of somebody else.
+describe('invitations — one tied to an address is read only by that account', () => {
+  const TIED = { email: `${NEWBIE}@example.com` };
+
+  beforeEach(async () => {
+    await seedInvite(env, A, OTHER_INVITE_CODE, TIED);
+  });
+
+  it.each([
+    ['the account it is tied to', () => verified(env, NEWBIE)],
+    ['its owner', () => ownerA()],
+  ])('lets %s read it', async (_who, connect) => {
+    await assertSucceeds(getDoc(inviteOf(connect(), A, OTHER_INVITE_CODE)));
+  });
+
+  it('compares the address of the session in lowercase', async () => {
+    const db = env
+      .authenticatedContext(NEWBIE, {
+        email: `${NEWBIE.toUpperCase()}@Example.com`,
+        email_verified: true,
+        firebase: { sign_in_provider: 'google.com', identities: {} },
+      } as never)
+      .firestore();
+    await assertSucceeds(getDoc(inviteOf(db, A, OTHER_INVITE_CODE)));
+  });
+
+  it.each([
+    ['another account with the link', 'second'],
+    ['its dispatcher', 'dispatcher-a'],
+    ['its driver', 'driver-a'],
+    ['the owner of another distributor', 'owner-b'],
+  ])('blocks %s from reading it', async (_who, uid) => {
+    await assertFails(getDoc(inviteOf(verified(env, uid), A, OTHER_INVITE_CODE)));
+  });
+
+  it('lets anyone with the link read it once used: the address is gone', async () => {
+    await assertSucceeds(
+      joinWith(verified(env, NEWBIE), { d: A, code: OTHER_INVITE_CODE, uid: NEWBIE }),
+    );
+
+    expect(await storedInvite(A, OTHER_INVITE_CODE)).toMatchObject({ email: null });
+    await assertSucceeds(getDoc(inviteOf(verified(env, 'second'), A, OTHER_INVITE_CODE)));
+  });
+
+  it.each([
+    ['keeping the address', { email: TIED.email }],
+    ['writing another address', { email: 'otra@example.com' }],
+  ])('blocks using it %s', async (_case, invite) => {
+    const db = verified(env, NEWBIE);
+    await assertFails(joinWith(db, { d: A, code: OTHER_INVITE_CODE, uid: NEWBIE, invite }));
+  });
+
+  it('blocks an owner from clearing the address of one that waits', async () => {
+    await assertFails(
+      updateDoc(inviteOf(ownerA(), A, OTHER_INVITE_CODE), {
+        email: null,
+        updatedAt: serverTimestamp(),
+      }),
+    );
   });
 });
 

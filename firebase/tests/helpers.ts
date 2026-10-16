@@ -399,6 +399,8 @@ export function joinWith(db: Db, options: JoinOptions): Promise<void> {
       status: 'accepted',
       acceptedBy: uid,
       acceptedAt: serverTimestamp(),
+      // Using it clears the address it was tied to (PLAN §11, 2026-10-16).
+      email: null,
       updatedAt: serverTimestamp(),
       ...options.invite,
     });

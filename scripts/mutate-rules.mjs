@@ -1768,14 +1768,14 @@ const MUTANTS = [
   [
     'N01',
     'invitation read under any id',
-    'allow get: if signedInWithGoogle() && isInviteCode(code);',
-    'allow get: if signedInWithGoogle();',
+    'allow get: if signedInWithGoogle()\n          && isInviteCode(code)\n',
+    'allow get: if signedInWithGoogle()\n',
   ],
   [
     'N02',
     'invitation read without a session of Google',
-    'allow get: if signedInWithGoogle() && isInviteCode(code);',
-    'allow get: if isInviteCode(code);',
+    'allow get: if signedInWithGoogle()\n          && isInviteCode(code)\n',
+    'allow get: if isInviteCode(code)\n',
   ],
   [
     'N03',
@@ -1901,8 +1901,8 @@ const MUTANTS = [
   [
     'N24',
     'invitation used and changed on the way',
-    "onlyChanges(['status', 'acceptedBy', 'acceptedAt', 'updatedAt'])",
-    "onlyChanges(['status', 'acceptedBy', 'acceptedAt', 'role', 'createdAt', 'updatedAt'])",
+    "onlyChanges(['status', 'acceptedBy', 'acceptedAt', 'email', 'updatedAt'])",
+    "onlyChanges(['status', 'acceptedBy', 'acceptedAt', 'email', 'role', 'createdAt', 'updatedAt'])",
   ],
   [
     'N25',
@@ -2049,6 +2049,38 @@ const MUTANTS = [
     'invitation to an owner from a co-owner lets in',
     "\n            && (invite.role != 'owner' || invite.createdBy == get(controlPath(d)).data.ownerUid);",
     ';',
+  ],
+  // PLAN §11, 2026-10-16: the address of an invitation is read only by its account and an
+  // owner, and using the invitation clears it.
+  [
+    'J18',
+    'invitation tied to an address read by anyone with the link',
+    "resource.data.email == null\n            || resource.data.email == request.auth.token.email.lower()\n            || hasRole(d, ['owner'])",
+    'true',
+  ],
+  [
+    'J19',
+    'invitation tied to an address read by any staff',
+    "|| resource.data.email == request.auth.token.email.lower()\n            || hasRole(d, ['owner'])",
+    '|| resource.data.email == request.auth.token.email.lower()\n            || isStaff(d)',
+  ],
+  [
+    'J20',
+    'address of the reader compared as typed',
+    'resource.data.email == request.auth.token.email.lower()',
+    'resource.data.email == request.auth.token.email',
+  ],
+  [
+    'J21',
+    'invitation used keeping the address',
+    '\n              && request.resource.data.email == null\n',
+    '\n',
+  ],
+  [
+    'J22',
+    'invitation used rewriting the address',
+    '\n              && request.resource.data.email == null\n',
+    "\n              && request.resource.data.email != 'x'\n",
   ],
   [
     'M30',
