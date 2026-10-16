@@ -122,9 +122,10 @@ describe('plant stock', () => {
     expect(latest?.authorName).toBe(SEED_USERS.dispatcherA.displayName);
   });
 
-  it('lets the driver read but not adjust, and keeps another distributor out', async () => {
+  it('keeps the driver and another distributor out', async () => {
     await signInAs(SEED_USERS.driverA);
-    expect(await listPlantStock(A.id)).toHaveLength(3);
+    await expect(listPlantStock(A.id)).rejects.toBeInstanceOf(PermissionDeniedError);
+    await expect(listStockMovements(A.id)).rejects.toBeInstanceOf(PermissionDeniedError);
     await expect(
       adjustPlantStock({
         distributorId: A.id,

@@ -72,7 +72,7 @@ describe('who reads and who adjusts (PLAN §11, 2026-10-16)', () => {
   it.each([
     ['owner', true, true],
     ['dispatcher', true, true],
-    ['driver', true, false],
+    ['driver', false, false],
   ] as const)('%s reads: %s, adjusts: %s', (role, reads, adjusts) => {
     expect(canReadPlantStock(role)).toBe(reads);
     expect(canAdjustPlantStock(role)).toBe(adjusts);
