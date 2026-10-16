@@ -1588,12 +1588,17 @@ const MUTANTS = [
     '|| true)',
   ],
   ['Q18', 'complaints book ten times longer', 'value.size() <= 300', 'value.size() <= 3000'],
-  ['Q19', 'complaints book over plain http', "value.matches('https://", "value.matches('https?://"],
+  [
+    'Q19',
+    'complaints book over plain http',
+    "value.matches('https://[a-z0-9]",
+    "value.matches('https?://[a-z0-9]",
+  ],
   [
     'Q20',
     'complaints book with any character after the host',
-    "(/[A-Za-z0-9._~%!$&()*+,;=:@/?#-]*)?');",
-    "(/.*)?');",
+    "(/[A-Za-z0-9._~%!$&()*+,;=:@/?#-]*)?')",
+    "(/.*)?')",
   ],
   [
     'Q21',
@@ -1606,6 +1611,19 @@ const MUTANTS = [
     'complaints book on a host without a dot',
     '([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)+(/',
     '([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)*(/',
+  ],
+  // PLAN §11, 2026-10-16: no punycode label in the host of the complaints book.
+  [
+    'Q27',
+    'complaints book on a host in punycode',
+    "\n        && !value.matches('https://([a-z0-9-]+[.])*xn--.*')",
+    '',
+  ],
+  [
+    'Q28',
+    'complaints book with punycode past the first label',
+    "!value.matches('https://([a-z0-9-]+[.])*xn--.*')",
+    "!value.matches('https://xn--.*')",
   ],
   [
     'Q23',
@@ -1943,8 +1961,8 @@ const MUTANTS = [
   [
     'J02',
     'member joins a read-only distributor',
-    '\n            && writable(d)\n            && get(/databases/$(database)/documents/users',
-    '\n            && get(/databases/$(database)/documents/users',
+    '\n            && writable(d)\n            && stillVouchedFor',
+    '\n            && stillVouchedFor',
   ],
   [
     'J03',
@@ -2000,6 +2018,37 @@ const MUTANTS = [
     'address compared as typed',
     'before.email == request.auth.token.email.lower()',
     'before.email == request.auth.token.email',
+  ],
+  // PLAN §11 (2026-10-16): an invitation works only while who created it is an active owner.
+  [
+    'J13',
+    'invitation keeps working after its author stops being an owner',
+    '\n            && stillVouchedFor(get(invite).data)',
+    '',
+  ],
+  [
+    'J14',
+    'invitation of an owner switched off still lets in',
+    "return holdsRole(\n              get(/databases/$(database)/documents/distributors/$(d)/members/$(invite.createdBy)).data,\n              ['owner']\n            )",
+    "return get(/databases/$(database)/documents/distributors/$(d)/members/$(invite.createdBy)).data.role == 'owner'",
+  ],
+  [
+    'J15',
+    'invitation of an owner demoted still lets in',
+    "return holdsRole(\n              get(/databases/$(database)/documents/distributors/$(d)/members/$(invite.createdBy)).data,\n              ['owner']\n            )",
+    'return get(/databases/$(database)/documents/distributors/$(d)/members/$(invite.createdBy)).data.active == true',
+  ],
+  [
+    'J16',
+    'invitation of an account that is no longer staff still lets in',
+    "return holdsRole(\n              get(/databases/$(database)/documents/distributors/$(d)/members/$(invite.createdBy)).data,\n              ['owner']\n            )",
+    'return true',
+  ],
+  [
+    'J17',
+    'invitation to an owner from a co-owner lets in',
+    "\n            && (invite.role != 'owner' || invite.createdBy == get(controlPath(d)).data.ownerUid);",
+    ';',
   ],
   [
     'M30',

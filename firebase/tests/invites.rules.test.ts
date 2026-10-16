@@ -500,13 +500,77 @@ describe('invitations — using one', () => {
     await assertFails(joinWith(verified(env, NEWBIE), { d: A, code: INVITE_CODE, uid: NEWBIE }));
   });
 
+  // Each invitation is created by the owner of that distributor, so only its state refuses it.
   it.each([
-    ['suspended', WORLD.suspended],
-    ['on an expired trial', WORLD.expired],
-  ] as const)('blocks joining a distributor that is %s', async (_case, seeded) => {
-    await seedInvite(env, seeded.d, INVITE_CODE);
+    ['suspended', WORLD.suspended, 'owner-suspended'],
+    ['on an expired trial', WORLD.expired, 'owner-expired'],
+  ] as const)('blocks joining a distributor that is %s', async (_case, seeded, owner) => {
+    await seedInvite(env, seeded.d, INVITE_CODE, { createdBy: owner });
     const db = verified(env, NEWBIE);
     await assertFails(joinWith(db, { d: seeded.d, code: INVITE_CODE, uid: NEWBIE }));
+  });
+});
+
+// PLAN §11 (2026-10-16): an invitation speaks for the owner who created it. It stops working
+// when that person stops being an active owner — switched off, demoted, account deleted — and
+// one for an owner works only while its author is the founder.
+describe('invitations — only while who created it is an active owner', () => {
+  const CO_OWNER = 'co-owner';
+  const ownerInvite = { role: 'owner', email: `${NEWBIE}@example.com` };
+
+  async function seedCoOwner(change: Record<string, unknown> = {}) {
+    const member = memberDoc(A, CO_OWNER, 'owner', { createdAt: PAST, updatedAt: PAST, ...change });
+    await seedDoc(env, memberPath(A, CO_OWNER), member);
+  }
+
+  const joinNewbie = (role: 'driver' | 'owner' = 'driver') =>
+    joinWith(verified(env, NEWBIE), { d: A, code: INVITE_CODE, uid: NEWBIE, role });
+
+  it('lets in through the invitation of an active co-owner', async () => {
+    await seedCoOwner();
+    await seedInvite(env, A, INVITE_CODE, { createdBy: CO_OWNER });
+
+    await assertSucceeds(joinNewbie());
+  });
+
+  it("lets in as owner through the founder's invitation", async () => {
+    await seedInvite(env, A, INVITE_CODE, ownerInvite);
+    await assertSucceeds(joinNewbie('owner'));
+  });
+
+  it.each([
+    ['switched off', { active: false }],
+    ['demoted to dispatcher', { role: 'dispatcher' }],
+    ['demoted to driver', { role: 'driver' }],
+  ])('blocks the invitation of a co-owner who was %s', async (_case, change) => {
+    await seedCoOwner(change);
+    await seedInvite(env, A, INVITE_CODE, { createdBy: CO_OWNER });
+
+    await assertFails(joinNewbie());
+  });
+
+  it('blocks the invitation of an account that is no longer staff (its member is gone)', async () => {
+    await seedInvite(env, A, INVITE_CODE, { createdBy: 'deleted-account' });
+    await assertFails(joinNewbie());
+  });
+
+  it('blocks the invitation of the owner of another distributor (aislamiento A/B)', async () => {
+    await seedInvite(env, A, INVITE_CODE, { createdBy: 'owner-b' });
+    await assertFails(joinNewbie());
+  });
+
+  it('blocks an invitation to an owner created by a co-owner, active as it is', async () => {
+    await seedCoOwner();
+    await seedInvite(env, A, INVITE_CODE, { ...ownerInvite, createdBy: CO_OWNER });
+
+    await assertFails(joinNewbie('owner'));
+  });
+
+  it('lets the founder revoke the invitation of a co-owner switched off', async () => {
+    await seedCoOwner({ active: false });
+    await seedInvite(env, A, INVITE_CODE, { createdBy: CO_OWNER });
+
+    await assertSucceeds(revokeInvite(ownerA(), A, INVITE_CODE, 'owner-a'));
   });
 });
 

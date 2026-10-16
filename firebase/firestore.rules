@@ -133,7 +133,8 @@ rules_version = '2';
 //     copy is rewritten afterwards, and invitations older than them stay valid
 //   status: pending | accepted | revoked — pending → accepted (by whoever holds it, once, in the
 //     request that creates its member) or pending → revoked (an owner); nothing else
-//   createdBy: uid of the owner · createdAt, updatedAt — usable for 7 days after createdAt
+//   createdBy: uid of the owner · createdAt, updatedAt — usable for 7 days after createdAt, and
+//     only while createdBy is still an active owner (the founder, for an owner invitation)
 //   acceptedBy, acceptedAt: only once accepted · revokedBy, revokedAt: only once revoked
 //
 // /distributors/{d}/helpers/{h}    people who go with a truck and never sign in (PLAN 3.2). {h} is
@@ -413,10 +414,13 @@ service cloud.firestore {
 
     // The link to the virtual complaints book of a distributor: https only, a lowercase host
     // with a dot, no port nor credentials, and only characters an address carries unescaped.
-    // Same pattern and cap as isComplaintsBookUrl in src/domain/tenancy/complaints-book.ts.
+    // No label of the host in punycode (`xn--`): it can spell a name that looks like another
+    // one (PLAN §11, 2026-10-16). Same pattern and cap as isComplaintsBookUrl in
+    // src/domain/tenancy/complaints-book.ts.
     function isComplaintsBookUrl(value) {
       return value is string && value.size() <= 300
-        && value.matches('https://[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)+(/[A-Za-z0-9._~%!$&()*+,;=:@/?#-]*)?');
+        && value.matches('https://[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)+(/[A-Za-z0-9._~%!$&()*+,;=:@/?#-]*)?')
+        && !value.matches('https://([a-z0-9-]+[.])*xn--.*');
     }
 
     // Rules cannot loop: the list is capped at 8 and each position is checked by hand.
@@ -1107,9 +1111,9 @@ service cloud.firestore {
         // with exactly the role of a usable invitation of this distributor and, in the same
         // request, marks that invitation used by itself, so it works once. Nobody creates a
         // member document for anyone else.
-        // Reads added by rules: 2 for the founder (getAfter distributor, getAfter control); 5
+        // Reads added by rules: 2 for the founder (getAfter distributor, getAfter control); 6
         // through an invitation (getAfter distributor, get and getAfter invitation, get control,
-        // get profile).
+        // get profile, get member of the owner who invited).
         allow create: if isSelf(memberUid)
           && isValidMember(request.resource.data, d, memberUid)
           && isVisibleText(request.resource.data.displayName, 1, 80)
@@ -1174,6 +1178,7 @@ service cloud.firestore {
           return isInviteCode(code)
             && usesInvitation(get(invite).data, getAfter(invite).data)
             && writable(d)
+            && stillVouchedFor(get(invite).data)
             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName
               == request.resource.data.displayName;
         }
@@ -1188,6 +1193,20 @@ service cloud.firestore {
             && (before.email == null || before.email == request.auth.token.email.lower())
             && after.status == 'accepted'
             && after.acceptedBy == request.auth.uid;
+        }
+
+        // An invitation speaks for the owner who created it, so it works only while that person
+        // is still an active owner here (not switched off, not demoted, account not deleted: its
+        // member is then off or missing, which denies); one for an owner, only while its author
+        // is the founder, the only one who invites owners (PLAN §11, 2026-10-16). The app also
+        // revokes them when it switches that owner off or demotes it (stopsBeingActiveOwner in
+        // src/domain/staff/member-management.ts); this is the lock that does not trust it.
+        function stillVouchedFor(invite) {
+          return holdsRole(
+              get(/databases/$(database)/documents/distributors/$(d)/members/$(invite.createdBy)).data,
+              ['owner']
+            )
+            && (invite.role != 'owner' || invite.createdBy == get(controlPath(d)).data.ownerUid);
         }
 
         function carriesPublicName() {
