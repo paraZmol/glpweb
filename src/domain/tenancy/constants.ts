@@ -29,6 +29,12 @@ export const MAX_BRANDS = 8;
 export const BRAND_NAME_MAX_LENGTH = 30;
 /** Sanity cap against typos when editing a price: S/ 999.00. */
 export const MAX_PRICE_CENTS = 99_900;
+/**
+ * Weight of gas in a cylinder, in whole kilograms (3, 5, 10, 15, 45 kg in Peru): the products of
+ * the catalogue and the weight of the "Recarga desde" the public profile repeats.
+ */
+export const MIN_WEIGHT_KG = 1;
+export const MAX_WEIGHT_KG = 100;
 
 export const DEFAULT_BRAND_COLOR = '#d9480f';
 export const DEFAULT_CURRENCY = 'PEN';
@@ -57,3 +63,6 @@ export const DEFAULT_SCHEDULE = {
   opensAt: '07:00',
   closesAt: '20:00',
 } as const;
+
+/** The link to the virtual complaints book of a distributor (https only). */
+export const COMPLAINTS_BOOK_URL_MAX_LENGTH = 300;

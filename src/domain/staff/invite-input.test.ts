@@ -78,6 +78,8 @@ describe('inviteRefusalFor', () => {
     role: 'driver',
     email: null,
     distributorName: 'Gas Demo',
+    invitedByName: null,
+    brandColor: null,
     status: 'pending',
     createdBy: 'owner-a',
     createdAt: new Date('2026-10-01T12:00:00Z'),

@@ -80,3 +80,14 @@ export class HelperNotFoundError extends DomainError {
     super('No such helper');
   }
 }
+
+/**
+ * The name of the account's profile cannot be read (nothing but invisible characters, or one
+ * that flips the writing): the staff would see it in its list (PLAN 3.2). Change it in the
+ * account first.
+ */
+export class UnreadableNameError extends DomainError {
+  constructor() {
+    super('The name of the profile is not visible text');
+  }
+}

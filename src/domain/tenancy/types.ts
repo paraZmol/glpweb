@@ -47,6 +47,18 @@ export interface PublicDistributor {
   brands: string[];
   /** Cheapest active product, for "desde S/ …" in the search page; null until there is a catalogue. */
   priceFromCents: number | null;
+  /**
+   * Weight of the product that "desde" price belongs to ("Recarga 10 kg desde S/ 48.00"),
+   * written with it from the catalogue; null when there is no price, and in profiles older than
+   * the field (PLAN §11, 2026-10-15).
+   */
+  priceFromWeightKg: number | null;
+  /**
+   * Link to the distributor's virtual complaints book (Libro de Reclamaciones), `https://` only
+   * (`isComplaintsBookUrl`); null when it gave none. The owner edits it without a new review: it
+   * does not identify the business.
+   */
+  complaintsBookUrl: string | null;
   currency: string;
   createdAt: Date;
   updatedAt: Date;

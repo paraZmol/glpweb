@@ -26,6 +26,18 @@ export interface Invite {
   email: string | null;
   /** The public name of the distributor when the invitation was created (the rules check it). */
   distributorName: string;
+  /**
+   * The name of the owner who invited, as its member carried it when the invitation was created
+   * (the rules check it), so whoever receives the link sees who invites without reading the
+   * staff. Null in invitations older than the field (PLAN §11, 2026-10-15).
+   */
+  invitedByName: string | null;
+  /**
+   * The brand colour of the distributor when the invitation was created (the rules check it),
+   * for the screen that joins. Not rewritten when the colour changes later. Null in older
+   * invitations.
+   */
+  brandColor: string | null;
   status: InviteStatus;
   /** Uid of the owner who created it. */
   createdBy: string;

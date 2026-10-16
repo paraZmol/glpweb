@@ -6,6 +6,7 @@ import {
   moveInCatalog,
   nextSortOrder,
   planReorder,
+  priceFromLabel,
   PRODUCT_SLOT_IDS,
   sortCatalog,
   summarizeCatalog,
@@ -124,9 +125,13 @@ describe('summarizeCatalog', () => {
     const summary = summarizeCatalog([
       product('p00', { brand: 'Marca Dos', sortOrder: 1, refillPriceCents: 5200 }),
       product('p01', { brand: 'Marca Uno', sortOrder: 0, refillPriceCents: 4800 }),
-      product('p02', { brand: 'Marca Dos', sortOrder: 2, refillPriceCents: 3800 }),
+      product('p02', { brand: 'Marca Dos', sortOrder: 2, refillPriceCents: 3800, weightKg: 5 }),
     ]);
-    expect(summary).toEqual({ brands: ['Marca Uno', 'Marca Dos'], priceFromCents: 3800 });
+    expect(summary).toEqual({
+      brands: ['Marca Uno', 'Marca Dos'],
+      priceFromCents: 3800,
+      priceFromWeightKg: 5,
+    });
   });
 
   it('ignores products that are not on sale', () => {
@@ -134,7 +139,7 @@ describe('summarizeCatalog', () => {
       product('p00', { brand: 'Marca Tres', refillPriceCents: 100, active: false }),
       product('p01', { refillPriceCents: 5200 }),
     ]);
-    expect(summary).toEqual({ brands: ['Marca Uno'], priceFromCents: 5200 });
+    expect(summary).toEqual({ brands: ['Marca Uno'], priceFromCents: 5200, priceFromWeightKg: 10 });
   });
 
   it('never takes the "from" price from a full cylinder', () => {
@@ -148,7 +153,26 @@ describe('summarizeCatalog', () => {
     expect(summarizeCatalog([product('p00', { active: false })])).toEqual({
       brands: [],
       priceFromCents: null,
+      priceFromWeightKg: null,
     });
+  });
+
+  // PLAN §11 (2026-10-15): "Recarga 10 kg desde" names one product, and always the same one.
+  it('names the weight of the first cheapest refill in the chosen order', () => {
+    const summary = summarizeCatalog([
+      product('p00', { sortOrder: 1, refillPriceCents: 3800, weightKg: 10 }),
+      product('p01', { sortOrder: 0, refillPriceCents: 3800, weightKg: 5 }),
+      product('p02', { sortOrder: 2, refillPriceCents: 3800, weightKg: 15 }),
+    ]);
+    expect(summary.priceFromWeightKg).toBe(5);
+  });
+
+  it('takes the weight from the cheapest refill, not from the lightest product', () => {
+    const summary = summarizeCatalog([
+      product('p00', { refillPriceCents: 2500, weightKg: 10 }),
+      product('p01', { sortOrder: 1, refillPriceCents: 3000, weightKg: 3 }),
+    ]);
+    expect(summary).toMatchObject({ priceFromCents: 2500, priceFromWeightKg: 10 });
   });
 
   it('keeps at most eight brands, the ones shown first', () => {
@@ -161,10 +185,24 @@ describe('summarizeCatalog', () => {
   });
 
   it('compares two summaries', () => {
-    const one = { brands: ['Marca Uno'], priceFromCents: 3800 };
-    expect(isSameSummary(one, { brands: ['Marca Uno'], priceFromCents: 3800 })).toBe(true);
-    expect(isSameSummary(one, { brands: ['Marca Uno'], priceFromCents: 3900 })).toBe(false);
-    expect(isSameSummary(one, { brands: ['Marca Dos'], priceFromCents: 3800 })).toBe(false);
-    expect(isSameSummary(one, { brands: [], priceFromCents: 3800 })).toBe(false);
+    const one = { brands: ['Marca Uno'], priceFromCents: 3800, priceFromWeightKg: 10 };
+    expect(isSameSummary(one, { ...one })).toBe(true);
+    expect(isSameSummary(one, { ...one, priceFromCents: 3900 })).toBe(false);
+    expect(isSameSummary(one, { ...one, brands: ['Marca Dos'] })).toBe(false);
+    expect(isSameSummary(one, { ...one, brands: [] })).toBe(false);
+    // A profile written before the weight existed is brought up to date.
+    expect(isSameSummary(one, { ...one, priceFromWeightKg: null })).toBe(false);
+    expect(isSameSummary(one, { ...one, priceFromWeightKg: 5 })).toBe(false);
+  });
+});
+
+// PLAN §11 (2026-10-15): "Recarga 10 kg desde S/ 48.00".
+describe('priceFromLabel', () => {
+  it.each([
+    [10, 'Recarga 10 kg desde'],
+    [5, 'Recarga 5 kg desde'],
+    [null, 'Recarga desde'],
+  ])('names the "desde" price of a %s kg refill', (weightKg, expected) => {
+    expect(priceFromLabel(weightKg)).toBe(expected);
   });
 });

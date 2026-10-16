@@ -77,29 +77,51 @@ export function planReorder(
 /**
  * What the public profile repeats of the catalogue for the search page: the gas brands on sale
  * (first appearance in the chosen order, at most `MAX_BRANDS`) and the cheapest refill on sale
- * ("Recarga desde S/ …", marketing H8: always a refill, never a full cylinder). Null and empty
- * when nothing is on sale.
+ * ("Recarga desde S/ …", marketing H8: always a refill, never a full cylinder) with the weight
+ * of that product, so the page can say "Recarga 10 kg desde S/ 48.00" (PLAN §11, 2026-10-15).
+ * When several products share the cheapest refill, the first one in the chosen order names the
+ * weight. Null and empty when nothing is on sale.
  */
 export interface CatalogSummary {
   brands: string[];
   priceFromCents: number | null;
+  priceFromWeightKg: number | null;
 }
 
 export type SummarizedProduct = Pick<
   Product,
-  'id' | 'sortOrder' | 'active' | 'brand' | 'refillPriceCents'
+  'id' | 'sortOrder' | 'active' | 'brand' | 'refillPriceCents' | 'weightKg'
 >;
 
 export function summarizeCatalog(products: readonly SummarizedProduct[]): CatalogSummary {
   const onSale = sortCatalog(products.filter((product) => product.active));
   const brands = [...new Set(onSale.map((product) => product.brand))].slice(0, MAX_BRANDS);
-  const prices = onSale.map((product) => product.refillPriceCents);
-  return { brands, priceFromCents: prices.length > 0 ? Math.min(...prices) : null };
+  const cheapest = onSale.reduce<SummarizedProduct | null>(
+    (best, product) =>
+      best === null || product.refillPriceCents < best.refillPriceCents ? product : best,
+    null,
+  );
+  return {
+    brands,
+    priceFromCents: cheapest?.refillPriceCents ?? null,
+    priceFromWeightKg: cheapest?.weightKg ?? null,
+  };
 }
 
+/**
+ * How the search page and the public page name the "desde" price: "Recarga 10 kg desde" with
+ * the weight of that refill, or "Recarga desde" for a profile written before the weight existed
+ * (PLAN §11, 2026-10-15; marketing H8).
+ */
+export function priceFromLabel(weightKg: number | null): string {
+  return weightKg === null ? 'Recarga desde' : `Recarga ${weightKg} kg desde`;
+}
+
+/** A profile written before the weight existed has none: it differs from a summary with one. */
 export function isSameSummary(a: CatalogSummary, b: CatalogSummary): boolean {
   return (
     a.priceFromCents === b.priceFromCents &&
+    a.priceFromWeightKg === b.priceFromWeightKg &&
     a.brands.length === b.brands.length &&
     a.brands.every((brand, index) => brand === b.brands[index])
   );

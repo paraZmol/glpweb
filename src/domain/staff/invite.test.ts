@@ -20,6 +20,8 @@ const invite = (change: Partial<Invite> = {}): Invite => ({
   role: 'driver',
   email: null,
   distributorName: 'Gas Demo',
+  invitedByName: null,
+  brandColor: null,
   status: 'pending',
   createdBy: 'owner-a',
   createdAt: CREATED,

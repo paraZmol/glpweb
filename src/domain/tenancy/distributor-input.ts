@@ -1,5 +1,6 @@
 import { checkBrandColor } from '../brand/brand-color-check';
 import { type GeoPoint, isValidGeoPoint } from '../geo/distance';
+import { checkComplaintsBookUrl, normalizeComplaintsBookUrl } from './complaints-book';
 import {
   ADDRESS_LINE_MAX_LENGTH,
   BRAND_NAME_MAX_LENGTH,
@@ -12,8 +13,10 @@ import {
   MAX_COVERAGE_RADIUS_KM,
   MAX_CYLINDERS_PER_ORDER_LIMIT,
   MAX_PRICE_CENTS,
+  MAX_WEIGHT_KG,
   MIN_COVERAGE_RADIUS_KM,
   MIN_CYLINDERS_PER_ORDER,
+  MIN_WEIGHT_KG,
   WEEK_DAYS,
 } from './constants';
 import {
@@ -70,6 +73,8 @@ export const EDITABLE_PROFILE_FIELDS = [
   'maxCylindersPerOrder',
   'brands',
   'priceFromCents',
+  'priceFromWeightKg',
+  'complaintsBookUrl',
 ] as const satisfies readonly (keyof PublicDistributor)[];
 
 export type DistributorProfilePatch = Partial<
@@ -122,6 +127,8 @@ const PROFILE_CHECKS: {
     checkInteger(v ?? Number.NaN, MIN_CYLINDERS_PER_ORDER, MAX_CYLINDERS_PER_ORDER_LIMIT),
   brands: (v) => (v === null ? 'invalid' : checkBrands(v)),
   priceFromCents: (v) => checkPrice(v),
+  priceFromWeightKg: (v) => (v === null ? null : checkInteger(v, MIN_WEIGHT_KG, MAX_WEIGHT_KG)),
+  complaintsBookUrl: (v) => checkComplaintsBookUrl(v),
 };
 
 function normalizePatch(patch: DistributorProfilePatch): DistributorProfilePatch {
@@ -134,6 +141,9 @@ function normalizePatch(patch: DistributorProfilePatch): DistributorProfilePatch
   if (patch.whatsapp !== undefined) normalized.whatsapp = normalizePeruvianMobile(patch.whatsapp);
   if (patch.brandColor !== undefined) normalized.brandColor = normalizeBrandColor(patch.brandColor);
   if (patch.brands !== undefined) normalized.brands = patch.brands.map((brand) => brand.trim());
+  if (typeof patch.complaintsBookUrl === 'string') {
+    normalized.complaintsBookUrl = normalizeComplaintsBookUrl(patch.complaintsBookUrl);
+  }
   return normalized;
 }
 
@@ -204,7 +214,8 @@ export function prepareNewDistributor(input: NewDistributorInput): Validated<New
   issues.push(
     ...collectIssues([
       ['slug', validateSlug(value.slug)],
-      ['ownerName', checkText(value.ownerName, 1, DISPLAY_NAME_MAX_LENGTH)],
+      // The founder's name is also the name of its member, which the staff reads (PLAN 3.2).
+      ['ownerName', checkVisibleText(value.ownerName, 1, DISPLAY_NAME_MAX_LENGTH)],
       ['ownerPhone', checkPhone(value.ownerPhone)],
     ]),
   );

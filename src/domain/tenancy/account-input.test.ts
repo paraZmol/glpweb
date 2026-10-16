@@ -44,8 +44,17 @@ describe('prepareUserProfile', () => {
     ['blank name', { displayName: '   ' }, 'displayName:required'],
     ['very long name', { displayName: 'n'.repeat(81) }, 'displayName:tooLong'],
     ['landline', { displayName: 'C.', phone: '012345678' }, 'phone:invalid'],
+    // PLAN 3.2: the staff reads this name in its list.
+    ['a zero-width space for a name', { displayName: '\u200b' }, 'displayName:invalid'],
+    ['a name that flips the writing', { displayName: '\u202eodalucinaS' }, 'displayName:invalid'],
+    ['a name with a control character', { displayName: 'Ana\u0007' }, 'displayName:invalid'],
+    ['a name of punctuation only', { displayName: '...' }, 'displayName:invalid'],
   ])('rejects %s', (_case, input, expected) => {
     expect(issuesOf(input)).toEqual([expected]);
+  });
+
+  it.each(['A', 'Ana 🔥', 'José Ñahui'])('accepts the visible name %s', (displayName) => {
+    expect(prepareUserProfile({ displayName }).ok).toBe(true);
   });
 });
 

@@ -51,6 +51,11 @@ export const LEGAL_TEXT_EDITIONS: Record<LegalTextId, readonly LegalTextEdition[
       publishedOn: '2026-10-12',
       sha256: 'b17d8d246b339124190599a174e51799339993deb0d5b6ef7147e939e44cce9d',
     },
+    {
+      version: '0.5',
+      publishedOn: '2026-10-15',
+      sha256: '42e9c7525af7b9002a697c88de86cbc23f2174d622c41f6af9229f4debae95b1',
+    },
   ],
   privacy: [
     {
@@ -67,6 +72,11 @@ export const LEGAL_TEXT_EDITIONS: Record<LegalTextId, readonly LegalTextEdition[
       version: '0.4',
       publishedOn: '2026-10-12',
       sha256: 'bcea2e4753198871b450209a6c52d013e69d004b849f5a2881b7b7cae18b2784',
+    },
+    {
+      version: '0.5',
+      publishedOn: '2026-10-15',
+      sha256: '416b004b7b67fb633814dc31f8c1e507522d3feed018dc9815686237f3ef035f',
     },
   ],
   cookies: [
