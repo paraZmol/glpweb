@@ -1,5 +1,5 @@
-// PLAN 3.4 — plant stock: full and empty cylinders per product. The owner and the dispatcher
-// read it; only the owner adjusts it (PLAN §11, 2026-10-16, proposal), while the distributor is
+// PLAN 3.4 — plant stock: full and empty cylinders per product. The staff reads it; the owner
+// and the dispatcher adjust it (PLAN §11, 2026-10-16, user decision), while the distributor is
 // writable; every change comes with its movement in the same request, with reason and author,
 // and the two must add up. Never below zero; the history is never edited or deleted.
 import {
@@ -100,15 +100,18 @@ afterAll(async () => {
 });
 
 describe('plant stock — read', () => {
-  it.each(['owner-a', 'dispatcher-a'])('lets %s read the stock and its movements', async (uid) => {
-    const db = verified(env, uid);
-    await assertSucceeds(getDoc(stockOf(db)));
-    await assertSucceeds(getDocs(query(stocksOf(db), limit(PLANT_STOCK_QUERY_LIMIT))));
-    await assertSucceeds(getDoc(doc(db, movementPath(A, SEEDED_MOVEMENT_ID))));
-    await assertSucceeds(
-      getDocs(query(movementsOf(db), orderBy('createdAt', 'desc'), limit(MOVEMENTS_QUERY_MAX))),
-    );
-  });
+  it.each(['owner-a', 'dispatcher-a', 'driver-a'])(
+    'lets %s read the stock and its movements',
+    async (uid) => {
+      const db = verified(env, uid);
+      await assertSucceeds(getDoc(stockOf(db)));
+      await assertSucceeds(getDocs(query(stocksOf(db), limit(PLANT_STOCK_QUERY_LIMIT))));
+      await assertSucceeds(getDoc(doc(db, movementPath(A, SEEDED_MOVEMENT_ID))));
+      await assertSucceeds(
+        getDocs(query(movementsOf(db), orderBy('createdAt', 'desc'), limit(MOVEMENTS_QUERY_MAX))),
+      );
+    },
+  );
 
   it('lets the owner list the movements of one product, newest first', async () => {
     const db = verified(env, 'owner-a');
@@ -122,8 +125,8 @@ describe('plant stock — read', () => {
   });
 
   it('agrees with the roles of the domain (the ones tested here)', () => {
-    expect(STOCK_READER_ROLES).toEqual(['owner', 'dispatcher']);
-    expect(STOCK_ADJUSTER_ROLES).toEqual(['owner']);
+    expect(STOCK_READER_ROLES).toEqual(['owner', 'dispatcher', 'driver']);
+    expect(STOCK_ADJUSTER_ROLES).toEqual(['owner', 'dispatcher']);
   });
 
   it('blocks an unbounded or oversized list', async () => {
@@ -142,11 +145,11 @@ describe('plant stock — read', () => {
   });
 
   it.each([
-    ['its driver', () => verified(env, 'driver-a')],
     ['an anonymous visitor', () => anonymous(env)],
     ['a customer', () => verified(env, CUSTOMER_UID)],
     ['the owner of another distributor', () => verified(env, 'owner-b')],
     ['the dispatcher of another distributor', () => verified(env, 'dispatcher-b')],
+    ['a driver of another distributor', () => verified(env, 'driver-b')],
     ['a platform admin', () => verified(env, ADMIN_UID)],
   ])('blocks %s from reading the stock of A or its movements', async (_who, connect) => {
     const db = connect();
@@ -175,13 +178,28 @@ describe('plant stock — adjust', () => {
     );
   });
 
+  it('lets the dispatcher adjust it and start a stock, under its own name', async () => {
+    const dispatcher = verified(env, 'dispatcher-a');
+    await assertSucceeds(adjustStock(dispatcher, { authorUid: 'dispatcher-a' }));
+    await assertSucceeds(
+      adjustStock(dispatcher, {
+        authorUid: 'dispatcher-a',
+        productId: 'p01',
+        movementId: OTHER_MOVEMENT_ID,
+        before: { full: 0, empty: 0 },
+        fullDelta: 3,
+        emptyDelta: 0,
+      }),
+    );
+  });
+
   it('lets the owner leave a count at exactly zero', async () => {
     await assertSucceeds(adjustStock(owner(), { fullDelta: -40, emptyDelta: -12 }));
   });
 
   it.each([
-    ['the dispatcher (reads only)', 'dispatcher-a'],
-    ['its driver', 'driver-a'],
+    ['its driver (reads only)', 'driver-a'],
+    ['the dispatcher of another distributor', 'dispatcher-b'],
     ['a customer', CUSTOMER_UID],
     ['the owner of another distributor', 'owner-b'],
     ['a platform admin', ADMIN_UID],

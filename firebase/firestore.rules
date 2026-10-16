@@ -166,8 +166,8 @@ rules_version = '2';
 //   active: bool · createdAt (immutable), updatedAt (= request.time when written)
 //
 // /distributors/{d}/plantStock/{p}  the cylinders of product {p} at the plant (PLAN 3.4); same id
-//                                   as the product, created by its first movement. The owner and
-//                                   the dispatcher read it; only the owner changes it, while the
+//                                   as the product, created by its first movement. The staff
+//                                   reads it; the owner and the dispatcher change it, while the
 //                                   distributor is writable, and every change comes with its
 //                                   movement below, in the same request. Never deleted.
 //   full, empty: int 0..99999 · lastMovementId: the id of the movement written with this change
@@ -1445,7 +1445,7 @@ service cloud.firestore {
 
       // ------------------------------------------------------------------------ vehicles ----
       // Vehicles (PLAN 3.3). The staff reads them (the driver picks one when it opens a shift,
-      // phase 5); the owner and the dispatcher write them (PLAN §11, 2026-10-16, proposal;
+      // phase 5); the owner and the dispatcher write them (PLAN §11, 2026-10-16, user decision;
       // VEHICLE_EDITOR_ROLES in src/domain/vehicles/permissions.ts), while the distributor is
       // writable. Nothing here writes another document: a shift keeps its own copy of the
       // capacity, so changing it never rewrites a load already approved.
@@ -1476,30 +1476,31 @@ service cloud.firestore {
       }
 
       // ------------------------------------------------------------------ plant stock ----
-      // Full and empty cylinders per product at the plant (PLAN 3.4). The owner and the
-      // dispatcher read it; only the owner changes it (PLAN §11, 2026-10-16, proposal;
+      // Full and empty cylinders per product at the plant (PLAN 3.4). The staff reads it; the
+      // owner and the dispatcher change it (PLAN §11, 2026-10-16, user decision;
       // src/domain/stock/permissions.ts), while the distributor is writable. Every change names,
       // in lastMovementId, the movement created in the same request, and must move the counts by
       // exactly what that movement says: the history cannot be skipped, and it cannot lie about
       // the change. PLAN 5.2 and 5.5 add here a branch for the movements of a shift.
       match /plantStock/{productId} {
         // Reads added by rules: 1 (get member).
-        allow get: if hasRole(d, ['owner', 'dispatcher']);
-        allow list: if request.query.limit <= 30 && hasRole(d, ['owner', 'dispatcher']);
+        allow get: if isStaff(d);
+        allow list: if isStaff(d)
+          && request.query.limit <= 30;
 
         // The first movement of a product creates its stock from zero, and only for a product
         // of the catalogue. Reads added by rules: 4 (get member, get control, exists product,
         // getAfter movement).
         allow create: if isValidPlantStock(request.resource.data)
           && movesStockFrom(0, 0)
-          && hasRole(d, ['owner'])
+          && hasRole(d, ['owner', 'dispatcher'])
           && writable(d)
           && exists(/databases/$(database)/documents/distributors/$(d)/products/$(productId));
 
         // Reads added by rules: 3 (get member, get control, getAfter movement).
         allow update: if isValidPlantStock(request.resource.data)
           && movesStockFrom(resource.data.full, resource.data.empty)
-          && hasRole(d, ['owner'])
+          && hasRole(d, ['owner', 'dispatcher'])
           && writable(d);
 
         // No delete: the stock of a product only moves.
@@ -1525,22 +1526,23 @@ service cloud.firestore {
       // change it describes (the stock must name it), never updated or deleted.
       match /stockMovements/{movementId} {
         // Reads added by rules: 1 (get member).
-        allow get: if hasRole(d, ['owner', 'dispatcher']);
-        allow list: if request.query.limit <= 50 && hasRole(d, ['owner', 'dispatcher']);
+        allow get: if isStaff(d);
+        allow list: if request.query.limit <= 50 && isStaff(d);
 
         // Reads added by rules: 3 (get member, get control, getAfter stock).
         allow create: if isAutoId(movementId)
           && isValidAdjustment(request.resource.data)
           && signedInWithGoogle()
-          && writtenByOwner(member(d), request.resource.data)
+          && writtenByAdjuster(member(d), request.resource.data)
           && writable(d)
           && getAfter(
             /databases/$(database)/documents/distributors/$(d)/plantStock/$(request.resource.data.productId)
           ).data.lastMovementId == movementId;
 
-        // An owner, under the name the staff knows it by (read once with the role).
-        function writtenByOwner(held, data) {
-          return holdsRole(held, ['owner']) && data.authorName == held.displayName;
+        // An owner or the dispatcher, under the name the staff knows it by (read once with the
+        // role).
+        function writtenByAdjuster(held, data) {
+          return holdsRole(held, ['owner', 'dispatcher']) && data.authorName == held.displayName;
         }
       }
 

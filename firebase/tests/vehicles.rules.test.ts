@@ -1,5 +1,5 @@
 // PLAN 3.3 — vehicles: the staff reads them; the owner and the dispatcher add and edit them
-// (PLAN §11, 2026-10-16, proposal), while the distributor is writable, in thirty fixed slots,
+// (PLAN §11, 2026-10-16, user decision), while the distributor is writable, in thirty fixed slots,
 // and nobody deletes one.
 import {
   assertFails,
