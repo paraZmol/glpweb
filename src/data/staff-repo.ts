@@ -125,14 +125,21 @@ export function listPendingInvites(d: string): Promise<Invite[]> {
 /**
  * The invitation of a link, for whoever holds it (any account signed in with Google). Null
  * when no invitation has that code there — also for a code of another shape, which is never
- * looked up. One read, none by the rules.
+ * looked up — and when the rules refuse it: one tied to the address of another account is read
+ * only by that account and by an owner, and the rules refuse a code nobody created alike (PLAN
+ * §11, 2026-10-16). One read, none by the rules (1 for an owner reading one tied to another).
  */
-export function getInvite({ distributorId, code }: InviteRef): Promise<Invite | null> {
-  if (!isInviteCode(code)) return Promise.resolve(null);
-  return guarded(async () => {
-    const snapshot = await getDoc(inviteRef(distributorId, code).withConverter(inviteConverter));
-    return snapshot.data() ?? null;
-  });
+export async function getInvite({ distributorId, code }: InviteRef): Promise<Invite | null> {
+  if (!isInviteCode(code)) return null;
+  try {
+    return await guarded(async () => {
+      const ref = inviteRef(distributorId, code).withConverter(inviteConverter);
+      return (await getDoc(ref)).data() ?? null;
+    });
+  } catch (error) {
+    if (error instanceof PermissionDeniedError) return null;
+    throw error;
+  }
 }
 
 /**
@@ -213,23 +220,26 @@ async function joinInTransaction(tx: Transaction, { ref, joiner, now }: JoinRequ
     status: 'accepted',
     acceptedBy: joiner.uid,
     acceptedAt: serverTimestamp(),
+    // The address has no purpose once used; the rules demand it cleared (PLAN §11, 2026-10-16).
+    email: null,
     updatedAt: serverTimestamp(),
   });
   return { distributorId: d, role: invite.role };
 }
 
 /**
- * Why the rules refused a join the transaction had found acceptable: another request of the
- * same moment got there first (the invitation was used, or this account joined in another
- * tab). Two reads. Null when the documents say nothing new.
+ * Why the rules refused a join: another request of the same moment got there first (the
+ * invitation was used, or this account joined in another tab), or the invitation cannot be
+ * read — tied to another address, or missing, which the rules refuse alike and this reports as
+ * `InviteNotFoundError` (PLAN §11, 2026-10-16). Two reads. Null when the documents say nothing
+ * new.
  */
 async function explainJoinRefusal({ ref, joiner, now }: JoinRequest): Promise<Error | null> {
-  const { distributorId: d, code } = ref;
   const [invite, member] = await Promise.all([
-    getDoc(inviteRef(d, code).withConverter(inviteConverter)),
-    getDoc(memberRef(d, joiner.uid).withConverter(memberConverter)),
+    getInvite(ref),
+    getDoc(memberRef(ref.distributorId, joiner.uid).withConverter(memberConverter)),
   ]);
-  return joinRefusal(invite.data(), member.data(), joiner, now);
+  return joinRefusal(invite ?? undefined, member.data(), joiner, now);
 }
 
 /**

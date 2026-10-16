@@ -3,6 +3,7 @@ import { BrandTheme } from '@/components/brand/brand-theme';
 import { Highlight } from '@/components/brand/highlight';
 import { Monogram } from '@/components/brand/monogram';
 import { Button, ButtonLink } from '@/components/common/button';
+import { TextLink } from '@/components/common/text-link';
 import { ROLE_DUTIES, ROLE_LABELS } from '@/components/layout/role-labels';
 import { type Invite, inviteExpiresAt } from '@/domain/staff/invite';
 import { DEFAULT_TIMEZONE } from '@/domain/tenancy/constants';
@@ -11,6 +12,19 @@ import { formatDateTime } from '@/lib/format-date';
 import { ROUTES } from '@/lib/routes';
 
 const OFFLINE_TEXT = 'Sin conexión: para unirte necesitas internet.';
+
+/**
+ * Why an invitation carries the address of the person it reaches (PLAN §11, 2026-10-16): an
+ * owner wrote it, so that only that account can use it.
+ */
+function WhyYourEmail({ invitedBy }: { invitedBy: string | null }) {
+  return (
+    <p className="text-muted-foreground">
+      Esta invitación lleva tu correo porque {invitedBy ?? 'su titular'} lo escribió para que solo
+      tu cuenta pueda usarla. <TextLink to={ROUTES.privacy}>Política de privacidad</TextLink>
+    </p>
+  );
+}
 
 type JoinCardProps = {
   invite: Invite;
@@ -53,6 +67,7 @@ export function JoinCard({ invite, you, isRunning, isOnline, error, onJoin }: Jo
             </div>
           ))}
         </dl>
+        {invite.email && <WhyYourEmail invitedBy={invite.invitedByName} />}
         <FormStatus error={error} isOnline={isOnline} offlineText={OFFLINE_TEXT} />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <Button

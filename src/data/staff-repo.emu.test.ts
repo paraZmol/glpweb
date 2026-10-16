@@ -7,7 +7,6 @@ import { signInAs, signInAsNewcomer } from '../../tests/support/emulated-session
 import { renameProfileAsAdmin } from '../../tests/support/emulator';
 import {
   AlreadyMemberError,
-  InviteForAnotherAccountError,
   InviteNotFoundError,
   InviteRevokedError,
   InviteUsedError,
@@ -94,6 +93,25 @@ describe('creating and listing invitations', () => {
   });
 });
 
+// PLAN §11 (2026-10-16): the address an owner typed is read only by that account and its owners,
+// and using the invitation clears it.
+describe('an invitation tied to an address', () => {
+  it('is unreadable to another account, and loses the address once used', async () => {
+    const owner = await signInAs(SEED_USERS.ownerA);
+    const invite = { role: 'driver', email: SEED_USERS.customer.email } as const;
+    const code = await createInvite({ distributorId: A.id, invite, createdBy: owner.uid });
+    const ref = { distributorId: A.id, code };
+
+    await signInAs(SEED_USERS.founder);
+    expect(await getInvite(ref)).toBeNull();
+    const customer = await signInAs(SEED_USERS.customer);
+    expect(await getInvite(ref)).toMatchObject({ email: SEED_USERS.customer.email });
+    await join(customer, ref);
+
+    expect(await getInvite(ref)).toMatchObject({ status: 'accepted', email: null });
+  });
+});
+
 describe('using an invitation', () => {
   it('makes a customer a driver of A, and the invitation is used', async () => {
     const customer = await signInAs(SEED_USERS.customer);
@@ -144,6 +162,7 @@ describe('using an invitation', () => {
     await expect(join(customer)).rejects.toBeInstanceOf(UnreadableNameError);
   });
 
+  // PLAN §11 (2026-10-16): it cannot even read it, so it is told what a missing one tells.
   it('refuses another account than the one an invitation names', async () => {
     const owner = await signInAs(SEED_USERS.ownerA);
     const code = await createInvite({
@@ -154,7 +173,7 @@ describe('using an invitation', () => {
 
     const customer = await signInAs(SEED_USERS.customer);
     await expect(join(customer, { distributorId: A.id, code })).rejects.toBeInstanceOf(
-      InviteForAnotherAccountError,
+      InviteNotFoundError,
     );
   });
 
