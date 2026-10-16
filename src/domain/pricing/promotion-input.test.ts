@@ -121,6 +121,7 @@ describe('preparePromotion — what it refuses', () => {
     ['an empty title', { title: '  ' }, 'title:required'],
     ['a title too long', { title: 'T'.repeat(PROMOTION_TITLE_MAX_LENGTH + 1) }, 'title:tooLong'],
     ['a title of invisible characters', { title: '​' }, 'title:invalid'],
+    ['a title with invented urgency', { title: 'Últimas unidades' }, 'title:blockedPhrase'],
     [
       'conditions too long',
       { conditions: 'C'.repeat(PROMOTION_CONDITIONS_MAX_LENGTH + 1) },

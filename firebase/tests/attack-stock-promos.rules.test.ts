@@ -236,26 +236,21 @@ describe('attack: vehicles', () => {
 });
 
 describe('attack: promotions', () => {
-  // HOLE (MEDIUM): hasNoBlockedPhrase only screens `conditions`; the title (visible on the card,
-  // 40 chars) takes the same fake-urgency phrases. Fix: apply the same screen to the title in
-  // isValidPromotion and in preparePromotion.
-  it.fails('HOLE: a title with fake urgency is accepted on create', async () => {
+  // Was a HOLE (MEDIUM): the title takes the same fake-urgency screen as `conditions`.
+  it('a title with fake urgency is refused on create', async () => {
     const db = verified(env, 'owner-a');
     await assertFails(
       setDoc(doc(db, promotionPath(A, 'o05')), promotionDoc({ title: 'Ultimas unidades' })),
     );
   });
 
-  // Refused today, but the emulator reports the 1000-expression limit on this update, not a
-  // clean false: keep an eye on it when the title screen is added.
+  // Started yesterday, so a plain rename is allowed: only the phrase can refuse it.
   it('renaming a live promotion to fake urgency is refused', async () => {
-    const db = verified(env, 'owner-a');
-    await assertFails(
-      updateDoc(doc(db, promotionPath(A, 'o00')), {
-        title: 'Hasta agotar stock',
-        updatedAt: now(),
-      }),
-    );
+    const startsAt = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
+    await seedDoc(env, promotionPath(A, 'o00'), stored({ startsAt }));
+    const ref = doc(verified(env, 'owner-a'), promotionPath(A, 'o00'));
+    await assertFails(updateDoc(ref, { title: 'Hasta agotar stock', updatedAt: now() }));
+    await assertSucceeds(updateDoc(ref, { title: 'Semana del gas', updatedAt: now() }));
   });
 
   it('conditions with a blocked phrase fail', async () => {

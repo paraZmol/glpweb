@@ -851,8 +851,13 @@ service cloud.firestore {
     // hasBlockedPhrase in src/domain/pricing/conditions.ts): compared in lowercase, without
     // accents (also those written as a separate mark) and with single spaces.
     function isConditions(value) {
-      return isVisibleText(value, 1, 140)
-        && !value.lower()
+      return isVisibleText(value, 1, 140) && hasNoBlockedPhrase(value);
+    }
+
+    // The title takes the same screen. Checked on create and only when an update changes it
+    // (isNewPromotion, renamesOrExtends): the update rule is near the 1 000-expression limit.
+    function hasNoBlockedPhrase(value) {
+      return !value.lower()
           .replace('\\p{M}', '')
           .replace('[áàâäÁÀÂÄ]', 'a')
           .replace('[éèêëÉÈÊË]', 'e')
@@ -1553,6 +1558,7 @@ service cloud.firestore {
         function isNewPromotion(data) {
           return isValidPromotion(data)
             && stampedNow(data)
+            && hasNoBlockedPhrase(data.title)
             && data.createdBy == request.auth.uid
             && data.soldUnits == 0
             && data.switchedOffBy == null
@@ -1565,6 +1571,10 @@ service cloud.firestore {
 
         function renamesOrExtends() {
           return onlyChanges(['title', 'endsAt', 'updatedAt'])
+            && (
+              request.resource.data.title == resource.data.title
+              || hasNoBlockedPhrase(request.resource.data.title)
+            )
             && request.resource.data.endsAt >= resource.data.endsAt
             && request.resource.data.endsAt <= resource.data.startsAt + duration.value(30, 'd');
         }

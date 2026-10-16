@@ -13,6 +13,8 @@ import { describeFieldIssue, describeTenancyError } from '../tenancy/tenancy-mes
 const PROMOTION_MESSAGES: Record<string, string> = {
   'title:required': 'Escribe el nombre de la promoción.',
   'title:tooLong': 'El nombre admite hasta 40 caracteres.',
+  'title:blockedPhrase':
+    'Ese nombre no se puede usar: Hornilla no cuenta unidades. Usa la fecha de cierre y el máximo por pedido.',
   'conditions:tooLong': 'Las condiciones admiten hasta 140 caracteres.',
   'conditions:blockedPhrase':
     'Esa frase no se puede usar: Hornilla no cuenta unidades. Usa la fecha de cierre y el máximo por pedido.',

@@ -416,6 +416,22 @@ describe('promotions — reusing a slot', () => {
     await assertSucceeds(add('owner-a', { ...PERCENT }, A, 'o05'));
   });
 
+  // Watches the 1 000-expression limit: validates the old and the new promotion (PLAN §9).
+  it('lets the owner reuse a slot with the longest title and conditions', async () => {
+    await seedDoc(env, promotionPath(A, 'o05'), stored({ endsAt: ago(60_000) }));
+    await assertSucceeds(
+      add(
+        'owner-a',
+        {
+          title: 'Ofertá '.repeat(6).slice(0, 40),
+          conditions: 'Válido de lunes a sábado. '.repeat(6).slice(0, 139),
+        },
+        A,
+        'o05',
+      ),
+    );
+  });
+
   it('demands a whole new promotion: created now, with no unit sold', async () => {
     await seedDoc(env, promotionPath(A, 'o05'), stored({ endsAt: ago(60_000) }));
     await assertFails(add('owner-a', { createdAt: AT }, A, 'o05'));
@@ -437,6 +453,21 @@ const switchOff = (uid: string, d = A, slot = 'o00') =>
 describe('promotions — what may change (marketing §4)', () => {
   it('lets the owner rename it', async () => {
     await assertSucceeds(edit('owner-a', { title: 'Semana del gas' }));
+  });
+
+  // Watches the 1 000-expression limit: the heaviest legitimate update (PLAN §9).
+  it('lets the owner rename and extend it at once, with the longest title', async () => {
+    await seedDoc(
+      env,
+      promotionPath(A, 'o00'),
+      stored({ conditions: 'Válido de lunes a sábado. '.repeat(6).slice(0, 139) }),
+    );
+    await assertSucceeds(
+      edit('owner-a', {
+        title: 'Ofertá '.repeat(6).slice(0, 40),
+        endsAt: ahead(MAX_PROMOTION_DAYS * MS_PER_DAY - MS_PER_DAY - 60_000),
+      }),
+    );
   });
 
   it('lets the owner extend it up to 30 days from its start', async () => {

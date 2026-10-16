@@ -6,7 +6,7 @@ import {
   type FieldIssue,
   type Validated,
 } from '../tenancy/field-checks';
-import { checkConditions } from './conditions';
+import { checkConditions, hasBlockedPhrase } from './conditions';
 import {
   MAX_PROMOTION_DAYS,
   MAX_SCHEDULE_AHEAD_DAYS,
@@ -62,10 +62,16 @@ function chosenProducts(ids: readonly string[], catalog: readonly Product[]): Pr
   return catalog.filter((product) => ids.includes(product.id));
 }
 
+function checkTitle(title: string): Check {
+  const text = checkVisibleText(title, 1, PROMOTION_TITLE_MAX_LENGTH);
+  if (text) return text;
+  return hasBlockedPhrase(title) ? 'blockedPhrase' : null;
+}
+
 function issuesOf(value: NewPromotion, catalog: readonly Product[], now: Date): FieldIssue[] {
   const products = checkProducts(value, catalog);
   return [
-    ...issue('title', checkVisibleText(value.title, 1, PROMOTION_TITLE_MAX_LENGTH)),
+    ...issue('title', checkTitle(value.title)),
     ...issue('conditions', checkConditions(value.conditions)),
     ...products,
     ...(products.length > 0

@@ -1592,7 +1592,7 @@ const MUTANTS = [
     '(data.totalUnits is int && data.totalUnits >= 1 && data.totalUnits <= 9999)',
     '(data.totalUnits is number)',
   ],
-  ['F35', 'conditions with blocked phrases', '&& !value.lower()', '&& value.lower()'],
+  ['F35', 'conditions with blocked phrases', 'return !value.lower()', 'return value.lower()'],
   ['F36', 'blocked phrases without accents folded', ".replace('[úùûüÚÙÛÜ]', 'u')", ''],
   [
     'F37',
@@ -1858,6 +1858,18 @@ const MUTANTS = [
     'complaints book with punycode past the first label',
     "!value.matches('https://([a-z0-9-]+[.])*xn--.*')",
     "!value.matches('https://xn--.*')",
+  ],
+  [
+    'Q29',
+    'promotion title with blocked phrases on create',
+    '            && hasNoBlockedPhrase(data.title)\n',
+    '',
+  ],
+  [
+    'Q30',
+    'promotion renamed to blocked phrases',
+    '              || hasNoBlockedPhrase(request.resource.data.title)',
+    '              || true',
   ],
   [
     'Q23',
