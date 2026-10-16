@@ -1,5 +1,6 @@
 import { BrandTheme } from '@/components/brand/brand-theme';
 import { HornillaLogo } from '@/components/brand/hornilla-logo';
+import { OutsideLink } from '@/components/common/outside-link';
 import { TextLink } from '@/components/common/text-link';
 import { DEFAULT_TIMEZONE } from '@/domain/tenancy/constants';
 import { describeOpenStatus, openStatusAt } from '@/domain/tenancy/schedule';
@@ -74,7 +75,15 @@ export function DistributorView({ distributor, now }: DistributorViewProps) {
             <p className="flex items-center gap-2">
               Página en <HornillaLogo size={FOOT_LOGO_PX} />
             </p>
-            <TextLink to={ROUTES.contact}>Reportar esta distribuidora</TextLink>
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+              {/* Its own virtual book, when it gave the link (PLAN §11, 2026-10-15). */}
+              {distributor.complaintsBookUrl && (
+                <OutsideLink href={distributor.complaintsBookUrl}>
+                  Libro de Reclamaciones
+                </OutsideLink>
+              )}
+              <TextLink to={ROUTES.contact}>Reportar esta distribuidora</TextLink>
+            </div>
           </div>
         </div>
         <ContactAside distributor={distributor} />

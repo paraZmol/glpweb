@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { accountOf } from '../../../tests/support/account-fixtures';
-import { renderStatic, textOf } from '../../../tests/support/render-static';
+import { count, renderStatic, textOf } from '../../../tests/support/render-static';
 import { FocusShell } from '../../components/layout/focus-shell';
 import {
   AlreadyMemberError,
@@ -25,6 +25,8 @@ const INVITE: Invite = {
   role: 'driver',
   email: null,
   distributorName: 'Gas Demo Norte',
+  invitedByName: null,
+  brandColor: null,
   status: 'pending',
   createdBy: 'u-titular',
   createdAt: CREATED,
@@ -59,6 +61,37 @@ describe('the screen an invitation link opens', () => {
     expect(text).toMatch(/Vence el 22 oct.? 2026/);
     expect(text).toContain('Persona Demo · persona@example.com');
     expect(text).toContain('Unirme a Gas Demo Norte');
+  });
+
+  // PLAN §11 (2026-10-15): the copies the invitation carries.
+  it('says who invites and wears the colour of the distributor', () => {
+    const html = renderStatic(
+      <JoinCard
+        invite={{ ...INVITE, invitedByName: 'A. Dueña', brandColor: '#0a7cff' }}
+        you={{ name: 'Persona Demo', email: null }}
+        isRunning={false}
+        isOnline
+        onJoin={() => {}}
+      />,
+    );
+
+    expect(textOf(html)).toMatch(/Te invita\s*A\. Dueña/);
+    expect(count(html, /data-brand=""/)).toBe(1);
+  });
+
+  it('leaves both out for an invitation older than the copies', () => {
+    const html = renderStatic(
+      <JoinCard
+        invite={INVITE}
+        you={{ name: 'Persona Demo', email: null }}
+        isRunning={false}
+        isOnline
+        onJoin={() => {}}
+      />,
+    );
+
+    expect(textOf(html)).not.toContain('Te invita');
+    expect(count(html, /data-brand=""/)).toBe(0);
   });
 
   it('does not offer to join without a connection, and says why', () => {

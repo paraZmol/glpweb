@@ -113,6 +113,29 @@ describe('public page of a distributor (PLAN 2.5)', () => {
     expect(tags(html, 'a').filter((tag) => tag.includes('href="/contacto"'))).toHaveLength(2);
   });
 
+  // PLAN §11 (2026-10-15): the distributor's own virtual complaints book, when it gave the link.
+  it('links the complaints book of the distributor in another tab, when it has one', () => {
+    const url = 'https://example.com/libro-de-reclamaciones';
+    const html = page({ complaintsBookUrl: url });
+    const [link = ''] = tags(html, 'a').filter((tag) => tag.includes(`href="${url}"`));
+
+    expect(textOf(html)).toContain('Libro de Reclamaciones');
+    expect(link).toContain('target="_blank"');
+    expect(link).toContain('rel="noopener noreferrer"');
+  });
+
+  it('shows no complaints book link when the distributor gave none', () => {
+    expect(textOf(page())).not.toContain('Libro de Reclamaciones');
+  });
+
+  // PLAN §11 (2026-10-15): "recarga 10 kg desde" under the cover.
+  it('names the weight of the cheapest refill next to its price', () => {
+    const text = textOf(page({ priceFromCents: 4800, priceFromWeightKg: 10 }));
+
+    expect(text).toContain('S/ 48.00');
+    expect(text).toContain('recarga 10 kg desde');
+  });
+
   // PLAN 2.9: nothing about the plan, the trial or the founder reaches this page.
   it('shows nothing about the plan of the distributor', () => {
     expect(textOf(page())).not.toMatch(/prueba gratis|suspendid|pago pendiente|plan activo/i);

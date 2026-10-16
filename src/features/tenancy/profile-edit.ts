@@ -1,3 +1,4 @@
+import { normalizeComplaintsBookUrl } from '../../domain/tenancy/complaints-book';
 import { normalizeBrandColor, normalizePeruvianMobile } from '../../domain/tenancy/contact';
 import {
   type DistributorProfilePatch,
@@ -19,6 +20,8 @@ export interface ProfileEditForm {
   days: number[];
   opensAt: string;
   closesAt: string;
+  /** Link to its virtual complaints book; empty when it gives none (PLAN §11, 2026-10-15). */
+  complaintsBookUrl: string;
 }
 
 export type ProfileEditField =
@@ -28,7 +31,8 @@ export type ProfileEditField =
   | 'addressLine'
   | 'coverageRadiusKm'
   | 'brandColor'
-  | 'schedule';
+  | 'schedule'
+  | 'complaintsBookUrl';
 export type ProfileEditErrors = Partial<Record<ProfileEditField | 'form', string>>;
 
 const OWN_MESSAGES: Partial<Record<ProfileEditField, string>> = {
@@ -47,6 +51,7 @@ export function profileEditFormOf(distributor: PublicDistributor): ProfileEditFo
     days: [...distributor.schedule.days],
     opensAt: distributor.schedule.opensAt,
     closesAt: distributor.schedule.closesAt,
+    complaintsBookUrl: distributor.complaintsBookUrl ?? '',
   };
 }
 
@@ -93,6 +98,10 @@ export function profilePatchOf(
     form.closesAt === schedule.closesAt;
   if (!isSameSchedule) {
     patch.schedule = { days: [...form.days], opensAt: form.opensAt, closesAt: form.closesAt };
+  }
+  // Not part of the identity: changing it never sends the listing back to review.
+  if (normalizeComplaintsBookUrl(form.complaintsBookUrl) !== stored.complaintsBookUrl) {
+    patch.complaintsBookUrl = form.complaintsBookUrl;
   }
   return patch;
 }

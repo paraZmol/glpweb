@@ -4,6 +4,7 @@ import { Monogram } from '@/components/brand/monogram';
 import { ButtonLink } from '@/components/common/button';
 import { Bone } from '@/components/common/skeleton';
 import { StateChip } from '@/components/common/state-chip';
+import { priceFromLabel } from '@/domain/catalog/catalog';
 import { formatDistanceKm } from '@/domain/geo/coordinates';
 import { formatMoney } from '@/domain/money/format';
 import { DEFAULT_TIMEZONE } from '@/domain/tenancy/constants';
@@ -15,7 +16,7 @@ import { distributorPath } from '@/lib/routes';
 
 /** Brands and "desde" price, only when the profile carries them (the catalogue is phase 3). */
 function Offer({ distributor }: { distributor: PublicDistributor }) {
-  const { brands, priceFromCents, currency } = distributor;
+  const { brands, priceFromCents, priceFromWeightKg, currency } = distributor;
   if (brands.length === 0 && priceFromCents === null) {
     return (
       <p className="rounded-lg bg-muted p-3 text-[0.9375rem] text-muted-foreground">
@@ -31,7 +32,7 @@ function Offer({ distributor }: { distributor: PublicDistributor }) {
       {priceFromCents !== null && (
         <p className="shrink-0 text-right">
           <span className="block text-[0.8125rem] font-semibold text-muted-foreground">
-            Recarga desde
+            {priceFromLabel(priceFromWeightKg)}
           </span>
           <span className="font-heading text-2xl leading-none font-extrabold tabular-nums">
             {formatMoney(priceFromCents, currency)}

@@ -57,6 +57,8 @@ const invite = (patch: Partial<Invite> = {}): Invite => ({
   role: 'driver',
   email: null,
   distributorName: 'Gas Demo Norte',
+  invitedByName: null,
+  brandColor: null,
   status: 'pending',
   createdBy: SESSION.uid,
   createdAt: CREATED,

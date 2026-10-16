@@ -1,3 +1,4 @@
+import { priceFromLabel } from '@/domain/catalog/catalog';
 import { formatMoney } from '@/domain/money/format';
 import { describeDays } from '@/domain/tenancy/schedule';
 import type { PublicDistributor } from '@/domain/tenancy/types';
@@ -14,7 +15,8 @@ function factsOf(distributor: PublicDistributor): Fact[] {
   if (distributor.priceFromCents !== null) {
     facts.push({
       value: formatMoney(distributor.priceFromCents, distributor.currency),
-      label: 'recarga desde',
+      // "recarga 10 kg desde": the weight of that refill (PLAN §11, 2026-10-15).
+      label: priceFromLabel(distributor.priceFromWeightKg).toLowerCase(),
     });
   }
   return facts;

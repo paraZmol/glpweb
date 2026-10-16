@@ -34,6 +34,8 @@ test('lists the distributors that cover the device location, nearest first', asy
   await expect(cards).toHaveCount(2);
   await expect(cards.nth(0)).toContainText(a.name);
   await expect(cards.nth(0)).toContainText('a 1,1 km de tu punto');
+  // PLAN §11 (2026-10-15): the "desde" price names the weight of that refill.
+  await expect(cards.nth(0)).toContainText('Recarga 5 kg desde');
   await expect(cards.nth(0)).toContainText('S/ 38.00');
   await expect(cards.nth(1)).toContainText(b.name);
   // Outside their radius, suspended or with the trial over: they do not show.

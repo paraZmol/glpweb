@@ -199,6 +199,7 @@ describe('edit the public profile (PLAN 2.11)', () => {
       'name',
       'contactPhone',
       'whatsapp',
+      'complaintsBookUrl',
       'addressLine',
       'opensAt',
       'closesAt',
@@ -208,6 +209,9 @@ describe('edit the public profile (PLAN 2.11)', () => {
     expect(named('contactPhone')).toContain('value="900000011"');
     expect(named('opensAt')).toContain('value="07:00"');
     expect(named('opensAt')).toContain('type="time"');
+    // PLAN §11 (2026-10-15): optional, and said not to send the page back to review.
+    expect(named('complaintsBookUrl')).toContain('type="url"');
+    expect(text).toContain('Libro de Reclamaciones virtual (opcional)');
     expect(text).toContain('Radio de cobertura');
     expect(text).toContain('5 km');
   });

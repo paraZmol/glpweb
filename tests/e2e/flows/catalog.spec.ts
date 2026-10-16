@@ -167,7 +167,7 @@ test('the owner loads, edits, orders and withdraws products; visitors see exactl
   await visitor.page.goto('/');
   await button(visitor.page, 'Usar mi ubicación').click();
   const card = visitor.page.getByRole('article').filter({ hasText: name });
-  await expect(card).toContainText('Recarga desde');
+  await expect(card).toContainText('Recarga 5 kg desde');
   await expect(card).toContainText('S/ 38.00');
   await expect(card).toContainText('Marca Otra · Marca Ensayo');
   expect([...owner.errors, ...admin.errors, ...visitor.errors]).toEqual([]);
