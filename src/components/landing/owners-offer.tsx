@@ -6,12 +6,13 @@ import { SoonStamp } from './soon-stamp';
 const TODAY = [
   'Página propia con tu color y tu enlace',
   'Catálogo con recarga y balón completo',
-  'Promociones con vigencia y límite',
-  'Tu personal y tus vehículos',
-  'Stock de planta',
+  'Tu personal: central y repartidores',
 ];
 
 const NEXT = [
+  'Promociones con vigencia y límite',
+  'Tus vehículos',
+  'Stock de planta',
   'Pedidos por la web y por teléfono en un solo lugar',
   'Jornada y cuadre de caja del repartidor',
   'Mapa con tus repartidores en vivo',

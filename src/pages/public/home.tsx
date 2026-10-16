@@ -11,9 +11,11 @@ import { RefillOrFull } from '@/components/landing/refill-or-full';
 import { SafetyFirst } from '@/components/landing/safety-first';
 import { SoonStamp } from '@/components/landing/soon-stamp';
 import { FINDER_ANCHOR, TwoPaths } from '@/components/landing/two-paths';
+import { HOME_ANCHORS } from '@/components/layout/public-nav';
 import { WhatIsHornilla } from '@/components/landing/what-is-hornilla';
 import { useDeliveryLocation } from '@/features/location/use-delivery-location';
 import { usePageTitle } from '@/lib/page-title';
+import { useScrollToHash } from '@/lib/use-scroll-to-hash';
 import { registerPathFrom, ROUTES } from '@/lib/routes';
 
 /** A visitor who owns a distributor most likely has no account yet: `/registro` explains it. */
@@ -45,6 +47,7 @@ function HeroPhoto() {
  */
 export function HomePage() {
   usePageTitle('');
+  useScrollToHash();
   const delivery = useDeliveryLocation();
 
   return (
@@ -68,7 +71,10 @@ export function HomePage() {
           className="relative z-10 mx-3 -mt-16 lg:col-start-1 lg:row-start-2 lg:m-0 lg:max-w-xl lg:self-start"
         />
       </div>
-      <div className="mx-auto w-full max-w-7xl px-4 pb-10 lg:px-8 lg:pb-12">
+      <div
+        id={HOME_ANCHORS.howItWorks}
+        className="mx-auto w-full max-w-7xl px-4 pb-10 lg:px-8 lg:pb-12"
+      >
         <TwoPaths />
       </div>
       <div id={FINDER_ANCHOR} className="scroll-mt-4 lg:bg-surface-soft">
@@ -82,7 +88,7 @@ export function HomePage() {
         <ComingNext />
         <RefillOrFull />
         <SafetyFirst />
-        <FaqList id="preguntas" title="Preguntas frecuentes" items={HOME_FAQ} />
+        <FaqList id={HOME_ANCHORS.faq} title="Preguntas frecuentes" items={HOME_FAQ} />
       </div>
     </>
   );

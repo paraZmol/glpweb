@@ -109,8 +109,8 @@ describe('home for both audiences (PLAN 3.6)', () => {
   it('puts the owners band before what Hornilla is and the questions', () => {
     const owners = text.indexOf('¿Tienes una distribuidora de gas?');
     expect(owners).toBeGreaterThan(-1);
-    expect(owners).toBeLessThan(text.indexOf('Qué es Hornilla'));
-    expect(text.indexOf('Qué es Hornilla')).toBeLessThan(text.indexOf('Preguntas frecuentes'));
+    expect(owners).toBeLessThan(text.lastIndexOf('Qué es Hornilla'));
+    expect(text.lastIndexOf('Qué es Hornilla')).toBeLessThan(text.indexOf('Preguntas frecuentes'));
   });
 
   it('says Hornilla neither sells nor delivers gas, and gives safety advice', () => {
@@ -123,6 +123,16 @@ describe('home for both audiences (PLAN 3.6)', () => {
   it('keeps undecided business answers out of the questions', () => {
     expect(text).not.toMatch(/cuánto cuesta|comisión/i);
     expect(text).not.toContain('Libro de Reclamaciones');
+  });
+
+  it('has the main menu in the header, with the home sections as anchors', () => {
+    const header = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
+    for (const href of ['/#que-es-hornilla', '/#como-funciona', '/#seguridad', '/#preguntas']) {
+      expect(linksTo(header, href)).toHaveLength(1);
+      expect(html).toContain(`id="${href.slice(2)}"`);
+    }
+    expect(linksTo(header, '/para-distribuidoras')).toHaveLength(1);
+    expect(header).toContain('aria-expanded="false"');
   });
 
   it('adds the disclaimer and "Para distribuidoras" to the footer', () => {
@@ -150,7 +160,7 @@ describe('/para-distribuidoras (PLAN 3.6)', () => {
   it('keeps what works today apart from what is coming', () => {
     expect(text).toContain('Lo que ya puedes hacer');
     expect(text).toContain('Lo que viene');
-    expect(count(text, /Pronto/g)).toBe(4);
+    expect(count(text, /Pronto/g)).toBe(7);
   });
 });
 

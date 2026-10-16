@@ -160,3 +160,12 @@ export function markerPulseAnimation(isReduced: boolean) {
     },
   };
 }
+
+/** Public menu on the phone: drops a few pixels from under the header. */
+export function dropdownVariants(isReduced: boolean) {
+  return {
+    initial: { opacity: 0, y: isReduced ? 0 : -LIST_RISE_PX },
+    animate: { opacity: 1, y: 0, transition: enterTransition('base') },
+    exit: { opacity: 0, y: isReduced ? 0 : -LIST_RISE_PX, transition: exitTransition('base') },
+  };
+}

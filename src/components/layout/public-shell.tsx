@@ -1,13 +1,9 @@
-import { lazy, Suspense } from 'react';
 import { Link } from 'react-router';
 import { HornillaLogo } from '@/components/brand/hornilla-logo';
 import { PageTransition } from '@/components/motion/page-transition';
 import { ROUTES } from '@/lib/routes';
-import { HeaderAccountPlaceholder } from './header-account-placeholder';
+import { PublicHeader } from './public-header';
 
-const HeaderAccount = lazy(() => import('./header-account'));
-
-const LOGO_PX = 30;
 const FOOTER_SYMBOL_PX = 28;
 const LEGAL_LINKS = [
   { to: ROUTES.terms, label: 'Términos y condiciones' },
@@ -16,27 +12,6 @@ const LEGAL_LINKS = [
   { to: ROUTES.contact, label: 'Contacto y reclamos' },
   { to: ROUTES.forDistributors, label: 'Para distribuidoras' },
 ];
-
-function PublicHeader() {
-  return (
-    <header className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 lg:px-8 lg:py-5">
-      <Link to={ROUTES.home} className="rounded-md">
-        <HornillaLogo size={LOGO_PX} />
-      </Link>
-      <div className="flex items-center gap-2">
-        <Link
-          to={ROUTES.forDistributors}
-          className="hidden min-h-10 items-center rounded-full px-4 text-[0.9375rem] font-semibold underline-offset-4 hover:underline lg:inline-flex"
-        >
-          Tengo una distribuidora
-        </Link>
-        <Suspense fallback={<HeaderAccountPlaceholder />}>
-          <HeaderAccount />
-        </Suspense>
-      </div>
-    </header>
-  );
-}
 
 function PublicFooter() {
   return (

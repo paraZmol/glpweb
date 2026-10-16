@@ -544,6 +544,8 @@
   }
   html {
     @apply font-sans;
+    /* Anchors land below the sticky public header. */
+    scroll-padding-top: 5.5rem;
     -webkit-text-size-adjust: 100%;
   }
   body {
