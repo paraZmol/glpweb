@@ -41,9 +41,12 @@ function refusalOf(invite: Invite | null, member: Member | undefined, joiner: Jo
 export function JoinPage() {
   usePageTitle('Invitación');
   const { hash } = useLocation();
-  const [linkHash] = useState(hash);
+  // The link stays in memory once the address bar no longer shows it; another link opened in
+  // the same tab replaces it.
+  const [linkHash, setLinkHash] = useState(hash);
+  if (hash !== '' && hash !== linkHash) setLinkHash(hash);
   const ref = useMemo(() => parseInviteFragment(linkHash), [linkHash]);
-  useEffect(() => dropAddressFragment(), []);
+  useEffect(() => dropAddressFragment(), [hash]);
   const invite = useInvite(ref);
   const { session, profile, current } = useAccount();
   const navigate = useNavigate();

@@ -36,7 +36,7 @@ const codeOf = (prefix: string, tag: string) =>
   `${prefix}${tag.replace(/[^A-Za-z0-9]/g, '')}`.padEnd(20, 'x').slice(0, 20);
 
 async function openStaff(owner: Actor) {
-  await owner.page.getByRole('link', { name: 'Personal' }).click();
+  await owner.page.getByRole('link', { name: 'Personal', exact: true }).click();
   await expect(owner.page).toHaveURL(new RegExp(`${STAFF_PATH}$`));
   await expect(heading(owner.page)).toHaveText('Tu personal.');
 }
@@ -233,8 +233,11 @@ test('expired, withdrawn, used and broken invitations say so; a member is told i
   expect((await readDocument(`distributors/${A.id}/invites/${withdrawn.slice(-20)}`))?.status).toBe(
     'revoked',
   );
+  // Tied to another address, it is not even readable to this account (PLAN §11, 2026-10-16).
   await visitor.page.goto(withdrawn);
-  await expect(heading(visitor.page)).toHaveText('Esta invitación fue anulada.');
+  await expect(heading(visitor.page)).toHaveText(
+    'Esta invitación es para otra cuenta o no existe.',
+  );
 
   // A link cut short, and a code nobody created.
   await visitor.page.goto('/unirme#d=seed-dist-a&c=corto');
