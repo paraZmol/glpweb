@@ -1,5 +1,6 @@
 import {
   CatalogFullError,
+  PriceLockedError,
   ProductNotFoundError,
   StaleCatalogError,
 } from '../../domain/catalog/errors';
@@ -54,5 +55,8 @@ export function describeCatalogError(error: unknown): string {
     return 'Tu catálogo cambió en otra pantalla. Vuelve a cargar la lista e inténtalo de nuevo.';
   }
   if (error instanceof NothingChangedError) return 'No cambiaste nada.';
+  if (error instanceof PriceLockedError) {
+    return "Este producto tiene una promoción. Subir el precio agranda el 'antes' que ven tus clientes. Podrás subirlo cuando termine.";
+  }
   return describeTenancyError(error);
 }

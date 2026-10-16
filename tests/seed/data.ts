@@ -139,6 +139,19 @@ export interface SeedDistributor {
   helpers?: { id: string; name: string; active: boolean }[];
   vehicles?: SeedVehicle[];
   plantStock?: SeedPlantStock[];
+  /**
+   * Live promotions (PLAN 3.5), "S/ N menos" on the refill of one product, created by the founder
+   * when the seed runs (they start then and last `days`); the product gets its price lock.
+   */
+  promotions?: SeedPromotion[];
+}
+
+export interface SeedPromotion {
+  id: string;
+  title: string;
+  productId: string;
+  amountCents: number;
+  days: number;
 }
 
 /**
@@ -266,6 +279,7 @@ export const SEED_DISTRIBUTORS = {
       { productId: 'p01', full: 25, empty: 6 },
       { productId: 'p03', full: 4, empty: 1 },
     ],
+    promotions: [{ id: 'o00', title: 'S/ 10 menos', productId: 'p03', amountCents: 1000, days: 7 }],
   },
   /** Healthy, paying; the "other distributor" of every isolation test. */
   b: {

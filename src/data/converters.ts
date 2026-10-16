@@ -5,6 +5,8 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { defaultProductName, type Product } from '../domain/catalog/product';
+import { SALE_MODES } from '../domain/catalog/sale-mode';
+import { PROMOTION_TYPES, type Promotion, type PromotionDeal } from '../domain/pricing/promotion';
 import type { Helper } from '../domain/staff/helper';
 import type { PlantStock } from '../domain/stock/plant-stock';
 import {
@@ -343,6 +345,8 @@ export const parseProduct: Parser<Product> = (id, path, data) => {
     // A product without the flag is not offered: never sell what was not put on sale.
     active: read.flag('active', false),
     sortOrder: read.number('sortOrder', 0),
+    // Price lock of PLAN 3.5; absent in products that never had a promotion.
+    promotedUntil: read.dateOrNull('promotedUntil'),
     createdAt,
     updatedAt: read.date('updatedAt', createdAt),
   };
@@ -399,6 +403,53 @@ function wholeCount(read: FieldReader, key: string): number {
   return value ?? read.fail(key, 'a whole number');
 }
 
+/** The kind and its parameters; anything the rules would not have accepted is corrupt. */
+function readDeal(read: FieldReader, path: string, data: DocumentData): PromotionDeal {
+  const type = read.oneOf('type', PROMOTION_TYPES);
+  const whole = (key: string) => {
+    const value = read.integerOrNull(key);
+    if (value === null) throw new CorruptDocumentError(path, `"${key}" should be an integer`);
+    return value;
+  };
+  switch (type) {
+    case 'fixedPrice':
+      return data.priceSource === 'refill'
+        ? { type, priceSource: 'refill' }
+        : { type, priceSource: 'own', priceCents: whole('priceCents') };
+    case 'percentOff':
+      return { type, percent: whole('percent') };
+    case 'amountOff':
+      return { type, amountCents: whole('amountCents') };
+    case 'buyXPayY':
+      return { type, buyUnits: whole('buyUnits'), payUnits: whole('payUnits') };
+  }
+}
+
+export const parsePromotion: Parser<Promotion> = (id, path, data) => {
+  const read = new FieldReader(path, data);
+  const createdAt = read.date('createdAt');
+  return {
+    id,
+    title: read.text('title'),
+    deal: readDeal(read, path, data),
+    productIds: read.textList('productIds'),
+    saleMode: read.oneOf('saleMode', SALE_MODES),
+    startsAt: read.date('startsAt'),
+    endsAt: read.date('endsAt'),
+    // A promotion without the flag is not offered: never apply what was not published.
+    active: read.flag('active', false),
+    maxUnitsPerOrder: read.number('maxUnitsPerOrder'),
+    totalUnits: read.integerOrNull('totalUnits'),
+    soldUnits: read.number('soldUnits', 0),
+    conditions: read.text('conditions', ''),
+    createdBy: read.text('createdBy', ''),
+    createdAt,
+    updatedAt: read.date('updatedAt', createdAt),
+    switchedOffBy: read.textOrNull('switchedOffBy'),
+    switchedOffAt: read.dateOrNull('switchedOffAt'),
+  };
+};
+
 function aboveOrNull(value: number | null, floor: number): number | null {
   return value !== null && value > floor ? value : null;
 }
@@ -434,3 +485,4 @@ export const helperConverter = readOnlyConverter(parseHelper);
 export const vehicleConverter = readOnlyConverter(parseVehicle);
 export const plantStockConverter = readOnlyConverter(parsePlantStock);
 export const stockMovementConverter = readOnlyConverter(parseStockMovement);
+export const promotionConverter = readOnlyConverter(parsePromotion);

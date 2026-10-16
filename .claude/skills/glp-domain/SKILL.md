@@ -118,7 +118,15 @@ distribuidora no vende envases de ese producto). Consecuencias:
 - Una unidad `full` saca un lleno del stock sin devolver vacío: el parque de envases baja.
 - La pantalla nunca deja ambiguo cuál se está comprando; el repartidor ve cuántos vacíos recoger.
 
-**Promociones** (`/distributors/{d}/promotions/{id}`), creadas solo por el dueño:
+**Promociones** (`/distributors/{d}/promotions/{o00..o19}`), creadas por el titular **y la
+central** (decisión del usuario, PLAN §11 2026-10-16; `PROMOTION_EDITOR_ROLES`). Lo construido
+en 3.5 manda sobre la lista de abajo donde choquen: una sola forma de venta (`saleMode`) por
+promoción; 20 casillas reutilizables al terminar o apagarse; el precio especial es de un solo
+producto; el producto lleva `promotedUntil` (bloqueo de precio) y una promoción solo se aplica a
+un producto cuyo bloqueo alcanza su cierre; cada línea congela **un** `unitPriceCents` y las
+unidades gratis de "lleva X, paga Y" van en su propia línea a 0 (`OrderPricer`,
+`orderPricerWith` en `src/domain/pricing/price-order.ts`); el máximo por pedido es de todo el
+pedido; apagar no levanta el bloqueo de precio. Campos pensados al principio:
 - Campos: `title`, `type`, `productIds` (o todos), `saleKinds`, `startsAt`, `endsAt`, `active`,
   `maxUnitsPerOrder`, `conditions` (texto visible) y los parámetros del tipo.
 - Tipos (cerrados con `marketing-advisor`, ver `docs/marketing/oferta-y-promociones.md`):

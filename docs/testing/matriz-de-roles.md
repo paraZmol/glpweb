@@ -202,6 +202,12 @@ Lo que cada rol consigue llamando a la base con su propia sesión, sin pasar por
 | Personal: cambiar o desactivar a quien fundó · cambiarse o desactivarse a sí mismo | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 | Ayudantes (3.2): leer y listar los de A (tope 30) | rechaza | rechaza | rechaza | rechaza | puede | puede | puede | rechaza | rechaza | rechaza |
 | Ayudantes: añadir (casillas `h00`…`h29`), renombrar, desactivar | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | puede | rechaza | rechaza (solo lectura) | rechaza |
+| Promociones (3.5): leer las **publicadas** de A (consulta con `where('active', '==', true)` y tope de 20) | puede | puede | puede | puede | puede | puede | puede | puede | puede | puede |
+| Promociones: leer las de una sin aprobar, suspendida o vencida | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | puede solo las suyas | rechaza |
+| Promociones: leer todas las casillas de A (también sin publicar, terminadas o apagadas) | rechaza | rechaza | rechaza | rechaza | puede | puede | puede | rechaza | rechaza | rechaza |
+| Promociones: crear (casillas `o00`…`o19`), renombrar, alargar, publicar una guardada, apagar | rechaza | rechaza | rechaza | rechaza | rechaza | puede (decisión del usuario, 2026-10-16) | puede | rechaza | rechaza (solo lectura) | rechaza |
+| Promociones: acortar el cierre, cambiar precio, productos, tipo, topes o inicio de una guardada; volver a encender una apagada; más de 30 días; empezar en el pasado; porcentaje de más de 30; "hasta agotar stock" en las condiciones; borrar | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
+| Catálogo (3.5): subir un precio de lista o dejar de vender el balón completo de un producto con promoción vigente o programada (`promotedUntil`) | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza (bajarlo, puede) | rechaza (bajarlo, puede) | rechaza | rechaza | rechaza |
 | Ayudantes: borrar | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza | rechaza |
 | Vehículos (3.3): leer y listar los de A (tope 30) | rechaza | rechaza | rechaza | rechaza | puede | puede | puede | rechaza | puede los suyos | rechaza |
 | Vehículos: añadir (casillas `v00`…`v29`), cambiar tipo, nombre, placa o capacidad, sacar de uso (PLAN §11, 2026-10-16) | rechaza | rechaza | rechaza | rechaza | rechaza | puede | puede | rechaza | rechaza (solo lectura) | rechaza |

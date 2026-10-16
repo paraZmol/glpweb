@@ -27,6 +27,9 @@ export const paths = {
   products: (d: string) => `distributors/${d}/products`,
   /** `slot` is `p00` … `p29` (PRODUCT_SLOT_IDS in src/domain/catalog/catalog.ts). */
   product: (d: string, slot: string) => `distributors/${d}/products/${slot}`,
+  promotions: (d: string) => `distributors/${d}/promotions`,
+  /** `slot` is `o00` … `o19` (PROMOTION_SLOT_IDS in src/domain/pricing/promotion.ts). */
+  promotion: (d: string, slot: string) => `distributors/${d}/promotions/${slot}`,
   plantStock: (d: string) => `distributors/${d}/plantStock`,
   /** Same id as the product: `p00` … `p29`. */
   plantStockOf: (d: string, productId: string) => `distributors/${d}/plantStock/${productId}`,

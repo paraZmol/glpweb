@@ -1,7 +1,12 @@
 import * as productsRepo from '../../data/products-repo';
 import { moveInCatalog, sortCatalog } from '../../domain/catalog/catalog';
-import { ProductNotFoundError } from '../../domain/catalog/errors';
-import type { Product, ProductPatch } from '../../domain/catalog/product';
+import { PriceLockedError, ProductNotFoundError } from '../../domain/catalog/errors';
+import {
+  breaksPromotionLock,
+  isPriceLocked,
+  type Product,
+  type ProductPatch,
+} from '../../domain/catalog/product';
 import {
   prepareNewProduct,
   prepareProductEdit,
@@ -33,17 +38,26 @@ export async function addProduct(distributorId: string, input: ProductInput): Pr
 /**
  * Owner or dispatcher: edits `current` (as the screen has it) with `patch`. Weight and currency
  * cannot change: another weight is another product. Orders already made keep their prices (phase 4).
- * Throws `InvalidInputError`, `NothingChangedError` (nothing was written), `ProductNotFoundError`,
+ * Throws `InvalidInputError`, `NothingChangedError` (nothing was written), `PriceLockedError` (a
+ * promotion covers it: no raise, no withdrawing the full cylinder), `ProductNotFoundError`,
  * `PermissionDeniedError` or `OfflineError`.
  */
 export async function editProduct(
   distributorId: string,
   current: Product,
   patch: ProductPatch,
+  now = new Date(),
 ): Promise<void> {
   const prepared = prepareProductEdit(current, patch);
   if (!prepared.ok) throw new InvalidInputError(prepared.issues);
   if (Object.keys(prepared.value).length === 0) throw new NothingChangedError();
+  // PLAN 3.5: the rules refuse it too; this says why before trying.
+  if (
+    isPriceLocked(current, now) &&
+    breaksPromotionLock(current, { ...current, ...prepared.value })
+  ) {
+    throw new PriceLockedError(current.promotedUntil ?? now);
+  }
   await productsRepo.updateProduct(distributorId, current.id, prepared.value);
   forgetVisibleDistributors();
 }

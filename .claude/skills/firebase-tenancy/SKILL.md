@@ -329,3 +329,13 @@ correos.
   test lo note. Al reescribir una regla, su entrada en la lista deja de aplicar: se actualiza en
   el mismo cambio y se añaden las condiciones nuevas (`MUTANTS=ID,… npm run test:mutation`).
 - **Bitácora atada al cambio** (stock de planta, PLAN 3.4): el documento que cambia nombra en `lastMovementId` la línea creada en la misma petición, y la regla la lee con `getAfter` y exige `createdAt == request.time` (no se reusa una vieja), el mismo producto y la diferencia exacta (`nuevo == anterior + delta == after`); la línea solo se crea si el documento la nombra. Ninguna se edita ni se borra. Dos ajustes simultáneos: el perdedor recibe `permission-denied` (las reglas se evalúan contra el valor nuevo), no un conflicto que el SDK reintente; el repositorio relee y reintenta solo si el stock se movió (`adjustPlantStock`).
+- **Promociones** (PLAN 3.5, §11 2026-10-16): su propio `match`, 20 casillas `o00`…`o19` que
+  se **reescriben** (como `update` que exige una promoción nueva entera) cuando la anterior
+  terminó, se apagó o nunca se publicó. Lectura pública como el catálogo (`active == true`,
+  tope 20, sigue a `acceptingOrders`); escriben titular y central. Lo que la regla no puede
+  leer (los 30 productos) se comprueba donde ya se leen los dos: **una promoción solo se aplica a
+  un producto cuyo `promotedUntil` alcanza su cierre** (`priceOrder` y las reglas del pedido de la
+  fase 4). Patrón: **una marca en el documento barato de leer (el producto) que el lote del
+  documento caro mantiene, y que quien usa los dos exige**. La marca solo crece mientras corre y
+  bloquea subir precios (`keepsPromotionLock`). Las fechas de los tests de reglas se calculan al
+  cargar las tablas: márgenes de una hora, no de un minuto.

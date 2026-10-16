@@ -156,6 +156,9 @@ rules_version = '2';
 //   fullPriceCents: null (the cylinder is not sold with its container) | int above
 //     refillPriceCents and ≤ 99900 — gas + container ("Balón completo")
 //   currency: the distributor's (immutable) · active: bool · sortOrder: int 0..999
+//   promotedUntil: optional timestamp, at most 60 days ahead — the price lock of PLAN 3.5: until
+//     then no list price goes up and the full cylinder is not withdrawn; the lock only grows
+//     while it runs. A promotion only applies to a product whose lock reaches its end.
 //   createdAt (immutable), updatedAt (= request.time when written)
 //
 // /distributors/{d}/vehicles/{v}   the vehicles (PLAN 3.3). {v} is a slot, v00 … v29 (caps them
@@ -184,6 +187,26 @@ rules_version = '2';
 //   text 1..200 · fullDelta, emptyDelta: int -9999..9999, not both 0 · fullAfter, emptyAfter:
 //   what the stock holds after it · authorUid: the caller · authorName: the displayName of the
 //   caller's member · createdAt: = request.time
+// /distributors/{d}/promotions/{s} promotions (PLAN 3.5, §11 2026-10-16). {s} is a slot, o00 …
+//                                  o19 (caps those alive at 20); a slot is written anew once its
+//                                  promotion ended, was switched off or was never published.
+//                                  Never deleted. Anyone reads the published ones while the
+//                                  distributor takes orders; its staff reads them all; the owner
+//                                  and the dispatcher write, while it is writable.
+//   title: visible text 1..40 · productIds: list 1..30 of product slots, no repeats
+//   saleMode: refill | full · startsAt, endsAt: timestamps — starts now or later (≤ 30 days
+//     ahead), ends after it starts and within 30 days of the start · active: bool
+//   maxUnitsPerOrder: int 1..20 · totalUnits: null | int 1..9999 · soldUnits: int (0 when written)
+//   conditions: '' | visible text ≤ 140 without the blocked phrases of hasNoBlockedPhrase()
+//   createdBy (the owner) · createdAt, updatedAt · switchedOffBy, switchedOffAt: null until an
+//     owner switches it off (then its uid and request.time; final)
+//   type and its parameters, nothing else:
+//     fixedPrice: priceSource 'own' + priceCents int 1..99900, or 'refill' + priceCents null
+//       (full cylinder at the refill price: saleMode full, 1 per order, total cap); one product
+//     percentOff: percent int 1..30 · amountOff: amountCents int 1..99900
+//     buyXPayY: buyUnits/payUnits 2/1 or 3/2, total cap, maxUnitsPerOrder a multiple of buyUnits
+//   After it is written only the title, a later end, publishing (draft → published) and the
+//   switch-off may change.
 //
 // Billed reads added by the rules (get / exists / getAfter) are noted on each `allow`.
 // ===============================================================================================
@@ -595,10 +618,21 @@ service cloud.firestore {
     // Same checks as prepareNewProduct in src/domain/catalog/product-input.ts. The full cylinder
     // is the gas plus its container, so it costs more than the refill.
     function isValidProduct(data) {
-      return hasExactly(data, [
+      return data.keys().hasAll([
           'brand', 'brandColor', 'weightKg', 'name', 'refillPriceCents', 'fullPriceCents',
           'currency', 'active', 'sortOrder', 'createdAt', 'updatedAt'
         ])
+        && data.keys().hasOnly([
+          'brand', 'brandColor', 'weightKg', 'name', 'refillPriceCents', 'fullPriceCents',
+          'currency', 'active', 'sortOrder', 'promotedUntil', 'createdAt', 'updatedAt'
+        ])
+        && (
+          !('promotedUntil' in data)
+          || (
+            data.promotedUntil is timestamp
+            && data.promotedUntil <= request.time + duration.value(60, 'd')
+          )
+        )
         && isVisibleText(data.brand, 1, 30)
         && (data.brandColor == null
           || (data.brandColor is string && data.brandColor.matches('^#[0-9a-f]{6}$')))
@@ -733,6 +767,100 @@ service cloud.firestore {
         && (data.fullDelta != 0 || data.emptyDelta != 0)
         && data.authorUid == request.auth.uid
         && data.createdAt == request.time;
+    }
+
+    // The fields every promotion has, plus those of its kind (PLAN 3.5, §11 2026-10-16).
+    function promotionKeys(own) {
+      return [
+        'title', 'type', 'productIds', 'saleMode', 'startsAt', 'endsAt', 'active',
+        'maxUnitsPerOrder', 'totalUnits', 'soldUnits', 'conditions', 'createdBy', 'createdAt',
+        'updatedAt', 'switchedOffBy', 'switchedOffAt'
+      ].concat(own);
+    }
+
+    // Same checks as preparePromotion in src/domain/pricing/promotion-input.ts, except those
+    // that need the products (a price below the list price): priceOrder refuses those.
+    function isValidPromotion(data) {
+      return isVisibleText(data.title, 1, 40)
+        && data.productIds is list
+        && data.productIds.size() >= 1
+        && data.productIds.toSet().size() == data.productIds.size()
+        && data.productIds.hasOnly([
+          'p00', 'p01', 'p02', 'p03', 'p04', 'p05', 'p06', 'p07', 'p08', 'p09',
+          'p10', 'p11', 'p12', 'p13', 'p14', 'p15', 'p16', 'p17', 'p18', 'p19',
+          'p20', 'p21', 'p22', 'p23', 'p24', 'p25', 'p26', 'p27', 'p28', 'p29'
+        ])
+        && data.saleMode in ['refill', 'full']
+        && data.startsAt is timestamp
+        && data.endsAt is timestamp
+        && data.active is bool
+        && data.maxUnitsPerOrder is int
+        && data.maxUnitsPerOrder >= 1 && data.maxUnitsPerOrder <= 20
+        && (
+          data.totalUnits == null
+          || (data.totalUnits is int && data.totalUnits >= 1 && data.totalUnits <= 9999)
+        )
+        && data.soldUnits is int
+        && (data.conditions == '' || isConditions(data.conditions))
+        && data.createdBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && isPromotionDeal(data);
+    }
+
+    // The kind and its parameters, and nothing else.
+    function isPromotionDeal(data) {
+      return (
+          data.type == 'fixedPrice'
+          && hasExactly(data, promotionKeys(['priceSource', 'priceCents']))
+          && data.productIds.size() == 1
+          && (
+            (data.priceSource == 'own' && isPriceCents(data.priceCents))
+            || (
+              data.priceSource == 'refill'
+              && data.priceCents == null
+              && data.saleMode == 'full'
+              && data.maxUnitsPerOrder == 1
+              && data.totalUnits != null
+            )
+          )
+        )
+        || (
+          data.type == 'percentOff'
+          && hasExactly(data, promotionKeys(['percent']))
+          && data.percent is int && data.percent >= 1 && data.percent <= 30
+        )
+        || (
+          data.type == 'amountOff'
+          && hasExactly(data, promotionKeys(['amountCents']))
+          && isPriceCents(data.amountCents)
+        )
+        || (
+          data.type == 'buyXPayY'
+          && hasExactly(data, promotionKeys(['buyUnits', 'payUnits']))
+          && (
+            (data.buyUnits == 2 && data.payUnits == 1)
+            || (data.buyUnits == 3 && data.payUnits == 2)
+          )
+          && data.totalUnits != null
+          && data.maxUnitsPerOrder % data.buyUnits == 0
+        );
+    }
+
+    // Visible text up to 140 without invented urgency (marketing H5; BLOCKED_PHRASES and
+    // hasBlockedPhrase in src/domain/pricing/conditions.ts): compared in lowercase, without
+    // accents (also those written as a separate mark) and with single spaces.
+    function isConditions(value) {
+      return isVisibleText(value, 1, 140)
+        && !value.lower()
+          .replace('\\p{M}', '')
+          .replace('[áàâäÁÀÂÄ]', 'a')
+          .replace('[éèêëÉÈÊË]', 'e')
+          .replace('[íìîïÍÌÎÏ]', 'i')
+          .replace('[óòôöÓÒÔÖ]', 'o')
+          .replace('[úùûüÚÙÛÜ]', 'u')
+          .replace('\\s+', ' ')
+          .matches('.*(hasta agotar|ultimas unidades|unidades limitadas|quedan pocas).*');
     }
 
     // ================================================================================ users ====
@@ -1335,12 +1463,13 @@ service cloud.firestore {
           && writable(d)
           && request.resource.data.currency == get(distributorPath(d)).data.currency;
 
-        // The weight, the currency and the creation date never change. PLAN 3.5 adds here: no
-        // raise of a list price while a promotion is active or scheduled on the product.
+        // The weight, the currency and the creation date never change, and no list price goes up
+        // while a promotion covers the product (PLAN 3.5).
         // Reads added by rules: 2 (get member, get control).
         allow update: if isValidProduct(request.resource.data)
           && unchanged(['weightKg', 'currency', 'createdAt'])
           && request.resource.data.updatedAt == request.time
+          && keepsPromotionLock(resource.data, request.resource.data)
           && hasRole(d, ['owner', 'dispatcher'])
           && writable(d);
 
@@ -1349,6 +1478,109 @@ service cloud.firestore {
         function isOnSale() {
           return resource.data.active == true
             && get(distributorPath(d)).data.acceptingOrders == true;
+        }
+
+        // The price lock of PLAN 3.5 (§11, 2026-10-16; breaksPromotionLock and isPriceLocked in
+        // src/domain/catalog/product.ts). While `promotedUntil` is ahead, the lock may only grow,
+        // no list price goes up and the full cylinder is not withdrawn: taking it away and
+        // putting it back dearer would be a raise in two steps. Lowering is always allowed.
+        function keepsPromotionLock(before, after) {
+          return before.get('promotedUntil', request.time) <= request.time
+            || (
+              after.get('promotedUntil', request.time) >= before.promotedUntil
+              && after.refillPriceCents <= before.refillPriceCents
+              && (
+                before.fullPriceCents == null
+                || (after.fullPriceCents != null && after.fullPriceCents <= before.fullPriceCents)
+              )
+            );
+        }
+      }
+
+      // ---------------------------------------------------------------------- promotions ----
+      // Promotions (PLAN 3.5, §11 2026-10-16), in a match of their own like the catalogue. The
+      // price a promotion gives is checked where it is used: priceOrder in src/domain/pricing and
+      // the order rules of phase 4, which read the product and the promotion. Here: who, the
+      // shape of each kind, the validity window and the only edits allowed once saved.
+      match /promotions/{promotionId} {
+        // Public while the distributor takes orders, and only the published ones: a query must
+        // carry where('active', '==', true) and a limit ≤ 20 (the app adds endsAt > now). A
+        // query cannot be compared with the clock: a scheduled or ended one can be read by a
+        // query made by hand, and the screens do not show it. The staff reads every slot.
+        // Reads added by rules: 1 for a visitor (get distributor); for the staff 1 (get member),
+        // or 2 when it reads a published one of a distributor that does not take orders.
+        allow get: if isPublished() || isStaff(d);
+        allow list: if request.query.limit <= 20 && (isPublished() || isStaff(d));
+
+        // The owner and the dispatcher (decision of the user, PLAN §11 2026-10-16;
+        // PROMOTION_EDITOR_ROLES in src/domain/pricing/permissions.ts), while writable. Reads added
+        // by rules: 2 (get member, get control).
+        allow create: if promotionId.matches('^o[0-1][0-9]$')
+          && isNewPromotion(request.resource.data)
+          && hasRole(d, ['owner', 'dispatcher'])
+          && writable(d);
+
+        // A slot whose promotion ended, was switched off or was never published takes a whole
+        // new one. Otherwise one of three edits: rename or extend (not shorten: customers saw the
+        // end) while it is open; publish one saved unpublished; switch off a published one,
+        // which records who and when and is final. Reads added by rules: 2 (get member, get
+        // control).
+        allow update: if isValidPromotion(request.resource.data)
+          && hasRole(d, ['owner', 'dispatcher'])
+          && writable(d)
+          && (
+            (isOver() && isNewPromotion(request.resource.data))
+            || (
+              request.resource.data.updatedAt == request.time
+              && resource.data.switchedOffAt == null
+              && resource.data.endsAt > request.time
+              && (renamesOrExtends() || publishes() || switchesOff())
+            )
+          );
+
+        // No delete: an order (phase 4) names the promotion it took by its slot.
+
+        function isPublished() {
+          return get(distributorPath(d)).data.acceptingOrders == true
+            && resource.data.active == true;
+        }
+
+        function isOver() {
+          return resource.data.active == false || resource.data.endsAt <= request.time;
+        }
+
+        // Written now, by the caller, with nothing sold nor switched off, within its window.
+        function isNewPromotion(data) {
+          return isValidPromotion(data)
+            && stampedNow(data)
+            && data.createdBy == request.auth.uid
+            && data.soldUnits == 0
+            && data.switchedOffBy == null
+            && data.switchedOffAt == null
+            && data.startsAt >= request.time
+            && data.startsAt <= request.time + duration.value(30, 'd')
+            && data.endsAt > data.startsAt
+            && data.endsAt <= data.startsAt + duration.value(30, 'd');
+        }
+
+        function renamesOrExtends() {
+          return onlyChanges(['title', 'endsAt', 'updatedAt'])
+            && request.resource.data.endsAt >= resource.data.endsAt
+            && request.resource.data.endsAt <= resource.data.startsAt + duration.value(30, 'd');
+        }
+
+        function publishes() {
+          return onlyChanges(['active', 'updatedAt'])
+            && resource.data.active == false
+            && request.resource.data.active == true;
+        }
+
+        function switchesOff() {
+          return onlyChanges(['active', 'switchedOffBy', 'switchedOffAt', 'updatedAt'])
+            && resource.data.active == true
+            && request.resource.data.active == false
+            && request.resource.data.switchedOffBy == request.auth.uid
+            && request.resource.data.switchedOffAt == request.time;
         }
       }
 

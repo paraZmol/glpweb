@@ -11,6 +11,14 @@ export type FieldIssueCode =
   | 'tooFaint'
   /** A value that must be greater than another field of the same form (full vs refill price). */
   | 'notAbove'
+  /** A value that must be below another one (a promoted price under the list price). */
+  | 'notBelow'
+  /** A value that must be a multiple of another one (units of "lleva X, paga Y"). */
+  | 'notMultiple'
+  /** Text with a phrase the promotions refuse ("hasta agotar stock", marketing H5). */
+  | 'blockedPhrase'
+  /** Something the catalogue does not offer (a product off sale, a full cylinder not sold). */
+  | 'unavailable'
   /** Only the account that founded the distributor may choose it (inviting an owner). */
   | 'founderOnly';
 
