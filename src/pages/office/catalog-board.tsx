@@ -8,9 +8,7 @@ import { cn } from '@/lib/utils';
 import { AddProductButton } from './catalog-header';
 import { ProductFormPanel } from './product-form-panel';
 import { useCatalogChanges } from './use-catalog-changes';
-
-/** What the right-hand panel (the whole screen, on a phone) is doing. */
-export type Editing = { product: Product | null } | null;
+import type { Editing } from './use-product-form-entry';
 
 type CatalogBoardProps = {
   distributorId: string;

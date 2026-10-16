@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
+import { useLocation } from 'react-router';
 import { HornillaLogo } from '@/components/brand/hornilla-logo';
 import { Button, ButtonLink } from '@/components/common/button';
 import { InviteForAnotherAccountError } from '@/domain/staff/errors';
 import { useSignOut } from '@/features/account/use-sign-out';
 import { describeJoinError } from '@/features/staff/staff-messages';
-import { ROUTES } from '@/lib/routes';
+import { ROUTES, signInPathFrom, withFragment } from '@/lib/routes';
 import { BROKEN_LINK, joinStopCopyOf } from './join-copy';
 
 const SYMBOL_PX = 56;
@@ -58,7 +59,10 @@ type JoinRefusedProps = {
 
 /** Why this account cannot use the invitation, and the way on (PLAN 3.2). */
 export function JoinRefused({ refusal, distributorName, email, onEnter }: JoinRefusedProps) {
-  const { signOut, isSigningOut } = useSignOut();
+  // Signing out here is to come back with another account: to the sign-in, then to this same
+  // invitation (its code rides in the fragment, never in `desde`).
+  const { hash } = useLocation();
+  const { signOut, isSigningOut } = useSignOut(withFragment(signInPathFrom(ROUTES.join), hash));
   const name = distributorName ?? 'esta distribuidora';
   const copy = joinStopCopyOf(refusal, name) ?? {
     title: 'No pudimos usar esta invitación.',

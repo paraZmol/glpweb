@@ -13,11 +13,13 @@ const SIGN_OUT_ANYWAY = 'Cerrar sesión igual';
 /**
  * Signs out on purpose and clears what the account left on this device (PLAN 2.9). It leaves
  * for the public home FIRST: otherwise the guard of the area would see a signed-out visitor
- * and send the person to "ingresa para continuar". The page then reloads at the home.
+ * and send the person to "ingresa para continuar". The page then reloads at `after` (the
+ * home unless said otherwise: `/unirme` sends the person back to sign in and use its
+ * invitation with the right account).
  * If changes made offline were never sent, it stops and says so, with the choice of signing out
  * anyway (`signOutDiscardingChanges`).
  */
-export function useSignOut() {
+export function useSignOut(after: string = ROUTES.home) {
   const navigate = useNavigate();
   const { isRunning, run } = useAsyncAction();
 
@@ -33,7 +35,7 @@ export function useSignOut() {
             beforeSignOut: () => navigate(ROUTES.home),
           });
           if (outcome === 'ended') {
-            restartApp(ROUTES.home);
+            restartApp(after);
             return;
           }
           toast.warning(UNSENT_TEXT, {
@@ -44,7 +46,7 @@ export function useSignOut() {
         }
       });
     },
-    [navigate, run],
+    [after, navigate, run],
   );
 
   useEffect(() => {

@@ -22,7 +22,9 @@
 // (PLAN 3.1 and 3.2): screens that do not follow a change made elsewhere, the notice of a person
 // switched off, a cut title at 1440 px, "back" with the product form open, the focus after
 // "Quitar de la venta", the error of a helper name and signing out from an invitation for
-// another account. All nine open (`test.fail`).
+// another account. All nine fixed the same day (plain tests now): the catalogue and the staff
+// are read again when the person comes back to the screen and before a move, not followed live
+// (PLAN §11, 2026-10-15).
 import { expect, type Page } from '@playwright/test';
 import { SEED_DISTRIBUTORS } from '../../seed/data';
 import { type Actors, DESKTOP, type Device, PHONE, test } from '../support/actors';
@@ -792,6 +794,15 @@ test.describe('fourth pass: catalogue and staff', () => {
   const productHeadings = (page: Page) => page.getByRole('main').getByRole('heading', { level: 3 });
   const named = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
 
+  /**
+   * The person comes back to a tab it had left (PLAN §11, 2026-10-15: the catalogue and the
+   * staff are read again on return, not followed live). A headless browser never hides a tab,
+   * so the return is announced by hand, as the browser does when the tab takes the focus back.
+   */
+  async function comeBack(page: Page) {
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  }
+
   /** Adds a product through the form of the catalogue that is on screen. */
   async function addProduct(page: Page, brand: string, refill: string, name = '') {
     await page.getByRole('button', { name: /^Añadir (tu primer )?producto$/ }).click();
@@ -837,7 +848,6 @@ test.describe('fourth pass: catalogue and staff', () => {
   test('a catalogue open in another tab shows a product taken off sale without reloading', async ({
     actors,
   }, testInfo) => {
-    test.fail(true, 'The catalogue screens read the products once and never update by themselves');
     const { owner } = await foundedOffice(actors, uniqueTag(testInfo));
     await openCatalog(owner.page);
     await addProduct(owner.page, 'Marca Vista', '40');
@@ -848,6 +858,7 @@ test.describe('fourth pass: catalogue and staff', () => {
     await named(owner.page, 'Quitar de la venta Balón 10 kg · Marca Vista').click();
     await expect(named(owner.page, 'Poner a la venta Balón 10 kg · Marca Vista')).toBeVisible();
 
+    await comeBack(other);
     await expect(named(other, 'Poner a la venta Balón 10 kg · Marca Vista')).toBeVisible();
   });
 
@@ -857,7 +868,6 @@ test.describe('fourth pass: catalogue and staff', () => {
   test('reordering from a screen that is behind keeps what another person ordered', async ({
     actors,
   }, testInfo) => {
-    test.fail(true, 'A move is computed from the order on screen, which is not refreshed');
     const { owner } = await foundedOffice(actors, uniqueTag(testInfo));
     await openCatalog(owner.page);
     await addProduct(owner.page, 'Marca Equis', '40');
@@ -885,12 +895,13 @@ test.describe('fourth pass: catalogue and staff', () => {
   // MEDIO. The staff screen and its invitations are read once: somebody who just joined does not
   // appear, and the invitation they used still says "Esperando", until the owner reloads.
   test('the open staff screen shows somebody who just joined', async ({ actors }, testInfo) => {
-    test.fail(true, 'The staff and the invitations are read once and never update by themselves');
     const tag = uniqueTag(testInfo);
     const { owner, name } = await foundedOffice(actors, tag);
     const path = await inviteFromStaff(owner.page, 'Reparto');
     const { account } = await joinAs(actors, `${tag}-join`, path, name);
 
+    // The owner was in WhatsApp sending the link, and comes back to the screen.
+    await comeBack(owner.page);
     await expect(owner.page.getByRole('heading', { name: account.displayName })).toBeVisible();
     await expect(
       owner.page.getByText('Ninguna invitación espera.', { exact: false }),
@@ -903,7 +914,6 @@ test.describe('fourth pass: catalogue and staff', () => {
   test('a person switched off is told that its access was withdrawn', async ({
     actors,
   }, testInfo) => {
-    test.fail(true, 'The notice is the generic one of a section that is not available');
     const tag = uniqueTag(testInfo);
     const { owner, name } = await foundedOffice(actors, tag);
     const path = await inviteFromStaff(owner.page, 'Reparto');
@@ -925,7 +935,6 @@ test.describe('fourth pass: catalogue and staff', () => {
   test('at 1440 px the brand of a product with a long name stays readable', async ({
     actors,
   }, testInfo) => {
-    test.fail(true, 'The title of the row is cut with an ellipsis and the brand is lost');
     const { owner } = await foundedOffice(actors, uniqueTag(testInfo));
     await openCatalog(owner.page);
     await addProduct(
@@ -945,7 +954,6 @@ test.describe('fourth pass: catalogue and staff', () => {
   test('on a phone, back with the product form open stays on the catalogue', async ({
     actors,
   }, testInfo) => {
-    test.fail(true, 'The form is not a step of the history: back leaves the catalogue');
     const { owner } = await foundedOffice(actors, uniqueTag(testInfo), PHONE);
     await openCatalog(owner.page);
     await owner.page.getByRole('button', { name: /^Añadir (tu primer )?producto$/ }).click();
@@ -961,7 +969,6 @@ test.describe('fourth pass: catalogue and staff', () => {
   test('after taking a product off sale with the keyboard, the focus stays on its row', async ({
     actors,
   }, testInfo) => {
-    test.fail(true, 'The pressed button is replaced and the focus goes back to the page');
     const { owner } = await foundedOffice(actors, uniqueTag(testInfo));
     await openCatalog(owner.page);
     await addProduct(owner.page, 'Marca Foco', '40');
@@ -978,7 +985,6 @@ test.describe('fourth pass: catalogue and staff', () => {
   test('a helper name that cannot be saved is explained next to its field', async ({
     actors,
   }, testInfo) => {
-    test.fail(true, 'The reason is only a toast that disappears');
     const { owner } = await foundedOffice(actors, uniqueTag(testInfo), PHONE);
     await owner.page.getByRole('link', { name: 'Personal' }).first().click();
     const field = owner.page.getByLabel('Nombre del ayudante');
@@ -998,7 +1004,6 @@ test.describe('fourth pass: catalogue and staff', () => {
   test('signing out from an invitation for another account leads back to that invitation', async ({
     actors,
   }, testInfo) => {
-    test.fail(true, 'Signing out there goes to the home page and forgets the link');
     const tag = uniqueTag(testInfo);
     const { owner } = await foundedOffice(actors, tag);
     const right = await createTestAccount(`${tag}-right`);

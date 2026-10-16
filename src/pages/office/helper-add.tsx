@@ -5,31 +5,52 @@ import { Bone, LoadingRegion } from '@/components/common/skeleton';
 import { TextField } from '@/components/common/text-field';
 import { HELPER_NAME_MAX_LENGTH } from '@/domain/staff/constants';
 import { ICON_STROKE } from '@/lib/icons';
+import { cn } from '@/lib/utils';
 
-type AddHelperProps = { isLocked: boolean; onAdd: (name: string) => Promise<boolean> };
+/** Says why a name was refused, under its field. */
+export type OnFieldError = (message: string) => void;
 
-/** The name of a new helper, added with one button. */
+type AddHelperProps = {
+  isLocked: boolean;
+  onAdd: (name: string, onFieldError: OnFieldError) => Promise<boolean>;
+};
+
+/**
+ * The name of a new helper, added with one button. A name that cannot be saved is explained
+ * under the field, where the person looks when it tries again; the button sits beside the field
+ * and drops under it once there is a message, so they never fall out of line.
+ */
 export function AddHelper({ isLocked, onAdd }: AddHelperProps) {
   const [name, setName] = useState('');
+  const [error, setError] = useState<string | undefined>();
   const [isAdding, setAdding] = useState(false);
   const submit = (event: FormEvent) => {
     event.preventDefault();
     setAdding(true);
-    void onAdd(name).then((done) => {
+    setError(undefined);
+    void onAdd(name, setError).then((done) => {
       setAdding(false);
       if (done) setName('');
     });
   };
   return (
-    <form noValidate onSubmit={submit} className="mt-4 flex items-end gap-2">
+    <form
+      noValidate
+      onSubmit={submit}
+      className={cn('mt-4 flex gap-2', error ? 'flex-col items-end' : 'items-end')}
+    >
       <TextField
         label="Nombre del ayudante"
         name="newHelper"
         autoComplete="off"
         maxLength={HELPER_NAME_MAX_LENGTH}
-        className="min-w-0 flex-1"
+        className="w-full min-w-0 flex-1"
         value={name}
-        onChange={(event) => setName(event.target.value)}
+        error={error}
+        onChange={(event) => {
+          setName(event.target.value);
+          setError(undefined);
+        }}
       />
       <Button
         type="submit"

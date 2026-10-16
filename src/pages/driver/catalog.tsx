@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { useAccount } from '@/features/account/account-context';
 import { useCatalog } from '@/features/catalog/use-catalog';
 import { usePageTitle } from '@/lib/page-title';
+import { useLastReady } from '@/lib/use-last-ready';
 import { DriverReadOnlyNotice } from './read-only-notice';
 
 const FRAME = 'max-w-4xl rounded-lg border-2 border-foreground bg-card px-5 py-2 lg:px-7';
@@ -17,7 +18,10 @@ const FRAME = 'max-w-4xl rounded-lg border-2 border-foreground bg-card px-5 py-2
 export function DriverCatalogPage() {
   usePageTitle('Catálogo');
   const { current } = useAccount();
-  const catalog = useCatalog(current.status === 'ready' ? current.distributor.id : null);
+  const distributorId = current.status === 'ready' ? current.distributor.id : null;
+  const catalog = useCatalog(distributorId);
+  // Read again on every return to the screen: the list on screen stays while it loads.
+  const { data: products } = useLastReady(catalog, distributorId);
   if (current.status !== 'ready') {
     return (
       <LoadingRegion label="Cargando el catálogo" className="flex flex-col gap-6">
@@ -34,7 +38,7 @@ export function DriverCatalogPage() {
         lead={`Lo que vende ${current.distributor.name}. Recarga: recoges el balón vacío. Balón completo: no hay vacío que recoger.`}
       />
       {!current.isWritable && <DriverReadOnlyNotice distributor={current.distributor} />}
-      {catalog.status === 'error' ? (
+      {catalog.status === 'error' && !products ? (
         <ErrorState
           title="No pudimos cargar el catálogo."
           description="Revisa la señal y vuelve a intentar."
@@ -43,9 +47,9 @@ export function DriverCatalogPage() {
         />
       ) : (
         <section aria-label="Productos" className={FRAME}>
-          {catalog.status !== 'ready' ? (
+          {!products ? (
             <CatalogListSkeleton />
-          ) : catalog.data.length === 0 ? (
+          ) : products.length === 0 ? (
             <div className="py-5">
               <CatalogEmpty
                 title="Todavía no hay productos."
@@ -53,7 +57,7 @@ export function DriverCatalogPage() {
               />
             </div>
           ) : (
-            <CatalogList products={catalog.data} />
+            <CatalogList products={products} />
           )}
         </section>
       )}

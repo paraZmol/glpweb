@@ -49,7 +49,8 @@ export function joinStopCopyOf(refusal: Error, distributorName: string): JoinSto
   if (refusal instanceof InviteForAnotherAccountError) {
     return {
       title: 'Esta invitación es para otra cuenta de Google.',
-      description: 'Cierra sesión y vuelve a abrir el enlace con la cuenta a la que te invitaron.',
+      description:
+        'Cierra sesión e ingresa con la cuenta a la que te invitaron: te traemos de vuelta a esta invitación.',
     };
   }
   if (refusal instanceof AlreadyMemberError) {

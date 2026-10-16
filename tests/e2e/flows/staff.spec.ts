@@ -132,7 +132,10 @@ test('the owner invites a driver by link; a new person signs in, accepts and joi
   await expect(owner.page.getByText(`S. Invitada ya no entra a ${A.name}.`)).toBeVisible();
   await expect(row).toContainText('Sin acceso');
   await expect(driver.page).toHaveURL(/\/inicio$/);
-  await expect(driver.page.getByText(DENIED_NOTICE)).toBeVisible();
+  // It is told why: its access was withdrawn (role walker, fourth pass).
+  await expect(
+    driver.page.getByText(`Ya no tienes acceso a ${A.name}`, { exact: false }),
+  ).toBeVisible();
   expect([...owner.errors, ...driver.errors]).toEqual([]);
 });
 

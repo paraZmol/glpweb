@@ -78,7 +78,8 @@ export function CatalogRow({ product, actions }: CatalogRowProps) {
         </div>
       </GasBrandTheme>
       <div className="flex min-w-0 flex-col items-start gap-1.5">
-        <h3 className="max-w-full text-lg font-bold lg:truncate">
+        {/* Never cut: with a name of its own the brand is what tells two products apart. */}
+        <h3 className="max-w-full text-lg font-bold text-pretty wrap-break-word">
           {name} <span className="font-semibold text-muted-foreground">· {brand}</span>
         </h3>
         <SaleSeal isOnSale={active} />

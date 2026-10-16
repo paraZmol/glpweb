@@ -4,16 +4,25 @@ import type { Helper } from '../../domain/staff/helper';
 import type { Invite, InviteRef } from '../../domain/staff/invite';
 import type { Member } from '../../domain/tenancy/types';
 import { type ReloadableResource, useAsyncResource } from '../../lib/use-async-resource';
+import { useRefreshOnReturn } from '../../lib/use-refresh-on-return';
 
-// Not live: one query per load; call `reload()` after a write. Pass null while the distributor
-// is not known.
+// Not live: one query per load, when the screen opens and each time the person comes back to it
+// (`useRefreshOnReturn`: somebody who joined, an invitation used meanwhile); call `reload()`
+// after a write. Pass null while the distributor is not known.
+
+/** A list of the staff screen, read again when the person comes back to the screen. */
+function useStaffList<T>(key: string | null, load: () => Promise<T>): ReloadableResource<T> {
+  const list = useAsyncResource(key, load);
+  useRefreshOnReturn(list.reload, key !== null);
+  return list;
+}
 
 /**
  * The staff of a distributor, active or not, sorted (active first, owners first). Owner and
  * dispatcher only. One read per member, plus 1 by the rules.
  */
 export function useStaff(distributorId: string | null): ReloadableResource<Member[]> {
-  return useAsyncResource(distributorId && `staff:${distributorId}`, () =>
+  return useStaffList(distributorId && `staff:${distributorId}`, () =>
     listStaff(distributorId ?? ''),
   );
 }
@@ -23,7 +32,7 @@ export function useStaff(distributorId: string | null): ReloadableResource<Membe
  * their days). One read per invitation, plus 1 by the rules.
  */
 export function usePendingInvites(distributorId: string | null): ReloadableResource<Invite[]> {
-  return useAsyncResource(distributorId && `invites:${distributorId}`, () =>
+  return useStaffList(distributorId && `invites:${distributorId}`, () =>
     listPendingInvites(distributorId ?? ''),
   );
 }
@@ -33,7 +42,7 @@ export function usePendingInvites(distributorId: string | null): ReloadableResou
  * plus 1 by the rules.
  */
 export function useHelpers(distributorId: string | null): ReloadableResource<Helper[]> {
-  return useAsyncResource(distributorId && `helpers:${distributorId}`, () =>
+  return useStaffList(distributorId && `helpers:${distributorId}`, () =>
     listHelpers(distributorId ?? ''),
   );
 }

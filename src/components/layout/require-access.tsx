@@ -5,6 +5,7 @@ import { Button } from '@/components/common/button';
 import { ErrorState } from '@/components/common/state-views';
 import { type AccessGate, decideAccess } from '@/domain/auth/access';
 import { accessInputFor } from '@/features/account/access-input';
+import { withdrawnAccessOf, withdrawnNoticeOf } from '@/features/account/access-withdrawn';
 import { type AccountGateValue, useAccountGate } from '@/features/account/account-context';
 import { signOut } from '@/features/auth/auth-actions';
 import {
@@ -20,14 +21,25 @@ import { UnconfirmedEmail } from './unconfirmed-email';
 
 const DENIED_NOTICE = 'Esa sección no está disponible para tu cuenta. Te llevamos a la tuya.';
 const DENIED_TOAST_ID = 'access-denied';
+/** Losing the access is news that needs reading: it stays longer and can be closed. */
+const WITHDRAWN_NOTICE_MS = 12_000;
 /** Told to the sign-in screen through the navigation state, so it can explain the detour. */
 export const SIGN_IN_REQUIRED = 'signInRequired';
 
-/** Leaves an area the account has no role for, saying why (never a blank page). */
-export function DeniedRedirect({ to }: { to: string }) {
+/**
+ * Leaves an area the account has no role for, saying why (never a blank page). `withdrawnFrom`
+ * names the distributor that switched the account off, when that is the reason (PLAN 3.2).
+ */
+export function DeniedRedirect({ to, withdrawnFrom }: { to: string; withdrawnFrom?: string }) {
   useEffect(() => {
-    toast.info(DENIED_NOTICE, { id: DENIED_TOAST_ID });
-  }, []);
+    if (withdrawnFrom) {
+      toast.warning(withdrawnNoticeOf(withdrawnFrom), {
+        id: DENIED_TOAST_ID,
+        duration: WITHDRAWN_NOTICE_MS,
+        closeButton: true,
+      });
+    } else toast.info(DENIED_NOTICE, { id: DENIED_TOAST_ID });
+  }, [withdrawnFrom]);
   return <Navigate to={to} replace />;
 }
 
@@ -73,7 +85,11 @@ export function RequireAccess({ gate }: { gate: AccessGate }) {
   if (decision.kind === 'unconfirmedEmail') return <UnconfirmedEmail />;
   if (decision.to === 'area') {
     const home = AREA_HOME[decision.area];
-    if (decision.denied) return <DeniedRedirect to={home} />;
+    if (decision.denied) {
+      return (
+        <DeniedRedirect to={home} withdrawnFrom={withdrawnAccessOf(gate, account) ?? undefined} />
+      );
+    }
     // A finished step goes on to where the account was heading before it (PLAN 2.11).
     const after = isPendingStep ? destinationOf(location.state) : null;
     return <Navigate to={after ?? home} replace />;

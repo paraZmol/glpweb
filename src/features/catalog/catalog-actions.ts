@@ -1,5 +1,6 @@
 import * as productsRepo from '../../data/products-repo';
-import { moveInCatalog } from '../../domain/catalog/catalog';
+import { moveInCatalog, sortCatalog } from '../../domain/catalog/catalog';
+import { ProductNotFoundError } from '../../domain/catalog/errors';
 import type { Product, ProductPatch } from '../../domain/catalog/product';
 import {
   prepareNewProduct,
@@ -59,18 +60,44 @@ export function setProductOnSale(
   return editProduct(distributorId, product, { active: isOnSale });
 }
 
+/** What a move did, for the screen to say it. */
+export interface MoveOutcome {
+  /** 1-based place the product took, and of how many. */
+  position: number;
+  total: number;
+  /**
+   * The order on screen was not the stored one (somebody ordered the catalogue in another tab
+   * or device): the step was taken on the stored order, and the screen should say so.
+   */
+  wasBehind: boolean;
+}
+
+function orderOf(products: readonly Pick<Product, 'id' | 'sortOrder'>[]): string {
+  return sortCatalog(products)
+    .map((product) => product.id)
+    .join(',');
+}
+
 /**
- * Owner or dispatcher: moves `productId` to position `toIndex` of `catalog` (the list as the
- * screen shows it; clamped to its ends). Writes only the products whose position changes, in one batch.
- * Throws `StaleCatalogError` when the catalogue changed in another tab (reload it),
+ * Owner or dispatcher: moves `productId` one place up (`step` -1) or down (+1). The step is taken
+ * on the catalogue as it is stored NOW, read again first, never on the order the screen shows:
+ * a screen that is behind must not undo what another person ordered a moment before (PLAN §11,
+ * 2026-10-15). Writes only the products whose position changes, in one batch.
+ * Cost: the catalogue is read once more (one read per product) on top of `reorderProducts`.
+ * Throws `ProductNotFoundError`, `StaleCatalogError` (it changed again between the two reads),
  * `PermissionDeniedError` or `OfflineError`.
  */
 export async function moveProduct(
   distributorId: string,
-  catalog: readonly Product[],
+  shown: readonly Product[],
   productId: string,
-  toIndex: number,
-): Promise<void> {
-  await productsRepo.reorderProducts(distributorId, moveInCatalog(catalog, productId, toIndex));
+  step: -1 | 1,
+): Promise<MoveOutcome> {
+  const stored = sortCatalog(await productsRepo.listCatalog(distributorId));
+  const from = stored.findIndex((product) => product.id === productId);
+  if (from === -1) throw new ProductNotFoundError(productId);
+  const to = Math.max(0, Math.min(from + step, stored.length - 1));
+  await productsRepo.reorderProducts(distributorId, moveInCatalog(stored, productId, to));
   forgetVisibleDistributors();
+  return { position: to + 1, total: stored.length, wasBehind: orderOf(shown) !== orderOf(stored) };
 }

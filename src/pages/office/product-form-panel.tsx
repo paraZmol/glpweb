@@ -38,7 +38,10 @@ type ProductFormPanelProps = {
  * of the domain (or of the rules) is painted on its field before anything is written.
  */
 export function ProductFormPanel(props: ProductFormPanelProps) {
-  const { distributorId, product, onSaved, onCancel } = props;
+  const { distributorId, onSaved, onCancel } = props;
+  // As it was when the form opened: the list may load again behind it (on returning to the
+  // tab), and a field the person did not touch must not write back an older value.
+  const [product] = useState(props.product);
   const isOnline = useOnlineStatus();
   const { isRunning, run } = useAsyncAction();
   const formRef = useRef<HTMLFormElement>(null);

@@ -21,6 +21,8 @@ type CatalogRowActionsProps = {
 /** Attribute the page uses to give the focus back to a move button once the list is redrawn. */
 export const MOVE_ATTRIBUTE = 'data-move';
 export const moveKey = (productId: string, step: -1 | 1) => `${productId}:${step}`;
+/** The same for "Quitar de la venta" / "Poner a la venta"; its value is the product id. */
+export const SALE_ATTRIBUTE = 'data-sale';
 
 /**
  * The owner's controls on one product (PLAN 3.1): move it up or down (buttons, so a keyboard
@@ -68,6 +70,7 @@ export function CatalogRowActions(props: CatalogRowActionsProps) {
           type="button"
           variant={product.active ? 'quiet' : 'soft'}
           size="sm"
+          {...{ [SALE_ATTRIBUTE]: product.id }}
           disabled={isLocked && busy !== 'sale'}
           loading={busy === 'sale'}
           loadingLabel="Guardando…"

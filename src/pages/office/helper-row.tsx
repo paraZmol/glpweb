@@ -4,6 +4,7 @@ import { StateChip } from '@/components/common/state-chip';
 import { TextField } from '@/components/common/text-field';
 import { HELPER_NAME_MAX_LENGTH } from '@/domain/staff/constants';
 import type { Helper } from '@/domain/staff/helper';
+import type { OnFieldError } from './helper-add';
 
 type HelperRowProps = {
   helper: Helper;
@@ -11,7 +12,7 @@ type HelperRowProps = {
   controls: {
     isLocked: boolean;
     busy: 'name' | 'active' | null;
-    onRename: (name: string) => Promise<boolean>;
+    onRename: (name: string, onFieldError: OnFieldError) => Promise<boolean>;
     onActive: (active: boolean) => Promise<boolean>;
   } | null;
 };
@@ -22,10 +23,15 @@ type HelperRowProps = {
  */
 export function HelperRow({ helper, controls }: HelperRowProps) {
   const [draft, setDraft] = useState<string | null>(null);
+  const [error, setError] = useState<string | undefined>();
+  const edit = (next: string | null) => {
+    setDraft(next);
+    setError(undefined);
+  };
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (controls && draft !== null)
-      void controls.onRename(draft).then((done) => done && setDraft(null));
+      void controls.onRename(draft, setError).then((done) => done && edit(null));
   };
 
   if (controls && draft !== null) {
@@ -37,11 +43,12 @@ export function HelperRow({ helper, controls }: HelperRowProps) {
           autoComplete="off"
           maxLength={HELPER_NAME_MAX_LENGTH}
           value={draft}
+          error={error}
           autoFocus
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => edit(event.target.value)}
         />
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="line" size="sm" onClick={() => setDraft(null)}>
+          <Button type="button" variant="line" size="sm" onClick={() => edit(null)}>
             Cancelar
           </Button>
           <Button
@@ -76,7 +83,7 @@ export function HelperRow({ helper, controls }: HelperRowProps) {
             variant="line"
             size="sm"
             disabled={controls.isLocked}
-            onClick={() => setDraft(helper.name)}
+            onClick={() => edit(helper.name)}
           >
             Renombrar<span className="sr-only"> a {helper.name}</span>
           </Button>

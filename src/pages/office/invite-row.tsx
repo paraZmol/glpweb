@@ -52,7 +52,9 @@ export function InviteRow(props: InviteRowProps) {
           </p>
         </div>
         {!isAsking && (
-          <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:flex-nowrap lg:justify-end">
+          // Phone: WhatsApp alone on the first line (the way the link usually travels), "Copiar
+          // enlace" and "Anular" under it. Desktop: the three in a row, at the right.
+          <div className="grid grid-cols-[auto_auto] justify-start gap-2 [&_a]:col-span-2 [&_a]:justify-self-start lg:flex lg:shrink-0 lg:items-center lg:justify-end">
             {isUsable && canShare && (
               <InviteShare
                 link={link}

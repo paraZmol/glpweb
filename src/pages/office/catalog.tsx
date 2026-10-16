@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Bone, LoadingRegion } from '@/components/common/skeleton';
 import { ErrorState } from '@/components/common/state-views';
 import { canEditCatalog } from '@/domain/catalog/permissions';
@@ -8,8 +7,9 @@ import { useCatalog } from '@/features/catalog/use-catalog';
 import { usePageTitle } from '@/lib/page-title';
 import { useLastReady } from '@/lib/use-last-ready';
 import { useOnlineStatus } from '@/lib/use-online-status';
-import { CatalogBoard, type Editing } from './catalog-board';
+import { CatalogBoard } from './catalog-board';
 import { CatalogHeader } from './catalog-header';
+import { useProductFormEntry } from './use-product-form-entry';
 
 function CatalogPageSkeleton() {
   return (
@@ -33,13 +33,8 @@ export function CatalogPage() {
   const distributorId = current.status === 'ready' ? current.distributor.id : null;
   const catalog = useCatalog(distributorId);
   const { data: products, isRefreshing } = useLastReady(catalog, distributorId);
-  // Remembered with its distributor: switching to another one closes the form.
-  const [open, setOpen] = useState<{ distributorId: string | null; editing: Editing }>({
-    distributorId: null,
-    editing: null,
-  });
-  const editing = open.distributorId === distributorId ? open.editing : null;
-  const setEditing = (next: Editing) => setOpen({ distributorId, editing: next });
+  // A step of the history, with its distributor: "back" closes it, switching closes it.
+  const { editing, setEditing } = useProductFormEntry(distributorId, products);
   if (current.status !== 'ready') return <CatalogPageSkeleton />;
 
   const { distributor, membership, isWritable } = current;

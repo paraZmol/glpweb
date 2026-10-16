@@ -8,7 +8,7 @@ import { addHelper, renameHelper, setHelperActive } from '@/features/staff/staff
 import { describeStaffError } from '@/features/staff/staff-messages';
 import { useHelpers } from '@/features/staff/use-staff';
 import { useLastReady } from '@/lib/use-last-ready';
-import { AddHelper, HelpersSkeleton } from './helper-add';
+import { AddHelper, HelpersSkeleton, type OnFieldError } from './helper-add';
 import { HelperRow } from './helper-row';
 import { useStaffWrite } from './use-staff-write';
 
@@ -45,11 +45,12 @@ export function StaffHelpers({ distributorId, canEdit, isOnline }: StaffHelpersP
         : write.busy === `${helper.id}:active`
           ? ('active' as const)
           : null,
-    onRename: (name: string) =>
+    onRename: (name: string, onFieldError: OnFieldError) =>
       write.run(
         `${helper.id}:name`,
         () => renameHelper(distributorId, helper.id, name),
         'Guardamos el nombre.',
+        onFieldError,
       ),
     onActive: (isOn: boolean) =>
       write.run(
@@ -91,8 +92,13 @@ export function StaffHelpers({ distributorId, canEdit, isOnline }: StaffHelpersP
       {canEdit && data && !isFull && (
         <AddHelper
           isLocked={isLocked}
-          onAdd={(name) =>
-            write.run('new', () => addHelper(distributorId, name), `Añadimos a ${name.trim()}.`)
+          onAdd={(name, onFieldError) =>
+            write.run(
+              'new',
+              () => addHelper(distributorId, name),
+              `Añadimos a ${name.trim()}.`,
+              onFieldError,
+            )
           }
         />
       )}
