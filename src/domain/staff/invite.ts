@@ -91,9 +91,10 @@ const CODE_KEY = 'c';
 
 /**
  * The link the owner shares: `base` is the full address of the screen that joins (origin and
- * path), and the two ids travel in the fragment (`#d=…&c=…`). A fragment is never sent to a
- * server — not to Hosting, not in a `Referer`, not to the preview a chat app fetches — so the
- * code stays between the browser of the owner and that of whoever receives it.
+ * path), and the two ids travel in the fragment (`#d=…&c=…`). A browser never sends a fragment
+ * to a server — not to Hosting, not in a `Referer`, not to the preview a chat app fetches. The
+ * link itself travels through the channel the owner chooses to send it by (a chat, a message):
+ * whoever runs that channel can read it, like any message sent there (PLAN §11, 2026-10-16).
  */
 export function inviteLinkOf(base: string, ref: InviteRef): string {
   const fragment = new URLSearchParams({

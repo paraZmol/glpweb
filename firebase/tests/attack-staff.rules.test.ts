@@ -295,10 +295,10 @@ describe('attack: invitations — using one that must not work', () => {
   });
 
   it.each([
-    ['suspended', SUSPENDED],
-    ['with its trial over', EXPIRED],
-  ])('rejects joining a distributor %s with an invitation still waiting', async (_case, d) => {
-    await seedInvite(env, d, OTHER_INVITE_CODE);
+    ['suspended', SUSPENDED, 'owner-suspended'],
+    ['with its trial over', EXPIRED, 'owner-expired'],
+  ])('rejects joining a distributor %s with an invitation still waiting', async (_case, d, by) => {
+    await seedInvite(env, d, OTHER_INVITE_CODE, { createdBy: by });
     await assertFails(joinWith(as(NEWBIE), { d, code: OTHER_INVITE_CODE, uid: NEWBIE }));
   });
 

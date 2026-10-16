@@ -3,9 +3,11 @@ import type { MemberChangeRequest } from './member-management';
 import type { MemberRole } from '../tenancy/types';
 import {
   assignableRoles,
+  mayStopAnOwner,
   memberChangeOf,
   memberChangeRefusal,
   sortMembers,
+  stopsBeingActiveOwner,
 } from './member-management';
 
 const FOUNDER = 'founder';
@@ -153,5 +155,40 @@ describe('sortMembers', () => {
     ]);
 
     expect(sorted.map((each) => each.uid)).toEqual(['u5', 'u4', 'u3', 'u1', 'u2']);
+  });
+});
+
+// PLAN §11 (2026-10-16): the invitations of an owner stop working when it stops being one.
+describe('stopsBeingActiveOwner', () => {
+  const OWNER = { role: 'owner', active: true } as const;
+
+  it.each([
+    ['switched off', OWNER, { active: false }, true],
+    ['made a dispatcher', OWNER, { role: 'dispatcher' }, true],
+    ['made a driver and switched off', OWNER, { role: 'driver', active: false }, true],
+    ['left as it is', OWNER, {}, false],
+    [
+      'an owner switched off, switched back on',
+      { role: 'owner', active: false },
+      { active: true },
+      false,
+    ],
+    ['a dispatcher made an owner', { role: 'dispatcher', active: true }, { role: 'owner' }, false],
+    ['a driver switched off', { role: 'driver', active: true }, { active: false }, false],
+  ] as const)('%s: %s', (_case, current, changed, expected) => {
+    expect(stopsBeingActiveOwner(current, changed)).toBe(expected);
+  });
+});
+
+describe('mayStopAnOwner', () => {
+  it.each([
+    [{ active: false }, true],
+    [{ role: 'dispatcher' }, true],
+    [{ role: 'driver' }, true],
+    [{ role: 'owner' }, false],
+    [{ active: true }, false],
+    [{}, false],
+  ] as const)('reads %o as %s', (change, expected) => {
+    expect(mayStopAnOwner(change)).toBe(expected);
   });
 });

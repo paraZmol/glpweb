@@ -17,7 +17,7 @@ export function JoinFrame({
     );
   }
   return (
-    <div className="mx-auto grid w-full max-w-6xl flex-1 items-start gap-8 px-4 pt-4 pb-14 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14 lg:px-8 lg:pt-10">
+    <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-[minmax(0,1fr)] items-start gap-8 px-4 pt-4 pb-14 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14 lg:px-8 lg:pt-10">
       <div>{children}</div>
       <JoinAside />
     </div>

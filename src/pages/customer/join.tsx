@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { ErrorState } from '@/components/common/state-views';
@@ -13,6 +13,7 @@ import { joinWithInvite } from '@/features/staff/staff-actions';
 import { describeJoinError } from '@/features/staff/staff-messages';
 import { useInvite } from '@/features/staff/use-staff';
 import { rememberDistributor } from '@/features/tenancy/selection-storage';
+import { dropAddressFragment } from '@/lib/address-fragment';
 import { usePageTitle } from '@/lib/page-title';
 import { AREA_HOME } from '@/lib/routes';
 import { useAsyncAction } from '@/lib/use-async-action';
@@ -32,14 +33,22 @@ function refusalOf(invite: Invite | null, member: Member | undefined, joiner: Jo
 /**
  * `/unirme` (PLAN 3.2): the screen an invitation link opens. The link carries the distributor
  * and the code in its fragment, which never reaches a server and is never stored: the guards
- * hand it on through the sign-in and the terms step. It shows where and as what the account is
+ * hand it on through the sign-in and the terms step. Once here, the page keeps it in memory and
+ * takes it out of the address bar (PLAN §11, 2026-10-16). It shows where and as what the account is
  * invited, or why it cannot be used; after joining, the account lands on the area of its new
  * role with that distributor selected.
  */
 export function JoinPage() {
   usePageTitle('Invitación');
   const { hash } = useLocation();
-  const ref = useMemo(() => parseInviteFragment(hash), [hash]);
+  // The link stays in memory once the address bar no longer shows it; another link opened in
+  // the same tab replaces it.
+  const [linkHash, setLinkHash] = useState(hash);
+  if (hash !== '' && hash !== linkHash) setLinkHash(hash);
+  const ref = useMemo(() => parseInviteFragment(linkHash), [linkHash]);
+  useEffect(() => {
+    if (hash !== '') dropAddressFragment();
+  }, [hash]);
   const invite = useInvite(ref);
   const { session, profile, current } = useAccount();
   const navigate = useNavigate();
@@ -95,6 +104,7 @@ export function JoinPage() {
     return (
       <JoinFrame explains={false}>
         <JoinRefused
+          linkHash={linkHash}
           refusal={refusal ?? new InviteNotFoundError()}
           distributorName={found?.distributorName ?? null}
           email={session.email}

@@ -104,7 +104,7 @@ export function ProfileFields(props: ProfileFieldsProps) {
           value={form.complaintsBookUrl}
           onChange={(event) => set('complaintsBookUrl', event.target.value)}
           error={errors.complaintsBookUrl}
-          hint="Pega el enlace completo, con https://. Tu página lo muestra; cambiarlo no la vuelve a revisión."
+          hint="Todo negocio debe tener Libro de Reclamaciones, físico o virtual. Si tienes uno virtual, pega su enlace completo, con https://. Tu página lo muestra; cambiarlo no la vuelve a revisión."
         />
       </Group>
       <Group title="Dónde y cuándo atiendes" disabled={disabled}>

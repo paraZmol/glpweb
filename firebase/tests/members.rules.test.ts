@@ -452,7 +452,8 @@ describe('everything not opened yet stays closed', () => {
   });
 
   it('blocks reading an invitation stored under an id that is not a code', async () => {
-    await seedDoc(env, `distributors/${A}/invites/token-1`, { role: 'driver' });
+    // Without an address, like any invitation a link reads: only the shape of the id refuses it.
+    await seedDoc(env, `distributors/${A}/invites/token-1`, { role: 'driver', email: null });
     const db = verified(env, CUSTOMER_UID);
     await assertFails(getDoc(doc(db, `distributors/${A}/invites/token-1`)));
     await assertFails(setDoc(memberOf(db, A, CUSTOMER_UID), memberDoc(A, CUSTOMER_UID, 'driver')));

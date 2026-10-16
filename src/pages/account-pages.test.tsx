@@ -102,7 +102,7 @@ describe('pending step of an account (PLAN 2.1, 2.7)', () => {
       'Si una distribuidora no cumple un precio o una promoción, el reclamo se le hace a ella; Hornilla no responde por esa oferta. Esto no te quita los derechos que la ley te da como consumidor.',
     );
     expect(text).toContain(
-      'Términos versión 0.5 y Política de privacidad versión 0.5, preliminares y en revisión.',
+      'Términos versión 0.6 y Política de privacidad versión 0.6, preliminares y en revisión.',
     );
   });
 

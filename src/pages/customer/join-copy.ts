@@ -28,10 +28,13 @@ export interface JoinStopCopy {
  * invitation itself (connection, a read-only distributor): the card says that one.
  */
 export function joinStopCopyOf(refusal: Error, distributorName: string): JoinStopCopy | null {
+  // An invitation tied to another address cannot even be read (PLAN §11, 2026-10-16): the
+  // screen cannot tell it from one that does not exist, and says both in one sentence.
   if (refusal instanceof InviteNotFoundError) {
     return {
-      title: 'No encontramos esta invitación.',
-      description: `Revisa que el enlace esté completo. Si lo está, ${ASK_AGAIN.charAt(0).toLowerCase()}${ASK_AGAIN.slice(1)}`,
+      title: 'Esta invitación es para otra cuenta o no existe.',
+      description:
+        'Si te la enviaron para otra cuenta de Google, cierra sesión e ingresa con esa: te traemos de vuelta a esta invitación. Si no, revisa que el enlace esté completo o pide una invitación nueva a quien te la envió.',
     };
   }
   if (refusal instanceof InviteExpiredError) {

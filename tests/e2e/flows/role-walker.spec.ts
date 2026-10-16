@@ -1012,8 +1012,9 @@ test.describe('fourth pass: catalogue and staff', () => {
     const person = await actors.open(PHONE);
     await signInAs(person.page, wrong, '/inicio');
     await person.page.goto(path);
+    // PLAN §11 (2026-10-16): it cannot read it, and says so without telling which case it is.
     await expect(
-      person.page.getByText('Esta invitación es para otra cuenta de Google.'),
+      person.page.getByText('Esta invitación es para otra cuenta o no existe.'),
     ).toBeVisible();
     await person.page.getByRole('button', { name: 'Cerrar sesión' }).click();
 

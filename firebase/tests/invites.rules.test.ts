@@ -71,6 +71,7 @@ const accepted = (uid: string) => ({
   status: 'accepted',
   acceptedBy: uid,
   acceptedAt: serverTimestamp(),
+  email: null,
   updatedAt: serverTimestamp(),
 });
 
@@ -220,11 +221,10 @@ describe('invitations — reading one needs its link', () => {
     expect(read.get('role')).toBe('driver');
   });
 
-  it('answers "does not exist" for a code nobody created', async () => {
-    const read = await assertSucceeds(
-      getDoc(inviteOf(verified(env, NEWBIE), A, OTHER_INVITE_CODE)),
-    );
-    expect(read.exists()).toBe(false);
+  // PLAN §11 (2026-10-16): refused like one tied to another account, so a refusal tells the
+  // holder of a link nothing about which of the two it is.
+  it('refuses a code nobody created, like one tied to another account', async () => {
+    await assertFails(getDoc(inviteOf(verified(env, NEWBIE), A, OTHER_INVITE_CODE)));
   });
 
   it.each([
@@ -234,6 +234,68 @@ describe('invitations — reading one needs its link', () => {
     ['a Google session without a verified e-mail', () => unverified(env, NEWBIE)],
   ])('blocks %s from reading it', async (_who, connect) => {
     await assertFails(getDoc(inviteOf(connect(), A)));
+  });
+});
+
+// PLAN §11 (2026-10-16): the address an owner typed is data of somebody else.
+describe('invitations — one tied to an address is read only by that account', () => {
+  const TIED = { email: `${NEWBIE}@example.com` };
+
+  beforeEach(async () => {
+    await seedInvite(env, A, OTHER_INVITE_CODE, TIED);
+  });
+
+  it.each([
+    ['the account it is tied to', () => verified(env, NEWBIE)],
+    ['its owner', () => ownerA()],
+  ])('lets %s read it', async (_who, connect) => {
+    await assertSucceeds(getDoc(inviteOf(connect(), A, OTHER_INVITE_CODE)));
+  });
+
+  it('compares the address of the session in lowercase', async () => {
+    const db = env
+      .authenticatedContext(NEWBIE, {
+        email: `${NEWBIE.toUpperCase()}@Example.com`,
+        email_verified: true,
+        firebase: { sign_in_provider: 'google.com', identities: {} },
+      } as never)
+      .firestore();
+    await assertSucceeds(getDoc(inviteOf(db, A, OTHER_INVITE_CODE)));
+  });
+
+  it.each([
+    ['another account with the link', 'second'],
+    ['its dispatcher', 'dispatcher-a'],
+    ['its driver', 'driver-a'],
+    ['the owner of another distributor', 'owner-b'],
+  ])('blocks %s from reading it', async (_who, uid) => {
+    await assertFails(getDoc(inviteOf(verified(env, uid), A, OTHER_INVITE_CODE)));
+  });
+
+  it('lets anyone with the link read it once used: the address is gone', async () => {
+    await assertSucceeds(
+      joinWith(verified(env, NEWBIE), { d: A, code: OTHER_INVITE_CODE, uid: NEWBIE }),
+    );
+
+    expect(await storedInvite(A, OTHER_INVITE_CODE)).toMatchObject({ email: null });
+    await assertSucceeds(getDoc(inviteOf(verified(env, 'second'), A, OTHER_INVITE_CODE)));
+  });
+
+  it.each([
+    ['keeping the address', { email: TIED.email }],
+    ['writing another address', { email: 'otra@example.com' }],
+  ])('blocks using it %s', async (_case, invite) => {
+    const db = verified(env, NEWBIE);
+    await assertFails(joinWith(db, { d: A, code: OTHER_INVITE_CODE, uid: NEWBIE, invite }));
+  });
+
+  it('blocks an owner from clearing the address of one that waits', async () => {
+    await assertFails(
+      updateDoc(inviteOf(ownerA(), A, OTHER_INVITE_CODE), {
+        email: null,
+        updatedAt: serverTimestamp(),
+      }),
+    );
   });
 });
 
@@ -500,13 +562,77 @@ describe('invitations — using one', () => {
     await assertFails(joinWith(verified(env, NEWBIE), { d: A, code: INVITE_CODE, uid: NEWBIE }));
   });
 
+  // Each invitation is created by the owner of that distributor, so only its state refuses it.
   it.each([
-    ['suspended', WORLD.suspended],
-    ['on an expired trial', WORLD.expired],
-  ] as const)('blocks joining a distributor that is %s', async (_case, seeded) => {
-    await seedInvite(env, seeded.d, INVITE_CODE);
+    ['suspended', WORLD.suspended, 'owner-suspended'],
+    ['on an expired trial', WORLD.expired, 'owner-expired'],
+  ] as const)('blocks joining a distributor that is %s', async (_case, seeded, owner) => {
+    await seedInvite(env, seeded.d, INVITE_CODE, { createdBy: owner });
     const db = verified(env, NEWBIE);
     await assertFails(joinWith(db, { d: seeded.d, code: INVITE_CODE, uid: NEWBIE }));
+  });
+});
+
+// PLAN §11 (2026-10-16): an invitation speaks for the owner who created it. It stops working
+// when that person stops being an active owner — switched off, demoted, account deleted — and
+// one for an owner works only while its author is the founder.
+describe('invitations — only while who created it is an active owner', () => {
+  const CO_OWNER = 'co-owner';
+  const ownerInvite = { role: 'owner', email: `${NEWBIE}@example.com` };
+
+  async function seedCoOwner(change: Record<string, unknown> = {}) {
+    const member = memberDoc(A, CO_OWNER, 'owner', { createdAt: PAST, updatedAt: PAST, ...change });
+    await seedDoc(env, memberPath(A, CO_OWNER), member);
+  }
+
+  const joinNewbie = (role: 'driver' | 'owner' = 'driver') =>
+    joinWith(verified(env, NEWBIE), { d: A, code: INVITE_CODE, uid: NEWBIE, role });
+
+  it('lets in through the invitation of an active co-owner', async () => {
+    await seedCoOwner();
+    await seedInvite(env, A, INVITE_CODE, { createdBy: CO_OWNER });
+
+    await assertSucceeds(joinNewbie());
+  });
+
+  it("lets in as owner through the founder's invitation", async () => {
+    await seedInvite(env, A, INVITE_CODE, ownerInvite);
+    await assertSucceeds(joinNewbie('owner'));
+  });
+
+  it.each([
+    ['switched off', { active: false }],
+    ['demoted to dispatcher', { role: 'dispatcher' }],
+    ['demoted to driver', { role: 'driver' }],
+  ])('blocks the invitation of a co-owner who was %s', async (_case, change) => {
+    await seedCoOwner(change);
+    await seedInvite(env, A, INVITE_CODE, { createdBy: CO_OWNER });
+
+    await assertFails(joinNewbie());
+  });
+
+  it('blocks the invitation of an account that is no longer staff (its member is gone)', async () => {
+    await seedInvite(env, A, INVITE_CODE, { createdBy: 'deleted-account' });
+    await assertFails(joinNewbie());
+  });
+
+  it('blocks the invitation of the owner of another distributor (aislamiento A/B)', async () => {
+    await seedInvite(env, A, INVITE_CODE, { createdBy: 'owner-b' });
+    await assertFails(joinNewbie());
+  });
+
+  it('blocks an invitation to an owner created by a co-owner, active as it is', async () => {
+    await seedCoOwner();
+    await seedInvite(env, A, INVITE_CODE, { ...ownerInvite, createdBy: CO_OWNER });
+
+    await assertFails(joinNewbie('owner'));
+  });
+
+  it('lets the founder revoke the invitation of a co-owner switched off', async () => {
+    await seedCoOwner({ active: false });
+    await seedInvite(env, A, INVITE_CODE, { createdBy: CO_OWNER });
+
+    await assertSucceeds(revokeInvite(ownerA(), A, INVITE_CODE, 'owner-a'));
   });
 });
 

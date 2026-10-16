@@ -11,8 +11,8 @@ const POINTS = [
   },
   {
     icon: UserRound,
-    title: 'Su personal ve tu nombre',
-    text: 'El nombre de tu perfil aparece en su lista de personal. Tu celular y tu correo no.',
+    title: 'Sus titulares y su central ven tu nombre',
+    text: 'El nombre de tu perfil aparece en su lista de personal. Tu celular no; tu correo, solo mientras la invitación espera, lo ven sus titulares.',
   },
   {
     icon: ShieldCheck,
@@ -24,7 +24,7 @@ const POINTS = [
 /** Beside the invitation on a desktop, under it on a phone. */
 export function JoinAside() {
   return (
-    <aside aria-labelledby="join-aside-title" className="rounded-xl bg-surface-soft p-6 lg:mt-2">
+    <aside aria-labelledby="join-aside-title" className="rounded-xl bg-surface-soft p-6">
       <h2 id="join-aside-title" className="text-xl font-bold">
         Qué pasa al unirte.
       </h2>
