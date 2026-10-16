@@ -1,8 +1,7 @@
-import { Hammer } from 'lucide-react';
 import phonePhoto from '../../../docs/design/images/pexels-4747813-mujer-celular-lima.jpg';
 import { BurnerRing } from '@/components/brand/burner-ring';
 import { Stagger } from '@/components/motion/stagger';
-import { ICON_STROKE } from '@/lib/icons';
+import { SoonStamp } from '@/components/landing/soon-stamp';
 
 // What ordering will be like once phases 4 and 6 exist. Written in the future on purpose: the
 // app must not promise today what it cannot do yet (PLAN 2.9).
@@ -16,8 +15,8 @@ const STEPS = [
     text: 'Marcarás tu puerta en el mapa y agregarás una referencia.',
   },
   {
-    title: 'Verás venir la moto',
-    text: 'Seguirás al repartidor y pagarás al recibir, directo a la distribuidora.',
+    title: 'Verás venir el reparto',
+    text: 'Y pagarás al recibir, directo a la distribuidora.',
   },
 ];
 
@@ -40,10 +39,7 @@ export function ComingNext() {
         </div>
       </div>
       <div>
-        <p className="inline-flex items-center gap-1.5 rounded-full bg-aji px-3 py-1 text-[0.8125rem] font-bold text-aji-foreground">
-          <Hammer aria-hidden="true" className="size-4" strokeWidth={ICON_STROKE} />
-          En construcción
-        </p>
+        <SoonStamp />
         <h2 id="lo-que-viene" className="mt-4 text-[2.125rem] font-extrabold lg:text-[3.25rem]">
           Así va a funcionar.
         </h2>

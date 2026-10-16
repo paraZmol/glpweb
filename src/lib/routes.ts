@@ -10,6 +10,8 @@ export const ROUTES = {
   privacy: '/privacidad',
   cookies: '/cookies',
   contact: '/contacto',
+  /** What Hornilla offers to a distributor, before signing up (PLAN 3.6). */
+  forDistributors: '/para-distribuidoras',
   /** Public page of one distributor; build a real path with `distributorPath`. */
   distributor: '/d/:slug',
   /** Sends a signed-in account to the area of its role. */

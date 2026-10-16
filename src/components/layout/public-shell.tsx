@@ -14,6 +14,7 @@ const LEGAL_LINKS = [
   { to: ROUTES.privacy, label: 'Política de privacidad' },
   { to: ROUTES.cookies, label: 'Cookies y almacenamiento' },
   { to: ROUTES.contact, label: 'Contacto y reclamos' },
+  { to: ROUTES.forDistributors, label: 'Para distribuidoras' },
 ];
 
 function PublicHeader() {
@@ -24,7 +25,7 @@ function PublicHeader() {
       </Link>
       <div className="flex items-center gap-2">
         <Link
-          to={ROUTES.newDistributor}
+          to={ROUTES.forDistributors}
           className="hidden min-h-10 items-center rounded-full px-4 text-[0.9375rem] font-semibold underline-offset-4 hover:underline lg:inline-flex"
         >
           Tengo una distribuidora
@@ -47,10 +48,11 @@ function PublicFooter() {
             <HornillaLogo variant="symbol" size={FOOTER_SYMBOL_PX} />
           </span>
           <p className="text-sm text-band-foreground/80">
-            Hornilla conecta a quien necesita gas con la distribuidora de su barrio.
+            Hornilla conecta a quien necesita gas con la distribuidora de su barrio. Hornilla no
+            vende ni reparte gas.
           </p>
         </div>
-        <nav aria-label="Legal">
+        <nav aria-label="Pie de página">
           <ul className="flex flex-col gap-1 text-sm font-semibold sm:flex-row sm:flex-wrap sm:gap-x-6">
             {LEGAL_LINKS.map((link) => (
               <li key={link.to}>

@@ -1,4 +1,3 @@
-import { Hammer } from 'lucide-react';
 import kettlePhoto from '../../../docs/design/images/pexels-13772359-tetera-llama-cocina.jpg';
 import { BurnerRing } from '@/components/brand/burner-ring';
 import { Highlight } from '@/components/brand/highlight';
@@ -6,8 +5,14 @@ import { ComingNext } from '@/components/finder/coming-next';
 import { DistributorFinder } from '@/components/finder/distributor-finder';
 import { LocationField } from '@/components/finder/location-field';
 import { OwnersBand } from '@/components/finder/owners-band';
+import { FaqList } from '@/components/landing/faq-list';
+import { HOME_FAQ } from '@/components/landing/home-faq';
+import { RefillOrFull } from '@/components/landing/refill-or-full';
+import { SafetyFirst } from '@/components/landing/safety-first';
+import { SoonStamp } from '@/components/landing/soon-stamp';
+import { FINDER_ANCHOR, TwoPaths } from '@/components/landing/two-paths';
+import { WhatIsHornilla } from '@/components/landing/what-is-hornilla';
 import { useDeliveryLocation } from '@/features/location/use-delivery-location';
-import { ICON_STROKE } from '@/lib/icons';
 import { usePageTitle } from '@/lib/page-title';
 import { registerPathFrom, ROUTES } from '@/lib/routes';
 
@@ -32,8 +37,8 @@ function HeroPhoto() {
 }
 
 /**
- * Home of Hornilla for everybody, with or without a session (PLAN 2.6): say where you are and
- * see which distributors reach you. Phone: stamp, headline, photo and the "Entregar en" card riding
+ * Home of Hornilla for everybody, with or without a session (PLAN 2.6, 3.6): it speaks to whoever
+ * buys gas and to whoever owns a distributor, then says where you are and who reaches you. Phone: stamp, headline, photo and the "Entregar en" card riding
  * on it; the photo is 4:3 and the card rides high so that "Usar mi ubicación" stays in the first
  * view of a 390 × 844 phone, also with the storage notice open. Desktop: headline and card on the
  * left, photo on the right, results on a soft band.
@@ -48,16 +53,13 @@ export function HomePage() {
         <header className="lg:col-start-1 lg:row-start-1 lg:self-end">
           {/* Next to the headline, not on the photo: ordering and tracking are not built yet,
               and whoever reads only the headline must know it (PLAN 2.11). */}
-          <p className="inline-flex items-center gap-1.5 rounded-full bg-aji px-3 py-1 text-[0.8125rem] font-bold text-aji-foreground lg:text-sm">
-            <Hammer aria-hidden="true" className="size-4" strokeWidth={ICON_STROKE} />
-            En construcción
-          </p>
+          <SoonStamp label="Pedir en línea: pronto" className="lg:text-sm" />
           <h1 className="mt-3 text-[2.625rem] font-extrabold text-balance lg:mt-4 lg:text-7xl">
             Pide tu gas a <Highlight>quien llega a tu puerta.</Highlight>
           </h1>
           <p className="mt-4 max-w-120 text-lg text-pretty text-muted-foreground lg:mt-5 lg:text-xl">
-            Hornilla reúne distribuidoras de gas que reparten en tu zona. Dinos dónde estás, mira
-            quién llega hasta ahí y llámala o escríbele. Pedir desde aquí llega pronto.
+            Hornilla reúne a las distribuidoras de gas de tu zona. Mira quién reparte hasta tu casa,
+            compara sus precios y llámales o escríbeles.
           </p>
         </header>
         <HeroPhoto />
@@ -66,14 +68,21 @@ export function HomePage() {
           className="relative z-10 mx-3 -mt-16 lg:col-start-1 lg:row-start-2 lg:m-0 lg:max-w-xl lg:self-start"
         />
       </div>
-      <div className="lg:bg-surface-soft">
+      <div className="mx-auto w-full max-w-7xl px-4 pb-10 lg:px-8 lg:pb-12">
+        <TwoPaths />
+      </div>
+      <div id={FINDER_ANCHOR} className="scroll-mt-4 lg:bg-surface-soft">
         <div className="mx-auto w-full max-w-7xl px-4 pb-10 lg:px-8 lg:py-12">
           <DistributorFinder point={delivery.location?.point ?? null} />
         </div>
       </div>
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 py-10 lg:gap-20 lg:px-8 lg:py-20">
-        <ComingNext />
         <OwnersBand to={OWNERS_ENTRY} />
+        <WhatIsHornilla />
+        <ComingNext />
+        <RefillOrFull />
+        <SafetyFirst />
+        <FaqList id="preguntas" title="Preguntas frecuentes" items={HOME_FAQ} />
       </div>
     </>
   );

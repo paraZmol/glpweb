@@ -68,6 +68,7 @@ Una sola puerta (PLAN §11, 2026-10-14): el encabezado público ofrece "Ingresar
 | Ruta | VI | SV | ST | CL | RE | CE | DU | DO | DS | SA |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `/` portada y buscador | ve | ve | ve | ve | ve | ve | ve | ve | ve | ve |
+| `/para-distribuidoras` (3.6) | ve | ve | ve | ve | ve | ve | ve | ve | ve | ve |
 | `/terminos`, `/privacidad`, `/cookies`, `/contacto` | ve | ve | ve | ve | ve | ve | ve | ve | ve | ve |
 | `/restablecer`, `/verificar-correo` (retiradas el 2026-10-12) | ve "no existe" | ve "no existe" | ve "no existe" | ve "no existe" | ve "no existe" | ve "no existe" | ve "no existe" | ve "no existe" | ve "no existe" | ve "no existe" |
 | `/ingresar`, `/registro` (la misma pantalla con otro título: solo "Continuar con Google") | ve | → `/app`, donde ve el aviso | → `/aceptar-terminos` | → su área | → su área | → su área | → su área | → su área | → su área | → su área |

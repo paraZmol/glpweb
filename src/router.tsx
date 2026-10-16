@@ -50,6 +50,7 @@ const publicRoutes: RouteObject = {
     { path: ROUTES.privacy, lazy: from('public', (m) => m.PrivacyPage) },
     { path: ROUTES.cookies, lazy: from('public', (m) => m.CookiesPage) },
     { path: ROUTES.contact, lazy: from('public', (m) => m.ContactPage) },
+    { path: ROUTES.forDistributors, lazy: from('public', (m) => m.ForDistributorsPage) },
     { path: ROUTES.distributor, lazy: from('public', (m) => m.DistributorPage) },
     { path: '*', lazy: from('public', (m) => m.NotFoundPage) },
   ],
