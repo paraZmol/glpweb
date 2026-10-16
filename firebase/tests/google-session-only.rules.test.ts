@@ -268,9 +268,7 @@ const DISTRIBUTOR: Case[] = [
     'list every promotion slot, unpublished included',
     'driver-a',
     (db) =>
-      getDocs(
-        query(collection(db, `distributors/${A}/promotions`), limit(PROMOTIONS_QUERY_LIMIT)),
-      ),
+      getDocs(query(collection(db, `distributors/${A}/promotions`), limit(PROMOTIONS_QUERY_LIMIT))),
   ],
   [
     'switch off a promotion',

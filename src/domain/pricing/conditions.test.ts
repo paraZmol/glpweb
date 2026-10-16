@@ -43,7 +43,7 @@ describe('checkConditions', () => {
 describe('canManagePromotions', () => {
   it.each([
     ['owner', true],
-    ['dispatcher', false],
+    ['dispatcher', true],
     ['driver', false],
   ] as const)('says %s is %s', (role, expected) => {
     expect(canManagePromotions(role)).toBe(expected);

@@ -238,8 +238,12 @@ describe('promotions — who adds one', () => {
     await assertSucceeds(add('owner-pending', {}, WORLD.pending.d));
   });
 
-  // PLAN §11, 2026-10-16: the owner only (pending the user's word on the dispatcher).
-  it.each(['dispatcher-a', 'driver-a', 'owner-b', 'dispatcher-b', CUSTOMER_UID, ADMIN_UID])(
+  // PLAN §11, 2026-10-16 (decision of the user): the owner and the dispatcher, as with prices.
+  it('lets the dispatcher add one', async () => {
+    await assertSucceeds(add('dispatcher-a'));
+  });
+
+  it.each(['driver-a', 'owner-b', 'dispatcher-b', CUSTOMER_UID, ADMIN_UID])(
     'blocks %s from adding one to A',
     async (uid) => {
       await assertFails(add(uid));
@@ -415,9 +419,10 @@ describe('promotions — reusing a slot', () => {
     await assertFails(add('owner-a', { soldUnits: 3 }, A, 'o05'));
   });
 
-  it('blocks the dispatcher from reusing a slot', async () => {
+  it('lets the dispatcher reuse a slot, and blocks the driver', async () => {
     await seedDoc(env, promotionPath(A, 'o05'), stored({ endsAt: ago(60_000) }));
-    await assertFails(add('dispatcher-a', {}, A, 'o05'));
+    await assertFails(add('driver-a', {}, A, 'o05'));
+    await assertSucceeds(add('dispatcher-a', {}, A, 'o05'));
   });
 });
 
@@ -476,7 +481,12 @@ describe('promotions — what may change (marketing §4)', () => {
     );
   });
 
-  it.each(['dispatcher-a', 'driver-a', 'owner-b', CUSTOMER_UID, ADMIN_UID])(
+  it('lets the dispatcher rename one and switch it off', async () => {
+    await assertSucceeds(edit('dispatcher-a', { title: 'Semana del gas' }));
+    await assertSucceeds(switchOff('dispatcher-a'));
+  });
+
+  it.each(['driver-a', 'owner-b', 'dispatcher-b', CUSTOMER_UID, ADMIN_UID])(
     'blocks %s from renaming or switching off one of A',
     async (uid) => {
       await assertFails(edit(uid, { title: 'Semana del gas' }));
