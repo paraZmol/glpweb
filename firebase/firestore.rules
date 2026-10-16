@@ -363,12 +363,12 @@ service cloud.firestore {
     // Acceptance of the terms (docs/legal). Same list as TERMS_VERSIONS in
     // src/domain/legal/versions.ts.
     function acceptedTermsVersions() {
-      return ['0.5'];
+      return ['0.6'];
     }
 
     // Same list as PRIVACY_VERSIONS in src/domain/legal/versions.ts.
     function acceptedPrivacyVersions() {
-      return ['0.5'];
+      return ['0.6'];
     }
 
     function isAcceptance(acceptance, versions) {
