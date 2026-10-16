@@ -158,6 +158,33 @@ rules_version = '2';
 //   currency: the distributor's (immutable) · active: bool · sortOrder: int 0..999
 //   createdAt (immutable), updatedAt (= request.time when written)
 //
+// /distributors/{d}/vehicles/{v}   the vehicles (PLAN 3.3). {v} is a slot, v00 … v29 (caps them
+//                                  at 30); never deleted: a shift (phase 5) names its vehicle by
+//                                  the slot. Its staff reads them; the owner and the dispatcher
+//                                  write, while it is writable.
+//   kind: 'motorcycle' | 'tricycle' | 'truck' · name: visible text 1..40
+//   plate: null | 3..10 of uppercase letters and digits with at most one inner hyphen
+//   capacityCylinders: int 1..999 — cylinders it carries in all. A shift keeps a copy of it, so a
+//     new capacity never rewrites a load already approved
+//   active: bool · createdAt (immutable), updatedAt (= request.time when written)
+//
+// /distributors/{d}/plantStock/{p}  the cylinders of product {p} at the plant (PLAN 3.4); same id
+//                                   as the product, created by its first movement. The owner and
+//                                   the dispatcher read and change it (not the driver), while the
+//                                   distributor is writable, and every change comes with its
+//                                   movement below, in the same request. Never deleted.
+//   full, empty: int 0..99999 · lastMovementId: the id of the movement written with this change
+//   updatedAt: = request.time
+//
+// /distributors/{d}/stockMovements/{id}   the history of the plant stock: one line per change,
+//                                         created with it, never updated or deleted. {id} is an
+//                                         automatic id. Read like the stock.
+//   kind: 'adjustment' (PLAN 5.2 and 5.5 add the movements of a shift) · productId: p00 … p29
+//   reason: 'count' | 'supplier' | 'damaged' | 'other' · note: null (not for 'other') | visible
+//   text 1..200 · fullDelta, emptyDelta: int -9999..9999, not both 0 · fullAfter, emptyAfter:
+//   what the stock holds after it · authorUid: the caller · authorName: the displayName of the
+//   caller's member · createdAt: = request.time
+//
 // Billed reads added by the rules (get / exists / getAfter) are noted on each `allow`.
 // ===============================================================================================
 service cloud.firestore {
@@ -555,6 +582,11 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    // p00 … p29: the slots of the catalogue (PRODUCT_SLOT_IDS in src/domain/catalog/catalog.ts).
+    function isProductSlot(value) {
+      return value is string && value.matches('^p[0-2][0-9]$');
+    }
+
     // Integer cents within the sanity cap of S/ 999.00 (MAX_PRICE_CENTS).
     function isPriceCents(value) {
       return value is int && value >= 1 && value <= 99900;
@@ -639,6 +671,68 @@ service cloud.firestore {
         && data.active is bool
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
+    }
+
+    // Same pattern as checkPlate in src/domain/vehicles/vehicle-input.ts; null for no plate.
+    function isPlate(value) {
+      return value == null
+        || (value is string && value.size() >= 3 && value.size() <= 10
+          && value.matches('^[A-Z0-9]+(-[A-Z0-9]+)?$'));
+    }
+
+    // Same checks as prepareNewVehicle in src/domain/vehicles/vehicle-input.ts.
+    function isValidVehicle(data) {
+      return hasExactly(data, [
+          'kind', 'name', 'plate', 'capacityCylinders', 'active', 'createdAt', 'updatedAt'
+        ])
+        && data.kind in ['motorcycle', 'tricycle', 'truck']
+        && isVisibleText(data.name, 1, 40)
+        && isPlate(data.plate)
+        && data.capacityCylinders is int
+        && data.capacityCylinders >= 1 && data.capacityCylinders <= 999
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Never below zero (applyStockChange in src/domain/stock/plant-stock.ts), up to the sanity cap.
+    function isStockCount(value) {
+      return value is int && value >= 0 && value <= 99999;
+    }
+
+    // The shape of an automatic id: the id of a movement of the plant stock.
+    function isAutoId(value) {
+      return value is string && value.matches('^[A-Za-z0-9]{20}$');
+    }
+
+    function isValidPlantStock(data) {
+      return hasExactly(data, ['full', 'empty', 'lastMovementId', 'updatedAt'])
+        && isStockCount(data.full)
+        && isStockCount(data.empty)
+        && isAutoId(data.lastMovementId)
+        && data.updatedAt == request.time;
+    }
+
+    function isStockDelta(value) {
+      return value is int && value >= -9999 && value <= 9999;
+    }
+
+    // Same checks as prepareAdjustment in src/domain/stock/movement.ts. What the stock holds
+    // after it is checked by the rule of the stock, which must change in the same request.
+    function isValidAdjustment(data) {
+      return hasExactly(data, [
+          'kind', 'productId', 'reason', 'note', 'fullDelta', 'emptyDelta', 'fullAfter',
+          'emptyAfter', 'authorUid', 'authorName', 'createdAt'
+        ])
+        && data.kind == 'adjustment'
+        && isProductSlot(data.productId)
+        && data.reason in ['count', 'supplier', 'damaged', 'other']
+        && (data.note == null ? data.reason != 'other' : isVisibleText(data.note, 1, 200))
+        && isStockDelta(data.fullDelta)
+        && isStockDelta(data.emptyDelta)
+        && (data.fullDelta != 0 || data.emptyDelta != 0)
+        && data.authorUid == request.auth.uid
+        && data.createdAt == request.time;
     }
 
     // ================================================================================ users ====
@@ -1235,7 +1329,7 @@ service cloud.firestore {
         // creation date: no product is replaced by another one.
         // Reads added by rules: 3 (get member, get control, get distributor).
         allow create: if isValidProduct(request.resource.data)
-          && productId.matches('^p[0-2][0-9]$')
+          && isProductSlot(productId)
           && stampedNow(request.resource.data)
           && hasRole(d, ['owner', 'dispatcher'])
           && writable(d)
@@ -1381,7 +1475,109 @@ service cloud.firestore {
         // No delete: a shift (phase 5) names its helper by the slot.
       }
 
-      // vehicles, plantStock, customers, orders, shifts: closed until their phase opens them.
+      // ------------------------------------------------------------------------ vehicles ----
+      // Vehicles (PLAN 3.3). The staff reads them (the driver picks one when it opens a shift,
+      // phase 5); the owner and the dispatcher write them (PLAN §11, 2026-10-16, user decision;
+      // VEHICLE_EDITOR_ROLES in src/domain/vehicles/permissions.ts), while the distributor is
+      // writable. Nothing here writes another document: a shift keeps its own copy of the
+      // capacity, so changing it never rewrites a load already approved.
+      match /vehicles/{vehicleId} {
+        // Reads added by rules: 1 (get member).
+        allow get: if isStaff(d);
+        allow list: if request.query.limit <= 30
+          && isStaff(d);
+
+        // Fixed slots, v00 … v29: the only way the rules can cap them. A taken slot makes this
+        // an update, which keeps the creation date. Reads added by rules: 2 (get member, get
+        // control).
+        allow create: if vehicleId.matches('^v[0-2][0-9]$')
+          && isValidVehicle(request.resource.data)
+          && stampedNow(request.resource.data)
+          && hasRole(d, ['owner', 'dispatcher'])
+          && writable(d);
+
+        // Everything but the creation date may change. Reads added by rules: 2 (get member, get
+        // control).
+        allow update: if isValidVehicle(request.resource.data)
+          && unchanged(['createdAt'])
+          && request.resource.data.updatedAt == request.time
+          && hasRole(d, ['owner', 'dispatcher'])
+          && writable(d);
+
+        // No delete: a shift (phase 5) names its vehicle by the slot.
+      }
+
+      // ------------------------------------------------------------------ plant stock ----
+      // Full and empty cylinders per product at the plant (PLAN 3.4). The owner and the
+      // dispatcher read and change it; the driver does not see it (PLAN §11, 2026-10-16, user decision;
+      // src/domain/stock/permissions.ts), while the distributor is writable. Every change names,
+      // in lastMovementId, the movement created in the same request, and must move the counts by
+      // exactly what that movement says: the history cannot be skipped, and it cannot lie about
+      // the change. PLAN 5.2 and 5.5 add here a branch for the movements of a shift.
+      match /plantStock/{productId} {
+        // Reads added by rules: 1 (get member).
+        allow get: if hasRole(d, ['owner', 'dispatcher']);
+        allow list: if request.query.limit <= 30 && hasRole(d, ['owner', 'dispatcher']);
+
+        // The first movement of a product creates its stock from zero, and only for a product
+        // of the catalogue. Reads added by rules: 4 (get member, get control, exists product,
+        // getAfter movement).
+        allow create: if isValidPlantStock(request.resource.data)
+          && movesStockFrom(0, 0)
+          && hasRole(d, ['owner', 'dispatcher'])
+          && writable(d)
+          && exists(/databases/$(database)/documents/distributors/$(d)/products/$(productId));
+
+        // Reads added by rules: 3 (get member, get control, getAfter movement).
+        allow update: if isValidPlantStock(request.resource.data)
+          && movesStockFrom(resource.data.full, resource.data.empty)
+          && hasRole(d, ['owner', 'dispatcher'])
+          && writable(d);
+
+        // No delete: the stock of a product only moves.
+
+        // The movement this change names is created in this request (stamped now: movements
+        // are never updated), is about this product, and adds up.
+        function movesStockFrom(fullBefore, emptyBefore) {
+          let after = request.resource.data;
+          let movement = getAfter(
+            /databases/$(database)/documents/distributors/$(d)/stockMovements/$(after.lastMovementId)
+          ).data;
+          return movement.createdAt == request.time
+            && movement.productId == productId
+            && after.full == fullBefore + movement.fullDelta
+            && after.empty == emptyBefore + movement.emptyDelta
+            && movement.fullAfter == after.full
+            && movement.emptyAfter == after.empty;
+        }
+      }
+
+      // ------------------------------------------------------------- stock movements ----
+      // The history of the plant stock: read like the stock, created only together with the
+      // change it describes (the stock must name it), never updated or deleted.
+      match /stockMovements/{movementId} {
+        // Reads added by rules: 1 (get member).
+        allow get: if hasRole(d, ['owner', 'dispatcher']);
+        allow list: if request.query.limit <= 50 && hasRole(d, ['owner', 'dispatcher']);
+
+        // Reads added by rules: 3 (get member, get control, getAfter stock).
+        allow create: if isAutoId(movementId)
+          && isValidAdjustment(request.resource.data)
+          && signedInWithGoogle()
+          && writtenByAdjuster(member(d), request.resource.data)
+          && writable(d)
+          && getAfter(
+            /databases/$(database)/documents/distributors/$(d)/plantStock/$(request.resource.data.productId)
+          ).data.lastMovementId == movementId;
+
+        // An owner or the dispatcher, under the name the staff knows it by (read once with the
+        // role).
+        function writtenByAdjuster(held, data) {
+          return holdsRole(held, ['owner', 'dispatcher']) && data.authorName == held.displayName;
+        }
+      }
+
+      // customers, orders, shifts: closed until their phase opens them.
     }
 
     // "My memberships" (selector of distributors): a collection-group query that must filter

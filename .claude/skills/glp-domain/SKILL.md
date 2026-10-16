@@ -100,8 +100,9 @@ Estados (`ShiftStatus`): `requested → approved ⇄ paused → closed`, o `requ
   la primera en el orden del catálogo): "Recarga 10 kg desde S/ 48.00" (`priceFromLabel`). La
   distribuidora publica precios finales con impuestos y reparto en su zona incluidos
   (términos 0.5, §4).
-- Stock de planta por producto: `full`, `empty`. Todo ajuste manual lleva motivo y autor.
-- Cambiar la capacidad de un vehículo no reescribe cargas ya aprobadas.
+- Stock de planta por producto (PLAN 3.4, `src/domain/stock/`): `full`, `empty`, nunca bajo cero (`applyStockChange`). Todo ajuste manual lleva motivo (`count`, `supplier`, `damaged`, `other` con nota) y autor, en una línea de `stockMovements` escrita en el mismo lote. Lo leen y ajustan titular y central; el reparto no lo ve. Un conteo físico se escribe como total (`adjustmentToReach`). 5.2/5.5 añadirán movimientos de jornada con el mismo cálculo.
+- Vehículos (PLAN 3.3, `src/domain/vehicles/`): tipo, nombre, placa opcional, capacidad total en balones, en casillas `v00`…`v29` sin borrar; los escriben titular y central, los lee todo el personal.
+- Cambiar la capacidad de un vehículo no reescribe cargas ya aprobadas: la jornada guarda su copia (`vehicleSnapshotOf`) y la carga se mide contra ella (`loadFitsVehicle`).
 
 ## 5b. Formas de venta y promociones
 

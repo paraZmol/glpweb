@@ -431,10 +431,12 @@ describe('everything not opened yet stays closed', () => {
     // invites and helpers: opened in PLAN 3.2 (invites.rules.test.ts, helpers.rules.test.ts).
     'invites/Ab3dEf6hIj9lMn2pQr5t/secrets/s1',
     'helpers/h00/history/h1',
-    'vehicles/v1',
+    // Opened in PLAN 3.3 and 3.4 (vehicles, plant-stock); what hangs below them stays closed.
+    'vehicles/v00/history/h1',
+    'plantStock/p00/history/h1',
+    'stockMovements/Movement00000000000A/notes/n1',
     // Opened in PLAN 3.1 (catalog.rules.test.ts); what hangs below a product stays closed.
     'products/p00/history/h1',
-    'plantStock/p1',
     'customers/c1',
     'orders/o1',
     'orders/o1/history/h1',

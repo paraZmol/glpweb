@@ -30,6 +30,7 @@ import {
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import { CATALOG_QUERY_LIMIT } from '../../src/domain/catalog/constants';
 import { HELPERS_QUERY_LIMIT, INVITES_QUERY_LIMIT } from '../../src/domain/staff/constants';
+import { MOVEMENTS_QUERY_LIMIT } from '../../src/domain/stock/constants';
 import { MAX_ACCEPTANCE_ENTRIES, TERMS_VERSION } from '../../src/domain/legal/versions';
 import {
   MAX_ADDRESSES_PER_USER,
@@ -40,6 +41,7 @@ import {
 import {
   ADMIN_UID,
   addressDoc,
+  adjustStock,
   anonymous,
   createEnv,
   CUSTOMER_UID,
@@ -66,6 +68,8 @@ import {
   seedWorld,
   signedInAnonymously,
   unverified,
+  vehicleDoc,
+  vehiclePath,
   verified,
   verifiedThrough,
   WORLD,
@@ -98,6 +102,7 @@ beforeEach(async () => {
     productDoc({ active: false, createdAt: AT, updatedAt: AT }),
   );
   await seedInvite(env, A, INVITE_CODE);
+  await seedDoc(env, vehiclePath(A, 'v00'), vehicleDoc({ createdAt: AT, updatedAt: AT }));
 });
 
 afterAll(async () => {
@@ -248,6 +253,31 @@ const DISTRIBUTOR: Case[] = [
     (db) => joinWith(db, { d: A, code: INVITE_CODE, uid: CUSTOMER_UID }),
   ],
   ['add a product', OWNER, (db) => setDoc(doc(db, productPath(A, 'p01')), productDoc())],
+  // PLAN 3.3 and 3.4: vehicles and the plant stock.
+  ['read a vehicle (a driver)', 'driver-a', (db) => getDoc(doc(db, vehiclePath(A, 'v00')))],
+  [
+    'add a vehicle as the dispatcher',
+    'dispatcher-a',
+    (db) => setDoc(doc(db, vehiclePath(A, 'v01')), vehicleDoc()),
+  ],
+  [
+    'change the capacity of a vehicle',
+    OWNER,
+    (db) => updateDoc(doc(db, vehiclePath(A, 'v00')), { capacityCylinders: 4, ...stamp }),
+  ],
+  [
+    'list the movements of the plant stock as the dispatcher',
+    'dispatcher-a',
+    (db) =>
+      getDocs(
+        query(collection(db, `distributors/${A}/stockMovements`), limit(MOVEMENTS_QUERY_LIMIT)),
+      ),
+  ],
+  [
+    'adjust the plant stock',
+    OWNER,
+    (db) => adjustStock(db, { before: { full: 0, empty: 0 }, fullDelta: 5, emptyDelta: 0 }),
+  ],
   [
     'add a product as the dispatcher',
     'dispatcher-a',
