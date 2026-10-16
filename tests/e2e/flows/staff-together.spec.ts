@@ -207,19 +207,19 @@ test('two people open the same invitation and press "Unirme" at once: one joins,
   const shop = await ownDistributor(tag, { products: PRODUCTS });
   const owner = await founderOn(actors, shop);
   const path = await invite(owner.page, 'Reparto');
-  const people = await Promise.all(
-    ['uno', 'dos'].map(async (key) => {
-      const account = await createTestAccount(`${tag}-${key}`);
-      const person = await actors.open(PHONE);
-      await signInAs(person.page, account, '/inicio');
-      await person.page.goto(path);
-      await expect(button(person.page, `Unirme a ${shop.name}`)).toBeEnabled();
-      return { account, person };
-    }),
-  );
+  const openInvitation = async (key: string) => {
+    const account = await createTestAccount(`${tag}-${key}`);
+    const person = await actors.open(PHONE);
+    await signInAs(person.page, account, '/inicio');
+    await person.page.goto(path);
+    await expect(button(person.page, `Unirme a ${shop.name}`)).toBeEnabled();
+    return { account, person };
+  };
+  const one = await openInvitation('uno');
+  const two = await openInvitation('dos');
 
   await Promise.all(
-    people.map(({ person }) => button(person.page, `Unirme a ${shop.name}`).click()),
+    [one, two].map(({ person }) => button(person.page, `Unirme a ${shop.name}`).click()),
   );
 
   const code = path.slice(-20);
@@ -227,18 +227,17 @@ test('two people open the same invitation and press "Unirme" at once: one joins,
     .poll(async () => (await readDocument(`distributors/${shop.id}/invites/${code}`))?.status)
     .toBe('accepted');
   const acceptedBy = (await readDocument(`distributors/${shop.id}/invites/${code}`))?.acceptedBy;
-  const [winner, loser] =
-    acceptedBy === people[0]?.account.uid ? [people[0], people[1]] : [people[1], people[0]];
-  await expect(winner?.person.page ?? owner.page).toHaveURL(/\/reparto$/);
-  await expect(heading(loser?.person.page ?? owner.page)).toHaveText('Esta invitación ya se usó.');
-  expect(await readDocument(`distributors/${shop.id}/members/${loser?.account.uid}`)).toBeNull();
+  const [winner, loser] = acceptedBy === one.account.uid ? [one, two] : [two, one];
+  await expect(winner.person.page).toHaveURL(/\/reparto$/);
+  await expect(heading(loser.person.page)).toHaveText('Esta invitación ya se usó.');
+  expect(await readDocument(`distributors/${shop.id}/members/${loser.account.uid}`)).toBeNull();
   // The owner, on return: exactly one new person.
   await comeBackUntil(owner.page, () =>
     expect(owner.page.getByText(NO_INVITES)).toBeVisible({ timeout: 1_000 }),
   );
-  await expect(memberRow(owner.page, winner?.account.displayName ?? '?')).toHaveCount(1);
-  await expect(memberRow(owner.page, loser?.account.displayName ?? '?')).toHaveCount(0);
-  expect(allErrors(owner, ...people.map(({ person }) => person))).toEqual([]);
+  await expect(memberRow(owner.page, winner.account.displayName)).toHaveCount(1);
+  await expect(memberRow(owner.page, loser.account.displayName)).toHaveCount(0);
+  expect(allErrors(owner, one.person, two.person)).toEqual([]);
 });
 
 test('the owner withdraws an invitation at the moment it is used: the two screens agree with what was stored', async ({

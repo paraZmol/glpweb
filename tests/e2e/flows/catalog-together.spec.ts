@@ -8,14 +8,7 @@ import {
   test,
 } from '../support/actors';
 import { readDocument, uniqueTag } from '../support/emulator-admin';
-import {
-  catalogRow,
-  comeBack,
-  comeBackUntil,
-  finderCard,
-  knownBug,
-  standAt,
-} from '../support/flow-helpers';
+import { catalogRow, comeBack, comeBackUntil, finderCard, standAt } from '../support/flow-helpers';
 import { ownDistributor } from '../support/own-distributor';
 import { signInAs } from '../support/sign-in';
 
@@ -33,7 +26,6 @@ test.slow();
 const CATALOG_PATH = '/central/catalogo';
 const TEN = 'Balón 10 kg · Marca Flujo';
 const FIVE = 'Balón 5 kg · Marca Flujo';
-const STALE = 'Tu catálogo cambió en otra pantalla. Vuelve a cargar la lista e inténtalo de nuevo.';
 /** The Firestore commit of a transaction: the moment a write reaches the server. */
 const COMMIT = /documents:commit/;
 
@@ -146,7 +138,7 @@ test('a product taken off sale while a visitor is on the page stays on that visi
   expect(allErrors(owner, visitor)).toEqual([]);
 });
 
-test('owner and dispatcher add a product at the same moment: one is saved, the other is told and saves on its second try', async ({
+test('owner and dispatcher add a product at the same moment: both are saved, each in its own slot', async ({
   actors,
 }, testInfo) => {
   const { shop, owner, dispatcher } = await officeOf(actors, uniqueTag(testInfo));
@@ -164,24 +156,17 @@ test('owner and dispatcher add a product at the same moment: one is saved, the o
     button(dispatcher.page, 'Guardar producto').click(),
   ]);
 
-  // Both catalogues read the same free slot; the second write finds it taken.
+  // The free slot is chosen inside the transaction: both are saved, each in its own slot.
   const added = (brand: string) => `Añadimos Balón 15 kg · ${brand} a tu catálogo.`;
-  await expect(
-    owner.page.getByText(added('Marca Titular')).or(owner.page.getByText(STALE)),
-  ).toBeVisible();
-  await expect(
-    dispatcher.page.getByText(added('Marca Central')).or(dispatcher.page.getByText(STALE)),
-  ).toBeVisible();
-  const winner = String((await readDocument(`distributors/${shop.id}/products/p02`))?.brand);
-  const loser = winner === 'Marca Titular' ? dispatcher : owner;
-  const loserBrand = winner === 'Marca Titular' ? 'Marca Central' : 'Marca Titular';
-  await expect(loser.page.getByText(STALE)).toBeVisible();
-  // What it typed is still there: saving again takes the next slot.
-  await expect(loser.page.getByLabel('Marca del gas')).toHaveValue(loserBrand);
-  await button(loser.page, 'Guardar producto').click();
-  await expect(loser.page.getByText(added(loserBrand))).toBeVisible();
-  expect((await readDocument(`distributors/${shop.id}/products/p03`))?.brand).toBe(loserBrand);
-  expect((await readDocument(`distributors/${shop.id}/products/p02`))?.brand).toBe(winner);
+  await expect(owner.page.getByText(added('Marca Titular'))).toBeVisible();
+  await expect(dispatcher.page.getByText(added('Marca Central'))).toBeVisible();
+  const brands = await Promise.all(
+    ['p02', 'p03'].map(
+      async (slot) => (await readDocument(`distributors/${shop.id}/products/${slot}`))?.brand,
+    ),
+  );
+  expect(brands.sort()).toEqual(['Marca Central', 'Marca Titular']);
+  expect(await readDocument(`distributors/${shop.id}/products/p04`)).toBeNull();
   expect(allErrors(owner, dispatcher)).toEqual([]);
 });
 
@@ -204,19 +189,11 @@ async function holdCommits(page: Page, release: Promise<void>) {
   return { firstHeld };
 }
 
-// BUG (ALTO, flow-tester 2026-10-16): `updateProduct`/`createProduct` compute the "desde" and
-// the brands of the finder from the catalogue read BEFORE their transaction
-// (src/data/products-repo.ts); the transaction only re-reads the profile and the one product.
-// Two writes of the catalogue that overlap (owner and dispatcher, or two tabs) leave in the
-// profile a summary that misses the other's change. Here: the owner takes the cheapest refill
-// off sale over a slow connection while the dispatcher raises the other one; the finder keeps
-// saying "Recarga 10 kg desde S/ 50.00" while that product costs S/ 55.00 everywhere else.
+// Fixed bug (ALTO, flow-tester 2026-10-16): overlapping catalogue writes used to leave a stale
+// "desde" in the public profile. Here the owner's write is held until the dispatcher's lands.
 test('two catalogue writes that overlap leave the finder’s "desde" in line with what is on sale', async ({
   actors,
 }, testInfo) => {
-  knownBug(
-    'BUG ALTO: the catalogue summary is computed from a list read outside the transaction (src/data/products-repo.ts); overlapping writes leave a stale "desde" in the public profile.',
-  );
   const { shop, owner, dispatcher } = await officeOf(actors, uniqueTag(testInfo));
   let release!: () => void;
   const released = new Promise<void>((resolve) => {
