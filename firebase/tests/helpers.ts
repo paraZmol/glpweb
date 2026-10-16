@@ -288,6 +288,9 @@ export function slugDoc(distributorId: string, change: Record<string, unknown> =
   return { distributorId, createdAt: serverTimestamp(), ...change };
 }
 
+/** The name every member of the seeded world carries (`memberDoc`). */
+export const MEMBER_NAME = 'A. Persona';
+
 export function memberDoc(
   distributorId: string,
   uid: string,
@@ -299,7 +302,7 @@ export function memberDoc(
     distributorId,
     role,
     active: true,
-    displayName: 'A. Persona',
+    displayName: MEMBER_NAME,
     distributorName: DISTRIBUTOR_NAME,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -427,6 +430,100 @@ export function helperDoc(change: Record<string, unknown> = {}) {
     updatedAt: serverTimestamp(),
     ...change,
   };
+}
+
+export const vehiclePath = (d: string, slot: string) => `distributors/${d}/vehicles/${slot}`;
+
+/** A vehicle (PLAN 3.3) as the client of the owner or the dispatcher writes it. */
+export function vehicleDoc(change: Record<string, unknown> = {}) {
+  return {
+    kind: 'motorcycle',
+    name: 'Moto roja',
+    plate: 'ABC-123',
+    capacityCylinders: 3,
+    active: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...change,
+  };
+}
+
+export const plantStockPath = (d: string, productId: string) =>
+  `distributors/${d}/plantStock/${productId}`;
+export const movementPath = (d: string, id: string) => `distributors/${d}/stockMovements/${id}`;
+
+/** Movement ids with the shape of an automatic id (20 letters and digits). */
+export const MOVEMENT_ID = 'Movement00000000000A';
+export const OTHER_MOVEMENT_ID = 'Movement00000000000B';
+
+/** A stock document as the seed or an earlier movement left it. */
+export function plantStockDoc(change: Record<string, unknown> = {}) {
+  return {
+    full: 40,
+    empty: 12,
+    lastMovementId: 'Movement000000000000',
+    updatedAt: Timestamp.fromDate(new Date('2026-02-01T12:00:00Z')),
+    ...change,
+  };
+}
+
+/** What one adjustment writes: the counts it moves and the movement that tells it. */
+export interface AdjustmentWrite {
+  d?: string;
+  productId?: string;
+  movementId?: string;
+  /** What the stock held before: zero for a product never moved. */
+  before?: { full: number; empty: number };
+  fullDelta?: number;
+  emptyDelta?: number;
+  /** Fields of the movement to change or add, after the consistent ones. */
+  movement?: Record<string, unknown>;
+  /** Fields of the stock to change or add, after the consistent ones. */
+  stock?: Record<string, unknown>;
+  /** Write only the stock, only the movement, or both (default). */
+  only?: 'stock' | 'movement';
+  authorUid?: string;
+  authorName?: string;
+}
+
+/**
+ * The batch of a manual adjustment of the plant stock (PLAN 3.4) as the app writes it, with the
+ * author `owner-a` and the name every seeded member carries; each part can be bent for attacks.
+ */
+export function adjustStock(db: Db, write: AdjustmentWrite = {}): Promise<void> {
+  const d = write.d ?? WORLD.a.d;
+  const productId = write.productId ?? 'p00';
+  const movementId = write.movementId ?? MOVEMENT_ID;
+  const before = write.before ?? { full: 40, empty: 12 };
+  const fullDelta = write.fullDelta ?? 20;
+  const emptyDelta = write.emptyDelta ?? -12;
+  const after = { full: before.full + fullDelta, empty: before.empty + emptyDelta };
+  const batch = writeBatch(db);
+  if (write.only !== 'movement') {
+    batch.set(doc(db, plantStockPath(d, productId)), {
+      ...after,
+      lastMovementId: movementId,
+      updatedAt: serverTimestamp(),
+      ...write.stock,
+    });
+  }
+  if (write.only !== 'stock') {
+    batch.set(doc(db, movementPath(d, movementId)), {
+      kind: 'adjustment',
+      productId,
+      reason: 'supplier',
+      note: null,
+      fullDelta,
+      emptyDelta,
+      fullAfter: after.full,
+      emptyAfter: after.empty,
+      authorUid: write.authorUid ?? 'owner-a',
+      authorName: write.authorName ?? MEMBER_NAME,
+      createdAt: serverTimestamp(),
+      ...write.movement,
+    });
+  }
+  return batch.commit();
 }
 
 export function privateDoc(ownerUid: string, change: Record<string, unknown> = {}) {
