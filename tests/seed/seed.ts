@@ -177,6 +177,37 @@ function writeStaffExtras(batch: Batch, db: Db, distributor: SeedDistributor) {
   for (const { id: slot, ...helper } of distributor.helpers ?? []) {
     batch.set(doc(db, `distributors/${id}/helpers/${slot}`), { ...helper, ...stamps });
   }
+  writePromotions(batch, db, distributor, now);
+}
+
+/** Live promotions (PLAN 3.5) with the price lock of their product, as the repository leaves them. */
+function writePromotions(batch: Batch, db: Db, distributor: SeedDistributor, now: Timestamp) {
+  const { id } = distributor;
+  for (const promotion of distributor.promotions ?? []) {
+    const endsAt = Timestamp.fromMillis(now.toMillis() + promotion.days * 86_400_000);
+    batch.set(doc(db, `distributors/${id}/promotions/${promotion.id}`), {
+      title: promotion.title,
+      type: 'amountOff',
+      amountCents: promotion.amountCents,
+      productIds: [promotion.productId],
+      saleMode: 'refill',
+      startsAt: now,
+      endsAt,
+      active: true,
+      maxUnitsPerOrder: 2,
+      totalUnits: null,
+      soldUnits: 0,
+      conditions: '',
+      createdBy: founderOf(distributor).uid,
+      createdAt: now,
+      updatedAt: now,
+      switchedOffBy: null,
+      switchedOffAt: null,
+    });
+    batch.update(doc(db, `distributors/${id}/products/${promotion.productId}`), {
+      promotedUntil: endsAt,
+    });
+  }
 }
 
 function writeProfiles(batch: Batch, db: Db, distributors: SeedDistributor[]) {

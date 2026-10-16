@@ -100,6 +100,19 @@ export interface SeedDistributor {
   invites?: { code: string; role: SeedRole; email: string | null }[];
   /** Helpers (PLAN 3.2): people who go with a truck and never sign in. `id` is a slot. */
   helpers?: { id: string; name: string; active: boolean }[];
+  /**
+   * Live promotions (PLAN 3.5), "S/ N menos" on the refill of one product, created by the founder
+   * when the seed runs (they start then and last `days`); the product gets its price lock.
+   */
+  promotions?: SeedPromotion[];
+}
+
+export interface SeedPromotion {
+  id: string;
+  title: string;
+  productId: string;
+  amountCents: number;
+  days: number;
 }
 
 /**
@@ -216,6 +229,7 @@ export const SEED_DISTRIBUTORS = {
       { id: 'h00', name: 'P. Ayudante', active: true },
       { id: 'h01', name: 'Q. Ayudante', active: false },
     ],
+    promotions: [{ id: 'o00', title: 'S/ 10 menos', productId: 'p03', amountCents: 1000, days: 7 }],
   },
   /** Healthy, paying; the "other distributor" of every isolation test. */
   b: {

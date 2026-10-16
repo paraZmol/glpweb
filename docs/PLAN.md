@@ -309,6 +309,7 @@ Estimación: una persona con Claude, ~25 h/semana.
 - [ ] 3.3 Vehículos y capacidad
 - [ ] 3.4 Stock de planta (llenos/vacíos, ajustes con motivo)
 - [ ] 3.5 Promociones: "Añadir promoción" del dueño (tipo, productos, vigencia, límite por pedido, vista previa), cálculo en `src/domain/pricing/` y validación en reglas
+  - [x] Datos (2026-10-16, rama `fase-3/promociones`; decisiones en §11): dominio en `src/domain/pricing/` (tipos y estados, casillas, `priceOrder` y `orderPricerWith` para el dominio de pedidos, validación del formulario, ediciones permitidas, vigencia en la hora de la distribuidora, vista previa y sello, condiciones sin urgencia inventada) y el bloqueo de precio del producto (`promotedUntil`, `breaksPromotionLock`); reglas de `promotions` y del bloqueo en `products` con sus tests (`firebase/tests/promotions`, `promotion-price-lock`, casos nuevos en `google-session-only` y `attack-catalog`) y mutantes `F01`–`F53` (K32 reescrito); repositorio `src/data/promotions-repo.ts` con test contra el emulador; casos de uso, hooks y mensajes en `src/features/promotions/`; `editProduct` rechaza subir un precio bajo promoción (`PriceLockedError`); semilla con una promoción viva en A (`o00`, "S/ 10 menos" en `p03`); índice `promotions (active, endsAt)`. **Falta**: pantallas (`frontend-builder`), y `rules-breaker`, `security-auditor`, `legal-compliance`
 
 ### Fase 4 — Pedidos
 - [ ] 4.1 Direcciones del cliente con pin y búsqueda
