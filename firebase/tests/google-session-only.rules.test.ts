@@ -29,6 +29,7 @@ import {
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import { CATALOG_QUERY_LIMIT } from '../../src/domain/catalog/constants';
+import { PROMOTIONS_QUERY_LIMIT } from '../../src/domain/pricing/constants';
 import { HELPERS_QUERY_LIMIT, INVITES_QUERY_LIMIT } from '../../src/domain/staff/constants';
 import { MAX_ACCEPTANCE_ENTRIES, TERMS_VERSION } from '../../src/domain/legal/versions';
 import {
@@ -42,6 +43,7 @@ import {
   addressDoc,
   anonymous,
   createEnv,
+  daysFromNow,
   CUSTOMER_UID,
   type Db,
   DISTRIBUTOR_NAME,
@@ -59,6 +61,8 @@ import {
   OTHER_INVITE_CODE,
   productDoc,
   productPath,
+  promotionDoc,
+  promotionPath,
   reviewPath,
   revokeInvite,
   seedDoc,
@@ -257,6 +261,32 @@ const DISTRIBUTOR: Case[] = [
     'change a price',
     OWNER,
     (db) => updateDoc(doc(db, productPath(A, 'p00')), { refillPriceCents: 5400, ...stamp }),
+  ],
+  // PLAN 3.5: promotions.
+  ['add a promotion', OWNER, (db) => setDoc(doc(db, promotionPath(A, 'o01')), promotionDoc())],
+  [
+    'list every promotion slot, unpublished included',
+    'driver-a',
+    (db) =>
+      getDocs(
+        query(collection(db, `distributors/${A}/promotions`), limit(PROMOTIONS_QUERY_LIMIT)),
+      ),
+  ],
+  [
+    'switch off a promotion',
+    OWNER,
+    async (db) => {
+      await seedDoc(env, promotionPath(A, 'o02'), {
+        ...promotionDoc({ startsAt: AT, createdAt: AT, updatedAt: AT }),
+        endsAt: daysFromNow(3),
+      });
+      return updateDoc(doc(db, promotionPath(A, 'o02')), {
+        active: false,
+        switchedOffBy: OWNER,
+        switchedOffAt: serverTimestamp(),
+        ...stamp,
+      });
+    },
   ],
   [
     'close the public profile of a distributor that cannot take orders (a driver)',

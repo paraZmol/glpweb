@@ -422,7 +422,9 @@ describe('catalogue attacks — junk values', () => {
       { refillPriceCents: MAX_PRICE_CENTS + 1, fullPriceCents: null },
     ],
     ['puts the refill at the full price', { refillPriceCents: 18500 }],
-    ['adds a promotion field ahead of PLAN 3.5', { promotedUntil: serverTimestamp() }],
+    // PLAN 3.5 opened `promotedUntil` (a date): not any value, nor a field of its own.
+    ['writes the price lock as text', { promotedUntil: 'forever' }],
+    ['adds a promotion field the rules do not know', { promotionIds: ['o00'] }],
     ['writes a price as a numeric string', { refillPriceCents: '5400' }],
     ['writes "on sale" as a string', { active: 'false' }],
   ])('rejects an edit that %s', async (_case, change) => {

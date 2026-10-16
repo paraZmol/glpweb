@@ -327,6 +327,38 @@ export function productDoc(change: Record<string, unknown> = {}) {
 
 export const productPath = (d: string, slot: string) => `distributors/${d}/products/${slot}`;
 
+/**
+ * A promotion (PLAN 3.5) as the owner's client writes it: P1, "Precio especial" on the refill of
+ * p00 at S/ 48.00, starting now and ending in a week, 2 per order, published, by `owner-a`.
+ * `change` may name the parameters of another kind; pass `undefined` to drop a field.
+ */
+export function promotionDoc(change: Record<string, unknown> = {}) {
+  const data: Record<string, unknown> = {
+    title: 'Precio especial',
+    type: 'fixedPrice',
+    priceSource: 'own',
+    priceCents: 4800,
+    productIds: ['p00'],
+    saleMode: 'refill',
+    startsAt: serverTimestamp(),
+    endsAt: daysFromNow(7),
+    active: true,
+    maxUnitsPerOrder: 2,
+    totalUnits: null,
+    soldUnits: 0,
+    conditions: '',
+    createdBy: 'owner-a',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    switchedOffBy: null,
+    switchedOffAt: null,
+    ...change,
+  };
+  return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
+}
+
+export const promotionPath = (d: string, slot: string) => `distributors/${d}/promotions/${slot}`;
+
 /** The name every profile of the seeded world carries (`userDoc`). */
 export const PROFILE_NAME = 'C. Persona';
 
