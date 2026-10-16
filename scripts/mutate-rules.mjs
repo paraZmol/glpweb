@@ -2159,6 +2159,7 @@ const EQUIVALENT = {
   J10: INVITE_PAIR,
   N25: 'the member that the same request must create checks after.status == "accepted" (usesInvitation), and the invitation can only change to that status in this branch',
   J08: 'the invitation can only be marked used while it waits: its update rule demands resource.data.status == "pending", and the member rule demands it marked used in the same request',
+  Q26: "isValidDistributor() pins currency == 'PEN', so no update can change it while there is a single currency: the whitelist is a second lock. NOT equivalent the day a second currency is allowed: the test 'blocks the owner from changing its currency' then kills it",
   X21: 'the mark needs a change of content in the public profile or in the private settings, and both rules already demand a writable distributor for it (writable(d) in the owner edit, settingsEditAllowed()): a second lock that costs no read, because the control document is the one being written',
 };
 
