@@ -46,7 +46,9 @@ export function JoinPage() {
   const [linkHash, setLinkHash] = useState(hash);
   if (hash !== '' && hash !== linkHash) setLinkHash(hash);
   const ref = useMemo(() => parseInviteFragment(linkHash), [linkHash]);
-  useEffect(() => dropAddressFragment(), [hash]);
+  useEffect(() => {
+    if (hash !== '') dropAddressFragment();
+  }, [hash]);
   const invite = useInvite(ref);
   const { session, profile, current } = useAccount();
   const navigate = useNavigate();
