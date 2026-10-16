@@ -246,6 +246,56 @@ describe('managing the staff', () => {
     ).rejects.toBeInstanceOf(NothingChangedError);
   });
 
+  // PLAN §11 (2026-10-16): an invitation works only while its author is an active owner, and
+  // switching an owner off revokes the ones it left waiting, for good.
+  it('revokes the waiting invitations of an owner it switches off, and keeps them revoked', async () => {
+    const founder = await signInAs(SEED_USERS.ownerA);
+    const ownerInvite = { role: 'owner', email: SEED_USERS.customer.email } as const;
+    const ownerCode = await createInvite({
+      distributorId: A.id,
+      invite: ownerInvite,
+      createdBy: founder.uid,
+    });
+    const coOwner = await signInAs(SEED_USERS.customer);
+    await join(coOwner, { distributorId: A.id, code: ownerCode });
+    const driverCode = await createInvite({
+      distributorId: A.id,
+      invite: { role: 'driver', email: null },
+      createdBy: coOwner.uid,
+    });
+    const switchCoOwner = (active: boolean) =>
+      changeStaffMember({
+        distributorId: A.id,
+        actorUid: founder.uid,
+        uid: coOwner.uid,
+        change: { active },
+      });
+
+    await signInAs(SEED_USERS.ownerA);
+    await switchCoOwner(false);
+    await switchCoOwner(true);
+
+    const waiting = (await listPendingInvites(A.id)).map((invite) => invite.id);
+    expect(waiting).toEqual([SEED_INVITE_CODE]);
+    expect(await getInvite({ distributorId: A.id, code: driverCode })).toMatchObject({
+      status: 'revoked',
+      revokedBy: founder.uid,
+    });
+  });
+
+  it('leaves the invitations alone when it switches off someone who is not an owner', async () => {
+    const owner = await signInAs(SEED_USERS.ownerA);
+
+    await changeStaffMember({
+      distributorId: A.id,
+      actorUid: owner.uid,
+      uid: SEED_USERS.dispatcherA.uid,
+      change: { active: false },
+    });
+
+    expect((await listPendingInvites(A.id)).map((invite) => invite.id)).toEqual([SEED_INVITE_CODE]);
+  });
+
   it('refuses the dispatcher', async () => {
     const dispatcher = await signInAs(SEED_USERS.dispatcherA);
 

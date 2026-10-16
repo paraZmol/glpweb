@@ -11,7 +11,7 @@ import {
   type Transaction,
   where,
 } from 'firebase/firestore';
-import { INVITES_QUERY_LIMIT } from '../domain/staff/constants';
+import { INVITES_QUERY_LIMIT, INVITES_QUERY_MAX } from '../domain/staff/constants';
 import {
   AlreadyMemberError,
   InviteNotFoundError,
@@ -25,9 +25,11 @@ import { type Invite, type InviteRef, isInviteCode } from '../domain/staff/invit
 import { inviteRefusalFor, type Joiner, type NewInvite } from '../domain/staff/invite-input';
 import {
   type MemberChange,
+  mayStopAnOwner,
   memberChangeOf,
   memberChangeRefusal,
   sortMembers,
+  stopsBeingActiveOwner,
 } from '../domain/staff/member-management';
 import { MEMBERS_QUERY_LIMIT } from '../domain/tenancy/constants';
 import {
@@ -281,18 +283,54 @@ export interface StaffChange {
 }
 
 /**
+ * The codes of the invitations `uid` created that still wait, up to the rules' cap
+ * (`INVITES_QUERY_MAX`). Owner only. Cost: one read per invitation (one when there is none),
+ * plus 1 by the rules. Equality filters only: no composite index.
+ */
+async function pendingInviteCodesBy(d: string, uid: string): Promise<string[]> {
+  const waiting = query(
+    collection(db, paths.invites(d)),
+    where('createdBy', '==', uid),
+    where('status', '==', 'pending'),
+    limit(INVITES_QUERY_MAX),
+  );
+  return (await getDocs(waiting)).docs.map((invite) => invite.id);
+}
+
+/** Revokes, inside `tx`, the invitations of `codes` that still wait (read in the transaction). */
+async function revokeWaitingInvites(tx: Transaction, d: string, codes: string[], by: string) {
+  const refs = codes.map((code) => inviteRef(d, code));
+  const invites = await Promise.all(refs.map((ref) => tx.get(ref.withConverter(inviteConverter))));
+  refs.forEach((ref, index) => {
+    if (invites[index]?.data()?.status !== 'pending') return;
+    tx.update(ref, {
+      status: 'revoked',
+      revokedBy: by,
+      revokedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  });
+}
+
+/**
  * Owner only, while the distributor is writable: changes the role of another member or switches
  * it off or back on (PLAN 3.2). Nobody changes itself, the founder is never changed, and only
  * the founder makes, unmakes or switches off another owner (`memberChangeRefusal`; the rules
- * hold the same). Staff is never deleted. Writes only what changes.
+ * hold the same). Staff is never deleted. Writes only what changes. When an owner is switched
+ * off or demoted, the same transaction revokes the invitations it created that still wait, up
+ * to `INVITES_QUERY_MAX` (PLAN §11, 2026-10-16): the rules already refuse them, and switching
+ * the person back on does not bring them back.
  * Throws `MemberNotFoundError`, `MemberChangeNotAllowedError` (with its reason),
  * `NothingChangedError`, `PermissionDeniedError` (not an owner, read-only distributor) or
  * `OfflineError`.
- * Cost: 2 reads + 1 write, plus 2 lookups by the rules for the reads and 2 for the write.
+ * Cost: 2 reads + 1 write, plus 2 lookups by the rules for the reads and 2 for the write. When
+ * the change could leave an owner as something else, 1 query first (one read per waiting
+ * invitation of that person, at least one) and, when it does, 1 read + 1 write per invitation.
  */
 export function changeStaffMember({ distributorId: d, actorUid, uid, change }: StaffChange) {
-  return guarded(() =>
-    runTransaction(db, async (tx) => {
+  return guarded(async () => {
+    const waiting = mayStopAnOwner(change) ? await pendingInviteCodesBy(d, uid) : [];
+    return runTransaction(db, async (tx) => {
       const controlRef = doc(db, paths.distributorControl(d)).withConverter(controlConverter);
       const control = (await tx.get(controlRef)).data();
       const target = (await tx.get(memberRef(d, uid).withConverter(memberConverter))).data();
@@ -302,7 +340,10 @@ export function changeStaffMember({ distributorId: d, actorUid, uid, change }: S
       if (reason) throw new MemberChangeNotAllowedError(reason);
       const changed = memberChangeOf(target, change);
       if (Object.keys(changed).length === 0) throw new NothingChangedError();
+      if (stopsBeingActiveOwner(target, changed)) {
+        await revokeWaitingInvites(tx, d, waiting, actorUid);
+      }
       tx.update(memberRef(d, uid), { ...changed, updatedAt: serverTimestamp() });
-    }),
-  );
+    });
+  });
 }

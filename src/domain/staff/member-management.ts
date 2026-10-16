@@ -43,6 +43,26 @@ export function memberChangeOf(current: Pick<Member, 'role' | 'active'>, change:
   return changed;
 }
 
+/**
+ * Whether `changed` (from `memberChangeOf`) leaves an active owner as anything else: switched
+ * off or with another role. An invitation works only while the owner who created it is an
+ * active owner (`stillVouchedFor` in firebase/firestore.rules), so the change revokes that
+ * person's invitations that wait, in the same transaction (PLAN §11, 2026-10-16): they would not
+ * work any more, and switching the person back on must not bring them back.
+ */
+export function stopsBeingActiveOwner(
+  current: Pick<Member, 'role' | 'active'>,
+  changed: MemberChange,
+): boolean {
+  if (current.role !== 'owner' || !current.active) return false;
+  return (changed.role ?? current.role) !== 'owner' || !(changed.active ?? current.active);
+}
+
+/** Whether a change asked for could leave an owner as anything else (worth looking first). */
+export function mayStopAnOwner(change: MemberChange): boolean {
+  return change.active === false || (change.role !== undefined && change.role !== 'owner');
+}
+
 /** The roles a screen may offer `actor` for another member: an owner only to the founder. */
 export function assignableRoles(isFounder: boolean): MemberRole[] {
   return isFounder ? ['owner', 'dispatcher', 'driver'] : ['dispatcher', 'driver'];
