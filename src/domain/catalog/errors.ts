@@ -23,3 +23,13 @@ export class StaleCatalogError extends DomainError {
     super('The catalogue changed while it was being reordered');
   }
 }
+
+/**
+ * A promotion covers the product until `until` (PLAN 3.5): its list prices cannot go up nor its
+ * full cylinder be withdrawn before then. Nothing was written.
+ */
+export class PriceLockedError extends DomainError {
+  constructor(readonly until: Date) {
+    super(`The prices of the product are locked by a promotion until ${until.toISOString()}`);
+  }
+}
