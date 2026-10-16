@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   limit,
   orderBy,
@@ -72,42 +73,82 @@ export interface StockAdjustmentRequest {
 }
 
 /**
- * Owner only, while the distributor is writable: moves the stock of one product by a manual
- * adjustment and writes its line in the history, in one transaction (the rules accept neither
- * without the other). The counts are those of the moment, read inside the transaction, so two
- * adjustments at once both count. Returns the id of the movement.
+ * Owner or dispatcher (PLAN §11, 2026-10-16), while the distributor is writable: moves the stock
+ * of one product by a manual adjustment and writes its line in the history, in one transaction
+ * (the rules accept neither without the other). The counts are those of the moment, read inside
+ * the transaction, so two adjustments at once both count. Returns the id of the movement.
  * Throws `NegativeStockError` or `StockCapError` (nothing written), `StockProductNotFoundError`,
- * `PermissionDeniedError` (not an owner, read-only distributor) or `OfflineError`.
+ * `PermissionDeniedError` (a driver or someone outside, read-only distributor) or `OfflineError`.
  * Cost: 2 reads (own member, stock; 3 the first time: the product) + 2 writes, plus 1 lookup by
- * the rules per read and 7 for the writes (8 the first time).
+ * the rules per read and 7 for the writes (8 the first time); one more read and attempt each time
+ * another adjustment of the same product wins the race.
  */
-export function adjustPlantStock(request: StockAdjustmentRequest): Promise<string> {
+export async function adjustPlantStock(request: StockAdjustmentRequest): Promise<string> {
+  for (let attempt = 1; ; attempt += 1) {
+    const attempted = await attemptAdjustment(request);
+    if (attempted.ok) return attempted.movementId;
+    // When another adjustment of the product committed first, the server judges this one
+    // against the new counts and answers permission-denied, not a conflict the SDK retries.
+    const moved = (await readLastMovementId(request)) !== attempted.seenMovementId;
+    if (!moved || attempt >= MAX_ATTEMPTS) throw attempted.error;
+  }
+}
+
+const MAX_ATTEMPTS = 3;
+
+type Attempt =
+  | { ok: true; movementId: string }
+  | { ok: false; error: PermissionDeniedError; seenMovementId: string | null };
+
+async function attemptAdjustment(request: StockAdjustmentRequest): Promise<Attempt> {
   const { distributorId: d, authorUid, adjustment } = request;
   const stockRef = doc(db, paths.plantStockOf(d, adjustment.productId));
   const movementRef = doc(collection(db, paths.stockMovements(d)));
-  return guarded(() =>
-    runTransaction(db, async (tx) => {
-      const author = await tx.get(
-        doc(db, paths.member(d, authorUid)).withConverter(memberConverter),
-      );
-      if (!author.exists()) throw new PermissionDeniedError();
-      const stored = await tx.get(stockRef.withConverter(plantStockConverter));
-      if (!stored.exists()) await requireProduct(tx, d, adjustment.productId);
-      const before = stored.exists() ? stored.data() : { full: 0, empty: 0 };
-      const after = applyStockChange(before, adjustment);
-      tx.set(stockRef, { ...after, lastMovementId: movementRef.id, updatedAt: serverTimestamp() });
-      tx.set(movementRef, {
-        kind: 'adjustment',
-        ...adjustment,
-        fullAfter: after.full,
-        emptyAfter: after.empty,
-        authorUid,
-        authorName: author.data().displayName,
-        createdAt: serverTimestamp(),
-      });
-      return movementRef.id;
-    }),
-  );
+  let seenMovementId: string | null = null;
+  try {
+    await guarded(() =>
+      runTransaction(db, async (tx) => {
+        const author = await tx.get(
+          doc(db, paths.member(d, authorUid)).withConverter(memberConverter),
+        );
+        if (!author.exists()) throw new PermissionDeniedError();
+        const stored = await tx.get(stockRef.withConverter(plantStockConverter));
+        if (!stored.exists()) await requireProduct(tx, d, adjustment.productId);
+        const before = stored.exists() ? stored.data() : { full: 0, empty: 0 };
+        seenMovementId = stored.exists() ? stored.data().lastMovementId : null;
+        const after = applyStockChange(before, adjustment);
+        tx.set(stockRef, {
+          ...after,
+          lastMovementId: movementRef.id,
+          updatedAt: serverTimestamp(),
+        });
+        tx.set(movementRef, {
+          kind: 'adjustment',
+          ...adjustment,
+          fullAfter: after.full,
+          emptyAfter: after.empty,
+          authorUid,
+          authorName: author.data().displayName,
+          createdAt: serverTimestamp(),
+        });
+      }),
+    );
+    return { ok: true, movementId: movementRef.id };
+  } catch (error) {
+    if (!(error instanceof PermissionDeniedError)) throw error;
+    return { ok: false, error, seenMovementId };
+  }
+}
+
+/** What the stock of the product names now; null when it was never moved or cannot be read. */
+async function readLastMovementId(request: StockAdjustmentRequest): Promise<string | null> {
+  const ref = doc(db, paths.plantStockOf(request.distributorId, request.adjustment.productId));
+  try {
+    const now = await getDoc(ref.withConverter(plantStockConverter));
+    return now.exists() ? now.data().lastMovementId : null;
+  } catch {
+    return null;
+  }
 }
 
 type Transaction = Parameters<Parameters<typeof runTransaction>[1]>[0];

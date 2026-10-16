@@ -109,19 +109,29 @@ describe('plant stock', () => {
     await expect(adjust({ productId: 'p09' })).rejects.toBeInstanceOf(StockProductNotFoundError);
   });
 
-  it('refuses the dispatcher as an adjuster, the driver as a reader and another distributor', async () => {
+  it('lets the dispatcher adjust it under its own name (PLAN §11, 2026-10-16)', async () => {
     await signInAs(SEED_USERS.dispatcherA);
+
+    await adjustPlantStock({
+      distributorId: A.id,
+      authorUid: SEED_USERS.dispatcherA.uid,
+      adjustment: adjustment(),
+    });
+
+    const [latest] = await listStockMovements(A.id, { productId: 'p00' });
+    expect(latest?.authorName).toBe(SEED_USERS.dispatcherA.displayName);
+  });
+
+  it('lets the driver read but not adjust, and keeps another distributor out', async () => {
+    await signInAs(SEED_USERS.driverA);
+    expect(await listPlantStock(A.id)).toHaveLength(3);
     await expect(
       adjustPlantStock({
         distributorId: A.id,
-        authorUid: SEED_USERS.dispatcherA.uid,
+        authorUid: SEED_USERS.driverA.uid,
         adjustment: adjustment(),
       }),
     ).rejects.toBeInstanceOf(PermissionDeniedError);
-
-    await signInAs(SEED_USERS.driverA);
-    await expect(listPlantStock(A.id)).rejects.toBeInstanceOf(PermissionDeniedError);
-    await expect(listStockMovements(A.id)).rejects.toBeInstanceOf(PermissionDeniedError);
 
     await signInAs(SEED_USERS.ownerB);
     await expect(listPlantStock(A.id)).rejects.toBeInstanceOf(PermissionDeniedError);
