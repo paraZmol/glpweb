@@ -162,8 +162,8 @@ rules_version = '2';
 //                                  o19 (caps those alive at 20); a slot is written anew once its
 //                                  promotion ended, was switched off or was never published.
 //                                  Never deleted. Anyone reads the published ones while the
-//                                  distributor takes orders; its staff reads them all; only an
-//                                  owner writes, while it is writable.
+//                                  distributor takes orders; its staff reads them all; the owner
+//                                  and the dispatcher write, while it is writable.
 //   title: visible text 1..40 · productIds: list 1..30 of product slots, no repeats
 //   saleMode: refill | full · startsAt, endsAt: timestamps — starts now or later (≤ 30 days
 //     ahead), ends after it starts and within 30 days of the start · active: bool
@@ -1398,11 +1398,12 @@ service cloud.firestore {
         allow get: if isPublished() || isStaff(d);
         allow list: if request.query.limit <= 20 && (isPublished() || isStaff(d));
 
-        // The owner only (PROMOTION_EDITOR_ROLES in src/domain/pricing/permissions.ts), while
-        // writable. Reads added by rules: 2 (get member, get control).
+        // The owner and the dispatcher (decision of the user, PLAN §11 2026-10-16;
+        // PROMOTION_EDITOR_ROLES in src/domain/pricing/permissions.ts), while writable. Reads added
+        // by rules: 2 (get member, get control).
         allow create: if promotionId.matches('^o[0-1][0-9]$')
           && isNewPromotion(request.resource.data)
-          && hasRole(d, ['owner'])
+          && hasRole(d, ['owner', 'dispatcher'])
           && writable(d);
 
         // A slot whose promotion ended, was switched off or was never published takes a whole
@@ -1411,7 +1412,7 @@ service cloud.firestore {
         // which records who and when and is final. Reads added by rules: 2 (get member, get
         // control).
         allow update: if isValidPromotion(request.resource.data)
-          && hasRole(d, ['owner'])
+          && hasRole(d, ['owner', 'dispatcher'])
           && writable(d)
           && (
             (isOver() && isNewPromotion(request.resource.data))

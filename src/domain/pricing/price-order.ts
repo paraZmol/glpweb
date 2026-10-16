@@ -12,13 +12,18 @@ export interface OrderItem {
 
 /**
  * One line of a priced order, what the order freezes (glp-domain §5b; PLAN §11, 2026-10-16):
- * the list price of one unit (the honest "before"), the units, the discount of the whole line,
- * what the line costs and the promotion it took. No unit price: in "lleva 3, paga 2" it is not
- * whole cents.
+ * the list price of one unit (the honest "before"), ONE price per unit for the whole line, the
+ * discount of the line, what it costs and the promotion it took. A promotion that does not price
+ * every unit alike splits the line: the units beyond a cap go at list price, and the free units
+ * of "lleva X, paga Y" come as a line of their own at 0 (its paid units: a line at list price
+ * that names the promotion). Every price is whole cents.
  */
 export interface PricedLine extends OrderItem {
   listPriceCents: number;
+  unitPriceCents: number;
+  /** `quantity × (listPriceCents − unitPriceCents)`. */
   discountCents: number;
+  /** `quantity × unitPriceCents`. */
   totalCents: number;
   promotionId: string | null;
 }
@@ -76,6 +81,8 @@ function capacityOf(promotions: readonly Promotion[]): Capacity {
 
 interface Choice extends Discount {
   promotionId: string;
+  /** "Lleva X, paga Y": the discount is made of free units. */
+  givesFreeUnits: boolean;
 }
 
 /** The promotion that leaves this line cheapest; ties go to the lowest slot (deterministic). */
@@ -95,25 +102,36 @@ function bestChoice(
       best === null ||
       discount.discountCents > best.discountCents ||
       (discount.discountCents === best.discountCents && promotion.id < best.promotionId);
-    if (better) best = { ...discount, promotionId: promotion.id };
+    if (better) {
+      const givesFreeUnits = promotion.deal.type === 'buyXPayY';
+      best = { ...discount, promotionId: promotion.id, givesFreeUnits };
+    }
   }
   return best;
 }
 
 function linesOf(item: Pending, choice: Choice | null): PricedLine[] {
-  const base = { productId: item.productId, saleMode: item.saleMode };
-  const line = (quantity: number, discountCents: number, promotionId: string | null) => ({
-    ...base,
+  const list = item.listPriceCents;
+  const line = (quantity: number, unitPriceCents: number, promotionId: string | null) => ({
+    productId: item.productId,
+    saleMode: item.saleMode,
     quantity,
-    listPriceCents: item.listPriceCents,
-    discountCents,
-    totalCents: quantity * item.listPriceCents - discountCents,
+    listPriceCents: list,
+    unitPriceCents,
+    discountCents: quantity * (list - unitPriceCents),
+    totalCents: quantity * unitPriceCents,
     promotionId,
   });
-  if (choice === null) return [line(item.quantity, 0, null)];
+  if (choice === null) return [line(item.quantity, list, null)];
+  const id = choice.promotionId;
+  const promoted = choice.givesFreeUnits
+    ? [
+        line(choice.units - choice.discountCents / list, list, id),
+        line(choice.discountCents / list, 0, id),
+      ]
+    : [line(choice.units, list - choice.discountCents / choice.units, id)];
   const rest = item.quantity - choice.units;
-  const promoted = line(choice.units, choice.discountCents, choice.promotionId);
-  return rest > 0 ? [promoted, line(rest, 0, null)] : [promoted];
+  return rest > 0 ? [...promoted, line(rest, list, null)] : promoted;
 }
 
 /**
@@ -151,4 +169,21 @@ export function priceOrder(
     discountCents: sum((line) => line.discountCents),
     totalCents: sum((line) => line.totalCents),
   };
+}
+
+/** What the orders domain injects to price the lines of an order (phase 4). */
+export interface PricingInput {
+  lines: readonly OrderItem[];
+  products: readonly PricedProduct[];
+  at: Date;
+}
+
+export type OrderPricer = (input: PricingInput) => PricedLine[];
+
+/**
+ * `priceOrder` as the orders domain takes it: the promotions of the distributor bound, the lines
+ * of the order, its products and the time of the order in. Same errors as `priceOrder`.
+ */
+export function orderPricerWith(promotions: readonly Promotion[]): OrderPricer {
+  return ({ lines, products, at }) => priceOrder(lines, products, promotions, at).lines;
 }

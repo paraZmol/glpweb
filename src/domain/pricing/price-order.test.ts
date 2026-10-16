@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { at, CATALOG, DAY, NOW, product, promotion } from '../../../tests/support/pricing-fixtures';
 import { InvalidQuantityError, UnpricedItemError } from './errors';
-import { type OrderItem, priceOrder } from './price-order';
+import { type OrderItem, orderPricerWith, priceOrder } from './price-order';
 import type { Promotion } from './promotion';
 
 const refill = (productId: string, quantity: number): OrderItem => ({
@@ -27,6 +27,7 @@ describe('priceOrder without promotions', () => {
         saleMode: 'refill',
         quantity: 2,
         listPriceCents: 5200,
+        unitPriceCents: 5200,
         discountCents: 0,
         totalCents: 10400,
         promotionId: null,
@@ -36,6 +37,7 @@ describe('priceOrder without promotions', () => {
         saleMode: 'full',
         quantity: 1,
         listPriceCents: 9000,
+        unitPriceCents: 9000,
         discountCents: 0,
         totalCents: 9000,
         promotionId: null,
@@ -81,6 +83,7 @@ describe('priceOrder with one promotion', () => {
         saleMode: 'refill',
         quantity: 1,
         listPriceCents: 5200,
+        unitPriceCents: 4800,
         discountCents: 400,
         totalCents: 4800,
         promotionId: 'o00',
@@ -139,19 +142,51 @@ describe('priceOrder with one promotion', () => {
     expect(order.lines.map((line) => line.totalCents)).toEqual([4700, 18500]);
   });
 
-  it('applies "lleva 2, paga 1" (P5) and charges the third unit at list price', () => {
+  // The orders domain (phase 4) takes one unit price per line: the free unit is its own line.
+  it('applies "lleva 2, paga 1" (P5): the free unit at 0 in its own line, the third at list price', () => {
     const p5 = promotion({
       deal: { type: 'buyXPayY', buyUnits: 2, payUnits: 1 },
       maxUnitsPerOrder: 2,
       totalUnits: 50,
     });
     const order = price([refill('p00', 3)], [p5]);
-    expect(order.lines.map((line) => [line.quantity, line.discountCents, line.totalCents])).toEqual(
-      [
-        [2, 5200, 5200],
-        [1, 0, 5200],
-      ],
-    );
+    const shown = order.lines.map((line) => [
+      line.quantity,
+      line.unitPriceCents,
+      line.discountCents,
+      line.promotionId,
+    ]);
+    expect(shown).toEqual([
+      [1, 5200, 0, 'o00'],
+      [1, 0, 5200, 'o00'],
+      [1, 5200, 0, null],
+    ]);
+    expect(order.totalCents).toBe(10400);
+  });
+
+  it('applies "lleva 3, paga 2" twice: two paid units per free one, all in whole cents', () => {
+    const p5 = promotion({
+      deal: { type: 'buyXPayY', buyUnits: 3, payUnits: 2 },
+      maxUnitsPerOrder: 6,
+      totalUnits: 50,
+    });
+    const order = price([refill('p00', 6)], [p5]);
+    expect(order.lines.map((line) => [line.quantity, line.unitPriceCents])).toEqual([
+      [4, 5200],
+      [2, 0],
+    ]);
+    expect(order.totalCents).toBe(20800);
+  });
+
+  it('gives every line one unit price that adds up to its total', () => {
+    const tenOff = promotion({ deal: { type: 'percentOff', percent: 15 }, maxUnitsPerOrder: 2 });
+    const order = price([refill('p00', 3)], [tenOff], [product({ refillPriceCents: 5150 })]);
+    expect(
+      order.lines.map((line) => [line.quantity, line.unitPriceCents, line.totalCents]),
+    ).toEqual([
+      [2, 4377, 8754],
+      [1, 5150, 5150],
+    ]);
   });
 
   it('gives nothing in "lleva 3, paga 2" for fewer than three units', () => {
@@ -250,5 +285,21 @@ describe('priceOrder with several promotions', () => {
     const sum = order.lines.reduce((total, line) => total + line.totalCents, 0);
     expect(order.totalCents).toBe(sum);
     expect(order.listTotalCents - order.discountCents).toBe(order.totalCents);
+  });
+});
+
+describe('orderPricerWith', () => {
+  it('prices the lines of an order as the orders domain asks', () => {
+    const pricer = orderPricerWith([promotion()]);
+    const lines = pricer({ lines: [refill('p00', 1)], products: CATALOG, at: NOW });
+    expect(lines).toEqual([expect.objectContaining({ unitPriceCents: 4800, promotionId: 'o00' })]);
+  });
+
+  it('uses the time of the order, not of the call', () => {
+    const pricer = orderPricerWith([promotion()]);
+    const later = new Date(NOW.getTime() + 8 * DAY);
+    expect(
+      pricer({ lines: [refill('p00', 1)], products: CATALOG, at: later })[0]?.promotionId,
+    ).toBeNull();
   });
 });
