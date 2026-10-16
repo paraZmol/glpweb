@@ -11,6 +11,7 @@ import {
   where,
 } from 'firebase/firestore';
 import {
+  type CatalogSummary,
   freeProductSlot,
   isSameSummary,
   nextSortOrder,
@@ -64,7 +65,8 @@ export function listPublicCatalog(d: string): Promise<Product[]> {
 }
 
 /**
- * The profile repeats the brands on sale and the cheapest refill for the search page. A write of
+ * The profile repeats the brands on sale and the cheapest refill, with its weight, for the search
+ * page ("Recarga 10 kg desde S/ 48.00", PLAN §11 2026-10-15). A write of
  * the catalogue brings them up to date in the same transaction, and only when they change: every
  * write of the profile moves its version (`updatedAt`), which a review of the platform names.
  * The rules cannot check that the copy is true (they cannot add up a collection): an owner who
@@ -79,7 +81,7 @@ async function readProfileSummary(tx: Transaction, d: string) {
 function writeSummary(
   tx: Transaction,
   d: string,
-  stored: { brands: string[]; priceFromCents: number | null },
+  stored: CatalogSummary,
   catalog: readonly SummarizedProduct[],
 ) {
   const summary = summarizeCatalog(catalog);

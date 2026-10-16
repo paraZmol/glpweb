@@ -87,6 +87,8 @@ function publicDocument(distributor: SeedDistributor) {
     maxCylindersPerOrder: DEFAULT_MAX_CYLINDERS_PER_ORDER,
     brands: [...distributor.brands],
     priceFromCents: distributor.priceFromCents,
+    priceFromWeightKg: distributor.priceFromWeightKg,
+    ...(distributor.complaintsBookUrl ? { complaintsBookUrl: distributor.complaintsBookUrl } : {}),
     currency: 'PEN',
     ...stamps,
   };
@@ -163,6 +165,9 @@ function writeStaffExtras(batch: Batch, db: Db, distributor: SeedDistributor) {
       role: invite.role,
       email: invite.email,
       distributorName: distributor.name,
+      // The copies the app writes since PLAN §11 (2026-10-15): who invites and the colour.
+      invitedByName: founderOf(distributor).displayName,
+      brandColor: distributor.brandColor,
       status: 'pending',
       createdBy: founderOf(distributor).uid,
       createdAt: now,

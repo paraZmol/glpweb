@@ -19,6 +19,7 @@ import {
   InviteUsedError,
   MemberChangeNotAllowedError,
   MemberNotFoundError,
+  UnreadableNameError,
 } from '../domain/staff/errors';
 import { type Invite, type InviteRef, isInviteCode } from '../domain/staff/invite';
 import { inviteRefusalFor, type Joiner, type NewInvite } from '../domain/staff/invite-input';
@@ -35,6 +36,7 @@ import {
   PermissionDeniedError,
   ProfileRequiredError,
 } from '../domain/tenancy/errors';
+import { isVisibleText } from '../domain/tenancy/field-checks';
 import type { Member, MemberRole } from '../domain/tenancy/types';
 import {
   controlConverter,
@@ -64,12 +66,15 @@ export interface InviteRequest {
  * Owner only, while the distributor is writable (PLAN 3.2): creates an invitation and returns
  * its code, the secret of the link (`inviteLinkOf`). The code is an automatic id: 20 letters and
  * digits from the browser's cryptographic random source, so nobody can guess it. The
- * invitation carries the public name of the distributor, read in the same transaction: whoever
- * receives the link cannot read the distributor yet. Only the founder may invite an owner, and
+ * invitation carries copies of the public name and of the brand colour of the distributor and of
+ * the name of the owner who invites (its member), read in the same transaction: whoever
+ * receives the link cannot read the distributor nor its staff yet (PLAN §11, 2026-10-15). The
+ * name of the owner is left out when it is not visible text (a member stored before that check). Only the founder may invite an owner, and
  * only tied to an address (`prepareInvite` checks it; the rules too).
  * Throws `PermissionDeniedError` (not an owner, read-only distributor, an owner invitation from
  * a co-owner) or `OfflineError` (a transaction is not queued without a connection).
- * Cost: 1 read + 1 write, plus 3 lookups by the rules.
+ * Cost: 2 reads + 1 write, plus 3 lookups by the rules (the member it copies is the one the
+ * rules read for the role).
  */
 export function createInvite({ distributorId: d, invite, createdBy }: InviteRequest) {
   const code = doc(collection(db, paths.invites(d))).id;
@@ -78,10 +83,15 @@ export function createInvite({ distributorId: d, invite, createdBy }: InviteRequ
       const profileRef = doc(db, paths.distributor(d)).withConverter(publicDistributorConverter);
       const profile = (await tx.get(profileRef)).data();
       if (!profile) throw new CorruptDocumentError(paths.distributor(d), 'it does not exist');
+      const inviter = (await tx.get(memberRef(d, createdBy).withConverter(memberConverter))).data();
+      const inviterName =
+        inviter && isVisibleText(inviter.displayName) ? inviter.displayName : null;
       tx.set(inviteRef(d, code), {
         role: invite.role,
         email: invite.email,
         distributorName: profile.name,
+        brandColor: profile.brandColor,
+        ...(inviterName === null ? {} : { invitedByName: inviterName }),
         status: 'pending',
         createdBy,
         createdAt: serverTimestamp(),
@@ -184,6 +194,8 @@ async function joinInTransaction(tx: Transaction, { ref, joiner, now }: JoinRequ
   if (refusal) throw refusal;
   if (!invite) throw new InviteNotFoundError();
   if (!profile) throw new ProfileRequiredError();
+  // The staff reads this name in its list; the rules refuse one nobody can read (PLAN 3.2).
+  if (!isVisibleText(profile.displayName)) throw new UnreadableNameError();
   tx.set(memberRef(d, joiner.uid), {
     uid: joiner.uid,
     distributorId: d,
@@ -228,7 +240,7 @@ async function explainJoinRefusal({ ref, joiner, now }: JoinRequest): Promise<Er
  * Throws `InviteNotFoundError`, `InviteUsedError`, `InviteRevokedError`, `InviteExpiredError`,
  * `InviteForAnotherAccountError`, `AlreadyMemberError` (it already works there, active or not:
  * an owner switches it back on instead), `ProfileRequiredError` (the terms are not accepted
- * yet), `PermissionDeniedError` (the distributor is read-only, its name changed under an
+ * yet), `UnreadableNameError` (the name of the profile is not visible text: change it first), `PermissionDeniedError` (the distributor is read-only, its name changed under an
  * invitation nobody refreshed, or its days ran out by the server's clock) or `OfflineError`.
  * Cost: 3 reads + 2 writes, plus 6 lookups by the rules; 2 reads more after a refusal.
  */

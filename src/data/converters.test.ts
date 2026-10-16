@@ -45,6 +45,8 @@ describe('parsePublicDistributor', () => {
       maxCylindersPerOrder: 5,
       brands: ['Marca Uno'],
       priceFromCents: 3800,
+      priceFromWeightKg: 10,
+      complaintsBookUrl: 'https://example.com/libro',
       currency: 'PEN',
       updatedAt: stamp,
     });
@@ -56,6 +58,8 @@ describe('parsePublicDistributor', () => {
       schedule: { days: [1, 2], opensAt: '08:00', closesAt: '18:00' },
       brands: ['Marca Uno'],
       priceFromCents: 3800,
+      priceFromWeightKg: 10,
+      complaintsBookUrl: 'https://example.com/libro',
       acceptingOrders: true,
     });
   });
@@ -76,10 +80,23 @@ describe('parsePublicDistributor', () => {
       maxCylindersPerOrder: DEFAULT_MAX_CYLINDERS_PER_ORDER,
       brands: [],
       priceFromCents: null,
+      priceFromWeightKg: null,
+      complaintsBookUrl: null,
       currency: 'PEN',
       updatedAt: AT,
     });
   });
+
+  // PLAN §11 (2026-10-15): a link is only ever built from an address that passes the check.
+  it.each(['javascript:alert(1)', 'http://example.com/libro', 'https://example.com/a b'])(
+    'drops a stored complaints book link that is not a safe https address (%s)',
+    (complaintsBookUrl) => {
+      const data = { ...MINIMAL_DISTRIBUTOR, complaintsBookUrl };
+      expect(
+        parsePublicDistributor('dist-a', 'distributors/dist-a', data).complaintsBookUrl,
+      ).toBeNull();
+    },
+  );
 
   it.each([
     ['a missing name', { name: undefined }],
@@ -499,6 +516,8 @@ describe('parseInvite', () => {
       role: 'driver',
       email: null,
       distributorName: 'Gas Demo',
+      invitedByName: null,
+      brandColor: null,
       status: 'pending',
       createdBy: 'owner-a',
       createdAt: AT,
@@ -508,6 +527,14 @@ describe('parseInvite', () => {
       revokedBy: null,
       revokedAt: null,
     });
+  });
+
+  // PLAN §11 (2026-10-15): who invites and in which colour, absent in older invitations.
+  it('reads the copies of who invites and of the brand colour', () => {
+    const copies = { invitedByName: 'A. Persona', brandColor: '#0a7cff' };
+    expect(parseInvite('Invite0000000000000A', path, { ...INVITE, ...copies })).toMatchObject(
+      copies,
+    );
   });
 
   it('refuses an invitation with a role it does not know', () => {

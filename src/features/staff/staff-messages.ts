@@ -11,6 +11,7 @@ import {
   MemberChangeNotAllowedError,
   type MemberChangeRefusal,
   MemberNotFoundError,
+  UnreadableNameError,
 } from '../../domain/staff/errors';
 import type { InviteState } from '../../domain/staff/invite';
 import {
@@ -85,6 +86,9 @@ export function describeJoinError(error: unknown): string {
     return error.isActive
       ? 'Ya formas parte de esta distribuidora.'
       : 'Ya formaste parte de esta distribuidora. Pide a su titular que te vuelva a activar.';
+  }
+  if (error instanceof UnreadableNameError) {
+    return 'Tu nombre en Hornilla no se puede leer. Cámbialo en Tu cuenta y vuelve a abrir el enlace.';
   }
   if (error instanceof PermissionDeniedError) {
     return `No pudimos usar la invitación: la distribuidora no puede sumar personal ahora o la invitación cambió. ${ASK_AGAIN}`;

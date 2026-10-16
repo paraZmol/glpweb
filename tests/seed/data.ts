@@ -81,9 +81,15 @@ export interface SeedDistributor {
   plant: { lat: number; lng: number };
   coverageRadiusKm: number;
   brandColor: string;
-  /** Must agree with `products`: the brands on sale and the cheapest refill on sale. */
+  /**
+   * Must agree with `products`: the brands on sale, the cheapest refill on sale and its weight
+   * (`summarizeCatalog`).
+   */
   brands: string[];
   priceFromCents: number | null;
+  priceFromWeightKg: number | null;
+  /** Link to its virtual complaints book (PLAN §11, 2026-10-15); invented, on example.com. */
+  complaintsBookUrl?: string;
   products: SeedProduct[];
   /** The first owner listed is the founder. */
   members: { user: SeedUser; role: SeedRole }[];
@@ -103,8 +109,8 @@ export interface SeedDistributor {
 export const SEED_INVITE_CODE = 'SeedInviteA000000001';
 
 /** Versions of the terms and of the privacy policy every seeded profile accepted. */
-export const SEED_TERMS_VERSION = '0.4';
-export const SEED_PRIVACY_VERSION = '0.4';
+export const SEED_TERMS_VERSION = '0.5';
+export const SEED_PRIVACY_VERSION = '0.5';
 
 const user = (key: string, displayName: string, phoneSuffix: string, emailVerified = true) => ({
   uid: `seed-${key}`,
@@ -190,6 +196,8 @@ export const SEED_DISTRIBUTORS = {
     brandColor: '#d9480f',
     brands: ['Marca Uno', 'Marca Dos'],
     priceFromCents: 3800,
+    priceFromWeightKg: 5,
+    complaintsBookUrl: 'https://example.com/libro-de-reclamaciones/gas-demo-norte',
     products: [
       product('p00', 0, 'Marca Uno', 10, { refill: 4800, full: 17500 }, { brandColor: '#1757d6' }),
       product('p01', 1, 'Marca Dos', 10, { refill: 5200, full: 18500 }, { brandColor: '#2f9e44' }),
@@ -227,6 +235,7 @@ export const SEED_DISTRIBUTORS = {
     brandColor: '#0a7cff',
     brands: ['Marca Tres'],
     priceFromCents: 3650,
+    priceFromWeightKg: 5,
     products: [
       product('p00', 0, 'Marca Tres', 10, { refill: 4950, full: 17900 }, { brandColor: '#c92a2a' }),
       product('p01', 1, 'Marca Tres', 5, { refill: 3650 }, { brandColor: '#c92a2a' }),
@@ -255,6 +264,7 @@ export const SEED_DISTRIBUTORS = {
     brandColor: '#5c6770',
     brands: [],
     priceFromCents: null,
+    priceFromWeightKg: null,
     products: [],
     members: [{ user: SEED_USERS.ownerC, role: 'owner' }],
   },
@@ -279,6 +289,7 @@ export const SEED_DISTRIBUTORS = {
     brandColor: '#2f9e44',
     brands: [],
     priceFromCents: null,
+    priceFromWeightKg: null,
     products: [],
     members: [{ user: SEED_USERS.ownerD, role: 'owner' }],
   },
@@ -303,6 +314,7 @@ export const SEED_DISTRIBUTORS = {
     brandColor: '#7048e8',
     brands: [],
     priceFromCents: null,
+    priceFromWeightKg: null,
     products: [],
     members: [{ user: SEED_USERS.ownerE, role: 'owner' }],
   },

@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { SEED_DISTRIBUTORS, SEED_INVITE_CODE, SEED_USERS } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
 import { signInAs, signInAsNewcomer } from '../../tests/support/emulated-session';
+import { renameProfileAsAdmin } from '../../tests/support/emulator';
 import {
   AlreadyMemberError,
   InviteForAnotherAccountError,
@@ -11,6 +12,7 @@ import {
   InviteRevokedError,
   InviteUsedError,
   MemberChangeNotAllowedError,
+  UnreadableNameError,
 } from '../domain/staff/errors';
 import { type InviteRef, inviteStateOf } from '../domain/staff/invite';
 import {
@@ -59,6 +61,9 @@ describe('creating and listing invitations', () => {
     expect(waiting[0]).toMatchObject({
       role: 'dispatcher',
       distributorName: A.name,
+      // PLAN §11 (2026-10-15): who invites and the colour travel with the invitation.
+      invitedByName: SEED_USERS.ownerA.displayName,
+      brandColor: A.brandColor,
       status: 'pending',
       createdBy: owner.uid,
     });
@@ -129,6 +134,14 @@ describe('using an invitation', () => {
     const newcomer = await signInAsNewcomer('recien@example.com');
 
     await expect(join(newcomer)).rejects.toBeInstanceOf(ProfileRequiredError);
+  });
+
+  // PLAN §11 (2026-10-15): the staff reads the name in its list.
+  it('asks to change a stored name nobody can read before joining', async () => {
+    const customer = await signInAs(SEED_USERS.customer);
+    await renameProfileAsAdmin(customer.uid, '\u200b');
+
+    await expect(join(customer)).rejects.toBeInstanceOf(UnreadableNameError);
   });
 
   it('refuses another account than the one an invitation names', async () => {

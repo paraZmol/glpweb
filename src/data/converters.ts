@@ -20,6 +20,7 @@ import {
   DEFAULT_MAX_CYLINDERS_PER_ORDER,
   DEFAULT_SCHEDULE,
 } from '../domain/tenancy/constants';
+import { isComplaintsBookUrl } from '../domain/tenancy/complaints-book';
 import { CorruptDocumentError } from '../domain/tenancy/errors';
 import {
   type Address,
@@ -141,6 +142,9 @@ function toSchedule(value: unknown): Schedule | undefined {
 
 type Parser<T> = (id: string, path: string, data: DocumentData) => T;
 
+const complaintsBookUrlOrNull = (url: string | null): string | null =>
+  url !== null && isComplaintsBookUrl(url) ? url : null;
+
 export const parseUserProfile: Parser<UserProfile> = (id, path, data) => {
   const read = new FieldReader(path, data);
   const createdAt = read.date('createdAt');
@@ -201,6 +205,10 @@ export const parsePublicDistributor: Parser<PublicDistributor> = (id, path, data
     maxCylindersPerOrder: read.number('maxCylindersPerOrder', DEFAULT_MAX_CYLINDERS_PER_ORDER),
     brands: read.textList('brands'),
     priceFromCents: read.integerOrNull('priceFromCents'),
+    // Added on 2026-10-15 (PLAN §11): absent in profiles written before.
+    priceFromWeightKg: read.integerOrNull('priceFromWeightKg'),
+    // A link is only ever built from a validated address (tracking-pwa §4).
+    complaintsBookUrl: complaintsBookUrlOrNull(read.textOrNull('complaintsBookUrl')),
     currency: read.text('currency', DEFAULT_CURRENCY),
     createdAt,
     updatedAt: read.date('updatedAt', createdAt),
@@ -280,6 +288,9 @@ export const parseInvite: Parser<Invite> = (id, path, data) => {
     role: read.oneOf('role', MEMBER_ROLES),
     email: read.textOrNull('email'),
     distributorName: read.text('distributorName', ''),
+    // Copies added on 2026-10-15 (PLAN §11): an older invitation has neither.
+    invitedByName: read.textOrNull('invitedByName'),
+    brandColor: read.textOrNull('brandColor'),
     status: read.oneOf('status', INVITE_STATUSES),
     createdBy: read.text('createdBy', ''),
     createdAt,

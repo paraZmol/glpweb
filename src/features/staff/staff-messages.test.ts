@@ -8,6 +8,7 @@ import {
   InviteRevokedError,
   InviteUsedError,
   MemberChangeNotAllowedError,
+  UnreadableNameError,
 } from '../../domain/staff/errors';
 import { prepareInvite } from '../../domain/staff/invite-input';
 import { InvalidInputError, PermissionDeniedError } from '../../domain/tenancy/errors';
@@ -60,6 +61,7 @@ describe('staff messages', () => {
     [new InviteForAnotherAccountError(), 'Esta invitación es para otra cuenta de Google.'],
     [new AlreadyMemberError(true), 'Ya formas parte de esta distribuidora.'],
     [new AlreadyMemberError(false), 'Pide a su titular que te vuelva a activar.'],
+    [new UnreadableNameError(), 'Tu nombre en Hornilla no se puede leer.'],
     [new PermissionDeniedError(), 'No pudimos usar la invitación'],
   ])('explains a refused invitation (%s)', (error, text) => {
     expect(describeJoinError(error)).toContain(text);

@@ -37,7 +37,11 @@ const idsOf = (products: { id: string }[]) => products.map((product) => product.
 
 async function summaryOf(d: string) {
   const profile = await getDistributor(d);
-  return { brands: profile?.brands, priceFromCents: profile?.priceFromCents };
+  return {
+    brands: profile?.brands,
+    priceFromCents: profile?.priceFromCents,
+    priceFromWeightKg: profile?.priceFromWeightKg,
+  };
 }
 
 beforeEach(async () => {
@@ -114,6 +118,7 @@ describe('createProduct', () => {
     expect(await summaryOf(A.id)).toEqual({
       brands: ['Marca Uno', 'Marca Dos', 'Marca Cuatro'],
       priceFromCents: 3500,
+      priceFromWeightKg: NEW_PRODUCT.weightKg,
     });
   });
 
@@ -159,7 +164,10 @@ describe('createProduct', () => {
     const id = await createProduct(A.id, { ...NEW_PRODUCT, refillPriceCents: 3000 });
 
     expect(idsOf(await listCatalog(A.id))).toContain(id);
-    expect(await summaryOf(A.id)).toMatchObject({ priceFromCents: 3000 });
+    expect(await summaryOf(A.id)).toMatchObject({
+      priceFromCents: 3000,
+      priceFromWeightKg: NEW_PRODUCT.weightKg,
+    });
   });
 });
 
@@ -182,6 +190,7 @@ describe('updateProduct', () => {
     expect(await summaryOf(A.id)).toEqual({
       brands: ['Marca Uno', 'Marca Dos'],
       priceFromCents: 4800,
+      priceFromWeightKg: 10,
     });
   });
 
@@ -191,7 +200,11 @@ describe('updateProduct', () => {
     await updateProduct(B.id, 'p00', { active: false });
     await updateProduct(B.id, 'p01', { active: false });
 
-    expect(await summaryOf(B.id)).toEqual({ brands: [], priceFromCents: null });
+    expect(await summaryOf(B.id)).toEqual({
+      brands: [],
+      priceFromCents: null,
+      priceFromWeightKg: null,
+    });
   });
 
   it('refuses a full cylinder at the price of the refill', async () => {

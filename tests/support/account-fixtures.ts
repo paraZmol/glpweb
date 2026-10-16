@@ -57,6 +57,8 @@ export function distributorOf(id: string, patch: Partial<Distributor> = {}): Dis
     maxCylindersPerOrder: 3,
     brands: [],
     priceFromCents: null,
+    priceFromWeightKg: null,
+    complaintsBookUrl: null,
     currency: 'PEN',
     createdAt: NOW,
     updatedAt: NOW,
