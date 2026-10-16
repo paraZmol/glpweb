@@ -365,7 +365,9 @@ describe('plant stock — adjust', () => {
     ['a product that does not exist', 'p05'],
     ['a slot that is not a product', 'v00'],
   ])('blocks the stock of %s', async (_case, productId) => {
-    await assertFails(adjustStock(owner(), { productId, before: { full: 0, empty: 0 } }));
+    await assertFails(
+      adjustStock(owner(), { productId, before: { full: 0, empty: 0 }, emptyDelta: 0 }),
+    );
   });
 });
 
