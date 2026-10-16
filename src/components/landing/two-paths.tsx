@@ -20,7 +20,11 @@ function PathBody({ icon, title, text }: { icon: ReactNode; title: string; text:
         <span className="block font-heading text-xl font-extrabold">{title}</span>
         <span className="block text-[0.9375rem] opacity-80">{text}</span>
       </span>
-      <ArrowRight aria-hidden="true" strokeWidth={ICON_STROKE} className="size-5 shrink-0" />
+      <ArrowRight
+        aria-hidden="true"
+        strokeWidth={ICON_STROKE}
+        className="size-5 shrink-0 transition-transform motion-fast group-hover:translate-x-1 group-focus-visible:translate-x-1 group-active:translate-x-1 motion-reduce:translate-none"
+      />
     </>
   );
 }

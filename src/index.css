@@ -113,6 +113,7 @@
   --motion-shimmer: 1400ms;
   --motion-pulse: 1800ms;
   --motion-step-bounce-delay: 600ms;
+  --motion-highlight-delay: 150ms;
   --press-scale: 0.97;
   --press-scale-stepper: 0.9;
 
@@ -382,6 +383,39 @@
   border-radius: 6px;
 }
 
+/* The same band, drawn once on load: one piece per word grows from the left with `transform`,
+   in turn, so the whole phrase draws in `slow` after a short wait (under 500 ms in total). */
+@utility highlight-draw {
+  position: relative;
+  &::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    /* 1 px of overlap so the pieces never show a seam between words. */
+    inset: 64% -1px 7% 0;
+    background: color-mix(in srgb, var(--primary) var(--highlight-strength), transparent);
+    transform-origin: left;
+    animation: highlight-draw calc(var(--motion-slow) / var(--word-count)) linear
+      calc(
+        var(--motion-highlight-delay) + var(--motion-slow) * var(--word-index) / var(--word-count)
+      )
+      both;
+  }
+  &:first-child::before {
+    left: -0.1em;
+    border-radius: 6px 0 0 6px;
+  }
+  &:last-child::before {
+    right: -0.1em;
+    border-radius: 0 6px 6px 0;
+  }
+}
+
+/* The answer of an opened question fades in; its height is never animated. */
+details[open] > .faq-answer {
+  animation: faq-answer-in var(--motion-fast) var(--motion-ease-out);
+}
+
 /* Dashed burner ring that peeks from behind a photo or a card. One per section at most. */
 @utility burner-ring {
   position: absolute;
@@ -474,6 +508,16 @@
   animation: marker-pulse var(--motion-pulse) var(--motion-ease-out) infinite;
 }
 
+@keyframes highlight-draw {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes faq-answer-in {
+  from {
+    opacity: 0;
+  }
+}
 @keyframes skeleton-shimmer {
   to {
     translate: 100% 0;
@@ -529,6 +573,10 @@
   .navigation-progress {
     width: 100%;
     opacity: 0.6;
+    animation: none !important;
+  }
+  .highlight-draw::before,
+  .faq-answer {
     animation: none !important;
   }
   .marker-pulse {

@@ -32,7 +32,7 @@ export function WhatIsHornilla() {
         precios, horario y hasta dónde reparten. Tú eliges a quién comprarle. El gas, el precio y la
         entrega son de cada distribuidora: Hornilla no vende gas ni lo reparte.
       </p>
-      <Stagger as="ul" className="mt-6 grid gap-3 lg:mt-10 lg:grid-cols-3 lg:gap-6">
+      <Stagger as="ul" inView className="mt-6 grid gap-3 lg:mt-10 lg:grid-cols-3 lg:gap-6">
         {POINTS.map(({ icon: Icon, title, text }) => (
           <div key={title} className="flex h-full gap-4 rounded-xl bg-muted p-4 lg:flex-col lg:p-6">
             <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-flame-soft">

@@ -58,7 +58,12 @@ export function DistributorCard({ entry, now, isNearest }: DistributorCardProps)
 
   return (
     <BrandTheme color={distributor.brandColor} className="h-full">
-      <article className="flex h-full flex-col gap-3 rounded-xl bg-card p-4 shadow-card">
+      <article className="group relative flex h-full flex-col gap-3 rounded-xl bg-card p-4 shadow-card">
+        {/* Lifts on hover by crossing to a higher shadow; the shadow itself is never animated. */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 rounded-xl opacity-0 shadow-raised transition-opacity motion-base group-hover:opacity-100"
+        />
         <div className="flex items-start gap-3">
           <Monogram name={distributor.name} />
           <div className="min-w-0 flex-1">

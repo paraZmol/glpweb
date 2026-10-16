@@ -39,9 +39,13 @@ export function ForDistributorsPage() {
         aria-label="Registrar mi distribuidora"
         className="flex flex-col items-center gap-3 rounded-2xl bg-band p-8 text-center text-band-foreground lg:p-12"
       >
-        <ButtonLink to={REGISTER_TO} variant="primary" size="lg" className="w-full sm:w-auto">
+        <ButtonLink to={REGISTER_TO} variant="primary" size="lg" className="group w-full sm:w-auto">
           Registrar mi distribuidora
-          <ArrowRight aria-hidden="true" strokeWidth={ICON_STROKE} />
+          <ArrowRight
+            aria-hidden="true"
+            strokeWidth={ICON_STROKE}
+            className="transition-transform motion-fast group-hover:translate-x-1 group-focus-visible:translate-x-1 group-active:translate-x-1 motion-reduce:translate-none"
+          />
         </ButtonLink>
         <p className="text-sm font-semibold text-band-foreground/80">{TRIAL_NOTE}</p>
       </section>

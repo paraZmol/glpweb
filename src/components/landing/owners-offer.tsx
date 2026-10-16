@@ -30,7 +30,7 @@ export function OwnersOffer() {
         <h2 id="ya-puedes" className={TITLE}>
           Lo que ya puedes hacer
         </h2>
-        <Stagger as="ul" className="mt-5 grid gap-3">
+        <Stagger as="ul" inView className="mt-5 grid gap-3">
           {TODAY.map((item) => (
             <span key={item} className="flex items-start gap-3 text-lg">
               <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-state-free text-state-free-foreground">

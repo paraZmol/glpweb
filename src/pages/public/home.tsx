@@ -12,6 +12,7 @@ import { SafetyFirst } from '@/components/landing/safety-first';
 import { SoonStamp } from '@/components/landing/soon-stamp';
 import { FINDER_ANCHOR, TwoPaths } from '@/components/landing/two-paths';
 import { HOME_ANCHORS } from '@/components/layout/public-nav';
+import { Reveal } from '@/components/motion/reveal';
 import { WhatIsHornilla } from '@/components/landing/what-is-hornilla';
 import { useDeliveryLocation } from '@/features/location/use-delivery-location';
 import { usePageTitle } from '@/lib/page-title';
@@ -58,7 +59,7 @@ export function HomePage() {
               and whoever reads only the headline must know it (PLAN 2.11). */}
           <SoonStamp label="Pedir en línea: pronto" className="lg:text-sm" />
           <h1 className="mt-3 text-[2.625rem] font-extrabold text-balance lg:mt-4 lg:text-7xl">
-            Pide tu gas a <Highlight>quien llega a tu puerta.</Highlight>
+            Pide tu gas a <Highlight draw>quien llega a tu puerta.</Highlight>
           </h1>
           <p className="mt-4 max-w-120 text-lg text-pretty text-muted-foreground lg:mt-5 lg:text-xl">
             Hornilla reúne a las distribuidoras de gas de tu zona. Mira quién reparte hasta tu casa,
@@ -83,11 +84,15 @@ export function HomePage() {
         </div>
       </div>
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-12 px-4 py-10 lg:gap-20 lg:px-8 lg:py-20">
-        <OwnersBand to={OWNERS_ENTRY} />
+        <Reveal>
+          <OwnersBand to={OWNERS_ENTRY} />
+        </Reveal>
         <WhatIsHornilla />
         <ComingNext />
         <RefillOrFull />
-        <SafetyFirst />
+        <Reveal>
+          <SafetyFirst />
+        </Reveal>
         <FaqList id={HOME_ANCHORS.faq} title="Preguntas frecuentes" items={HOME_FAQ} />
       </div>
     </>

@@ -4,11 +4,14 @@ import * as m from 'motion/react-m';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link, useLocation } from 'react-router';
 import { ICON_STROKE } from '@/lib/icons';
-import { dropdownVariants } from '@/lib/motion';
+import { dropdownVariants, listItemVariants } from '@/lib/motion';
 import { isCurrentLink, PUBLIC_NAV } from './public-nav';
 
 const PANEL_ID = 'menu-publico';
 const FOCUSABLE = 'a[href], button';
+// The two icons cross: the one leaving fades and turns away while the other one arrives.
+const ICON =
+  'col-start-1 row-start-1 size-6 transition-[opacity,rotate] motion-fast motion-reduce:rotate-none';
 
 /**
  * Phone menu of the public pages: a button that opens the same links as the desktop bar in a
@@ -45,7 +48,6 @@ export function PublicMenu() {
     }
   }
 
-  const Icon = open ? X : Menu;
   return (
     <div onKeyDown={onKeyDown} className="lg:hidden">
       <button
@@ -57,7 +59,16 @@ export function PublicMenu() {
         onClick={() => setOpen((value) => !value)}
         className="press grid size-11 place-items-center rounded-full motion-instant hover:bg-muted"
       >
-        <Icon aria-hidden="true" className="size-6" strokeWidth={ICON_STROKE} />
+        <Menu
+          aria-hidden="true"
+          strokeWidth={ICON_STROKE}
+          className={`${ICON} ${open ? 'rotate-90 opacity-0' : ''}`}
+        />
+        <X
+          aria-hidden="true"
+          strokeWidth={ICON_STROKE}
+          className={`${ICON} ${open ? '' : '-rotate-90 opacity-0'}`}
+        />
       </button>
       <AnimatePresence>
         {open && (
@@ -78,8 +89,8 @@ export function PublicMenu() {
             >
               <nav aria-label="Menú principal">
                 <ul className="flex flex-col">
-                  {PUBLIC_NAV.map((link) => (
-                    <li key={link.to}>
+                  {PUBLIC_NAV.map((link, index) => (
+                    <m.li key={link.to} {...listItemVariants(index, reduced)}>
                       <Link
                         to={link.to}
                         onClick={() => setOpen(false)}
@@ -88,7 +99,7 @@ export function PublicMenu() {
                       >
                         {link.label}
                       </Link>
-                    </li>
+                    </m.li>
                   ))}
                 </ul>
               </nav>

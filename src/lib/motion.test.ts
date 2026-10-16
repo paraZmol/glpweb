@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DURATION,
   EASE,
+  HIGHLIGHT_DRAW,
   enterTransition,
   exitTransition,
   LOADING_FEEDBACK,
@@ -47,6 +48,11 @@ describe('motion tokens (motion-system §1)', () => {
     expect(cssValue('--press-scale-stepper')).toBe(String(STEPPER_PRESS_SCALE));
     expect(cssValue('--motion-pulse')).toBe(milliseconds(MARKER_PULSE.durationSeconds));
     expect(cssValue('--motion-step-bounce-delay')).toBe(milliseconds(STEP_BOUNCE.delaySeconds));
+    expect(cssValue('--motion-highlight-delay')).toBe(milliseconds(HIGHLIGHT_DRAW.delaySeconds));
+  });
+
+  it('draws the hero band in under 500 ms', () => {
+    expect(HIGHLIGHT_DRAW.delaySeconds + DURATION.slow).toBeLessThan(0.5);
   });
 
   it('makes what leaves faster than what enters', () => {

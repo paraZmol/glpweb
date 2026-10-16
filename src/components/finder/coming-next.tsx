@@ -1,7 +1,7 @@
 import phonePhoto from '../../../docs/design/images/pexels-4747813-mujer-celular-lima.jpg';
 import { BurnerRing } from '@/components/brand/burner-ring';
-import { Stagger } from '@/components/motion/stagger';
 import { SoonStamp } from '@/components/landing/soon-stamp';
+import { StepsTimeline } from '@/components/landing/steps-timeline';
 
 // What ordering will be like once phases 4 and 6 exist. Written in the future on purpose: the
 // app must not promise today what it cannot do yet (PLAN 2.9).
@@ -47,19 +47,7 @@ export function ComingNext() {
           Hoy ya puedes ver qué distribuidoras llegan a tu puerta y llamarlas o escribirles. Pedir
           desde Hornilla es lo que sigue.
         </p>
-        <Stagger as="ol" className="mt-6 grid gap-3">
-          {STEPS.map((step, index) => (
-            <div key={step.title} className="flex items-start gap-4 rounded-xl bg-muted p-4">
-              <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-primary-soft font-heading text-xl font-extrabold text-primary-text tabular-nums">
-                {index + 1}
-              </span>
-              <div>
-                <h3 className="text-xl font-bold">{step.title}</h3>
-                <p className="mt-1 text-muted-foreground">{step.text}</p>
-              </div>
-            </div>
-          ))}
-        </Stagger>
+        <StepsTimeline steps={STEPS} layout="column" className="mt-6" />
       </div>
     </section>
   );

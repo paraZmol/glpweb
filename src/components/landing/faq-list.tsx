@@ -23,7 +23,7 @@ export function FaqList({ id, title, items }: FaqListProps) {
                 className="size-5 shrink-0 text-muted-foreground transition-transform motion-fast group-open:rotate-180"
               />
             </summary>
-            <p className="pb-5 text-muted-foreground">{item.answer}</p>
+            <p className="faq-answer pb-5 text-muted-foreground">{item.answer}</p>
           </details>
         ))}
       </div>

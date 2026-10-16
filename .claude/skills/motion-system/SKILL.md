@@ -23,6 +23,8 @@ toda la app.
 | curva `in` | `cubic-bezier(0.4, 0, 1, 1)` | todo lo que **sale** (y sale más rápido: 0.7×) |
 | resorte `tap` | rigidez 500, amortiguación 30 | presión de botones |
 | escalonado | 40 ms entre elementos, máximo 8 | listas y rejillas |
+| `highlight-delay` | 150 ms | espera del subrayado del titular de la portada, que se dibuja en `slow` (total < 500 ms) |
+| `REVEAL_VIEWPORT` | `once`, 15 % visible | secciones públicas bajo la primera vista que "llegan" al bajar |
 
 Nadie escribe milisegundos ni curvas a mano en un componente. Las fichas concretas pueden
 ajustarse cuando `design-director` fije la dirección; los nombres no cambian.
@@ -63,6 +65,11 @@ ajustarse cuando `design-director` fije la dirección; los nombres no cambian.
 - Reordenar (cola de pedidos): `layout`, nunca saltos.
 - Números que cambian (total, tiempo estimado, indicadores): transición del dígito, con números
   tabulares para que no baile el ancho.
+
+- **Páginas públicas** (docs/marketing/movimiento-portada.md): `Reveal` y `Stagger inView` solo
+  para secciones bajo la primera vista (8 px + opacidad, una vez); nada de la primera vista arranca
+  invisible; con movimiento reducido se muestran en su sitio. Pasos numerados con `StepsTimeline`.
+  El subrayado del titular (`<Highlight draw>`) es CSS puro. Prueba: `tests/e2e/public-motion.spec.ts`.
 
 ## 5. Respuesta y estado
 - **Toque**: escala 0.97 con resorte `tap` en todo lo pulsable; ondas no.

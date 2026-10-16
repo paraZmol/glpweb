@@ -32,7 +32,7 @@ function DesktopNav() {
             <Link
               to={link.to}
               aria-current={isCurrentLink(link.to, pathname, hash) ? 'page' : undefined}
-              className="inline-flex min-h-11 items-center rounded-full px-3 text-[0.9375rem] font-semibold underline-offset-4 hover:underline aria-[current=page]:text-primary-text aria-[current=page]:underline xl:px-4"
+              className="relative inline-flex min-h-11 items-center rounded-full px-3 text-[0.9375rem] font-semibold after:absolute after:inset-x-3 after:bottom-1.5 after:h-0.5 after:origin-left after:scale-x-0 after:rounded-full after:bg-current after:transition-transform after:motion-base hover:after:scale-x-100 focus-visible:after:scale-x-100 aria-[current=page]:text-primary-text aria-[current=page]:after:scale-x-100 xl:px-4 xl:after:inset-x-4"
             >
               {link.label}
             </Link>
