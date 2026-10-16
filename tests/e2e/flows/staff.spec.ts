@@ -109,6 +109,8 @@ test('the owner invites a driver by link; a new person signs in, accepts and joi
   await acceptTerms(driver.page);
   await expect(driver.page).toHaveURL(new RegExp(`/unirme${link.hash.replace(/[&]/g, '\\&')}$`));
   await expect(heading(driver.page)).toHaveText(`${A.name} te invita como repartidor.`);
+  // PLAN §11 (2026-10-15): who invites travels with the invitation.
+  await expect(driver.page.getByText(SEED_USERS.ownerA.displayName, { exact: true })).toBeVisible();
   await button(driver.page, `Unirme a ${A.name}`).click();
   await expect(driver.page).toHaveURL(/\/reparto$/);
   await expect(driver.page.getByText(`Te uniste a ${A.name} como Reparto.`)).toBeVisible();

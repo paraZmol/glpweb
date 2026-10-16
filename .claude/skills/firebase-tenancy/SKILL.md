@@ -228,7 +228,23 @@ correos.
   de contacto. Los lee todo el personal (tope 30), los escribe el titular; no se borran.
 - **Texto visible** (`isVisibleText` en reglas y dominio): una letra o número, sin `\p{Cc}` ni
   `\p{Cf}` en ningún lugar, sin espacios en los extremos. Para nombres que alguien lee: nombre
-  de la distribuidora, marcas de la ficha, marca y nombre de producto, nombre de ayudante.
+  de la distribuidora, marcas de la ficha, marca y nombre de producto, nombre de ayudante, y
+  desde el 2026-10-15 `users.displayName` y `members.displayName` **solo al crear o al cambiar
+  el nombre** (`unchanged(['displayName']) || isVisibleText(...)`): un documento guardado antes
+  se sigue leyendo y se puede desactivar o cambiar de rol sin tocar su nombre. Patrón para
+  endurecer un campo existente: validar al escribirlo, no en cada escritura del documento.
+- **Copias opcionales en la invitación** (2026-10-15): `invitedByName` (igual al `displayName`
+  del `members` de quien invita, el mismo que lee `hasRole`: sin lectura nueva; y texto visible)
+  y `brandColor` (igual al de la ficha, que ya se lee). Ausentes en las anteriores, que siguen
+  valiendo; nunca `null`; no se reescriben después. `isNewInvite` usa `hasAll` de las
+  obligatorias + `hasOnly` de todas. Patrón: **campo nuevo opcional que es copia → si está, es
+  verdad**.
+- **Libro de Reclamaciones** (`complaintsBookUrl` en la ficha, opcional, `null` = ninguno):
+  `https://`, host en minúsculas con punto, sin puerto ni credenciales, solo caracteres de URL
+  sin escapar, tope 300 (`isComplaintsBookUrl`, mismo patrón en `src/domain/tenancy/
+  complaints-book.ts`). No es identidad: el titular lo cambia sin volver a revisión; la central
+  no. El convertidor descarta un enlace guardado que no pase el patrón: un `href` solo se arma
+  con un enlace validado.
 - **Consentimientos.** `users/{uid}` guarda `terms` y `privacy` (`{ version, acceptedAt }`), con
   versión permitida y `acceptedAt == request.time`; no se pueden borrar.
 - **Historial de aceptaciones.** Cada versión aceptada deja una línea en
@@ -279,7 +295,10 @@ correos.
   `&& request.time == request.time`: antes del cambio pasaba con 6 y fallaba con 7; la sesión de
   Google en `hasRole()` costó una; leer el miembro una sola vez (`holdsRole`) y un solo patrón
   de espacios en `isText()` la dejaron en **pasa con 13, falla con 14**; con `isVisibleText` en
-  las marcas (2026-10-15), **pasa con 15, falla con 16**. Una escritura que se
+  las marcas (2026-10-15), **pasa con 15, falla con 16**; con el peso del "desde" y el enlace al
+  Libro de Reclamaciones (campos opcionales, el test lleva el enlace más largo), **pasa con 8,
+  falla con 9** (2026-10-15): la lista blanca del titular pasó a `unchanged(['slug', 'currency',
+  'createdAt'])` (el validador ya fija las claves) para no perder más. Una escritura que se
   pasa del límite se rechaza aunque fuera legítima. Antes de añadirle condiciones: validar solo
   lo que cambia o partir el documento (PLAN §9).
 - **Datos locales.** Cerrar sesión borra la caché de Firestore y las claves `hornilla.*` salvo
@@ -293,7 +312,8 @@ correos.
   `active == true` con `limit`; el personal lee todo con `isStaff(d)`. Coste: 1 `get` por
   consulta. **Tope por casillas fijas** (`p00`…`p29`, `productId.matches(...)`), como las
   direcciones: sin servidor es la única forma de limitar una colección. **Copias en la ficha
-  que las reglas no pueden verificar** (`brands`, `priceFromCents`: harían falta sumas): las
+  que las reglas no pueden verificar** (`brands`, `priceFromCents` y, desde el 2026-10-15,
+  `priceFromWeightKg`, el peso de esa recarga: harían falta sumas): las
   escribe el repositorio en la misma transacción que el cambio del catálogo y solo si cambian
   (cada escritura de la ficha mueve la versión que nombra una revisión); se anotan como riesgo,
   no como garantía.

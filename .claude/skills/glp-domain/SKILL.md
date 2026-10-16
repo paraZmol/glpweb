@@ -96,6 +96,10 @@ Estados (`ShiftStatus`): `requested → approved ⇄ paused → closed`, o `requ
   ve solo lo `active` y solo mientras la distribuidora atiende pedidos.
 - "Recarga desde" y las marcas del buscador se derivan del catálogo (`summarizeCatalog`): la
   recarga a la venta más barata, nunca un balón completo ni un precio que exija comprar dos.
+  Desde el 2026-10-15 lleva el peso de esa recarga (`priceFromWeightKg`; si empatan en precio,
+  la primera en el orden del catálogo): "Recarga 10 kg desde S/ 48.00" (`priceFromLabel`). La
+  distribuidora publica precios finales con impuestos y reparto en su zona incluidos
+  (términos 0.5, §4).
 - Stock de planta por producto: `full`, `empty`. Todo ajuste manual lleva motivo y autor.
 - Cambiar la capacidad de un vehículo no reescribe cargas ya aprobadas.
 

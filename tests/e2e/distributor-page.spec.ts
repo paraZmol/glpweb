@@ -39,6 +39,12 @@ test('shows the public profile of a seeded distributor to anybody', async ({ pag
     'href',
     '/contacto',
   );
+  // PLAN §11 (2026-10-15): the weight of the "desde" price, and its own complaints book.
+  await expect(page.getByText('recarga 5 kg desde').first()).toBeVisible();
+  await expect(page.getByRole('link', { name: /Libro de Reclamaciones/ })).toHaveAttribute(
+    'href',
+    a.complaintsBookUrl,
+  );
 
   // Links built from the stored numbers, with the message encoded.
   await expect(page.getByRole('link', { name: /WhatsApp/ }).first()).toHaveAttribute(
