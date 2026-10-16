@@ -13,9 +13,11 @@ import {
 import {
   type CatalogSummary,
   freeProductSlot,
+  isProductSlot,
   isSameSummary,
   nextSortOrder,
   planReorder,
+  PRODUCT_SLOT_IDS,
   type SummarizedProduct,
   summarizeCatalog,
 } from '../domain/catalog/catalog';
@@ -107,29 +109,42 @@ function productDocument(product: NewProduct, currency: string, sortOrder: numbe
 }
 
 /**
+ * The catalogue as it stands inside `tx`: every slot is read, the empty ones too, so the copy of
+ * the profile is computed from what the transaction sees and any other write of the catalogue
+ * that commits meanwhile (an edit, a new product in a free slot, a move) makes it run again
+ * (PLAN §11, 2026-10-16). A query cannot be part of a client transaction; the 30 fixed slots can.
+ * Cost: 30 reads (an empty slot is billed as one) and 1 member lookup by the rules for each.
+ */
+async function readCatalog(tx: Transaction, d: string): Promise<Product[]> {
+  const slots = await Promise.all(
+    PRODUCT_SLOT_IDS.map((slot) => tx.get(productRef(d, slot).withConverter(productConverter))),
+  );
+  return slots.flatMap((slot) => slot.data() ?? []);
+}
+
+/**
  * Owner or dispatcher, while the distributor is writable: adds `product` (from `prepareNewProduct`) in
  * the first free slot, after every other product, in the currency of the distributor. Returns
- * its id. Throws `CatalogFullError` when the 30 slots are taken, `StaleCatalogError` when another
- * tab took the same slot meanwhile, `PermissionDeniedError` (a driver or someone outside, read-only distributor)
- * or `OfflineError` (it is not queued without a connection).
- * Cost: the catalogue (one read per product) + 2 reads + 1 write, and 1 more write when the
- * summary of the profile changes. The rules add 1 lookup for the list, up to 3 for the reads and
- * 3 for the writes.
+ * its id. Throws `CatalogFullError` when the 30 slots are taken, `PermissionDeniedError` (a
+ * driver or someone outside, read-only distributor) or `OfflineError` (it is not queued without
+ * a connection). Another write of the catalogue at the same time makes it run again, on the
+ * catalogue that write left.
+ * Cost: 31 reads (the 30 slots and the profile) + 1 write, and 1 more write when the summary of
+ * the profile changes. The rules add up to 31 lookups for the reads and 3 for the writes.
  */
 export async function createProduct(d: string, product: NewProduct): Promise<string> {
-  const catalog = await listCatalog(d);
-  const slot = freeProductSlot(catalog);
-  if (slot === null) throw new CatalogFullError(MAX_PRODUCTS);
-  const sortOrder = nextSortOrder(catalog);
-  await guarded(() =>
+  return guarded(() =>
     runTransaction(db, async (tx) => {
       const profile = await readProfileSummary(tx, d);
-      if ((await tx.get(productRef(d, slot))).exists()) throw new StaleCatalogError();
+      const catalog = await readCatalog(tx, d);
+      const slot = freeProductSlot(catalog);
+      if (slot === null) throw new CatalogFullError(MAX_PRODUCTS);
+      const sortOrder = nextSortOrder(catalog);
       tx.set(productRef(d, slot), productDocument(product, profile.currency, sortOrder));
       writeSummary(tx, d, profile, [...catalog, { ...product, id: slot, sortOrder }]);
+      return slot;
     }),
   );
-  return slot;
 }
 
 /**
@@ -137,31 +152,25 @@ export async function createProduct(d: string, product: NewProduct): Promise<str
  * only what changes, never empty) on product `productId`. Taking it off sale or back is a patch
  * of `active`. Throws `ProductNotFoundError`, `PermissionDeniedError` (also when the patch would
  * leave the full cylinder at or below the refill price stored by another tab meanwhile) or
- * `OfflineError`.
- * Cost: the catalogue (one read per product) + 2 reads + 1 write, and 1 more write when the
- * summary of the profile changes. The rules add 1 lookup for the list, up to 3 for the reads and
- * 2 for the writes.
+ * `OfflineError`. Another write of the catalogue at the same time makes it run again.
+ * Cost: 31 reads (the 30 slots and the profile) + 1 write, and 1 more write when the summary of
+ * the profile changes. The rules add up to 31 lookups for the reads and 2 for the writes.
  */
 export async function updateProduct(
   d: string,
   productId: string,
   patch: ProductPatch,
 ): Promise<void> {
-  const catalog = await listCatalog(d);
-  if (!catalog.some((product) => product.id === productId)) {
-    throw new ProductNotFoundError(productId);
-  }
+  if (!isProductSlot(productId)) throw new ProductNotFoundError(productId);
   await guarded(() =>
     runTransaction(db, async (tx) => {
       const profile = await readProfileSummary(tx, d);
-      const current = (
-        await tx.get(productRef(d, productId).withConverter(productConverter))
-      ).data();
+      const catalog = await readCatalog(tx, d);
+      const current = catalog.find((product) => product.id === productId);
       if (!current) throw new ProductNotFoundError(productId);
       tx.update(productRef(d, productId), { ...patch, updatedAt: serverTimestamp() });
-      const edited = { ...current, ...patch };
       const others = catalog.filter((product) => product.id !== productId);
-      writeSummary(tx, d, profile, [...others, edited]);
+      writeSummary(tx, d, profile, [...others, { ...current, ...patch }]);
     }),
   );
 }
@@ -172,26 +181,26 @@ export async function updateProduct(
  * only the products whose position changes, all at once. Throws `StaleCatalogError` when the
  * ids are not those of the catalogue (it changed in another tab), `PermissionDeniedError` or
  * `OfflineError`.
- * Cost: the catalogue (one read per product) + 1 read + one write per product that moves (and
- * 1 when the order of the brands in the profile changes). The rules add 1 lookup for the list,
- * 1 for the read and 2 for the writes (the same member and control documents for all of them).
+ * Cost: 31 reads (the 30 slots and the profile) + one write per product that moves (and 1 when
+ * the order of the brands in the profile changes). The rules add up to 31 lookups for the reads
+ * and 2 for the writes (the same member and control documents for all of them).
  */
 export async function reorderProducts(d: string, orderedIds: readonly string[]): Promise<void> {
-  const catalog = await listCatalog(d);
-  const changes = planReorder(catalog, orderedIds);
-  if (changes === null) throw new StaleCatalogError();
-  if (changes.length === 0) return;
-  const positionOf = new Map(changes.map((change) => [change.id, change.sortOrder]));
-  const reordered = catalog.map((product) => ({
-    ...product,
-    sortOrder: positionOf.get(product.id) ?? product.sortOrder,
-  }));
   await guarded(() =>
     runTransaction(db, async (tx) => {
       const profile = await readProfileSummary(tx, d);
+      const catalog = await readCatalog(tx, d);
+      const changes = planReorder(catalog, orderedIds);
+      if (changes === null) throw new StaleCatalogError();
+      if (changes.length === 0) return;
+      const positionOf = new Map(changes.map((change) => [change.id, change.sortOrder]));
       for (const { id, sortOrder } of changes) {
         tx.update(productRef(d, id), { sortOrder, updatedAt: serverTimestamp() });
       }
+      const reordered = catalog.map((product) => ({
+        ...product,
+        sortOrder: positionOf.get(product.id) ?? product.sortOrder,
+      }));
       writeSummary(tx, d, profile, reordered);
     }),
   );
