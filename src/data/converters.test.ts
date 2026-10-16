@@ -443,9 +443,16 @@ describe('parseProduct', () => {
       currency: 'PEN',
       active: true,
       sortOrder: 3,
+      promotedUntil: null,
       createdAt: AT,
       updatedAt: AT,
     });
+  });
+
+  it('reads the price lock of PLAN 3.5', () => {
+    expect(parseProduct('p00', PATH, { ...STORED, promotedUntil: stamp }).promotedUntil).toEqual(
+      AT,
+    );
   });
 
   it('gives defaults to what a document may lack', () => {
