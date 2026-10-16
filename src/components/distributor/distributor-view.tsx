@@ -52,10 +52,10 @@ function ContactBar({ distributor }: { distributor: PublicDistributor }) {
  * Its own virtual book (PLAN §11, 2026-10-15), a site Hornilla does not review: the host stays
  * in sight next to the link, so a visitor sees where it leads before opening it (2026-10-16).
  */
-function ComplaintsBookLink({ url }: { url: string }) {
+function ComplaintsBookLink({ url, name }: { url: string; name: string }) {
   return (
     <span className="inline-flex flex-wrap items-baseline justify-center gap-x-1.5">
-      <OutsideLink href={url}>Libro de Reclamaciones</OutsideLink>
+      <OutsideLink href={url}>Libro de Reclamaciones de {name}</OutsideLink>
       <span className="break-all">· {complaintsBookHostOf(url)}</span>
     </span>
   );
@@ -91,7 +91,7 @@ export function DistributorView({ distributor, now }: DistributorViewProps) {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
               {distributor.complaintsBookUrl && (
-                <ComplaintsBookLink url={distributor.complaintsBookUrl} />
+                <ComplaintsBookLink url={distributor.complaintsBookUrl} name={distributor.name} />
               )}
               <TextLink to={ROUTES.contact}>Reportar esta distribuidora</TextLink>
             </div>
