@@ -91,6 +91,7 @@ export function HelperRow({ helper, controls }: HelperRowProps) {
             type="button"
             variant={helper.active ? 'quiet' : 'soft'}
             size="sm"
+            className="min-w-28"
             disabled={controls.isLocked && controls.busy !== 'active'}
             loading={controls.busy === 'active'}
             loadingLabel="Guardando…"

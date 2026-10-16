@@ -57,11 +57,11 @@ export function CatalogRowActions(props: CatalogRowActionsProps) {
   return (
     // Phone: the arrows stand to the right of the name, the two buttons under the prices.
     <div className="contents lg:flex lg:w-96 lg:items-center lg:justify-end lg:gap-2">
-      <div className="col-start-3 row-span-2 row-start-1 flex flex-col gap-1.5 self-start lg:flex-row">
+      <div className="col-start-3 row-start-1 flex flex-col gap-1.5 self-start lg:flex-row">
         {moveButton(-1)}
         {moveButton(1)}
       </div>
-      <div className="col-span-2 col-start-2 flex justify-end gap-2">
+      <div className="col-span-3 col-start-1 flex justify-end gap-2">
         <Button type="button" variant="line" size="sm" disabled={isLocked} onClick={onEdit}>
           <Pencil aria-hidden="true" strokeWidth={ICON_STROKE} />
           Editar<span className="sr-only"> {title}</span>
@@ -70,6 +70,8 @@ export function CatalogRowActions(props: CatalogRowActionsProps) {
           type="button"
           variant={product.active ? 'quiet' : 'soft'}
           size="sm"
+          // One width for both labels: the buttons of every row stay in line.
+          className="lg:min-w-[10.5rem]"
           {...{ [SALE_ATTRIBUTE]: product.id }}
           disabled={isLocked && busy !== 'sale'}
           loading={busy === 'sale'}
