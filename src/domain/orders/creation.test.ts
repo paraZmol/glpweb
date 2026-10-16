@@ -2,7 +2,13 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_PHONE_ORDER_CYLINDERS } from './constants';
 import type { CreationRequest } from './creation';
-import { creationRefusal, cylinderLimitFor, originFor, promisedMinutesFor } from './creation';
+import {
+  creationRefusal,
+  cylinderLimitFor,
+  isOutsideCoverage,
+  originFor,
+  promisedMinutesFor,
+} from './creation';
 import { CATALOG } from './test-fixtures';
 
 // About 1.1 km per 0.01 degree of latitude.
@@ -99,6 +105,20 @@ describe('creationRefusal', () => {
     ],
   ])('refuses %s', (_case, input, expected) => {
     expect(creationRefusal(input)).toBe(expected);
+  });
+});
+
+describe('isOutsideCoverage (phone orders go through flagged, user 2026-10-16)', () => {
+  it.each([
+    ['an address inside the circle', NEAR, false],
+    ['an address beyond the radius', FAR, true],
+  ] as const)('%s → %s', (_case, destination, expected) => {
+    expect(isOutsideCoverage(request({ destination }))).toBe(expected);
+  });
+
+  it('flags the phone order it does not refuse', () => {
+    const phone = request({ role: 'dispatcher', destination: FAR });
+    expect([creationRefusal(phone), isOutsideCoverage(phone)]).toEqual([null, true]);
   });
 });
 

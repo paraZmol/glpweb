@@ -24,6 +24,7 @@ type ActorKey = keyof typeof ACTORS;
 const ALLOWED: Record<string, readonly ActorKey[]> = {
   'pending>assigned': ['owner', 'dispatcher', 'driver', 'otherDriver'],
   'assigned>pending': ['owner', 'dispatcher'],
+  'assigned>assigned': ['owner', 'dispatcher'],
   'assigned>onTheWay': ['driver'],
   'onTheWay>arrived': ['driver'],
   'arrived>delivered': ['driver'],
@@ -78,13 +79,35 @@ describe('transition matrix (glp-domain §6.2)', () => {
     expect(transitionRefusal(request(from, to, ACTORS[actor]))).toBe(expected);
   });
 
-  it.each(CASES.filter(([, , expected]) => expected === null))(
-    '%s by %s is refused while the distributor is read-only (§6.10)',
-    (pair, actor) => {
-      const [from, to] = pair.split('>') as [OrderStatus, OrderStatus];
-      expect(transitionRefusal({ ...request(from, to, ACTORS[actor]), writable: false })).toBe(
-        'readOnly',
-      );
+  const CUSTOMER_CANCELS = (pair: string, actor: ActorKey) =>
+    pair === 'pending>cancelled' && actor === 'customer';
+
+  it.each(
+    CASES.filter(([pair, actor, expected]) => expected === null && !CUSTOMER_CANCELS(pair, actor)),
+  )('%s by %s is refused while the distributor is read-only (§6.10)', (pair, actor) => {
+    const [from, to] = pair.split('>') as [OrderStatus, OrderStatus];
+    expect(transitionRefusal({ ...request(from, to, ACTORS[actor]), writable: false })).toBe(
+      'readOnly',
+    );
+  });
+});
+
+describe('read-only exception (user, 2026-10-16)', () => {
+  it('lets the customer cancel its own pending order while the distributor is read-only', () => {
+    const input = { ...request('pending', 'cancelled', ACTORS.customer), writable: false };
+    expect(transitionRefusal(input)).toBeNull();
+  });
+
+  it('still refuses another customer cancelling it while read-only', () => {
+    const input = { ...request('pending', 'cancelled', ACTORS.otherCustomer), writable: false };
+    expect(transitionRefusal(input)).toBe('notAllowed');
+  });
+
+  it.each([['owner'], ['dispatcher']] as const)(
+    'keeps %s cancelling blocked while read-only',
+    (actor) => {
+      const input = { ...request('pending', 'cancelled', ACTORS[actor]), writable: false };
+      expect(transitionRefusal(input)).toBe('readOnly');
     },
   );
 });
@@ -99,7 +122,7 @@ describe('nextStatusesFor', () => {
     ['pending', 'owner', ['assigned', 'cancelled']],
     ['assigned', 'driver', ['onTheWay']],
     ['assigned', 'otherDriver', []],
-    ['assigned', 'dispatcher', ['pending', 'cancelled']],
+    ['assigned', 'dispatcher', ['pending', 'assigned', 'cancelled']],
     ['assigned', 'customer', []],
     ['onTheWay', 'driver', ['arrived']],
     ['arrived', 'driver', ['delivered']],

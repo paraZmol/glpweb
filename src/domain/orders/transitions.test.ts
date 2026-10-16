@@ -14,8 +14,10 @@ describe('transition table', () => {
     );
   });
 
-  it('never keeps the same status', () => {
-    expect(ORDER_TRANSITIONS.filter((t) => t.from === t.to)).toEqual([]);
+  it('keeps the same status only to reassign, by the office (user, 2026-10-16)', () => {
+    expect(ORDER_TRANSITIONS.filter((t) => t.from === t.to)).toEqual([
+      { from: 'assigned', to: 'assigned', by: { owner: 'anyOrder', dispatcher: 'anyOrder' } },
+    ]);
   });
 
   it('lets the driver cancel nothing (it reports the problem; the office cancels)', () => {

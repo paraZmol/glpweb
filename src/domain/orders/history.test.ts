@@ -39,6 +39,7 @@ describe('applyTransition', () => {
         byUid: DRIVER.uid,
         byRole: 'driver',
         driverUid: DRIVER.uid,
+        previousDriverUid: null,
         reason: null,
         note: null,
       },
@@ -60,8 +61,31 @@ describe('applyTransition', () => {
     expect(entry).toMatchObject({
       from: 'assigned',
       to: 'pending',
-      driverUid: DRIVER.uid,
+      driverUid: null,
+      previousDriverUid: DRIVER.uid,
       note: 'Moto en taller',
+    });
+  });
+
+  it('reassigns in one write: new driver and assignedAt, the log keeps the previous driver', () => {
+    const { patch, entry } = applyTransition(
+      {
+        order: order('assigned', DRIVER.uid),
+        to: 'assigned',
+        actor: OWNER,
+        writable: true,
+        assignee: { uid: 'driver-2', readiness: READY },
+        note: 'El otro está más cerca',
+      },
+      AT,
+    );
+    expect(patch).toEqual({ status: 'assigned', driverUid: 'driver-2', assignedAt: AT });
+    expect(entry).toMatchObject({
+      from: 'assigned',
+      to: 'assigned',
+      driverUid: 'driver-2',
+      previousDriverUid: DRIVER.uid,
+      note: 'El otro está más cerca',
     });
   });
 
@@ -146,6 +170,7 @@ describe('creationEntry', () => {
       byUid: 'dispatcher-1',
       byRole: 'dispatcher',
       driverUid: null,
+      previousDriverUid: null,
       reason: null,
       note: null,
     });

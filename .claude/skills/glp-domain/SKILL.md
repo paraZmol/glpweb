@@ -26,7 +26,8 @@ Estados (`OrderStatus`): `pending → assigned → onTheWay → arrived → deli
 | `onTheWay → arrived` | ese repartidor | — |
 | `arrived → delivered` | ese repartidor | `payment.method` obligatorio; `payment.amountCents == totalCents` |
 | `assigned → pending` | central (quita la asignación) | motivo obligatorio |
-| `pending → cancelled` | cliente (el suyo), central | motivo obligatorio para la central |
+| `assigned → assigned` | central (reasigna a **otro** repartidor, en una sola escritura) | nota obligatoria (≤ 200); mismas condiciones que asignar; la bitácora guarda el repartidor anterior (`previousDriverUid`) |
+| `pending → cancelled` | cliente (el suyo), central | motivo obligatorio para la central; el cliente puede cancelar el suyo **aunque la distribuidora esté en solo lectura** (usuario, 2026-10-16) |
 | `assigned|onTheWay|arrived → cancelled` | solo central/dueño | motivo obligatorio |
 
 Conjuntos derivados (definidos una vez): `WITH_DRIVER = [assigned, onTheWay, arrived]`,
@@ -43,6 +44,8 @@ Reglas:
   La central puede superarlo en pedidos telefónicos (camión).
 - Un cliente tiene como máximo un pedido `ALIVE` por distribuidora.
 - Origen: `app` o `phone`. El telefónico puede no tener cuenta de cliente (nombre + teléfono).
+- El pedido del cliente debe caer dentro de la cobertura; el telefónico de la central puede quedar
+  fuera, con el aviso "Fuera de tu zona" que no bloquea y queda en el pedido (`outsideCoverage`).
 - Calificación 1–5: solo el cliente, solo en `delivered`, una sola vez.
 - Tiempo prometido: distancia planta→dirección a 20 km/h + 5 min de despacho (mínimo 0,5 km);
   se guarda en `promisedMinutes` para medir puntualidad.
@@ -159,7 +162,7 @@ distribuidora no vende envases de ese producto). Consecuencias:
 7. Repartidor con pedido en `arrived` no figura como libre.
 8. Cliente no cancela después de `pending`.
 9. Calificación una sola vez y solo en `delivered`.
-10. Distribuidora suspendida: ninguna escritura de negocio pasa.
+10. Distribuidora suspendida: ninguna escritura de negocio pasa, salvo que el cliente cancele su propio pedido `pending`.
 11. Una promoción inactiva, vencida o de otra distribuidora no se aplica ni pasa las reglas.
 12. Nunca dos promociones en la misma línea; el total es exactamente el que da `priceOrder`.
 13. Una línea `full` no suma vacíos esperados; una `refill` suma uno por unidad.

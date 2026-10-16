@@ -86,6 +86,50 @@ describe('accepting and assigning (PLAN 4.5)', () => {
   });
 });
 
+describe('reassigning (assigned → assigned, user 2026-10-16)', () => {
+  const reassign = (assignee: TransitionRequest['assignee'], note: string | undefined) =>
+    base({
+      order: withStatus('assigned', DRIVER.uid),
+      to: 'assigned',
+      actor: DISPATCHER,
+      assignee,
+      note,
+    });
+  const OTHER = { uid: 'driver-2', readiness: READY };
+
+  it('lets the office hand it to another ready driver with a note', () => {
+    expect(transitionRefusal(reassign(OTHER, 'Se le pinchó la llanta'))).toBeNull();
+  });
+
+  it.each([
+    ['no driver named', undefined, 'Nota', 'driverRequired'],
+    ['the same driver', { uid: DRIVER.uid, readiness: READY }, 'Nota', 'sameDriver'],
+    ['no note', OTHER, undefined, 'noteRequired'],
+    ['a blank note', OTHER, '  ', 'noteRequired'],
+    ['a note of 201 characters', OTHER, 'a'.repeat(201), 'noteRequired'],
+    [
+      'a driver off shift',
+      { uid: 'driver-2', readiness: { ...READY, shiftApproved: false } },
+      'Nota',
+      'driverNotOnShift',
+    ],
+    [
+      'a busy driver',
+      { uid: 'driver-2', readiness: { ...READY, hasOrderWithDriver: true } },
+      'Nota',
+      'driverBusy',
+    ],
+    [
+      'a driver without stock',
+      { uid: 'driver-2', readiness: { ...READY, fullByProduct: {} } },
+      'Nota',
+      'notEnoughStock',
+    ],
+  ] as const)('refuses %s', (_case, assignee, note, expected) => {
+    expect(transitionRefusal(reassign(assignee, note))).toBe(expected);
+  });
+});
+
 describe('stockShortfall', () => {
   it('adds refill and full units of the same product: each takes a full cylinder', () => {
     const lines = [line({ quantity: 2 }), line({ saleMode: 'full', quantity: 1 })];
