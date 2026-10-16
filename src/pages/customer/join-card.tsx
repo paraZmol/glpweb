@@ -58,7 +58,8 @@ export function JoinCard({ invite, you, isRunning, isOnline, error, onJoin }: Jo
           <Button
             type="button"
             size="lg"
-            className="sm:flex-1"
+            // A long name wraps inside the button instead of pushing the page sideways.
+            className="h-auto min-h-14 py-3 text-balance whitespace-normal sm:flex-1"
             loading={isRunning}
             loadingLabel="Uniéndote…"
             disabled={!isOnline}

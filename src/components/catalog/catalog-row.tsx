@@ -18,7 +18,9 @@ const FULL_NOTE = 'gas + envase';
 
 function Price({ label, cents, currency, note }: PriceProps) {
   return (
-    <p className="flex items-baseline justify-between gap-3 lg:block">
+    // Desktop: the price sits at the foot of its cell, so the two prices of a row share a line
+    // even when the label of one wraps.
+    <p className="flex items-baseline justify-between gap-3 lg:flex-col lg:items-start lg:justify-end lg:gap-0 lg:self-stretch">
       <span className="min-w-0 text-[0.8125rem] leading-tight font-semibold text-muted-foreground">
         {label}
         {note && (
@@ -84,8 +86,8 @@ export function CatalogRow({ product, actions }: CatalogRowProps) {
         </h3>
         <SaleSeal isOnSale={active} />
       </div>
-      {/* Phone: both prices stacked beside the cylinder. Desktop: one column each. */}
-      <div className="col-start-2 flex flex-col gap-1 lg:contents">
+      {/* Phone: both prices stacked under the name, to the edge. Desktop: one column each. */}
+      <div className="col-span-2 col-start-2 flex flex-col gap-1 lg:contents">
         <Price label={SALE_MODE_NAMES.refill} cents={refillPriceCents} currency={currency} />
         {fullPriceCents === null ? (
           <p className="text-[0.8125rem] font-semibold text-muted-foreground">{REFILL_ONLY}</p>

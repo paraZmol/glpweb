@@ -75,7 +75,7 @@ export function DistributorView({ distributor, now }: DistributorViewProps) {
             <p className="flex items-center gap-2">
               Página en <HornillaLogo size={FOOT_LOGO_PX} />
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-4">
               {/* Its own virtual book, when it gave the link (PLAN §11, 2026-10-15). */}
               {distributor.complaintsBookUrl && (
                 <OutsideLink href={distributor.complaintsBookUrl}>

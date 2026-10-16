@@ -28,7 +28,9 @@ export function JoinStop({ title, description, actions }: JoinStopProps) {
         <HornillaLogo variant="symbol" tone="mono" size={SYMBOL_PX} />
       </span>
       <div>
-        <h1 className="text-[1.75rem] font-extrabold text-balance lg:text-[2rem]">{title}</h1>
+        <h1 className="text-[1.75rem] font-extrabold text-balance wrap-break-word lg:text-[2rem]">
+          {title}
+        </h1>
         <p className="mt-2 max-w-prose text-muted-foreground">{description}</p>
       </div>
       <div className="flex flex-wrap gap-3">{actions}</div>

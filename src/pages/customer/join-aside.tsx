@@ -24,7 +24,7 @@ const POINTS = [
 /** Beside the invitation on a desktop, under it on a phone. */
 export function JoinAside() {
   return (
-    <aside aria-labelledby="join-aside-title" className="rounded-xl bg-surface-soft p-6 lg:mt-2">
+    <aside aria-labelledby="join-aside-title" className="rounded-xl bg-surface-soft p-6">
       <h2 id="join-aside-title" className="text-xl font-bold">
         Qué pasa al unirte.
       </h2>

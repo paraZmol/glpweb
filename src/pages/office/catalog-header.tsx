@@ -64,7 +64,7 @@ export function CatalogHeader(props: CatalogHeaderProps) {
   const isFull = total !== null && total >= MAX_PRODUCTS;
 
   const aside = canAdd ? (
-    <div className="flex w-full flex-wrap items-center gap-3 lg:w-auto lg:justify-end">
+    <div className="flex w-full flex-wrap items-center gap-3 lg:w-auto lg:flex-nowrap lg:justify-end">
       <ButtonLink to={distributorPath(distributor.slug)} variant="line" className="max-sm:hidden">
         Ver mi página
         <ArrowRight aria-hidden="true" strokeWidth={ICON_STROKE} />

@@ -60,9 +60,9 @@ export function InviteReady({ link, role, email, distributorName, onDone }: Invi
         role={role}
         emphasis="primary"
         size="md"
-        className="max-sm:*:w-full"
+        className="flex-col *:w-full"
       />
-      <Button type="button" variant="quiet" size="sm" className="self-start" onClick={onDone}>
+      <Button type="button" variant="quiet" size="sm" className="self-center" onClick={onDone}>
         Listo
       </Button>
     </div>
