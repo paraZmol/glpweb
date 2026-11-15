@@ -5,6 +5,12 @@ import {
   PromotionsFullError,
   StalePromotionError,
 } from '../../domain/pricing/errors';
+import type { Product } from '../../domain/catalog/product';
+import type { SaleMode } from '../../domain/catalog/sale-mode';
+import { formatMoney } from '../../domain/money/format';
+import { dealIssues } from '../../domain/pricing/deal-checks';
+import { listPriceOf } from '../../domain/pricing/discount';
+import type { PromotionDeal } from '../../domain/pricing/promotion';
 import { NothingChangedError } from '../../domain/tenancy/errors';
 import type { FieldIssue } from '../../domain/tenancy/field-checks';
 import { describeFieldIssue, describeTenancyError } from '../tenancy/tenancy-messages';
@@ -28,6 +34,8 @@ const PROMOTION_MESSAGES: Record<string, string> = {
   'percent:outOfRange': 'Elige un porcentaje entre 1 % y 30 %.',
   'amountCents:notBelow':
     'La rebaja no puede ser igual o mayor que el precio de un producto elegido.',
+  'amountCents:outOfRange':
+    'Escribe una rebaja mayor que S/ 0.00 y menor que el precio de cada producto elegido.',
   'maxUnitsPerOrder:notMultiple': 'El máximo por pedido debe completar grupos de la promoción.',
   'maxUnitsPerOrder:outOfRange': 'Revisa el máximo por pedido.',
   'totalUnits:required': 'Esta promoción necesita un tope total de unidades.',
@@ -39,6 +47,24 @@ const PROMOTION_MESSAGES: Record<string, string> = {
 
 export function describePromotionIssue(issue: FieldIssue): string {
   return PROMOTION_MESSAGES[`${issue.field}:${issue.code}`] ?? describeFieldIssue(issue);
+}
+
+/**
+ * What is wrong with the number of the deal against the chosen products, said while typing:
+ * a rebate that reaches the price (with the most it can be) or a special price not below the
+ * list price. Null when it holds, or before a product is chosen.
+ */
+export function dealProblemOf(
+  deal: PromotionDeal,
+  products: readonly Product[],
+  saleMode: SaleMode,
+): string | null {
+  const issue = dealIssues(deal, products, saleMode).find(({ code }) => code === 'notBelow');
+  if (!issue || products.length === 0) return null;
+  if (issue.field !== 'amountCents') return describePromotionIssue(issue);
+  const lowest = Math.min(...products.map((product) => listPriceOf(product, saleMode) ?? 0));
+  const most = formatMoney(Math.max(lowest - 1, 0), products[0]?.currency);
+  return `La rebaja no puede ser igual o mayor que el precio de un producto elegido: como máximo ${most}.`;
 }
 
 const REFUSALS: Record<PromotionNotEditableError['reason'], string> = {

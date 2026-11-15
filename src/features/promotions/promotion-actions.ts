@@ -69,16 +69,18 @@ export async function publishPromotion(
 
 /**
  * "Apagar": final, records who and when. The prices of its products stay locked until the end
- * it announced. Throws `PromotionNotEditableError` and the repository's.
+ * it announced. Answers `alreadyOff` when someone else switched it off first (nothing written).
+ * Throws `PromotionNotEditableError` and the repository's.
  */
 export async function switchOffPromotion(
   distributorId: string,
   uid: string,
   promotion: Promotion,
   now = new Date(),
-): Promise<void> {
+): Promise<promotionsRepo.SwitchOffOutcome> {
   const refusal = switchOffRefusal(promotion, now);
   if (refusal) throw new PromotionNotEditableError(refusal);
-  await promotionsRepo.switchOffPromotion(distributorId, promotion.id, uid);
+  const outcome = await promotionsRepo.switchOffPromotion(distributorId, promotion.id, uid);
   forgetVisibleDistributors();
+  return outcome;
 }

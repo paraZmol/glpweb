@@ -58,11 +58,17 @@ export function PromotionList({
     isRunning.current = true;
     setBusy({ id: promotion.id, what });
     try {
-      if (what === 'publish') await publishPromotion(controls.distributorId, promotion);
-      else await switchOffPromotion(controls.distributorId, controls.uid, promotion);
-      toast.success(
-        what === 'publish' ? `Publicamos “${promotion.title}”.` : `Apagamos “${promotion.title}”.`,
-      );
+      if (what === 'publish') {
+        await publishPromotion(controls.distributorId, promotion);
+        toast.success(`Publicamos “${promotion.title}”.`);
+      } else {
+        const outcome = await switchOffPromotion(controls.distributorId, controls.uid, promotion);
+        toast.success(
+          outcome === 'alreadyOff'
+            ? `“${promotion.title}” ya estaba apagada: alguien de tu equipo la apagó antes.`
+            : `Apagamos “${promotion.title}”.`,
+        );
+      }
     } catch (error) {
       toast.error(describePromotionError(error));
     } finally {

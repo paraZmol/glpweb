@@ -8,7 +8,6 @@
 import { expect, type Page } from '@playwright/test';
 import { DESKTOP, PHONE, runOncePerActorDevices, test } from '../support/actors';
 import { readDocument, uniqueTag } from '../support/emulator-admin';
-import { knownBug } from '../support/flow-helpers';
 import type { OwnDistributor } from '../support/own-distributor';
 import { openAs, plant } from '../support/plant-walk';
 import { signInAs } from '../support/sign-in';
@@ -34,10 +33,6 @@ test.describe('promotions', () => {
   test('a rebate bigger than the price is refused before publishing, never shown as a negative price', async ({
     page,
   }, testInfo) => {
-    knownBug(
-      'S/ 60 off a S/ 48 refill: the preview shows "-S/ 12.00", "Ahorras S/ 60.00", "125 %" and offers ' +
-        '"Entiendo y quiero publicarla"; the refusal only appears after "Publicar promoción"',
-    );
     await newAmountOff(page, await plant(uniqueTag(testInfo)));
     await page.getByRole('radio', { name: 'Otro' }).click();
     await page.getByLabel('Soles de rebaja').fill('60');
@@ -49,7 +44,6 @@ test.describe('promotions', () => {
   });
 
   test('a rebate of 0 says what is allowed', async ({ page }, testInfo) => {
-    knownBug('"Otro" with 0 answers "Está fuera del rango permitido." without saying which range');
     await newAmountOff(page, await plant(uniqueTag(testInfo)));
     await page.getByRole('radio', { name: 'Otro' }).click();
     await page.getByLabel('Soles de rebaja').fill('0');
@@ -61,9 +55,6 @@ test.describe('promotions', () => {
   test('publishing without a product shows why, where the person is looking', async ({
     page,
   }, testInfo) => {
-    knownBug(
-      'The error "Elige al menos un producto." appears far above; the page does not move and nothing seems to happen',
-    );
     await newAmountOff(page, await plant(uniqueTag(testInfo)));
     await page.getByRole('checkbox', { name: /Marca Uno/ }).click();
     await page.getByRole('button', { name: 'Publicar promoción' }).click();
@@ -73,9 +64,6 @@ test.describe('promotions', () => {
   test('"Atrás" with the promotion form open closes it and stays on the promotions', async ({
     page,
   }, testInfo) => {
-    knownBug(
-      '"Atrás" with the form open leaves for /central and what was typed is lost (in the catalogue, "Atrás" closes the form)',
-    );
     await newAmountOff(page, await plant(uniqueTag(testInfo)));
     await page.getByLabel('Nombre').fill('Escrito y atrás');
     await page.goBack();
@@ -89,9 +77,6 @@ test.describe('promotions, two people', () => {
   test('two people turning off the same promotion at once: neither reads "no permission"', async ({
     actors,
   }, testInfo) => {
-    knownBug(
-      'The second person reads "No tienes permiso para hacer esto, o la distribuidora está en solo lectura."',
-    );
     const own = await plant(uniqueTag(testInfo));
     const titular = await openAs(actors, own, 'titular', DESKTOP);
     const central = await openAs(actors, own, 'central', PHONE);

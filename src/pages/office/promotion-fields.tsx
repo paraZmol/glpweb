@@ -1,5 +1,6 @@
 import { DealFields } from '@/components/promotions/deal-fields';
-import { ProductPick, SaleModeChips } from '@/components/promotions/product-pick';
+import { ProductPick } from '@/components/promotions/product-pick';
+import { SaleModeChips } from '@/components/promotions/sale-mode-chips';
 import { UnitsFields } from '@/components/promotions/units-fields';
 import { ValidityChoice } from '@/components/promotions/validity-choice';
 import { FieldError, TextField } from '@/components/common/text-field';
@@ -56,7 +57,12 @@ export function PromotionFields({
         error={errors.productIds}
         onChange={(productIds) => set({ productIds })}
       />
-      <DealFields form={form} listPriceText={listPriceText(state)} error={errors.deal} set={set} />
+      <DealFields
+        form={form}
+        listPriceText={listPriceText(state)}
+        error={errors.deal ?? state.dealProblem ?? undefined}
+        set={set}
+      />
       <ValidityChoice
         form={form}
         window={state.window}

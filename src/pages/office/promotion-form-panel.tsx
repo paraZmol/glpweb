@@ -56,7 +56,9 @@ export function PromotionFormPanel(props: PromotionFormPanelProps) {
   const save = (publish: boolean) => {
     if (!form) return;
     const read = readPromotionForm(form, new Date(), state.settings, publish);
-    if (!read.ok) return setErrors(read.errors);
+    const dealProblem = state.dealProblem ? { deal: state.dealProblem } : {};
+    if (!read.ok) return setErrors({ ...dealProblem, ...read.errors });
+    if (state.dealProblem) return setErrors(dealProblem);
     if (publish && state.preview?.level === 'risk' && !form.acceptsRisk)
       return setErrors({ form: ACCEPT_RISK });
     if (!isOnline) return;

@@ -14,6 +14,7 @@ import {
   type PromotionSettings,
   windowOf,
 } from '@/features/promotions/promotion-form';
+import { dealProblemOf } from '@/features/promotions/promotion-messages';
 import {
   dealOf,
   eligibleProducts,
@@ -107,7 +108,10 @@ export function usePromotionForm(
   const window = form && windowOf(form, now, settings);
   const deal = form && dealOf(form, parseMoneyCents);
   const chosen = form ? catalog.filter((product) => form.productIds.includes(product.id)) : [];
-  const preview = form && deal ? previewPromotion(deal, chosen, form.saleMode) : null;
+  // A deal that reaches the price is refused while typing: no preview of a negative price.
+  const dealProblem = form && deal ? dealProblemOf(deal, chosen, form.saleMode) : null;
+  const preview =
+    form && deal && !dealProblem ? previewPromotion(deal, chosen, form.saleMode) : null;
   const validity =
     window &&
     describeValidity(
@@ -127,6 +131,7 @@ export function usePromotionForm(
     limits: { today, lastDay },
     window,
     deal,
+    dealProblem,
     chosen,
     preview,
     validity,

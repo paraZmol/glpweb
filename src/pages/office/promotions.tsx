@@ -20,7 +20,7 @@ import { usePageTitle } from '@/lib/page-title';
 import { useLastReady } from '@/lib/use-last-ready';
 import { useOnlineStatus } from '@/lib/use-online-status';
 import { groupPromotions } from './promotion-list';
-import { type PromotionMode, PromotionsBoard } from './promotions-board';
+import { PromotionsBoard } from './promotions-board';
 import {
   NO_PRODUCTS,
   NOT_PUBLIC_YET,
@@ -28,6 +28,7 @@ import {
   PROMOTIONS_STAFF_READS,
 } from './promotions-copy';
 import { isSuspended, SuspendedNotice } from './read-only-notice';
+import { usePromotionMode } from './use-promotion-mode';
 
 function PromotionsPageSkeleton() {
   return (
@@ -54,15 +55,14 @@ export function PromotionsPage() {
   const products = useLastReady(catalog, distributorId).data;
   const [opened] = useState(() => new Date());
   const now = nowAfter(opened, promotions);
-  const [modeAt, setModeAt] = useState<{ at: string; mode: PromotionMode } | null>(null);
+  const promotionMode = usePromotionMode(distributorId, promotions);
   if (current.status !== 'ready') return <PromotionsPageSkeleton />;
 
   const { distributor, membership, isWritable } = current;
   const manages = canManagePromotions(membership.role);
   const canEdit = manages && isWritable;
-  const mode = canEdit && modeAt?.at === distributor.id ? modeAt.mode : null;
-  const onMode = (next: PromotionMode) =>
-    setModeAt(next ? { at: distributor.id, mode: next } : null);
+  const mode = canEdit ? promotionMode.mode : null;
+  const { onMode } = promotionMode;
   const hasProducts = products?.some((product) => product.active) ?? false;
   const isFull = promotions !== null && freePromotionSlot(promotions, now) === null;
   const addButton = (

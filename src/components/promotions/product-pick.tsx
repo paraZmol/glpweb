@@ -2,49 +2,16 @@ import { Check } from 'lucide-react';
 import { useId } from 'react';
 import { GasBrandTheme } from '@/components/brand/brand-theme';
 import { GasCylinder } from '@/components/brand/gas-cylinder';
-import { SALE_MODE_NAMES } from '@/components/catalog/sale-mode-selector';
 import { CHIP_CLASS } from '@/components/catalog/weight-choice';
 import { FieldError } from '@/components/common/text-field';
 import type { Product } from '@/domain/catalog/product';
-import { SALE_MODES, type SaleMode } from '@/domain/catalog/sale-mode';
+import type { SaleMode } from '@/domain/catalog/sale-mode';
 import { formatMoney } from '@/domain/money/format';
 import { listPriceOf } from '@/domain/pricing/discount';
 import { GLYPH_STROKE } from '@/lib/icons';
 import { cn } from '@/lib/utils';
 
 const CYLINDER_HEIGHT_PX = 40;
-
-/** "Recarga" · "Balón completo": two chips, fixed in the templates of the full cylinder. */
-export function SaleModeChips({
-  value,
-  onChange,
-}: {
-  value: SaleMode;
-  onChange: (mode: SaleMode) => void;
-}) {
-  const labelId = useId();
-  return (
-    <div>
-      <p id={labelId} className="mb-1.5 text-[0.9375rem] font-semibold">
-        Forma de venta
-      </p>
-      <div role="radiogroup" aria-labelledby={labelId} className="flex flex-wrap gap-2">
-        {SALE_MODES.map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            role="radio"
-            aria-checked={mode === value}
-            onClick={() => onChange(mode)}
-            className={CHIP_CLASS}
-          >
-            {SALE_MODE_NAMES[mode]}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 type ProductPickProps = {
   /** The products it may name: on sale, sold that way. */
@@ -96,10 +63,14 @@ export function ProductPick({
           </button>
         )}
       </div>
+      {/* Not a control: with a message it takes the focus, and the screen with its label. */}
       <div
         role={isSingle ? 'radiogroup' : 'group'}
         aria-labelledby={labelId}
-        className="grid gap-2 sm:grid-cols-2"
+        aria-describedby={error ? `${labelId}-error` : undefined}
+        tabIndex={error ? -1 : undefined}
+        data-invalid={error ? 'true' : undefined}
+        className="grid scroll-mt-[calc(var(--top-inset)+3rem)] gap-2 outline-none sm:grid-cols-2"
       >
         {products.map((product) => {
           const isChosen = value.includes(product.id);
