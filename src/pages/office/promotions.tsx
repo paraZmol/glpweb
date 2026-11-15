@@ -92,7 +92,7 @@ export function PromotionsPage() {
       <PageHeader
         dense
         title={manages ? 'Tus promociones.' : 'Promociones.'}
-        lead="Rebajas con fecha de cierre y un máximo por pedido. El precio de antes es siempre el de tu lista, y nunca hay cuentas atrás."
+        lead="Rebajas con fecha de cierre y un máximo por pedido. El precio de antes es siempre el de tu lista, y nunca hay cuenta regresiva."
         aside={canAdd && addButton}
       />
       {!isWritable && (

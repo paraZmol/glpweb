@@ -15,6 +15,9 @@ import { NothingChangedError } from '../../domain/tenancy/errors';
 import type { FieldIssue } from '../../domain/tenancy/field-checks';
 import { describeFieldIssue, describeTenancyError } from '../tenancy/tenancy-messages';
 
+/** Said on the field and beside "Publicar promoción" (a button that only refuses says nothing). */
+export const TOTAL_MISSING = 'Falta el tope de unidades.';
+
 // Texts of docs/marketing/oferta-y-promociones.md §4.
 const PROMOTION_MESSAGES: Record<string, string> = {
   'title:required': 'Escribe el nombre de la promoción.',
@@ -38,7 +41,7 @@ const PROMOTION_MESSAGES: Record<string, string> = {
     'Escribe una rebaja mayor que S/ 0.00 y menor que el precio de cada producto elegido.',
   'maxUnitsPerOrder:notMultiple': 'El máximo por pedido debe completar grupos de la promoción.',
   'maxUnitsPerOrder:outOfRange': 'Revisa el máximo por pedido.',
-  'totalUnits:required': 'Esta promoción necesita un tope total de unidades.',
+  'totalUnits:required': TOTAL_MISSING,
   'startsAt:outOfRange': 'La promoción puede empezar ahora o en los próximos 30 días.',
   'endsAt:notAbove': 'La fecha de cierre debe ser posterior al inicio.',
   'endsAt:outOfRange': 'Una promoción dura como mucho 30 días.',

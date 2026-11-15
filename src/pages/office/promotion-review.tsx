@@ -76,6 +76,7 @@ export function PromotionReview({ state, form, catalog, promotions }: PromotionR
           currency={product?.currency ?? 'PEN'}
           acceptsRisk={form.acceptsRisk}
           onAcceptsRisk={(acceptsRisk) => state.set({ acceptsRisk })}
+          riskError={state.errors.acceptsRisk}
           onSoften={
             isTwoForOne
               ? () => state.set({ ...THREE_FOR_TWO, maxUnitsPerOrder: THREE_FOR_TWO.buyUnits })

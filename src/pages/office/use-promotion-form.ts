@@ -44,6 +44,7 @@ const CLEARS: Partial<Record<keyof PromotionForm, keyof PromotionFormErrors>> = 
   hasTotalCap: 'totalUnits',
   title: 'title',
   conditions: 'conditions',
+  acceptsRisk: 'acceptsRisk',
 };
 
 /**

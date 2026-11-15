@@ -10,7 +10,11 @@ import {
 } from '../../domain/pricing/validity';
 import { parseMoneyCents } from '../../domain/money/parse';
 import { InvalidInputError } from '../../domain/tenancy/errors';
-import { describePromotionError, describePromotionIssue } from './promotion-messages';
+import {
+  describePromotionError,
+  describePromotionIssue,
+  TOTAL_MISSING,
+} from './promotion-messages';
 import type { Promotion } from '../../domain/pricing/promotion';
 import { centsToInput } from '../catalog/product-form';
 import {
@@ -32,7 +36,8 @@ export type PromotionFormField =
   | 'maxUnitsPerOrder'
   | 'totalUnits'
   | 'title'
-  | 'conditions';
+  | 'conditions'
+  | 'acceptsRisk';
 export type PromotionFormErrors = Partial<Record<PromotionFormField | 'form', string>>;
 
 /** Settings of the distributor the dates are read in (PLAN §11, 2026-10-16). */
@@ -114,6 +119,33 @@ function totalOf(form: PromotionForm): number | null | undefined {
   return WHOLE.test(text) ? Number(text) : undefined;
 }
 
+/** What a field is called when the form says, beside its buttons, what is left to fix. */
+type NamedField = Exclude<PromotionFormField, 'acceptsRisk'>;
+const FIELD_NAMES: Record<NamedField, string> = {
+  saleMode: 'la forma de venta',
+  productIds: 'los productos',
+  deal: 'la rebaja',
+  validity: 'la vigencia',
+  maxUnitsPerOrder: 'el máximo por pedido',
+  totalUnits: 'el tope de unidades',
+  title: 'el nombre',
+  conditions: 'las condiciones',
+};
+
+/**
+ * The line beside "Publicar promoción" when it cannot be done: a button that only refuses says
+ * nothing, and on a phone the field may be far above. Undefined when no field has a message.
+ */
+export function formSummaryOf(errors: PromotionFormErrors): string | undefined {
+  const fields = (Object.keys(FIELD_NAMES) as NamedField[]).filter((key) => errors[key]);
+  const [only] = fields;
+  if (!only) return undefined;
+  if (fields.length === 1 && errors[only] === TOTAL_MISSING) return TOTAL_MISSING;
+  const names = fields.map((field) => FIELD_NAMES[field]);
+  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} y ${names.at(-1)}`;
+  return `Revisa ${list}: lo marcamos en el formulario.`;
+}
+
 /**
  * The typed form as a promotion: only formats are read here (amounts, dates); every limit is
  * the domain's (`addPromotion` validates against the catalogue, `promotionFormErrorsOf` paints it).
@@ -132,7 +164,8 @@ export function readPromotionForm(
     errors.validity =
       form.validity === 'dates' && !dayOf(form.endDay) ? DATES_MISSING : PAST_WINDOW;
   const totalUnits = totalOf(form);
-  if (totalUnits === undefined) errors.totalUnits = TOTAL_FORMAT;
+  if (totalUnits === undefined)
+    errors.totalUnits = form.totalUnits.trim() === '' ? TOTAL_MISSING : TOTAL_FORMAT;
   if (!deal || !window || totalUnits === undefined) return { ok: false, errors };
   return {
     ok: true,

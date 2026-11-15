@@ -6,6 +6,11 @@ import { type Promotion, promotionStateOf } from '@/domain/pricing/promotion';
 import { DEFAULT_TIMEZONE } from '@/domain/tenancy/constants';
 import { whenText } from '@/features/promotions/promotion-texts';
 import { ICON_STROKE } from '@/lib/icons';
+import { useIsDesktop } from '@/lib/use-media-query';
+
+// Phone: a row of two full-width 48 px buttons. Desktop: small ones at the right of the card.
+const ROW = 'grid grid-cols-2 gap-2 lg:flex lg:justify-end';
+const ACTION = 'w-full lg:w-auto';
 
 type PromotionRowActionsProps = {
   promotion: Promotion;
@@ -27,13 +32,22 @@ type PromotionRowActionsProps = {
 export function PromotionRowActions(props: PromotionRowActionsProps) {
   const { promotion, now, busy, isLocked, onEdit, onRepeat, onPublish, onSwitchOff } = props;
   const [isAsking, setAsking] = useState(false);
+  const isDesktop = useIsDesktop();
   const state = promotionStateOf(promotion, now);
   const name = <span className="sr-only"> {promotion.title}</span>;
+  const size = isDesktop ? 'sm' : 'md';
 
   if (state === 'ended' || state === 'switchedOff') {
     return (
-      <div className="flex justify-end">
-        <Button type="button" variant="line" size="sm" disabled={isLocked} onClick={onRepeat}>
+      <div className={ROW}>
+        <Button
+          type="button"
+          variant="line"
+          size={size}
+          className="col-span-2 w-full lg:w-auto"
+          disabled={isLocked}
+          onClick={onRepeat}
+        >
           <Repeat aria-hidden="true" strokeWidth={ICON_STROKE} />
           Repetir{name}
         </Button>
@@ -72,8 +86,15 @@ export function PromotionRowActions(props: PromotionRowActionsProps) {
   }
 
   return (
-    <div className="flex flex-wrap justify-end gap-2">
-      <Button type="button" variant="line" size="sm" disabled={isLocked} onClick={onEdit}>
+    <div className={ROW}>
+      <Button
+        type="button"
+        variant="line"
+        size={size}
+        className={ACTION}
+        disabled={isLocked}
+        onClick={onEdit}
+      >
         <Pencil aria-hidden="true" strokeWidth={ICON_STROKE} />
         Editar{name}
       </Button>
@@ -81,7 +102,8 @@ export function PromotionRowActions(props: PromotionRowActionsProps) {
         <Button
           type="button"
           variant="soft"
-          size="sm"
+          size={size}
+          className={ACTION}
           disabled={isLocked && busy !== 'publish'}
           loading={busy === 'publish'}
           loadingLabel="Publicando…"
@@ -93,8 +115,9 @@ export function PromotionRowActions(props: PromotionRowActionsProps) {
       ) : (
         <Button
           type="button"
-          variant="quiet"
-          size="sm"
+          variant="line"
+          size={size}
+          className={ACTION}
           disabled={isLocked}
           onClick={() => setAsking(true)}
         >

@@ -4,6 +4,7 @@ import { InvalidInputError } from '../../domain/tenancy/errors';
 import {
   dayInputOf,
   formFromPromotion,
+  formSummaryOf,
   promotionFormErrorsOf,
   readPromotionForm,
   windowOf,
@@ -83,6 +84,31 @@ describe('promotion form', () => {
     const read = readPromotionForm(form, NOW, SETTINGS, true);
 
     expect(read.ok).toBe(false);
+  });
+
+  it('says the total cap is missing when it is left empty', () => {
+    const form = { ...formForTemplate('buyXPayY', CATALOG, TODAY), totalUnits: ' ' };
+    const read = readPromotionForm(form, NOW, SETTINGS, true);
+
+    expect(read).toEqual({ ok: false, errors: { totalUnits: 'Falta el tope de unidades.' } });
+  });
+
+  it('repeats beside the buttons that only the total cap is missing', () => {
+    expect(formSummaryOf({ totalUnits: 'Falta el tope de unidades.' })).toBe(
+      'Falta el tope de unidades.',
+    );
+  });
+
+  it('names every field left to fix beside the buttons', () => {
+    const summary = formSummaryOf({ deal: 'x', validity: 'y', totalUnits: 'z' });
+
+    expect(summary).toBe(
+      'Revisa la rebaja, la vigencia y el tope de unidades: lo marcamos en el formulario.',
+    );
+  });
+
+  it('says nothing beside the buttons when no field has a message', () => {
+    expect(formSummaryOf({ form: 'Sin conexión' })).toBeUndefined();
   });
 
   it('puts the blocked phrase of the conditions on its field', () => {

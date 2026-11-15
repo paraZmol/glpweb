@@ -27,74 +27,84 @@ type ChargeWarningProps = {
   currency: string;
   acceptsRisk: boolean;
   onAcceptsRisk: (accepts: boolean) => void;
+  /** "Publicar" was pressed without the box: said under it, and the warning comes into view. */
+  riskError?: string;
   /** "Lleva 2, paga 1" offers to switch to "lleva 3, paga 2" (marketing §4, step 3). */
   onSoften?: () => void;
 };
 
-function headlineOf(deal: PromotionDeal, level: PreviewLevel): string | null {
-  if (deal.type === 'fixedPrice' && deal.priceSource === 'refill')
-    return 'Vas a entregar el envase sin cobrarlo.';
-  if (deal.type === 'buyXPayY' && deal.payUnits * 2 === deal.buyUnits)
-    return 'Uno de cada dos balones sale gratis.';
-  if (level === 'risk') return 'Es una rebaja muy fuerte.';
-  return level === 'attention' ? 'Es una rebaja fuerte.' : null;
+const isEmptyBottle = (deal: PromotionDeal) =>
+  deal.type === 'fixedPrice' && deal.priceSource === 'refill';
+
+/** "cada recarga", "cada 3 balones completos". */
+function perText(units: number, saleMode: SaleMode): string {
+  if (units === 1) return `cada ${SALE_MODE_UNIT[saleMode]}`;
+  return `cada ${units} ${saleMode === 'refill' ? 'recargas' : 'balones completos'}`;
 }
 
 /**
- * "Dejas de cobrar…" (marketing §4, step 3), always above the button: Hornilla knows no costs,
- * so it speaks of what stops being charged, never of profit. A row per product, the largest
- * first; strong discounts ask to check the cost, risky ones ask for a tick before publishing.
+ * "Dejas de cobrar…" (marketing §4, step 3), always above the buttons, in four short lines: what
+ * a unit stops being charged, list price against promotion price, what 20 (or the cap) add up
+ * to, and, when strong, to check the cost. Hornilla knows no costs: it never speaks of profit.
  */
 export function ChargeWarning(props: ChargeWarningProps) {
-  const { deal, saleMode, rows, level, products, totalUnits, currency } = props;
+  const { deal, saleMode, rows, level, products, totalUnits, currency, riskError } = props;
   const top = rows[0];
   if (!top) return null;
   const money = (cents: number) => formatMoney(cents, currency);
-  const per =
-    top.units === 1
-      ? `cada ${SALE_MODE_UNIT[saleMode]}`
-      : `cada ${top.units} ${saleMode === 'refill' ? 'recargas' : 'balones completos'}`;
   const sold = totalUnits ?? EXAMPLE_UNITS;
-  const headline = headlineOf(deal, level);
-  const Icon = level === 'normal' ? Info : TriangleAlert;
+  const isStrong = level !== 'normal';
+  const Icon = isStrong ? TriangleAlert : Info;
+  const title = isEmptyBottle(deal)
+    ? 'Entregas el envase sin cobrarlo.'
+    : `Dejas de cobrar ${money(top.discountCents)} por ${perText(top.units, saleMode)}.`;
 
   return (
     <section
       aria-label="Lo que dejas de cobrar"
-      className={cn('flex flex-col gap-2 rounded-lg p-4', TONES[level])}
+      data-invalid={riskError ? 'true' : undefined}
+      tabIndex={riskError ? -1 : undefined}
+      className={cn(
+        'flex scroll-mt-[calc(var(--top-inset)+1rem)] flex-col gap-2 rounded-lg p-4',
+        TONES[level],
+      )}
     >
-      {headline && (
-        <p className="flex items-start gap-2 font-heading text-lg leading-tight font-bold">
-          <Icon aria-hidden="true" className="mt-0.5 size-5 shrink-0" strokeWidth={ICON_STROKE} />
-          {headline}
-        </p>
-      )}
-      <p className="font-semibold tabular-nums">
-        Dejas de cobrar {money(top.discountCents)} por {per} ({top.percent} %).
-        {level !== 'normal' && ' Revisa que cubra tu costo.'}
+      <p
+        className={cn(
+          'flex items-start gap-2 tabular-nums',
+          isStrong ? 'font-heading text-lg leading-tight font-bold' : 'font-semibold',
+        )}
+      >
+        <Icon aria-hidden="true" className="mt-0.5 size-5 shrink-0" strokeWidth={ICON_STROKE} />
+        {title}
       </p>
-      {deal.type === 'fixedPrice' && deal.priceSource === 'refill' && (
-        <p className="text-[0.9375rem]">
-          Cada venta saca un balón de tu stock y no vuelve un vacío. Hornilla limita 1 por pedido,
-          pero una misma persona puede volver a pedir cuando reciba el anterior.
-        </p>
-      )}
       <ul className="flex flex-col gap-0.5 text-[0.9375rem] tabular-nums">
         {rows.map((row) => {
           const product = products.find((item) => item.id === row.productId);
           return (
             <li key={row.productId}>
-              {product ? productTitle(product) : row.productId}:{' '}
+              {rows.length > 1 && (
+                <strong className="font-semibold">
+                  {product ? productTitle(product) : row.productId}:{' '}
+                </strong>
+              )}
               {row.units > 1 && `${row.units} por `}
-              {money(row.listPriceCents * row.units)} → {money(row.promoTotalCents)}
+              Precio de lista {money(row.listPriceCents * row.units)} → con la promoción{' '}
+              {money(row.promoTotalCents)} ({row.percent} % menos).
             </li>
           );
         })}
       </ul>
-      <p className="text-[0.9375rem] text-muted-foreground tabular-nums">
-        Si vendes {sold} con la promoción: {money(Math.floor(sold / top.units) * top.discountCents)}{' '}
-        menos.
+      <p className="text-[0.9375rem] tabular-nums">
+        Si vendes {sold}, dejas de cobrar {money(Math.floor(sold / top.units) * top.discountCents)}.
       </p>
+      {isEmptyBottle(deal) && (
+        <p className="text-[0.9375rem] text-muted-foreground">
+          Cada venta saca un balón de tu stock y no vuelve un vacío. Es 1 por pedido, pero quien lo
+          recibe puede volver a pedir.
+        </p>
+      )}
+      {isStrong && <p className="font-semibold">Revisa que cubra tu costo.</p>}
       {props.onSoften && (
         <Button
           type="button"
@@ -109,7 +119,9 @@ export function ChargeWarning(props: ChargeWarningProps) {
       {level === 'risk' && (
         <CheckboxField
           name="acceptsRisk"
+          className="mt-1"
           checked={props.acceptsRisk}
+          error={riskError}
           onChange={(event) => props.onAcceptsRisk(event.target.checked)}
         >
           <strong className="font-semibold">Entiendo y quiero publicarla</strong>

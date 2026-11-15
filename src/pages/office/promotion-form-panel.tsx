@@ -8,18 +8,20 @@ import type { Product } from '@/domain/catalog/product';
 import type { Promotion } from '@/domain/pricing/promotion';
 import type { Distributor } from '@/domain/tenancy/types';
 import { addPromotion } from '@/features/promotions/promotion-actions';
-import { promotionFormErrorsOf, readPromotionForm } from '@/features/promotions/promotion-form';
+import {
+  formSummaryOf,
+  type PromotionFormErrors,
+  promotionFormErrorsOf,
+  readPromotionForm,
+} from '@/features/promotions/promotion-form';
 import { ICON_STROKE } from '@/lib/icons';
 import { useAsyncAction } from '@/lib/use-async-action';
 import { useFocusFirstInvalid } from '@/lib/use-focus-first-invalid';
 import { useOnlineStatus } from '@/lib/use-online-status';
 import { PromotionFields } from './promotion-fields';
 import { PromotionReview } from './promotion-review';
+import { ACCEPT_RISK, PROMOTION_OFFLINE } from './promotions-copy';
 import { usePromotionForm } from './use-promotion-form';
-
-const OFFLINE_TEXT = 'Sin conexión: para guardar la promoción necesitas internet.';
-const ACCEPT_RISK =
-  'Marca "Entiendo y quiero publicarla" para publicarla, o guárdala sin publicar.';
 
 type PromotionFormPanelProps = {
   distributor: Distributor;
@@ -53,14 +55,19 @@ export function PromotionFormPanel(props: PromotionFormPanelProps) {
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
+  // The fields say what is wrong; beside the buttons, what is left (the field may be far above).
+  const fail = (found: PromotionFormErrors) =>
+    setErrors({ ...found, form: found.form ?? formSummaryOf(found) });
+
   const save = (publish: boolean) => {
     if (!form) return;
     const read = readPromotionForm(form, new Date(), state.settings, publish);
     const dealProblem = state.dealProblem ? { deal: state.dealProblem } : {};
-    if (!read.ok) return setErrors({ ...dealProblem, ...read.errors });
-    if (state.dealProblem) return setErrors(dealProblem);
+    if (!read.ok) return fail({ ...dealProblem, ...read.errors });
+    if (state.dealProblem) return fail(dealProblem);
+    // Said inside the warning, brought into view with its box.
     if (publish && state.preview?.level === 'risk' && !form.acceptsRisk)
-      return setErrors({ form: ACCEPT_RISK });
+      return setErrors({ acceptsRisk: ACCEPT_RISK });
     if (!isOnline) return;
     void run(async () => {
       try {
@@ -68,7 +75,7 @@ export function PromotionFormPanel(props: PromotionFormPanelProps) {
         const title = read.input.title.trim();
         onSaved(publish ? `Publicamos “${title}”.` : `Guardamos “${title}” sin publicar.`);
       } catch (error) {
-        setErrors(promotionFormErrorsOf(error));
+        fail(promotionFormErrorsOf(error));
       }
     });
   };
@@ -113,7 +120,7 @@ export function PromotionFormPanel(props: PromotionFormPanelProps) {
       </Panel>
       <Panel dense className="flex flex-col gap-5 lg:sticky lg:top-[calc(var(--top-inset)+1rem)]">
         <PromotionReview state={state} form={form} catalog={catalog} promotions={promotions} />
-        <FormStatus error={errors.form} isOnline={isOnline} offlineText={OFFLINE_TEXT} />
+        <FormStatus error={errors.form} isOnline={isOnline} offlineText={PROMOTION_OFFLINE} />
         <div className="flex flex-wrap gap-3">
           <Button
             type="button"
