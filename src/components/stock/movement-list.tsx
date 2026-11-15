@@ -43,7 +43,7 @@ function MovementRow({ movement, product }: { movement: StockMovement; product?:
         Quedaron <span className="tabular-nums">{movement.fullAfter}</span>{' '}
         {movement.fullAfter === 1 ? 'lleno' : 'llenos'} y{' '}
         <span className="tabular-nums">{movement.emptyAfter}</span>{' '}
-        {movement.emptyAfter === 1 ? 'vacío' : 'vacíos'} · Lo hizo{' '}
+        {movement.emptyAfter === 1 ? 'vacío' : 'vacíos'} · Lo hizo:{' '}
         <span className="font-semibold wrap-anywhere">{movement.authorName}</span>
       </p>
     </article>

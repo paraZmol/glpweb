@@ -27,7 +27,11 @@ export function StockOutcome({ outcome }: { outcome: Outcome }) {
   const change = changeText(outcome.change);
   const { full, empty } = outcome.after;
   return (
-    <p aria-live="polite" className="rounded-lg bg-muted p-3.5 text-[0.9375rem] font-semibold">
+    <p
+      role="status"
+      aria-live="polite"
+      className="rounded-lg bg-muted p-3.5 text-[0.9375rem] font-semibold"
+    >
       {change ? (
         <>
           <span className="font-heading font-bold tabular-nums">{change}</span>. Quedan{' '}
