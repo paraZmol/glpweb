@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { APP_AREAS } from '@/domain/auth/access';
 import { MEMBER_ROLES } from '@/domain/tenancy/types';
-import { MAX_NAV_ITEMS, navItemsFor, workAreasOf } from './nav-items';
+import { ROUTES } from '../../lib/routes';
+import { MAX_NAV_ITEMS, navItemsFor, sectionTabsFor, workAreasOf } from './nav-items';
 
 const ROLES = [...MEMBER_ROLES, null];
 const ACCOUNTS = ROLES.flatMap((role) => [
@@ -13,9 +14,9 @@ const labels = (...args: Parameters<typeof navItemsFor>) =>
 
 // PLAN 2.4: bottom bar on the phone (five at most), side bar on desktop, by role.
 describe('navItemsFor', () => {
-  it.each(APP_AREAS)('never gives the %s area more than five destinations', (area) => {
+  it.each(APP_AREAS)('never gives the %s area more than five destinations on a phone', (area) => {
     for (const account of ACCOUNTS) {
-      const items = navItemsFor(area, account);
+      const items = navItemsFor(area, account, 'phone');
 
       expect(items.length).toBeLessThanOrEqual(MAX_NAV_ITEMS);
       expect(new Set(items.map((item) => item.to)).size).toBe(items.length);
@@ -56,13 +57,51 @@ describe('navItemsFor', () => {
     );
   });
 
-  // PLAN 3.1: the catalogue joins the office and the driver areas.
+  // PLAN 3.1, 3.3–3.5: the catalogue, the promotions, the plant stock and the vehicles.
   it.each([
-    ['office', ['Monitor', 'Catálogo', 'Personal', 'Cuenta']],
-    ['driver', ['Reparto', 'Catálogo', 'Cuenta']],
+    ['office', ['Monitor', 'Catálogo', 'Promociones', 'Stock', 'Vehículos', 'Personal', 'Cuenta']],
+    ['driver', ['Reparto', 'Catálogo', 'Promociones', 'Vehículos', 'Cuenta']],
     ['platform', ['Distribuidoras', 'Cuenta']],
-  ] as const)('keeps the %s area to its own screens and the account', (area, expected) => {
+  ] as const)('lists every screen of the %s area on a desktop', (area, expected) => {
     expect(labels(area, { role: 'owner', isPlatformAdmin: true })).toEqual(expected);
+  });
+
+  it.each([
+    ['office', ['Monitor', 'Catálogo', 'Planta', 'Personal', 'Cuenta']],
+    ['driver', ['Reparto', 'Catálogo', 'Vehículos', 'Cuenta']],
+  ] as const)('groups the screens of the %s area on a phone', (area, expected) => {
+    expect(labels(area, { role: 'owner', isPlatformAdmin: false }, 'phone')).toEqual(expected);
+  });
+
+  // PLAN §11, 2026-10-16: the driver never sees the plant stock, not even as a link.
+  it('never takes the driver to the plant stock', () => {
+    for (const layout of ['phone', 'desktop'] as const) {
+      const items = navItemsFor('driver', { role: 'driver', isPlatformAdmin: false }, layout);
+      expect(items.flatMap((item) => [item.to, ...(item.covers ?? [])])).not.toContain(
+        ROUTES.officeStock,
+      );
+    }
+  });
+});
+
+describe('sectionTabsFor', () => {
+  it('shows the catalogue and its promotions as tabs of one destination', () => {
+    expect(sectionTabsFor('office', ROUTES.officePromotions)?.map((item) => item.label)).toEqual([
+      'Catálogo',
+      'Promociones',
+    ]);
+  });
+
+  it('shows the plant stock and the vehicles as tabs of the plant', () => {
+    expect(sectionTabsFor('office', ROUTES.officeVehicles)?.map((item) => item.label)).toEqual([
+      'Stock',
+      'Vehículos',
+    ]);
+  });
+
+  it('gives a screen of its own no tabs', () => {
+    expect(sectionTabsFor('driver', ROUTES.driverVehicles)).toBeNull();
+    expect(sectionTabsFor('office', ROUTES.officeStaff)).toBeNull();
   });
 });
 

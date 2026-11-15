@@ -24,11 +24,21 @@ export const ROUTES = {
   driverHome: '/reparto',
   /** The catalogue, read-only, for the driver (PLAN 3.1). */
   driverCatalog: '/reparto/catalogo',
+  /** The promotions alive and scheduled, read-only, for the driver (PLAN 3.5). */
+  driverPromotions: '/reparto/promociones',
+  /** The vehicles and their capacity, read-only, for the driver (PLAN 3.3). */
+  driverVehicles: '/reparto/vehiculos',
   officeHome: '/central',
   /** The owner edits the public profile of the distributor (PLAN 2.11). */
   officeProfile: '/central/ficha',
   /** Products and prices: the owner edits them, the dispatcher reads them (PLAN 3.1). */
   officeCatalog: '/central/catalogo',
+  /** Promotions: the owner and the dispatcher add, publish, extend and switch them off (PLAN 3.5). */
+  officePromotions: '/central/promociones',
+  /** Full and empty cylinders at the plant, with their history: owner and dispatcher (PLAN 3.4). */
+  officeStock: '/central/stock',
+  /** Vehicles and their capacity: the owner and the dispatcher edit them (PLAN 3.3). */
+  officeVehicles: '/central/vehiculos',
   /** The staff, the invitations and the helpers: owners only (PLAN 3.2). */
   officeStaff: '/central/personal',
   /** Receives an invitation link; the invitation travels in the fragment (`#d=…&c=…`). */
