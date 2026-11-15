@@ -11,7 +11,6 @@ import { expect, type Page } from '@playwright/test';
 import { SEED_USERS } from '../../seed/data';
 import { DESKTOP, PHONE, runOncePerActorDevices, test } from '../support/actors';
 import { readDocument, uniqueTag } from '../support/emulator-admin';
-import { knownBug } from '../support/flow-helpers';
 import type { OwnDistributor } from '../support/own-distributor';
 import { DENIED, directPatch, directRead, OK, openAs, plant, tokenOf } from '../support/plant-walk';
 import { signInAs } from '../support/sign-in';
@@ -88,11 +87,6 @@ test.describe('plant stock', () => {
   test('a physical count saves the total the person counted, also when the screen was behind', async ({
     actors,
   }, testInfo) => {
-    knownBug(
-      'The count is saved as a difference against the stock the form showed when it opened: ' +
-        'the titular adds 10 full ones (50) while the central has the form open on 40; the central ' +
-        'counts 38 and the stock becomes 48, with "Conteo físico · Quedaron 48" in the log',
-    );
     const own = await plant(uniqueTag(testInfo));
     const central = await openAs(actors, own, 'central', PHONE);
     const titular = await openAs(actors, own, 'titular', DESKTOP);
@@ -128,9 +122,6 @@ test.describe('plant stock, one person', () => {
   }
 
   test('"Ajustar" stays inside its card at 390 px', async ({ page }, testInfo) => {
-    knownBug(
-      'At 390 px the "Ajustar" button of each product sticks out of the right edge of its card',
-    );
     const own = await plant(uniqueTag(testInfo));
     await signInAs(page, own.person('central'), '/central');
     await page.goto('/central/stock');
@@ -146,9 +137,6 @@ test.describe('plant stock, one person', () => {
   });
 
   test('a count too big says it is too big, not "below zero"', async ({ page }, testInfo) => {
-    knownBug(
-      'Counting 999999 full ones also shows "Con ese ajuste el stock quedaría por debajo de cero"',
-    );
     await adjustForm(page, await plant(uniqueTag(testInfo)));
     await page.getByLabel('Llenos contados').fill('999999');
     await page.getByRole('button', { name: 'Guardar ajuste' }).click();
@@ -157,9 +145,6 @@ test.describe('plant stock, one person', () => {
   });
 
   test('taking out more than there is says so once', async ({ page }, testInfo) => {
-    knownBug(
-      '"Dañado o con fuga" with more than the stock shows "quedaría por debajo de cero" twice after "Guardar ajuste"',
-    );
     await adjustForm(page, await plant(uniqueTag(testInfo)));
     await page.getByRole('radio', { name: /Dañado/ }).click();
     await page.getByLabel('Llenos que salen').fill('50');
@@ -170,16 +155,12 @@ test.describe('plant stock, one person', () => {
   });
 
   test('one full cylinder is "1 lleno"', async ({ page }, testInfo) => {
-    knownBug('The summary before saving says "Quedan 1 llenos" (the log already says "1 lleno")');
     await adjustForm(page, await plant(uniqueTag(testInfo)));
     await page.getByLabel('Llenos contados').fill('1');
     await expect(page.getByText(/Quedan 1 lleno\b/)).toBeVisible();
   });
 
   test('the log names the supplier movement the way the form does', async ({ page }, testInfo) => {
-    knownBug(
-      'The form says "Llegaron llenos o se llevaron vacíos"; the log writes "se enviaron vacíos"',
-    );
     await adjustForm(page, await plant(uniqueTag(testInfo)));
     await page.getByRole('radio', { name: /Proveedor/ }).click();
     await page.getByLabel('Llenos que llegaron').fill('2');
@@ -190,9 +171,6 @@ test.describe('plant stock, one person', () => {
   test('"Atrás" with the adjustment open closes it and stays on the stock', async ({
     page,
   }, testInfo) => {
-    knownBug(
-      '"Atrás" with the form open leaves for /central and what was typed is lost (in the catalogue, "Atrás" closes the form)',
-    );
     await adjustForm(page, await plant(uniqueTag(testInfo)));
     await page.getByLabel('Llenos contados').fill('11');
     await page.goBack();

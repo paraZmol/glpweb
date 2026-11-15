@@ -1,8 +1,9 @@
+import { MAX_ADJUSTMENT_UNITS } from '../../domain/stock/constants';
+import { StockCapError } from '../../domain/stock/errors';
 import type { AdjustmentReason } from '../../domain/stock/movement';
 import {
   adjustmentToReach,
   applyStockChange,
-  type PlantStock,
   type StockChange,
   type StockLevels,
 } from '../../domain/stock/plant-stock';
@@ -105,12 +106,27 @@ function formatMessageOf(reason: AdjustmentReason): string {
   return reason === 'other' ? FORMAT.signed : FORMAT.unsigned;
 }
 
-/** What the stock would hold after `change`; null when it would go below zero or over the cap. */
-export function levelsAfter(stock: PlantStock, change: StockChange): StockLevels | null {
+/**
+ * What the form would leave, said before saving: the counts after it, or why they cannot be
+ * (below zero, over the cap). Null while the form cannot be read or the change is beyond what
+ * one adjustment moves: the field says that when saving, not twice.
+ */
+export type StockOutcome =
+  | { kind: 'after'; change: StockChange; after: StockLevels }
+  | { kind: 'belowZero' }
+  | { kind: 'overCap'; cap: number }
+  | null;
+
+export function stockOutcomeOf(form: StockForm, stock: StockLevels): StockOutcome {
+  const read = readStockForm(form, stock);
+  if (!read.ok) return null;
+  const { fullDelta, emptyDelta } = read.change;
+  if (Math.max(Math.abs(fullDelta), Math.abs(emptyDelta)) > MAX_ADJUSTMENT_UNITS) return null;
   try {
-    return applyStockChange(stock, change);
-  } catch {
-    return null;
+    return { kind: 'after', change: read.change, after: applyStockChange(stock, read.change) };
+  } catch (error) {
+    if (error instanceof StockCapError) return { kind: 'overCap', cap: error.cap };
+    return { kind: 'belowZero' };
   }
 }
 

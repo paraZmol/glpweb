@@ -22,7 +22,7 @@ export interface StockLine {
 /** "40 llenos" in big tabular digits, the word under it. */
 export function StockCount({ value, label }: { value: number; label: string }) {
   return (
-    <p className="flex min-w-16 flex-col items-start">
+    <p className="flex min-w-12 flex-col items-start">
       <span className="font-heading text-2xl leading-none font-extrabold tabular-nums">
         {value}
       </span>
@@ -60,8 +60,8 @@ function StockRow({ line: { product, stock }, onAdjust, isLocked = false }: Stoc
         {!product.active && <SaleSeal isOnSale={false} />}
       </div>
       {/* Phone: the counts and "Ajustar" share the row under the name. Desktop: two columns. */}
-      <div className="col-start-2 flex items-end justify-between gap-3 lg:contents">
-        <div className="flex gap-6">
+      <div className="col-start-2 flex flex-wrap items-end justify-between gap-x-3 gap-y-2 lg:contents">
+        <div className="flex gap-4">
           <StockCount value={stock.full} label={stock.full === 1 ? 'lleno' : 'llenos'} />
           <StockCount value={stock.empty} label={stock.empty === 1 ? 'vacío' : 'vacíos'} />
         </div>

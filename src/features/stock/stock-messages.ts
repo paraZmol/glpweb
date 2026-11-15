@@ -2,8 +2,10 @@ import { ADJUSTMENT_NOTE_MAX_LENGTH, MAX_ADJUSTMENT_UNITS } from '../../domain/s
 import {
   NegativeStockError,
   StockCapError,
+  StockChangedError,
   StockProductNotFoundError,
 } from '../../domain/stock/errors';
+import type { StockLevels } from '../../domain/stock/plant-stock';
 import type { AdjustmentReason } from '../../domain/stock/movement';
 import { InvalidInputError, NothingChangedError } from '../../domain/tenancy/errors';
 import type { FieldIssue } from '../../domain/tenancy/field-checks';
@@ -12,7 +14,7 @@ import { describeFieldIssue, describeTenancyError } from '../tenancy/tenancy-mes
 /** How each reason of an adjustment is called on screen. */
 export const ADJUSTMENT_REASON_LABELS: Record<AdjustmentReason, string> = {
   count: 'Conteo físico',
-  supplier: 'Proveedor: llegaron llenos o se enviaron vacíos',
+  supplier: 'Proveedor: llegaron llenos o se llevaron vacíos',
   damaged: 'Balón dañado o con fuga',
   other: 'Otro motivo',
 };
@@ -44,8 +46,16 @@ export function adjustmentFieldMessagesOf(error: unknown): Record<string, string
   );
 }
 
+/** "1 lleno y 12 vacíos". */
+export function levelsText({ full, empty }: StockLevels): string {
+  return `${full} ${full === 1 ? 'lleno' : 'llenos'} y ${empty} ${empty === 1 ? 'vacío' : 'vacíos'}`;
+}
+
 /** Message in Spanish for anything a stock action can throw. */
 export function describeStockError(error: unknown): string {
+  if (error instanceof StockChangedError) {
+    return `El stock cambió mientras contabas: ahora figuran ${levelsText(error.now)}. Revisa tu conteo y vuelve a guardar.`;
+  }
   if (error instanceof NegativeStockError) {
     return 'Con ese ajuste el stock quedaría por debajo de cero. Revisa las cantidades.';
   }

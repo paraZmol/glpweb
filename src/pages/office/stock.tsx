@@ -15,6 +15,7 @@ import { useLastReady } from '@/lib/use-last-ready';
 import { useOnlineStatus } from '@/lib/use-online-status';
 import { isSuspended, SuspendedNotice } from './read-only-notice';
 import { StockBoard, stockLinesOf } from './stock-board';
+import { useFormEntry } from './use-form-entry';
 
 const PLAN_READ_ONLY =
   'Tu distribuidora está en solo lectura: puedes ver el stock y la bitácora, pero no ajustarlos hasta regularizar el plan.';
@@ -28,8 +29,8 @@ function StockPageSkeleton() {
   );
 }
 
-/** Where the person is: one product adjusted, one product's history, both per distributor. */
-type Focus = { at: string; adjusting: string | null; historyOf: string | null };
+/** The product whose history is shown, per distributor. */
+type HistoryFocus = { at: string; historyOf: string | null };
 
 /**
  * `/central/stock` (PLAN 3.4): full and empty cylinders of each product at the plant, adjusted
@@ -42,9 +43,11 @@ export function PlantStockPage() {
   const { current, session } = useAccount();
   const isOnline = useOnlineStatus();
   const distributorId = current.status === 'ready' ? current.distributor.id : null;
-  const [focus, setFocus] = useState<Focus | null>(null);
-  const own = focus?.at === distributorId ? focus : null;
-  const historyOf = own?.historyOf ?? null;
+  const [focus, setFocus] = useState<HistoryFocus | null>(null);
+  const historyOf = focus?.at === distributorId ? focus.historyOf : null;
+  // The adjustment is a step of the history: "back" closes it and stays on the stock.
+  const entry = useFormEntry('stockAdjust', distributorId);
+  const adjusting = typeof entry.value === 'string' ? entry.value : null;
   const catalog = useCatalog(distributorId);
   const stock = usePlantStock(distributorId);
   const movements = useStockMovements(distributorId, historyOf);
@@ -58,8 +61,8 @@ export function PlantStockPage() {
   const canAdjust = canAdjustPlantStock(membership.role) && isWritable;
   const failed = catalog.status === 'error' ? catalog : stock.status === 'error' ? stock : null;
   const lines = products && entries ? stockLinesOf(products, entries) : null;
-  const move = (patch: Partial<Omit<Focus, 'at'>>) =>
-    setFocus({ at: distributor.id, adjusting: null, historyOf, ...own, ...patch });
+  const showHistoryOf = (productId: string | null) =>
+    setFocus({ at: distributor.id, historyOf: productId });
 
   return (
     <div className="flex flex-col gap-6">
@@ -99,12 +102,14 @@ export function PlantStockPage() {
           }}
           canAdjust={canAdjust}
           isRefreshing={isRefreshing}
-          adjusting={canAdjust ? (own?.adjusting ?? null) : null}
-          onAdjust={(productId) =>
-            move(productId ? { adjusting: productId, historyOf: productId } : { adjusting: null })
-          }
+          adjusting={canAdjust ? adjusting : null}
+          onAdjust={(productId) => {
+            if (productId === null) return entry.close();
+            showHistoryOf(productId);
+            return entry.open(productId);
+          }}
           historyOf={historyOf}
-          onHistoryOf={(productId) => move({ historyOf: productId })}
+          onHistoryOf={showHistoryOf}
           reload={stock.reload}
         />
       )}

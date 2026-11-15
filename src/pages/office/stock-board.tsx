@@ -103,6 +103,10 @@ export function StockBoard(props: StockBoardProps) {
               authorUid={authorUid}
               line={line}
               onSaved={saved}
+              onStale={() => {
+                reload();
+                movements.reload();
+              }}
               onCancel={() => onAdjust(null)}
             />
           </Panel>
