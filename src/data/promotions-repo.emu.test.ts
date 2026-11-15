@@ -158,6 +158,21 @@ describe('editing, publishing and switching off', () => {
     expect(p00?.promotedUntil?.getTime()).toBe(later.getTime());
   });
 
+  it('answers "already off" to the second of two people switching one off at once', async () => {
+    await signInAs(SEED_USERS.ownerA);
+    const live = await createPromotion(A.id, SEED_USERS.ownerA.uid, tenOff(), new Date());
+
+    const outcomes = await Promise.all([
+      switchOffPromotion(A.id, live, SEED_USERS.ownerA.uid),
+      switchOffPromotion(A.id, live, SEED_USERS.ownerA.uid),
+    ]);
+    const again = await switchOffPromotion(A.id, live, SEED_USERS.ownerA.uid);
+
+    expect([...outcomes].sort()).toEqual(['alreadyOff', 'switchedOff']);
+    expect(again).toBe('alreadyOff');
+    expect((await slotsOf(A.id)).get(live)?.active).toBe(false);
+  });
+
   it('refuses shortening it', async () => {
     await signInAs(SEED_USERS.ownerA);
     const slot = await createPromotion(A.id, SEED_USERS.ownerA.uid, tenOff(), new Date());

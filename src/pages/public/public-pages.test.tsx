@@ -241,9 +241,9 @@ describe('legal pages (PLAN 2.7)', () => {
   ] as const;
   // The date in the header of each document (docs/legal), as the page writes it.
   const PUBLISHED = {
-    terms: '16 de octubre de 2026',
-    privacy: '16 de octubre de 2026',
-    cookies: '14 de octubre de 2026',
+    terms: '15 de noviembre de 2026',
+    privacy: '15 de noviembre de 2026',
+    cookies: '15 de noviembre de 2026',
   } as const;
 
   it.each(PAGES)('%s shows its document under the draft banner', (path, page, title, id) => {

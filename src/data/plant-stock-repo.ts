@@ -11,9 +11,19 @@ import {
   where,
 } from 'firebase/firestore';
 import { MOVEMENTS_QUERY_LIMIT, PLANT_STOCK_QUERY_LIMIT } from '../domain/stock/constants';
-import { StockProductNotFoundError } from '../domain/stock/errors';
+import {
+  StockChangedError,
+  StockProductNotFoundError,
+  type StockSnapshot,
+} from '../domain/stock/errors';
 import type { Adjustment, StockMovement } from '../domain/stock/movement';
-import { applyStockChange, type PlantStock } from '../domain/stock/plant-stock';
+import {
+  adjustmentToReach,
+  applyStockChange,
+  isSameStock,
+  type PlantStock,
+  type StockLevels,
+} from '../domain/stock/plant-stock';
 import { PermissionDeniedError } from '../domain/tenancy/errors';
 import { memberConverter, plantStockConverter, stockMovementConverter } from './converters';
 import { guarded } from './errors';
@@ -70,6 +80,12 @@ export interface StockAdjustmentRequest {
   authorUid: string;
   /** From `prepareAdjustment`. */
   adjustment: Adjustment;
+  /**
+   * A physical count: the totals counted and the stock the person had on screen. The change is
+   * worked out again against the stock read in the transaction, and nothing is written when
+   * that stock is no longer the one the person saw (`StockChangedError`).
+   */
+  count?: { counted: StockLevels; seen: StockSnapshot };
 }
 
 /**
@@ -77,6 +93,8 @@ export interface StockAdjustmentRequest {
  * of one product by a manual adjustment and writes its line in the history, in one transaction
  * (the rules accept neither without the other). The counts are those of the moment, read inside
  * the transaction, so two adjustments at once both count. Returns the id of the movement.
+ * A count (`request.count`) is a total, not a change: it is written only if the stock is still
+ * the one the person counted against, else `StockChangedError` with the stock of the moment.
  * Throws `NegativeStockError` or `StockCapError` (nothing written), `StockProductNotFoundError`,
  * `PermissionDeniedError` (a driver or someone outside, read-only distributor) or `OfflineError`.
  * Cost: 2 reads (own member, stock; 3 the first time: the product) + 2 writes, plus 1 lookup by
@@ -101,7 +119,7 @@ type Attempt =
   | { ok: false; error: PermissionDeniedError; seenMovementId: string | null };
 
 async function attemptAdjustment(request: StockAdjustmentRequest): Promise<Attempt> {
-  const { distributorId: d, authorUid, adjustment } = request;
+  const { distributorId: d, authorUid, adjustment, count } = request;
   const stockRef = doc(db, paths.plantStockOf(d, adjustment.productId));
   const movementRef = doc(collection(db, paths.stockMovements(d)));
   let seenMovementId: string | null = null;
@@ -116,7 +134,10 @@ async function attemptAdjustment(request: StockAdjustmentRequest): Promise<Attem
         if (!stored.exists()) await requireProduct(tx, d, adjustment.productId);
         const before = stored.exists() ? stored.data() : { full: 0, empty: 0 };
         seenMovementId = stored.exists() ? stored.data().lastMovementId : null;
-        const after = applyStockChange(before, adjustment);
+        const now = { full: before.full, empty: before.empty, lastMovementId: seenMovementId };
+        if (count && !isSameStock(now, count.seen)) throw new StockChangedError(now);
+        const change = count ? adjustmentToReach(now, count.counted) : adjustment;
+        const after = applyStockChange(before, change);
         tx.set(stockRef, {
           ...after,
           lastMovementId: movementRef.id,
@@ -125,6 +146,8 @@ async function attemptAdjustment(request: StockAdjustmentRequest): Promise<Attem
         tx.set(movementRef, {
           kind: 'adjustment',
           ...adjustment,
+          fullDelta: change.fullDelta,
+          emptyDelta: change.emptyDelta,
           fullAfter: after.full,
           emptyAfter: after.empty,
           authorUid,

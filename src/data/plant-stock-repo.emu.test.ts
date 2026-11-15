@@ -4,7 +4,11 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { SEED_DISTRIBUTORS, SEED_USERS } from '../../tests/seed/data';
 import { seedEmulators } from '../../tests/seed/seed';
 import { signInAs } from '../../tests/support/emulated-session';
-import { NegativeStockError, StockProductNotFoundError } from '../domain/stock/errors';
+import {
+  NegativeStockError,
+  StockChangedError,
+  StockProductNotFoundError,
+} from '../domain/stock/errors';
 import type { Adjustment } from '../domain/stock/movement';
 import { PermissionDeniedError } from '../domain/tenancy/errors';
 import { signOutSession } from './auth-repo';
@@ -91,6 +95,41 @@ describe('plant stock', () => {
 
     expect(await stockOf('p00')).toMatchObject({ full: 50, empty: 12 });
     expect(await listStockMovements(A.id, { productId: 'p00' })).toHaveLength(3);
+  });
+
+  it('saves a count as the total counted while the stock is the one on screen', async () => {
+    await signInAs(owner);
+    const seen = await stockOf('p00');
+
+    await adjustPlantStock({
+      distributorId: A.id,
+      authorUid: owner.uid,
+      adjustment: adjustment({ reason: 'count', fullDelta: -2, emptyDelta: 0 }),
+      count: { counted: { full: 38, empty: 12 }, seen: seen! },
+    });
+
+    expect(await stockOf('p00')).toMatchObject({ full: 38, empty: 12 });
+  });
+
+  it('writes nothing for a count typed against a stock that changed meanwhile', async () => {
+    await signInAs(owner);
+    const seen = await stockOf('p00');
+    const arrival = await adjust({ fullDelta: 10, emptyDelta: 0 });
+
+    const refusal: unknown = await adjustPlantStock({
+      distributorId: A.id,
+      authorUid: owner.uid,
+      adjustment: adjustment({ reason: 'count', fullDelta: -2, emptyDelta: 0 }),
+      count: { counted: { full: 38, empty: 12 }, seen: seen! },
+    }).catch((error: unknown) => error);
+
+    expect(refusal).toBeInstanceOf(StockChangedError);
+    expect((refusal as StockChangedError).now).toEqual({
+      full: 50,
+      empty: 12,
+      lastMovementId: arrival,
+    });
+    expect(await stockOf('p00')).toMatchObject({ full: 50, empty: 12 });
   });
 
   it('refuses to leave the stock below zero, and writes nothing', async () => {

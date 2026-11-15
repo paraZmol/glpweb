@@ -75,7 +75,9 @@ export function Button({
         BASE,
         VARIANTS[variant ?? 'primary'],
         SIZES[size ?? 'md'],
-        loading && 'data-disabled:opacity-100',
+        // While it works it still takes the presses (and ignores them): the second click of a
+        // double click must not fall through to the text behind and select it.
+        loading && 'select-none data-disabled:pointer-events-auto data-disabled:opacity-100',
         className,
       )}
     >

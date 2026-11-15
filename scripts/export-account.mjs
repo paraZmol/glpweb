@@ -19,12 +19,14 @@
 // privacy policy the account accepted, and when), every membership and, for each distributor the
 // account founded,
 // its public profile, its control document, its private settings and the text of a note of the
-// platform (private/review), and every invitation tied to the e-mail of the sign-in account
-// (PLAN 3.2). Orders and shifts will be added when those collections exist.
+// platform (private/review), every invitation tied to the e-mail of the sign-in account
+// (PLAN 3.2), and every adjustment of the plant stock the account made, in any distributor, with
+// the name it carries (PLAN 3.4). Orders and shifts will be added when those collections exist.
 import { existsSync, realpathSync, writeFileSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
+  allDocuments,
   isMissingAccount,
   loadAdminSdk,
   readArguments,
@@ -111,6 +113,18 @@ async function invitationsFor(db, email) {
   return found.docs;
 }
 
+/**
+ * Adjustments of the plant stock the account made, oldest first. Sorted here: ordering in the
+ * query would need one more index only for this procedure.
+ */
+async function stockMovementsBy(db, uid) {
+  const movements = await allDocuments(
+    db.collectionGroup('stockMovements').where('authorUid', '==', uid),
+  );
+  const timeOf = (movement) => movement.data().createdAt?.toMillis?.() ?? 0;
+  return movements.sort((left, right) => timeOf(left) - timeOf(right));
+}
+
 /** Everything stored about `uid`, as plain JSON (timestamps as ISO text). */
 export async function exportAccount(sdk, uid) {
   const db = sdk.getFirestore();
@@ -126,6 +140,7 @@ export async function exportAccount(sdk, uid) {
   const owned = profile.data()?.ownedDistributorIds ?? [];
   const founded = await Promise.all(owned.map((id) => foundedDistributor(db, id)));
   const invitations = await invitationsFor(db, account?.email ?? null);
+  const stockMovements = await stockMovementsBy(db, uid);
   return toPlainJson({
     exportedAt: new Date().toISOString(),
     uid,
@@ -136,6 +151,10 @@ export async function exportAccount(sdk, uid) {
     memberships: memberships.docs.map((member) => ({ path: member.ref.path, ...member.data() })),
     isPlatformAdmin: adminGrant.exists,
     invitations: invitations.map((invite) => ({ path: invite.ref.path, ...invite.data() })),
+    stockAdjustments: stockMovements.map((movement) => ({
+      path: movement.ref.path,
+      ...movement.data(),
+    })),
     foundedDistributors: founded.filter((entry) => entry.control?.ownerUid === uid),
   });
 }

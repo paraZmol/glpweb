@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   limit,
   query,
@@ -24,6 +25,7 @@ import {
   type PromotionDeal,
 } from '../domain/pricing/promotion';
 import type { PromotionPatch } from '../domain/pricing/promotion-edit';
+import { PermissionDeniedError } from '../domain/tenancy/errors';
 import { productConverter, promotionConverter } from './converters';
 import { guarded } from './errors';
 import { db } from './firebase';
@@ -192,20 +194,48 @@ export function publishPromotion(d: string, id: string): Promise<void> {
   );
 }
 
+/** How "Apagar" ended: switched off now, or someone had already switched it off. */
+export type SwitchOffOutcome = 'switchedOff' | 'alreadyOff';
+
 /**
  * Switches a published one off before its end, recording who and when (final). The lock of its
- * products stays until the end that was announced (PLAN §11, 2026-10-16).
+ * products stays until the end that was announced (PLAN §11, 2026-10-16). When someone else
+ * switched it off first, nothing is written and it answers `alreadyOff`: two people pressing
+ * "Apagar" at once both get what they wanted. Same errors as `updatePromotion`.
  */
-export function switchOffPromotion(d: string, id: string, uid: string): Promise<void> {
-  return guarded(() =>
-    runTransaction(db, async (tx) => {
-      await readPromotion(tx, d, id);
-      tx.update(promotionRef(d, id), {
-        active: false,
-        switchedOffBy: uid,
-        switchedOffAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }),
-  );
+export async function switchOffPromotion(
+  d: string,
+  id: string,
+  uid: string,
+): Promise<SwitchOffOutcome> {
+  try {
+    return await guarded(() =>
+      runTransaction(db, async (tx): Promise<SwitchOffOutcome> => {
+        const promotion = await readPromotion(tx, d, id);
+        if (promotion.switchedOffAt !== null) return 'alreadyOff';
+        tx.update(promotionRef(d, id), {
+          active: false,
+          switchedOffBy: uid,
+          switchedOffAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        return 'switchedOff';
+      }),
+    );
+  } catch (error) {
+    // The other one committed first: the rules judge this write against a promotion already
+    // off and refuse it, instead of a conflict the SDK would retry.
+    if (error instanceof PermissionDeniedError && (await isSwitchedOff(d, id))) return 'alreadyOff';
+    throw error;
+  }
+}
+
+/** Whether the promotion is switched off now; false when it cannot be read. */
+async function isSwitchedOff(d: string, id: string): Promise<boolean> {
+  try {
+    const now = await getDoc(promotionRef(d, id).withConverter(promotionConverter));
+    return now.data()?.switchedOffAt != null;
+  } catch {
+    return false;
+  }
 }

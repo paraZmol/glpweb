@@ -1,9 +1,5 @@
 import * as stockRepo from '../../data/plant-stock-repo';
-import {
-  type AdjustmentInput,
-  type AdjustmentReason,
-  prepareAdjustment,
-} from '../../domain/stock/movement';
+import { type AdjustmentInput, prepareAdjustment } from '../../domain/stock/movement';
 import {
   adjustmentToReach,
   type PlantStock,
@@ -31,16 +27,17 @@ export function adjustStock(
 
 /** A physical count, typed as the totals counted. */
 export interface StockCount {
+  /** The stock the person had on screen while counting. */
   current: PlantStock;
   counted: StockLevels;
   note?: string | null;
 }
 
 /**
- * Owner or dispatcher: records a physical count. The change is what takes the stock as the
- * screen has it to the totals counted (reason `count`); the transaction applies it to the
- * stock of the moment. Throws `NothingChangedError` when the count matches, and the errors of
- * `adjustStock`.
+ * Owner or dispatcher: records a physical count (reason `count`). A count is a total: it is
+ * saved only while the stock is still the one on screen; if another adjustment came first,
+ * nothing is written and `StockChangedError` brings the stock of the moment, to count again.
+ * Throws `NothingChangedError` when the count matches, and the errors of `adjustStock`.
  */
 export function recordStockCount(
   distributorId: string,
@@ -51,11 +48,18 @@ export function recordStockCount(
   if (change.fullDelta === 0 && change.emptyDelta === 0) {
     return Promise.reject(new NothingChangedError());
   }
-  const reason: AdjustmentReason = 'count';
-  return adjustStock(distributorId, authorUid, {
+  const prepared = prepareAdjustment({
     productId: count.current.productId,
-    reason,
+    reason: 'count',
     note: count.note ?? null,
     ...change,
+  });
+  if (!prepared.ok) return Promise.reject(new InvalidInputError(prepared.issues));
+  const { full, empty, lastMovementId } = count.current;
+  return stockRepo.adjustPlantStock({
+    distributorId,
+    authorUid,
+    adjustment: prepared.value,
+    count: { counted: count.counted, seen: { full, empty, lastMovementId } },
   });
 }

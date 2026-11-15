@@ -58,3 +58,15 @@ export function applyStockChange(stock: StockLevels, change: StockChange): Stock
 export function adjustmentToReach(stock: StockLevels, counted: StockLevels): StockChange {
   return { fullDelta: counted.full - stock.full, emptyDelta: counted.empty - stock.empty };
 }
+
+/** Whether `stock` is still the one the person saw: same counts and same last movement. */
+export function isSameStock(
+  stock: StockLevels & { lastMovementId: string | null },
+  seen: StockLevels & { lastMovementId: string | null },
+): boolean {
+  return (
+    stock.full === seen.full &&
+    stock.empty === seen.empty &&
+    stock.lastMovementId === seen.lastMovementId
+  );
+}

@@ -1,6 +1,6 @@
 # Política de privacidad de Hornilla
 
-> **BORRADOR v0.6 (2026-10-16) — pendiente de revisión por un profesional antes del lanzamiento**
+> **BORRADOR v0.7 (2026-11-15) — pendiente de revisión por un profesional antes del lanzamiento**
 > (Ley N.º 29733 de Protección de Datos Personales y su reglamento). Los datos entre corchetes se
 > completan cuando exista la razón social. Mientras queden corchetes en las secciones 1 y 7 no
 > debe registrarse a personas reales: sin responsable identificado y sin un correo que funcione,
@@ -34,6 +34,9 @@
 | Nombre, rol (titular, central o reparto), si está activo, el código de la invitación con la que entró y las fechas en que se sumó y en que cambió por última vez | Personal de una distribuidora. El nombre es una copia del de tu perfil cuando aceptas la invitación: si después lo cambias en "Tu cuenta", ahí no cambia (sección 7) | Dar a cada persona el acceso que le corresponde | Titulares y central de esa distribuidora |
 | Invitación a sumarse al personal: el rol, el nombre de la distribuidora y su color, el nombre del titular que invita, si espera, se usó o se anuló, sus fechas (creación, uso o anulación), los identificadores internos de la cuenta que la creó y de la que la usó o la anuló y, si el titular lo escribió, el correo de la persona invitada. El correo lo escribe el titular: Hornilla no lo recibe de la persona invitada ni lo usa para escribirle | Titulares que invitan y personas invitadas | Que quien recibe el enlace sepa quién lo invita y a qué, y que, si lleva correo, solo pueda usarla esa cuenta de Google | Titulares de esa distribuidora. Si lleva correo, además solo la cuenta de Google con ese correo; si no, **cualquier persona con cuenta que tenga el enlace** mientras la invitación exista, aunque ya se haya usado, anulado o vencido. Comparte el enlace solo con quien invitas |
 | Nombre de los ayudantes que acompañan al repartidor y si están activos. No tienen cuenta ni se guarda ningún dato de contacto suyo | Ayudantes, anotados por un titular | Que el repartidor pueda decir con quién sale en su jornada | Todo el personal de esa distribuidora |
+| Vehículos de la distribuidora: tipo (moto, trimoto, camión o camioneta), el nombre que se le pone, la placa (opcional), cuántos balones lleva, si está en uso y las fechas en que se registró y cambió. Si el vehículo es de una persona, su placa puede identificarla en los registros públicos de vehículos | Distribuidoras, anotados por sus titulares o su central | Saber con qué vehículos reparte y cuánto lleva cada uno; cuando exista la jornada, que cada repartidor elija el suyo | Todo el personal de esa distribuidora. No es público |
+| Bitácora de stock de planta: por cada ajuste, el producto, el motivo (conteo, proveedor, dañado o con fuga, otro), la nota si la hay, cuántos llenos y vacíos cambiaron y cuántos quedaron, la fecha y hora que pone el servidor, y el identificador interno y el nombre de quien lo hizo (una copia del nombre con el que figura en el personal en ese momento) | Titulares y central que ajustan el stock. La pantalla lo avisa antes de guardar: "El ajuste queda en la bitácora con tu nombre" | Dejar constancia de quién movió el stock, cuándo y por qué | Titulares y central de esa distribuidora; los repartidores no la ven. No es pública. No se cambia ni se borra desde la aplicación |
+| Promociones de la distribuidora: nombre, lo que ofrecen, productos, forma de venta, máximo por pedido, tope total y unidades vendidas, fechas, condiciones, si está publicada o apagada y cuándo, y los identificadores internos de la cuenta que la creó y de la que la apagó (códigos, no nombres ni correos) | Distribuidoras: las crean sus titulares o su central | Preparar las ofertas que la distribuidora hará a sus clientes | Todo el personal de esa distribuidora. Hornilla todavía no las muestra a los clientes, pero las publicadas de una distribuidora que puede operar ya son legibles para cualquiera que consulte la base de datos directamente, con esos identificadores internos incluidos |
 | Datos de conexión (dirección IP, tipo de navegador, fecha y hora) | Todos | Los registran los servidores que alojan la aplicación para entregarla y protegerla | Proveedores técnicos |
 
 Si un titular escribe tu correo en una invitación, Hornilla lo recibe de ese titular, no de ti.
@@ -148,6 +151,12 @@ Una cuenta que ingresó y nunca aceptó los términos conserva, en el servicio d
 el correo y el nombre que entregó Google mientras exista. Hoy no se elimina sola: la elimina su
 titular, en la pantalla "Aceptar los términos", o Hornilla a pedido (sección 7).
 
+La bitácora de stock se conserva mientras exista la distribuidora, porque es la constancia de
+cómo cambió su stock. Al eliminar una cuenta, el nombre que figura en los ajustes que hizo se
+cambia por "Cuenta eliminada" y el ajuste se conserva sin él. Una promoción no se borra desde la
+aplicación; cuando termina o se apaga, su lugar puede ocuparlo una promoción nueva, que la
+reemplaza entera.
+
 El punto desde el que buscas distribuidoras no lo conserva Hornilla: solo está en tu dispositivo,
 hasta que lo olvides, busques desde otro punto, cierres sesión o pasen 30 días desde que se
 guardó.
@@ -178,6 +187,9 @@ Acceso, rectificación, cancelación y oposición.
   se atiende a mano a partir de tu solicitud. La página "Contacto y reclamos" mostrará ese correo
   en cuanto exista.
 - Si registraste una distribuidora, al eliminar tu cuenta hay que decidir contigo qué pasa con ella.
+- Si ajustaste el stock de una distribuidora, tu nombre queda en esos ajustes. Para pedir una
+  copia, corregirlo u oponerte, escribe a [correo de contacto]: la aplicación no permite cambiar
+  ni borrar la bitácora.
 
 También puedes reclamar ante la Autoridad Nacional de Protección de Datos Personales.
 
@@ -198,6 +210,14 @@ terminar.
 Los cambios importantes se avisan en la aplicación.
 
 ## Historial de cambios
+- 0.7 (2026-11-15): cuarta revisión de cumplimiento, pasos 3.3 a 3.5 del plan. La tabla añade los
+  vehículos (con la placa, que puede identificar a su dueño), la bitácora de stock con el nombre
+  de quien hizo cada ajuste, que solo ven titulares y central, y las promociones, que Hornilla aún
+  no muestra a los clientes pero cuyas publicadas ya son legibles para cualquiera junto con los
+  identificadores internos de quien las creó y las apagó (sección 2). Cuánto se conserva la
+  bitácora y que, al eliminar una cuenta, su nombre se cambia ahí por "Cuenta eliminada"
+  (sección 6). Cómo pedir una copia o la corrección de tu nombre en la bitácora (sección 7). La
+  0.6 deja de poder aceptarse.
 - 0.6 (2026-10-16): la tabla detalla los datos del personal (el nombre es una copia del perfil al
   sumarse) y de las invitaciones (estado, fechas, identificadores internos), dice que el correo de
   una invitación lo escribe el titular y que una invitación con correo solo la leen sus titulares

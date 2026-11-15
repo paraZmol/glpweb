@@ -12,6 +12,7 @@ import {
   SEED_PRIVACY_VERSION,
   SEED_TERMS_VERSION,
   SEED_USERS,
+  seedMovementIdOf,
 } from '../seed/data';
 import { seedEmulators } from '../seed/seed';
 
@@ -27,6 +28,13 @@ const WAITING_FOR_CUSTOMER = `distributors/${SEED_DISTRIBUTORS.b.id}/invites/Inv
 const USED_BY_CUSTOMER = `distributors/${SEED_DISTRIBUTORS.a.id}/invites/InviteUsedByCustomer`;
 const REVIEW_OF_A = `distributors/${SEED_DISTRIBUTORS.a.id}/private/review`;
 const SEEDED_INVITE_OF_A = `distributors/${SEED_DISTRIBUTORS.a.id}/invites/${SEED_INVITE_CODE}`;
+/** PLAN 3.4: the seed counts the stock of A as its founder; one more adjustment by the dispatcher. */
+const MOVEMENTS_OF_OWNER_A = (SEED_DISTRIBUTORS.a.plantStock ?? []).map(
+  ({ productId }) =>
+    `distributors/${SEED_DISTRIBUTORS.a.id}/stockMovements/${seedMovementIdOf(SEED_DISTRIBUTORS.a.id, productId)}`,
+);
+const MOVEMENT_OF_DISPATCHER_A = `distributors/${SEED_DISTRIBUTORS.a.id}/stockMovements/MoveByDispatcherA000`;
+const MOVEMENT_OF_OWNER_B = `distributors/${SEED_DISTRIBUTORS.b.id}/stockMovements/${seedMovementIdOf(SEED_DISTRIBUTORS.b.id, 'p00')}`;
 /** The date of everything the seed writes, as the export prints a timestamp. */
 const SEEDED_AT = new Date(SEED_CREATED_AT).toISOString();
 
@@ -134,6 +142,19 @@ beforeAll(async () => {
       acceptedAt: AT,
     });
     await setDoc(doc(context.firestore(), REVIEW_OF_A), { note: 'Revisa el RUC.', writtenAt: AT });
+    await setDoc(doc(context.firestore(), MOVEMENT_OF_DISPATCHER_A), {
+      kind: 'adjustment',
+      productId: 'p00',
+      reason: 'damaged',
+      note: null,
+      fullDelta: -1,
+      emptyDelta: 0,
+      fullAfter: 39,
+      emptyAfter: 12,
+      authorUid: SEED_USERS.dispatcherA.uid,
+      authorName: SEED_USERS.dispatcherA.displayName,
+      createdAt: AT,
+    });
   });
 });
 
@@ -226,6 +247,29 @@ describe('export-account.mjs', () => {
     );
   });
 
+  // PLAN 3.4: the log of the plant stock keeps the name of whoever adjusted it.
+  it('exports the stock adjustments the account made, and only those', async () => {
+    const { ownerA } = SEED_USERS;
+
+    const result = await run('export-account.mjs', forUid(ownerA.uid));
+
+    const { stockAdjustments } = JSON.parse(result.stdout) as {
+      stockAdjustments: { path: string; authorUid: string; authorName: string }[];
+    };
+    expect(MOVEMENTS_OF_OWNER_A.length).toBeGreaterThan(0);
+    expect(stockAdjustments.map((movement) => movement.path).sort()).toEqual(
+      [...MOVEMENTS_OF_OWNER_A].sort(),
+    );
+    for (const movement of stockAdjustments) {
+      expect(movement).toMatchObject({
+        authorUid: ownerA.uid,
+        authorName: ownerA.displayName,
+        kind: 'adjustment',
+        createdAt: SEEDED_AT,
+      });
+    }
+  });
+
   it('exports an account that only signed in, with nothing else to show', async () => {
     const result = await run('export-account.mjs', forUid(SEED_USERS.noProfile.uid));
 
@@ -235,6 +279,7 @@ describe('export-account.mjs', () => {
       addresses: [],
       legalAcceptances: [],
       memberships: [],
+      stockAdjustments: [],
       foundedDistributors: [],
     });
   });
@@ -292,6 +337,19 @@ describe('delete-account.mjs', () => {
     expect(await accountExists(driverB.uid)).toBe(false);
   });
 
+  it('in a dry run, counts the stock adjustments whose name it would replace, and keeps it', async () => {
+    const { ownerA } = SEED_USERS;
+
+    const result = await run('delete-account.mjs', forUid(ownerA.uid, '--dry-run'));
+
+    expect(result.stdout).toContain(
+      `stock adjustments it made, its name replaced: ${MOVEMENTS_OF_OWNER_A.length}`,
+    );
+    for (const path of MOVEMENTS_OF_OWNER_A) {
+      expect(await stored(path)).toMatchObject({ authorName: ownerA.displayName });
+    }
+  });
+
   it('suspends what a founder founded and empties its personal data there', async () => {
     const { ownerA, dispatcherA } = SEED_USERS;
     const { a } = SEED_DISTRIBUTORS;
@@ -336,6 +394,27 @@ describe('delete-account.mjs', () => {
     expect(await accountExists(ownerA.uid)).toBe(false);
   });
 
+  // PLAN 3.4, privacy policy §6: the adjustment stays as the record of the stock, without the name.
+  it('replaces the name in the stock adjustments of the account and keeps the rest of them', async () => {
+    const { ownerA, dispatcherA } = SEED_USERS;
+    const stockOfA = SEED_DISTRIBUTORS.a.plantStock ?? [];
+
+    for (const [index, path] of MOVEMENTS_OF_OWNER_A.entries()) {
+      expect(await stored(path)).toMatchObject({
+        authorName: 'Cuenta eliminada',
+        authorUid: ownerA.uid,
+        kind: 'adjustment',
+        productId: stockOfA[index]?.productId,
+        fullAfter: stockOfA[index]?.full,
+        emptyAfter: stockOfA[index]?.empty,
+      });
+    }
+    expect(await stored(MOVEMENT_OF_DISPATCHER_A)).toMatchObject({
+      authorUid: dispatcherA.uid,
+      authorName: dispatcherA.displayName,
+    });
+  });
+
   it('revokes the platform admin grant of an admin', async () => {
     await run('delete-account.mjs', forUid(SEED_USERS.admin.uid));
 
@@ -350,6 +429,13 @@ describe('delete-account.mjs', () => {
     expect(result.stdout).toContain('sign-in account: already gone');
   });
 
+  it('run again for a founder, finds no stock adjustment left with its name', async () => {
+    const result = await run('delete-account.mjs', forUid(SEED_USERS.ownerA.uid));
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain('stock adjustments it made, its name replaced: 0');
+  });
+
   it('leaves every other account alone', async () => {
     const { ownerB } = SEED_USERS;
 
@@ -357,6 +443,10 @@ describe('delete-account.mjs', () => {
     expect(await stored(`users/${ownerB.uid}`)).toMatchObject({ displayName: ownerB.displayName });
     expect(await stored(`distributors/${SEED_DISTRIBUTORS.b.id}/private/settings`)).toMatchObject({
       ownerEmail: ownerB.email,
+    });
+    expect(await stored(MOVEMENT_OF_OWNER_B)).toMatchObject({
+      authorUid: ownerB.uid,
+      authorName: ownerB.displayName,
     });
   });
 });

@@ -94,6 +94,8 @@ const accountRoutes: RouteObject = {
       [
         { path: ROUTES.driverHome, lazy: from('driver', (m) => m.DriverHomePage) },
         { path: ROUTES.driverCatalog, lazy: from('driver', (m) => m.DriverCatalogPage) },
+        { path: ROUTES.driverPromotions, lazy: from('driver', (m) => m.DriverPromotionsPage) },
+        { path: ROUTES.driverVehicles, lazy: from('driver', (m) => m.DriverVehiclesPage) },
       ],
     ),
     guarded(
@@ -104,6 +106,9 @@ const accountRoutes: RouteObject = {
         { path: ROUTES.officeHome, lazy: from('office', (m) => m.OfficeHomePage) },
         { path: ROUTES.officeProfile, lazy: from('office', (m) => m.EditProfilePage) },
         { path: ROUTES.officeCatalog, lazy: from('office', (m) => m.CatalogPage) },
+        { path: ROUTES.officePromotions, lazy: from('office', (m) => m.PromotionsPage) },
+        { path: ROUTES.officeStock, lazy: from('office', (m) => m.PlantStockPage) },
+        { path: ROUTES.officeVehicles, lazy: from('office', (m) => m.VehiclesPage) },
         { path: ROUTES.officeStaff, lazy: from('office', (m) => m.StaffPage) },
       ],
     ),

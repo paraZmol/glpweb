@@ -23,6 +23,8 @@ export interface OwnDistributorOptions {
   /** Everybody but the founder, who is always there as owner. */
   staff?: { key: string; role: StaffRole }[];
   status?: 'active' | 'suspended';
+  /** The colour of the distributor, to try a screen with a dark, a vivid or a light brand. */
+  brandColor?: string;
 }
 
 export interface OwnDistributor {
@@ -76,7 +78,7 @@ function summaryOf(products: OwnProduct[]) {
  */
 export async function ownDistributor(
   tag: string,
-  { products, staff = [], status = 'active' }: OwnDistributorOptions,
+  { products, staff = [], status = 'active', brandColor = '#d9480f' }: OwnDistributorOptions,
 ): Promise<OwnDistributor> {
   const id = `0flow-${tag}`;
   const name = `Gas Flujo ${tag}`;
@@ -101,7 +103,7 @@ export async function ownDistributor(
     addressLine: 'Av. Flujo 100',
     plant: { lat: plant.latitude, lng: plant.longitude },
     coverageRadiusKm: 5,
-    brandColor: '#d9480f',
+    brandColor,
     acceptingOrders: status === 'active',
     schedule: SCHEDULE,
     maxCylindersPerOrder: 3,

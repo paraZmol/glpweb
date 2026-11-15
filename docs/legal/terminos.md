@@ -1,6 +1,6 @@
 # Términos y condiciones de Hornilla
 
-> **BORRADOR v0.6 (2026-10-16) — pendiente de revisión por un profesional antes del lanzamiento.**
+> **BORRADOR v0.7 (2026-11-15) — pendiente de revisión por un profesional antes del lanzamiento.**
 > Los datos entre corchetes se completan cuando exista la razón social. Este texto se muestra en
 > la aplicación marcado como borrador en revisión (paso 2.7 del plan) y su número de versión queda
 > registrado con cada aceptación. Mientras queden corchetes en la sección 1 no debe registrarse a
@@ -13,8 +13,10 @@
 > Hornilla al público se publicará una versión revisada por un profesional y se pedirá aceptarla
 > de nuevo para seguir usando la aplicación. Hoy la aplicación permite ingresar con una cuenta de
 > Google, registrar una distribuidora, buscar las distribuidoras que llegan a un punto y ver su
-> página con sus productos y precios; los pedidos, las promociones y el seguimiento todavía no
-> funcionan, y las secciones 5 y 6 describen cómo funcionarán.
+> página con sus productos y precios. El personal de una distribuidora puede además registrar sus
+> vehículos, llevar su stock de planta y preparar promociones, que sus clientes todavía no ven.
+> Los pedidos y el seguimiento todavía no funcionan, y las secciones 5 y 6 describen cómo
+> funcionarán.
 
 ## 1. Qué es Hornilla
 Hornilla es una plataforma que conecta a personas que quieren comprar gas doméstico (GLP) con
@@ -89,11 +91,29 @@ de las suyas esté suspendida, con un pago pendiente o con el periodo de prueba 
    condiciones y unidades disponibles cuando corresponda, y a cumplirlas mientras estén publicadas.
 4. **Hornilla no responde por promociones, precios o información falsos, engañosos o incumplidos
    por una distribuidora.** El reclamo corresponde a la distribuidora que hizo la oferta.
-5. Hornilla pone medios para reducir errores (vigencia obligatoria, tope por pedido, bloqueo del
-   precio "antes"), pero no revisa ni aprueba cada promoción antes de publicarse.
+5. Hornilla pone medios para reducir errores (vigencia obligatoria de 30 días como máximo,
+   máximo por pedido, precio "antes" que sale del precio de lista, rechazo de frases como "hasta
+   agotar stock" o "últimas unidades"), pero no revisa ni aprueba cada promoción antes de
+   publicarse. Las promociones las crean y publican los titulares y la central de la
+   distribuidora, y la distribuidora responde por ellas como si las publicara ella misma.
 6. Hornilla puede retirar una promoción o suspender a una distribuidora cuando reciba reclamos
    fundados o detecte información engañosa.
 7. El precio de un pedido queda fijado al confirmarlo; un cambio posterior no lo altera.
+8. El precio "antes" que se muestra tachado junto a una promoción es el precio de lista que la
+   distribuidora tiene publicado en Hornilla. La distribuidora responde de que sea el precio al que
+   de verdad venía vendiendo ese producto, y no uno subido para que la rebaja parezca mayor.
+9. Desde que publica una promoción, y hasta la fecha de cierre que anunció aunque la apague antes,
+   la distribuidora no puede subir en Hornilla el precio de lista de los productos incluidos ni
+   dejar de vender su balón completo; bajarlo siempre puede. Una promoción guardada no cambia de
+   precio, productos, forma de venta, topes ni fecha de inicio: solo puede cambiar de nombre y
+   alargar su cierre, nunca acortarlo.
+10. Si una promoción indica un tope total de unidades, se aplica hasta completarlo. Si no lo indica,
+    la distribuidora debe atender, mientras esté vigente y dentro del máximo por pedido, a quien la
+    pida en las condiciones anunciadas. Apagar una promoción antes de su cierre es decisión de la
+    distribuidora, queda anotado y no le quita lo que la ley le exija frente a quien ya la vio.
+11. Hoy Hornilla no muestra las promociones a los clientes, ni en el buscador ni en la página de
+    la distribuidora: solo las ve su personal en el panel. Antes de mostrarlas se actualizarán
+    estos términos y se pedirá aceptarlos de nuevo.
 
 Nada de lo anterior limita los derechos que la ley reconoce a los consumidores.
 
@@ -131,7 +151,7 @@ fuego, ventilar, cerrar la válvula y llamar a los bomberos (116).
   otro negocio o tiene datos falsos: a [correo de contacto]. La página de cada distribuidora
   tiene el enlace "Reportar esta distribuidora", que lleva a "Contacto y reclamos"; el aviso se
   envía por correo, no desde un formulario. El botón para reportar una promoción concreta se
-  añadirá junto con las promociones.
+  añadirá cuando las promociones se muestren a los clientes.
 - Sobre el funcionamiento de la plataforma: a [correo de contacto]. Hornilla tendrá su propio
   Libro de Reclamaciones virtual, con un enlace visible en toda la aplicación, antes de abrir al
   público; todavía no está disponible. En cualquier caso puedes acudir al Indecopi.
@@ -169,6 +189,13 @@ de Hornilla. Mientras la ficha está aprobada, esos tres datos no pueden cambiar
 aplicación: se corrigen por el canal de la sección 8. El detalle está en la Política de
 privacidad.
 
+Los vehículos, el stock de planta y su bitácora de ajustes son registros internos de la
+distribuidora: no se muestran al público y Hornilla no comprueba que sean ciertos. Los vehículos
+los ve todo su personal; el stock y la bitácora, solo sus titulares y su central. Cada ajuste de
+stock queda anotado con el nombre de quien lo hizo, su motivo y la hora, y no se puede cambiar ni
+borrar desde la aplicación. Si la distribuidora queda en solo lectura, se pueden ver pero no
+cambiar.
+
 ## 11. Cambios
 Hornilla puede actualizar estos términos. Los cambios importantes se avisan en la aplicación y
 requieren aceptación para seguir usándola.
@@ -177,6 +204,16 @@ requieren aceptación para seguir usándola.
 Estos términos se rigen por las leyes de la República del Perú.
 
 ## Historial de cambios
+- 0.7 (2026-11-15): cuarta revisión de cumplimiento, pasos 3.3 a 3.5 del plan. La nota inicial
+  dice que el personal ya registra vehículos, lleva su stock y prepara promociones que los
+  clientes todavía no ven. Sección 4: quién crea las promociones y que la distribuidora responde
+  por ellas; el "antes" es el precio al que de verdad venía vendiendo; mientras dure una promoción,
+  y hasta su cierre anunciado aunque se apague, no se sube el precio de lista ni se deja de vender
+  el balón completo; qué se puede editar; qué pasa con y sin tope total de unidades y al apagarla
+  antes; antes de mostrarlas a los clientes se actualizarán estos términos. Sección 8: el botón
+  para reportar una promoción llega cuando se muestren. Sección 10: vehículos, stock y bitácora
+  son registros internos, quién los ve y que cada ajuste queda con el nombre de quien lo hizo. La
+  0.6 deja de poder aceptarse.
 - 0.6 (2026-10-16): el personal de la distribuidora incluye a otros titulares y se suma con una
   invitación que sirve una vez y vence a los 7 días; quien escribe en ella el correo de otra
   persona declara que esa persona sabe que la invita (sección 2). El «Recarga desde» sale del
