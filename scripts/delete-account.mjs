@@ -38,15 +38,25 @@
 //      switches that member off (PLAN §11, 2026-10-16). The copy of its name (`invitedByName`)
 //      still becomes "Cuenta eliminada", for whoever opens such a link. The e-mail comes
 //      from the sign-in account; once that is gone, pass it with --email.
-//   6. The Firebase Auth account: deleted.
-// Steps 1 to 5 are one atomic batch. The script can be run again: it tolerates what is already
-// gone.
+//   6. The log of the plant stock (PLAN 3.4): in every adjustment the account made, in any
+//      distributor, the copy of its name (`authorName`) becomes "Cuenta eliminada". The
+//      adjustment itself stays, as the record of how the stock changed (privacy policy §6), and
+//      so does `authorUid`, like the uid of a membership or the `createdBy` of an invitation: a
+//      code that no longer belongs to any account. The rules never let the app edit a movement;
+//      only this procedure does.
+//   7. The Firebase Auth account: deleted.
+// Steps 1 to 5 are one atomic batch. Step 6 follows in batches of its own, because an account
+// may have made more adjustments than one batch can hold; it runs before step 7, so if it stops
+// halfway the account is still there and running the script again finishes it. The script can
+// be run again: it tolerates what is already gone.
 //
 // What it cannot do: a session of that account that is still open keeps a valid token for up to
-// one hour and could write a new profile or address in that time. RUN THE SCRIPT AGAIN AFTER
+// one hour and could write a new profile, address or stock adjustment in that time (until step 3
+// commits, an active member may still adjust the stock). RUN THE SCRIPT AGAIN AFTER
 // ONE HOUR; it should report nothing left to delete.
 import { pathToFileURL } from 'node:url';
 import {
+  allDocuments,
   isMissingAccount,
   loadAdminSdk,
   readArguments,
@@ -56,6 +66,9 @@ import {
 } from './admin-common.mjs';
 
 export const DELETED_ACCOUNT_NAME = 'Cuenta eliminada';
+
+/** Writes per batch when renaming the author of stock adjustments (a batch takes 500). */
+const RENAME_BATCH_SIZE = 400;
 
 /** Ids of the distributors the account founded, from its profile and from its owner roles. */
 async function foundedDistributorIds(db, uid, profile, memberships) {
@@ -144,6 +157,25 @@ function clearInvitations({ batch, now }, invitations) {
   return { deleted, emptied, renamed: renamed.map((invite) => invite.ref.path) };
 }
 
+/** Adjustments of the plant stock made by the account that still carry its name. */
+async function namedStockMovementsOf(db, uid) {
+  const movements = await allDocuments(
+    db.collectionGroup('stockMovements').where('authorUid', '==', uid),
+  );
+  return movements.filter((movement) => movement.data().authorName !== DELETED_ACCOUNT_NAME);
+}
+
+/** Replaces the author's name in each movement, in batches: the movement itself stays. */
+async function renameStockMovementAuthor(db, movements) {
+  for (let start = 0; start < movements.length; start += RENAME_BATCH_SIZE) {
+    const batch = db.batch();
+    for (const movement of movements.slice(start, start + RENAME_BATCH_SIZE)) {
+      batch.update(movement.ref, { authorName: DELETED_ACCOUNT_NAME });
+    }
+    await batch.commit();
+  }
+}
+
 async function deleteAuthAccount(sdk, uid) {
   try {
     await sdk.getAuth().deleteUser(uid);
@@ -171,6 +203,7 @@ export async function deleteAccount(sdk, uid, { dryRun = false, email: typedEmai
   ]);
   const founded = await foundedDistributorIds(db, uid, profile, memberships);
   const invitations = await invitationsOf(db, uid, email);
+  const stockMovements = await namedStockMovementsOf(db, uid);
 
   const batch = db.batch();
   const now = sdk.FieldValue.serverTimestamp();
@@ -200,7 +233,10 @@ export async function deleteAccount(sdk, uid, { dryRun = false, email: typedEmai
   if (profile.exists) batch.delete(profileRef);
   if (adminGrant.exists) batch.delete(adminGrant.ref);
 
-  if (!dryRun) await batch.commit();
+  if (!dryRun) {
+    await batch.commit();
+    await renameStockMovementAuthor(db, stockMovements);
+  }
   return {
     uid,
     dryRun,
@@ -214,6 +250,7 @@ export async function deleteAccount(sdk, uid, { dryRun = false, email: typedEmai
     invitationsDeleted: invites.deleted,
     invitationsEmptied: invites.emptied,
     invitationsRenamed: invites.renamed,
+    stockMovementsRenamed: stockMovements.map((movement) => movement.ref.path),
     authAccount: dryRun ? 'not touched (dry run)' : await deleteAuthAccount(sdk, uid),
   };
 }
@@ -240,13 +277,14 @@ function describe(summary, label) {
     `  used or revoked invitations, e-mail emptied: ${summary.invitationsEmptied.length}`,
     ...summary.invitationsEmptied.map((path) => `    - ${path}`),
     `  invitations it created, its name replaced: ${summary.invitationsRenamed.length}`,
+    `  stock adjustments it made, its name replaced: ${summary.stockMovementsRenamed.length}`,
     `  sign-in account: ${summary.authAccount}`,
   ];
   if (!summary.dryRun) {
     lines.push(
       'Run this script again after one hour: a session that was still open could have written',
-      'a new profile, address or acceptance meanwhile. It should then report nothing left to',
-      'delete.',
+      'a new profile, address, acceptance or stock adjustment meanwhile. It should then report',
+      'nothing left to delete.',
     );
   }
   return `${lines.join('\n')}\n`;
