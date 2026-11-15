@@ -79,15 +79,17 @@ export function TemplateChoice({ catalog, onChoose }: TemplateChoiceProps) {
                 type="button"
                 disabled={isOff}
                 onClick={() => onChoose(template)}
-                className="press flex h-full w-full flex-col items-start gap-2 rounded-lg bg-card p-4 text-left inset-ring-[1.5px] inset-ring-border motion-instant hover:inset-ring-input disabled:cursor-not-allowed disabled:opacity-60"
+                className="press grid h-full w-full grid-cols-[auto_minmax(0,1fr)] content-start gap-x-3 gap-y-1 rounded-lg bg-card p-4 text-left sm:flex sm:flex-col sm:items-start sm:gap-2 inset-ring-[1.5px] inset-ring-border motion-instant hover:inset-ring-input disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <span
                   aria-hidden="true"
-                  className="grid size-10 place-items-center rounded-md bg-primary-soft text-primary-text"
+                  className="row-span-2 grid size-10 place-items-center rounded-md bg-primary-soft text-primary-text"
                 >
                   <Icon className="size-5" strokeWidth={ICON_STROKE} />
                 </span>
-                <span className="font-heading text-lg leading-tight font-bold">{title}</span>
+                <span className="self-center font-heading text-lg leading-tight font-bold sm:self-auto">
+                  {title}
+                </span>
                 <span className="text-[0.9375rem] text-muted-foreground">
                   {isOff
                     ? 'Primero pon precio de balón completo a un producto.'

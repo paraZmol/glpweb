@@ -65,8 +65,9 @@ export function PromotionCard({
   const isOver = state === 'ended' || state === 'switchedOff';
 
   return (
-    <article className="flex flex-col gap-3 py-4">
-      <div className="flex flex-wrap items-center gap-2">
+    // Desktop: what it gives on the left, its limits and dates on the right, actions under both.
+    <article className="flex flex-col gap-3 py-4 lg:grid lg:grid-cols-2 lg:gap-x-8">
+      <div className="flex flex-wrap items-center gap-2 lg:col-span-2">
         <h3
           className={cn(
             'mr-auto text-lg font-bold wrap-anywhere',
@@ -78,30 +79,34 @@ export function PromotionCard({
         <PromotionBadge>{promotionBadge(promotion.deal, currency)}</PromotionBadge>
         <StateChip state={chip.state}>{chip.label}</StateChip>
       </div>
-      <p className="font-heading font-bold">
-        {dealSummary(promotion.deal, promotion.saleMode, currency)}
-      </p>
-      <ul className="flex flex-col gap-0.5 text-[0.9375rem]">
-        {names.map((name, index) => (
-          <li key={promotion.productIds[index]} className="font-semibold">
-            {name}
-          </li>
-        ))}
-      </ul>
-      <p className="text-[0.9375rem] text-muted-foreground tabular-nums">
-        {SALE_MODE_ONLY[promotion.saleMode]} · {maxPerOrderText(promotion.maxUnitsPerOrder)}
-        {promotion.totalUnits !== null &&
-          ` · Tope total ${promotion.totalUnits} · Vendidas ${promotion.soldUnits}`}
-      </p>
-      <p className="text-[0.9375rem] font-semibold">
-        {withStop(datesLine(promotion, state, now, DEFAULT_TIMEZONE))}
-      </p>
-      {promotion.conditions && (
-        <p className="text-[0.9375rem] text-muted-foreground wrap-anywhere">
-          Condiciones: {promotion.conditions}
+      <div className="flex flex-col gap-3">
+        <p className="font-heading font-bold">
+          {dealSummary(promotion.deal, promotion.saleMode, currency)}
         </p>
-      )}
-      {children}
+        <ul className="flex flex-col gap-0.5 text-[0.9375rem]">
+          {names.map((name, index) => (
+            <li key={promotion.productIds[index]} className="font-semibold">
+              {name}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="flex flex-col gap-3">
+        <p className="text-[0.9375rem] text-muted-foreground tabular-nums">
+          {SALE_MODE_ONLY[promotion.saleMode]} · {maxPerOrderText(promotion.maxUnitsPerOrder)}
+          {promotion.totalUnits !== null &&
+            ` · Tope total ${promotion.totalUnits} · Vendidas ${promotion.soldUnits}`}
+        </p>
+        <p className="text-[0.9375rem] font-semibold">
+          {withStop(datesLine(promotion, state, now, DEFAULT_TIMEZONE))}
+        </p>
+        {promotion.conditions && (
+          <p className="text-[0.9375rem] text-muted-foreground wrap-anywhere">
+            Condiciones: {promotion.conditions}
+          </p>
+        )}
+      </div>
+      {children && <div className="lg:col-span-2">{children}</div>}
     </article>
   );
 }

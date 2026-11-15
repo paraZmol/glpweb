@@ -89,7 +89,7 @@ export function PromotionFormPanel(props: PromotionFormPanelProps) {
   return (
     <div
       ref={rootRef}
-      className="grid scroll-mt-[calc(var(--top-inset)+1rem)] grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1fr)_25rem]"
+      className="grid scroll-mt-[calc(var(--top-inset)+1rem)] grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[minmax(0,1fr)_28rem]"
     >
       <Panel dense>
         <div className="mb-6 flex flex-col items-start gap-2">

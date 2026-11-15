@@ -45,7 +45,7 @@ export function CustomerPreview(props: CustomerPreviewProps) {
 
   return (
     <GasBrandTheme color={product.brandColor}>
-      <article className="flex gap-3 rounded-xl bg-card p-3 shadow-card">
+      <article className="flex gap-3 rounded-xl bg-card p-3 inset-ring-[1.5px] inset-ring-border">
         <div className="grid w-22 shrink-0 place-items-end justify-center self-start rounded-[1.25rem] bg-gas-brand-soft pt-2 pb-1">
           <GasCylinder weightKg={product.weightKg} height={CYLINDER_HEIGHT_PX} />
         </div>
