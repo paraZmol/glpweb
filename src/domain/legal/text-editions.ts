@@ -10,7 +10,7 @@
 import { PRIVACY_VERSION, TERMS_VERSION } from './versions';
 
 /** Nobody accepts the cookie notice, but it is published with a version and a date like the others. */
-export const COOKIES_VERSION = '0.4';
+export const COOKIES_VERSION = '0.5';
 
 export const LEGAL_TEXT_IDS = ['terms', 'privacy', 'cookies'] as const;
 export type LegalTextId = (typeof LEGAL_TEXT_IDS)[number];
@@ -61,6 +61,11 @@ export const LEGAL_TEXT_EDITIONS: Record<LegalTextId, readonly LegalTextEdition[
       publishedOn: '2026-10-16',
       sha256: '401dd31b167ce3743872a3016f12e3602b591566e33d7aef1bec65422ece44b7',
     },
+    {
+      version: '0.7',
+      publishedOn: '2026-11-15',
+      sha256: '8be1020551d74b3b9f1041b3d119d47abd9fa0fe611832fdb4f8526d57add5aa',
+    },
   ],
   privacy: [
     {
@@ -88,6 +93,11 @@ export const LEGAL_TEXT_EDITIONS: Record<LegalTextId, readonly LegalTextEdition[
       publishedOn: '2026-10-16',
       sha256: 'e67c269f79282c3dea099b7261f5bbcb8ab13e83f67b85148caa3bc965654fda',
     },
+    {
+      version: '0.7',
+      publishedOn: '2026-11-15',
+      sha256: 'b01df29079f42e58b882039b02b55bea69448fac7e32b2a68f5ee09082838377',
+    },
   ],
   cookies: [
     {
@@ -104,6 +114,11 @@ export const LEGAL_TEXT_EDITIONS: Record<LegalTextId, readonly LegalTextEdition[
       version: '0.4',
       publishedOn: '2026-10-14',
       sha256: '3b1eca355cbc2fcaa4e1a801a43a0f601519a3ac9da1b1af5e288baea90f7b4b',
+    },
+    {
+      version: '0.5',
+      publishedOn: '2026-11-15',
+      sha256: 'dafe50de043ff3fd08bdd18a4d3c07f2ed07c9b81979a3a9732a51d3b3544196',
     },
   ],
 };

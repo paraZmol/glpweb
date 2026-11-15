@@ -161,8 +161,8 @@ export interface SeedPromotion {
 export const SEED_INVITE_CODE = 'SeedInviteA000000001';
 
 /** Versions of the terms and of the privacy policy every seeded profile accepted. */
-export const SEED_TERMS_VERSION = '0.6';
-export const SEED_PRIVACY_VERSION = '0.6';
+export const SEED_TERMS_VERSION = '0.7';
+export const SEED_PRIVACY_VERSION = '0.7';
 
 const user = (key: string, displayName: string, phoneSuffix: string, emailVerified = true) => ({
   uid: `seed-${key}`,

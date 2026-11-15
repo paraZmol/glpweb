@@ -152,10 +152,10 @@ el correo y el nombre que entregó Google mientras exista. Hoy no se elimina sol
 titular, en la pantalla "Aceptar los términos", o Hornilla a pedido (sección 7).
 
 La bitácora de stock se conserva mientras exista la distribuidora, porque es la constancia de
-cómo cambió su stock. Al eliminar una cuenta, el nombre que figura en los ajustes que hizo
-todavía no se quita: se reemplazará por "Cuenta eliminada" antes de abrir Hornilla al público,
-y el ajuste se conservará sin él. Una promoción no se borra desde la aplicación; cuando termina
-o se apaga, su lugar puede ocuparlo una promoción nueva, que la reemplaza entera.
+cómo cambió su stock. Al eliminar una cuenta, el nombre que figura en los ajustes que hizo se
+cambia por "Cuenta eliminada" y el ajuste se conserva sin él. Una promoción no se borra desde la
+aplicación; cuando termina o se apaga, su lugar puede ocuparlo una promoción nueva, que la
+reemplaza entera.
 
 El punto desde el que buscas distribuidoras no lo conserva Hornilla: solo está en tu dispositivo,
 hasta que lo olvides, busques desde otro punto, cierres sesión o pasen 30 días desde que se
@@ -215,9 +215,9 @@ Los cambios importantes se avisan en la aplicación.
   de quien hizo cada ajuste, que solo ven titulares y central, y las promociones, que Hornilla aún
   no muestra a los clientes pero cuyas publicadas ya son legibles para cualquiera junto con los
   identificadores internos de quien las creó y las apagó (sección 2). Cuánto se conserva la
-  bitácora y que el nombre de quien elimina su cuenta todavía no se quita de ella (sección 6).
-  Cómo pedir una copia o la corrección de tu nombre en la bitácora (sección 7). La 0.6 deja de
-  poder aceptarse.
+  bitácora y que, al eliminar una cuenta, su nombre se cambia ahí por "Cuenta eliminada"
+  (sección 6). Cómo pedir una copia o la corrección de tu nombre en la bitácora (sección 7). La
+  0.6 deja de poder aceptarse.
 - 0.6 (2026-10-16): la tabla detalla los datos del personal (el nombre es una copia del perfil al
   sumarse) y de las invitaciones (estado, fechas, identificadores internos), dice que el correo de
   una invitación lo escribe el titular y que una invitación con correo solo la leen sus titulares
