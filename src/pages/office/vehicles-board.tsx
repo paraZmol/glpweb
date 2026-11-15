@@ -25,6 +25,8 @@ type VehiclesBoardProps = {
   vehicles: readonly Vehicle[] | null;
   isRefreshing: boolean;
   canEdit: boolean;
+  /** Its owner or dispatcher, while the distributor is read-only. */
+  isReadOnly: boolean;
   editing: VehicleEditing;
   onEdit: (editing: VehicleEditing) => void;
   reload: () => void;
@@ -48,7 +50,8 @@ function Counts({ vehicles }: { vehicles: readonly Vehicle[] }) {
  * Taking a vehicle out of use asks nothing: it is undone with one tap and keeps its slot.
  */
 export function VehiclesBoard(props: VehiclesBoardProps) {
-  const { distributorId, vehicles, isRefreshing, canEdit, editing, onEdit, reload } = props;
+  const { distributorId, vehicles, isRefreshing, canEdit, isReadOnly, editing, onEdit, reload } =
+    props;
   const isOnline = useOnlineStatus();
   const [busyId, setBusyId] = useState<string | null>(null);
   const isRunning = useRef(false);
@@ -109,7 +112,9 @@ export function VehiclesBoard(props: VehiclesBoardProps) {
             description={
               canEdit
                 ? 'Añade las motos, trimotos o camiones que salen a repartir y cuántos balones lleva cada uno.'
-                : 'Los vehículos los registran el titular o la central de la distribuidora.'
+                : isReadOnly
+                  ? 'Tu distribuidora está en solo lectura: podrás registrar vehículos cuando vuelva a estar activa.'
+                  : 'Los vehículos los registran el titular o la central de la distribuidora.'
             }
             action={canEdit && <AddVehicleButton onAdd={() => onEdit({ vehicle: null })} isFirst />}
           />

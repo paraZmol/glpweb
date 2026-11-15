@@ -14,11 +14,23 @@ describe('vehicle form', () => {
   });
 
   it('refuses a capacity that is not a whole number', () => {
-    const read = readVehicleForm({ ...emptyVehicleForm(), capacity: '2.5' });
+    const read = readVehicleForm({ ...emptyVehicleForm(), name: 'Moto roja', capacity: '2.5' });
 
     expect(read).toEqual({
       ok: false,
       errors: { capacity: 'Escribe cuántos balones lleva, en números enteros, por ejemplo 3.' },
+    });
+  });
+
+  it('points at every missing field at once, not one after the other', () => {
+    const read = readVehicleForm(emptyVehicleForm());
+
+    expect(read).toEqual({
+      ok: false,
+      errors: {
+        name: 'Escribe un nombre para reconocerlo, por ejemplo "Moto roja".',
+        capacity: 'Escribe cuántos balones lleva, en números enteros, por ejemplo 3.',
+      },
     });
   });
 

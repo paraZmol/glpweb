@@ -1,5 +1,6 @@
 import type { Vehicle, VehicleKind } from '../../domain/vehicles/vehicle';
-import type { VehicleInput } from '../../domain/vehicles/vehicle-input';
+import { MIN_VEHICLE_CAPACITY } from '../../domain/vehicles/constants';
+import { prepareNewVehicle, type VehicleInput } from '../../domain/vehicles/vehicle-input';
 import { InvalidInputError } from '../../domain/tenancy/errors';
 import { describeVehicleError, vehicleFieldMessagesOf } from './vehicle-messages';
 
@@ -39,20 +40,19 @@ export type ReadVehicleForm =
 
 /**
  * The typed texts as a vehicle: only the format of the capacity is read here; names, plates and
- * ranges are the domain's (`addVehicle`, `editVehicle`), painted by `vehicleFormErrorsOf`.
+ * ranges are the domain's (`addVehicle`, `editVehicle`), painted by `vehicleFormErrorsOf`. When
+ * the capacity cannot be read, the other fields are checked too, so every missing one shows at
+ * once.
  */
 export function readVehicleForm(form: VehicleForm): ReadVehicleForm {
   const capacity = form.capacity.trim();
-  if (!WHOLE_NUMBER.test(capacity)) return { ok: false, errors: { capacity: CAPACITY_FORMAT } };
-  return {
-    ok: true,
-    input: {
-      kind: form.kind,
-      name: form.name,
-      plate: form.plate,
-      capacityCylinders: Number(capacity),
-    },
-  };
+  const input = { kind: form.kind, name: form.name, plate: form.plate };
+  if (WHOLE_NUMBER.test(capacity)) {
+    return { ok: true, input: { ...input, capacityCylinders: Number(capacity) } };
+  }
+  const others = prepareNewVehicle({ ...input, capacityCylinders: MIN_VEHICLE_CAPACITY });
+  const errors = others.ok ? {} : vehicleFormErrorsOf(new InvalidInputError(others.issues));
+  return { ok: false, errors: { ...errors, capacity: CAPACITY_FORMAT } };
 }
 
 /** Whatever an add or an edit threw, as messages on the fields (or on the whole form). */

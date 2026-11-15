@@ -8,7 +8,6 @@
 import { expect, type Page } from '@playwright/test';
 import { PHONE, runOncePerActorDevices, test } from '../support/actors';
 import { readDocument, uniqueTag, writeDocument } from '../support/emulator-admin';
-import { knownBug } from '../support/flow-helpers';
 import type { OwnDistributor } from '../support/own-distributor';
 import { DAY_MS, openAs, plant } from '../support/plant-walk';
 import { signInAs } from '../support/sign-in';
@@ -32,9 +31,6 @@ test.describe('vehicles', () => {
   test('saving an empty vehicle points at every field that is missing', async ({
     page,
   }, testInfo) => {
-    knownBug(
-      'Empty name and capacity: only the capacity error shows; the name error appears after fixing it',
-    );
     await vehicles(page, await plant(uniqueTag(testInfo)));
     await page.getByRole('button', { name: 'Añadir vehículo' }).click();
     await page.getByRole('button', { name: 'Guardar vehículo' }).click();
@@ -45,9 +41,6 @@ test.describe('vehicles', () => {
   test('"Atrás" with the vehicle form open closes it and stays on the vehicles', async ({
     page,
   }, testInfo) => {
-    knownBug(
-      '"Atrás" with the form open leaves for /central and what was typed is lost (in the catalogue, "Atrás" closes the form)',
-    );
     await vehicles(page, await plant(uniqueTag(testInfo)));
     await page.getByRole('button', { name: 'Añadir vehículo' }).click();
     await page.getByLabel('Nombre').fill('Moto nueva');
@@ -58,9 +51,6 @@ test.describe('vehicles', () => {
   test('a double click on "Guardar vehículo" does not select text of the bar', async ({
     page,
   }, testInfo) => {
-    knownBug(
-      'The form closes on the first click and the second lands on the bar: "Monitor" ends up selected',
-    );
     await vehicles(page, await plant(uniqueTag(testInfo)));
     await page.getByRole('button', { name: 'Añadir vehículo' }).click();
     await page.getByLabel('Nombre').fill('Doble');
@@ -77,7 +67,6 @@ test.describe('vehicles, suspension in the middle', () => {
   test('what was typed in a vehicle is not lost without a word when the distributor turns read-only', async ({
     actors,
   }, testInfo) => {
-    knownBug('The form disappears with what was typed; only the general suspension notice remains');
     const own = await plant(uniqueTag(testInfo));
     const central = await openAs(actors, own, 'central', PHONE);
     await central.page.goto('/central/vehiculos');

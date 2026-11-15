@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { Button } from '@/components/common/button';
 import { InlineAlert } from '@/components/common/inline-alert';
 import { Bone, LoadingRegion } from '@/components/common/skeleton';
 import { ErrorState } from '@/components/common/state-views';
 import { PageHeader } from '@/components/layout/page-header';
 import { AddVehicleButton } from '@/components/vehicles/vehicle-list';
 import { MAX_VEHICLES } from '@/domain/vehicles/constants';
+import type { Vehicle } from '@/domain/vehicles/vehicle';
 import { canEditVehicles } from '@/domain/vehicles/permissions';
 import { OfflineError } from '@/domain/tenancy/errors';
 import { useAccount } from '@/features/account/account-context';
@@ -13,12 +14,22 @@ import { usePageTitle } from '@/lib/page-title';
 import { useLastReady } from '@/lib/use-last-ready';
 import { useOnlineStatus } from '@/lib/use-online-status';
 import { isSuspended, SuspendedNotice } from './read-only-notice';
+import { useFormEntry } from './use-form-entry';
 import { type VehicleEditing, VehiclesBoard } from './vehicles-board';
 
 export const VEHICLES_STAFF_READS =
   'Los vehículos los cambian el titular y la central. Aquí los ves tal como están.';
 const PLAN_READ_ONLY =
   'Tu distribuidora está en solo lectura: puedes ver tus vehículos, pero no cambiarlos hasta regularizar el plan.';
+const LOCKED_WHILE_TYPING =
+  'Tu distribuidora pasó a solo lectura mientras escribías: el vehículo no se guardó. Podrás registrarlo cuando vuelva a estar activa.';
+
+/** The form a history entry names: null for a new vehicle, an id for one of the list. */
+function vehicleEditingOf(value: unknown, vehicles: readonly Vehicle[] | null): VehicleEditing {
+  if (value === null) return { vehicle: null };
+  const vehicle = vehicles?.find((item) => item.id === value);
+  return vehicle ? { vehicle } : null;
+}
 
 function VehiclesPageSkeleton() {
   return (
@@ -41,16 +52,17 @@ export function VehiclesPage() {
   const distributorId = current.status === 'ready' ? current.distributor.id : null;
   const resource = useVehicles(distributorId);
   const { data: vehicles, isRefreshing } = useLastReady(resource, distributorId);
-  // Remembered with its distributor: switching to another one closes the form.
-  const [editingAt, setEditingAt] = useState<{ at: string; editing: VehicleEditing } | null>(null);
+  // A step of the history, with its distributor: "back" closes it, switching closes it.
+  const entry = useFormEntry('vehicleForm', distributorId);
   if (current.status !== 'ready') return <VehiclesPageSkeleton />;
 
   const { distributor, membership, isWritable } = current;
   const managesVehicles = canEditVehicles(membership.role);
   const canEdit = managesVehicles && isWritable;
-  const editing = canEdit && editingAt?.at === distributor.id ? editingAt.editing : null;
+  const isFormOpen = entry.value !== undefined;
+  const editing = canEdit && isFormOpen ? vehicleEditingOf(entry.value, vehicles) : null;
   const onEdit = (next: VehicleEditing) =>
-    setEditingAt(next ? { at: distributor.id, editing: next } : null);
+    next ? entry.open(next.vehicle?.id ?? null) : entry.close();
   const canAdd =
     canEdit &&
     editing === null &&
@@ -72,6 +84,14 @@ export function VehiclesPage() {
         </InlineAlert>
       )}
       {!managesVehicles && <InlineAlert tone="info">{VEHICLES_STAFF_READS}</InlineAlert>}
+      {managesVehicles && !isWritable && isFormOpen && (
+        <div className="flex flex-col items-start gap-3">
+          <InlineAlert tone="error">{LOCKED_WHILE_TYPING}</InlineAlert>
+          <Button type="button" variant="line" size="sm" onClick={entry.close}>
+            Entendido
+          </Button>
+        </div>
+      )}
       {resource.status === 'error' && !vehicles ? (
         <ErrorState
           title={isOnline ? 'No pudimos cargar los vehículos.' : 'Sin conexión.'}
@@ -89,6 +109,7 @@ export function VehiclesPage() {
           vehicles={vehicles}
           isRefreshing={isRefreshing}
           canEdit={canEdit}
+          isReadOnly={managesVehicles && !isWritable}
           editing={editing}
           onEdit={onEdit}
           reload={resource.reload}
