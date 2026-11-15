@@ -2,7 +2,6 @@ import { Pencil, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/common/button';
 import { Bone, LoadingRegion } from '@/components/common/skeleton';
-import { StateChip } from '@/components/common/state-chip';
 import { EmptyState } from '@/components/common/state-views';
 import { Stagger } from '@/components/motion/stagger';
 import { MAX_VEHICLES } from '@/domain/vehicles/constants';
@@ -10,7 +9,7 @@ import { VehicleLimitError } from '@/domain/vehicles/errors';
 import type { Vehicle } from '@/domain/vehicles/vehicle';
 import { describeVehicleError, VEHICLE_KIND_LABELS } from '@/features/vehicles/vehicle-messages';
 import { ICON_STROKE } from '@/lib/icons';
-import { VEHICLE_KIND_ICONS, VehicleKindTile } from './vehicle-kind';
+import { VEHICLE_KIND_ICONS, VehicleKindTile, VehicleStateChip } from './vehicle-kind';
 
 const SKELETON_ROWS = 3;
 const EMPTY_ICON_PX = 'size-16';
@@ -48,9 +47,7 @@ function VehicleRow({ vehicle, controls }: { vehicle: Vehicle; controls?: Vehicl
         </p>
       </div>
       <div className="col-start-2 lg:shrink-0">
-        <StateChip state={vehicle.active ? 'free' : 'offline'}>
-          {vehicle.active ? 'En uso' : 'Sin usar'}
-        </StateChip>
+        <VehicleStateChip isActive={vehicle.active} />
       </div>
       {controls && (
         <div className="col-span-2 mt-1 flex justify-end gap-2 lg:mt-0">

@@ -36,7 +36,7 @@ function Counts({ vehicles }: { vehicles: readonly Vehicle[] }) {
   const inUse = vehicles.filter((vehicle) => vehicle.active).length;
   return (
     <p className="text-sm font-semibold text-muted-foreground tabular-nums">
-      {inUse} en uso · {vehicles.length - inUse} sin usar ·{' '}
+      {inUse} en uso · {vehicles.length - inUse} fuera de servicio ·{' '}
       <span className="whitespace-nowrap">
         {vehicles.length} de {MAX_VEHICLES}
       </span>

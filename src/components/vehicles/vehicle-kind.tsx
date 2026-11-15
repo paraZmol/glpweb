@@ -1,5 +1,6 @@
-import { Bike, type LucideIcon, Motorbike, Truck } from 'lucide-react';
+import { Bike, CirclePause, type LucideIcon, Motorbike, Truck } from 'lucide-react';
 import { useId } from 'react';
+import { StateChip } from '@/components/common/state-chip';
 import { FieldError } from '@/components/common/text-field';
 import { VEHICLE_KINDS, type VehicleKind } from '@/domain/vehicles/vehicle';
 import { VEHICLE_KIND_LABELS } from '@/features/vehicles/vehicle-messages';
@@ -11,6 +12,17 @@ export const VEHICLE_KIND_ICONS: Record<VehicleKind, LucideIcon> = {
   tricycle: Bike,
   truck: Truck,
 };
+
+/** "En uso" or "Fuera de servicio": grey like "sin señal", but a pause, not a wifi. */
+export function VehicleStateChip({ isActive }: { isActive: boolean }) {
+  return isActive ? (
+    <StateChip state="free">En uso</StateChip>
+  ) : (
+    <StateChip state="offline" icon={CirclePause}>
+      Fuera de servicio
+    </StateChip>
+  );
+}
 
 /** The kind drawn in a tile: one glyph of the single icon family, never a photo. */
 export function VehicleKindTile({
