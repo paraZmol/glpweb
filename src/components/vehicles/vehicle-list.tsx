@@ -29,11 +29,14 @@ export interface VehicleControls {
   onToggleActive: (vehicle: Vehicle) => void;
 }
 
+/** Phone: the state goes under the name, like the catalogue, so a long name keeps its width. */
 function VehicleRow({ vehicle, controls }: { vehicle: Vehicle; controls?: VehicleControls }) {
   const isBusy = controls?.busyId === vehicle.id;
   return (
-    <article className="flex flex-wrap items-center gap-x-4 gap-y-3 py-4">
-      <VehicleKindTile kind={vehicle.kind} isMuted={!vehicle.active} />
+    <article className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 py-4 lg:flex lg:gap-y-3">
+      <div className="row-span-2 self-start lg:self-center">
+        <VehicleKindTile kind={vehicle.kind} isMuted={!vehicle.active} />
+      </div>
       <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
         <h3 className="max-w-full text-lg font-bold wrap-anywhere">{vehicle.name}</h3>
         <p className="text-[0.9375rem] font-semibold text-muted-foreground">
@@ -44,13 +47,13 @@ function VehicleRow({ vehicle, controls }: { vehicle: Vehicle; controls?: Vehicl
           {capacityText(vehicle.capacityCylinders)}
         </p>
       </div>
-      {vehicle.active ? (
-        <StateChip state="free">En uso</StateChip>
-      ) : (
-        <StateChip state="offline">Sin usar</StateChip>
-      )}
+      <div className="col-start-2 lg:shrink-0">
+        <StateChip state={vehicle.active ? 'free' : 'offline'}>
+          {vehicle.active ? 'En uso' : 'Sin usar'}
+        </StateChip>
+      </div>
       {controls && (
-        <div className="flex w-full justify-end gap-2 lg:w-auto">
+        <div className="col-span-2 mt-1 flex justify-end gap-2 lg:mt-0">
           <Button
             type="button"
             variant="line"
