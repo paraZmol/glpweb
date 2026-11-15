@@ -80,13 +80,13 @@ test('the owner adds and edits vehicles; the driver reads them without a button'
   await expect(main(page).getByText('Lleva hasta 4 balones')).toBeVisible();
   await button(page, 'Dejar de usar Camión 1').click();
   await expect(button(page, 'Volver a usar Camión 1')).toBeVisible();
-  await expect(page.getByText('1 en uso · 1 sin usar · 2 de 30')).toBeVisible();
+  await expect(page.getByText('1 en uso · 1 fuera de servicio · 2 de 30')).toBeVisible();
 
   const driver = await open(PHONE, 'reparto');
   await driver.page.getByRole('link', { name: 'Vehículos' }).click();
   await expect(driver.page).toHaveURL(/\/reparto\/vehiculos$/);
   await expect(main(driver.page).getByText('Lleva hasta 4 balones')).toBeVisible();
-  await expect(main(driver.page).getByText('Sin usar')).toBeVisible();
+  await expect(main(driver.page).getByText('Fuera de servicio', { exact: true })).toBeVisible();
   await expect(main(driver.page).getByRole('button')).toHaveCount(0);
   expect([...owner.errors, ...driver.errors]).toEqual([]);
 });
@@ -126,8 +126,14 @@ test('the dispatcher adjusts the plant stock with a reason; the owner reads who 
   const owner = await open(DESKTOP, 'owner');
   await owner.page.goto('/central/stock');
   await expect(owner.page.getByText('“Préstamo a otra planta”')).toBeVisible();
+  // The history filters are toggles: the one on says so.
+  await expect(button(owner.page, 'Todos')).toHaveAttribute('aria-pressed', 'true');
+  await button(owner.page, '5 kg Marca Flujo').click();
+  await expect(button(owner.page, '5 kg Marca Flujo')).toHaveAttribute('aria-pressed', 'true');
+  await expect(owner.page.getByText('Todavía no hay movimientos.')).toBeVisible();
+  await button(owner.page, 'Todos').click();
   await expect(
-    owner.page.getByText(`Lo hizo ${shop.person('central').displayName}`).first(),
+    owner.page.getByText(`Lo hizo: ${shop.person('central').displayName}`).first(),
   ).toBeVisible();
   expect([...owner.errors, ...dispatcher.errors]).toEqual([]);
 });
@@ -201,7 +207,7 @@ test('the dispatcher saves a risky promotion without publishing, then publishes 
   await page.goto('/central/promociones');
   await button(page, 'Añadir promoción').click();
   await button(page, /^Balón completo al precio del gas/).click();
-  await expect(page.getByText('Vas a entregar el envase sin cobrarlo.')).toBeVisible();
+  await expect(page.getByText('Entregas el envase sin cobrarlo.')).toBeVisible();
   await page.getByLabel('Tope total de unidades').fill('10');
   await button(page, 'Publicar promoción').click();
   await expect(page.getByText(/Marca "Entiendo y quiero publicarla"/)).toBeVisible();
