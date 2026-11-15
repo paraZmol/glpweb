@@ -68,7 +68,7 @@ describe('navItemsFor', () => {
 
   it.each([
     ['office', ['Monitor', 'Catálogo', 'Planta', 'Personal', 'Cuenta']],
-    ['driver', ['Reparto', 'Catálogo', 'Vehículos', 'Cuenta']],
+    ['driver', ['Reparto', 'Precios', 'Vehículos', 'Cuenta']],
   ] as const)('groups the screens of the %s area on a phone', (area, expected) => {
     expect(labels(area, { role: 'owner', isPlatformAdmin: false }, 'phone')).toEqual(expected);
   });

@@ -71,9 +71,10 @@ const MORE: Record<WorkArea, { label: string; icon: LucideIcon; items: NavItem[]
       items: [navItem(ROUTES.officeStock, 'Stock', Warehouse), VEHICLES(ROUTES.officeVehicles)],
     },
   ],
+  // The driver's catalogue is read for its prices and promotions: on a phone it says so.
   driver: [
     {
-      label: 'Catálogo',
+      label: 'Precios',
       icon: Tags,
       items: [navItem(ROUTES.driverCatalog, 'Catálogo', Tags), PROMOTIONS(ROUTES.driverPromotions)],
     },
