@@ -124,6 +124,16 @@ Una sola puerta (PLAN §11, 2026-10-14): el encabezado público ofrece "Ingresar
 | Catálogo (3.1, pantalla): añadir un producto, editar sus precios, subir y bajar, quitar o volver a poner a la venta en `/central/catalogo` | — | — | — | — | no ve | puede (desde 2026-10-15) | puede | puede en la suya | no ve (solo lectura) | — |
 | Catálogo: guardar un balón completo que no cuesta más que la recarga | — | — | — | — | — | — | ve el error en el campo, no se guarda | ve el error en el campo | — | — |
 | Catálogo: con 30 productos (también retirados) | — | — | — | — | — | — | ve el tope en lugar de "Añadir producto" | igual | — | — |
+| Barra del celular (3.3–3.5): "Catálogo" agrupa Catálogo y Promociones, "Planta" agrupa Stock y Vehículos, con pestañas arriba; en escritorio cada pantalla tiene su entrada | — | — | — | — | ve Reparto, Catálogo (con Promociones), Vehículos y Cuenta; sin "Planta" ni "Stock" | ve Monitor, Catálogo, Planta y Cuenta | ve además Personal | ve la suya | ve la suya | — |
+| Vehículos (3.3): añadir, editar, "Dejar de usar"/"Volver a usar" en `/central/vehiculos` (sin pregunta; aviso si la placa ya la tiene otro; doble clic guarda uno) | — | — | — | — | no ve (`/reparto/vehiculos`, sin un botón) | puede | puede | puede en la suya | no ve (solo lectura bajo el aviso) | — |
+| Vehículos: guardar vacío, con nombre de espacios, capacidad 0, 1000 o con decimales | — | — | — | — | — | ve el error en el campo, no se guarda (**hoy de a un campo**, §4b) | igual | — | — | — |
+| Stock (3.4): "Ajustar" con motivo (conteo físico como total, proveedor, dañado, otro con nota) en `/central/stock`; bitácora con autor y filtro por producto | — | — | — | — | no ve | puede | puede | puede en la suya | no ve "Ajustar" (solo lectura bajo el aviso) | — |
+| Stock: conteo físico con la pantalla atrasada (otra persona ajustó ese producto con el formulario abierto) | — | — | — | — | — | queda el total contado, o la pantalla avisa y pide contar otra vez (**hoy guarda una diferencia contra lo que mostraba**, §4b) | igual | — | — | — |
+| Stock: dejarlo bajo cero, más de 9999 de una vez, "otro" sin nota o con nota de espacios | — | — | — | — | — | ve el error, no se guarda | igual | — | — | — |
+| Promociones (3.5): "Añadir promoción" con plantilla, vista previa y "Dejas de cobrar…"; publicar o guardar sin publicar; editar (nombre y alargar); apagar con pregunta ("Sí, apagarla"); repetir | — | — | — | — | no ve (`/reparto/promociones`, activas y programadas, sin un botón) | puede | puede | puede en la suya | no ve (solo lectura bajo el aviso) | — |
+| Promociones: nombre o condiciones con urgencia inventada ("Últimas unidades", "hasta agotar stock"), sin nombre, sin producto, rebaja de 0 o mayor que el precio | — | — | — | — | — | ve el error en el campo, no se publica (**hoy la rebaja mayor que el precio se ve como precio negativo hasta publicar**, §4b) | igual | — | — | — |
+| Promociones: otra activa para el mismo producto y forma de venta | — | — | — | — | — | ve "El cliente verá solo la que le deja el menor precio." | igual | — | — | — |
+| "Atrás" del navegador con el formulario de vehículo, de ajuste o de promoción abierto | — | — | — | — | — | lo cierra y queda en la pantalla, como el catálogo (**hoy sale a `/central`**, §4b) | igual | — | — | — |
 | Ver en `/d/{slug}` de A sus productos a la venta, en su orden, con "Recarga S/ X" y, si lo vende, "Balón completo S/ Y" (sin botón de pedir) | ve | ve | ve | ve | ve | ve | ve | ve | ve | ve |
 | Ver en el buscador el "Recarga 5 kg desde S/ 38.00" de cada distribuidora (la recarga a la venta más barata con su peso, desde el 2026-10-15; sin productos, sin precio) y "recarga 5 kg desde" bajo la portada de `/d/{slug}` | ve | ve | ve | ve | ve | ve | ve | ve | ve | ve |
 | Ver en `/d/{slug}` de A el enlace "Libro de Reclamaciones" con su dominio a la vista ("· example.com"; otra pestaña; solo si la distribuidora lo dio; B no lo tiene; 2026-10-16) | ve | ve | ve | ve | ve | ve | ve | ve | ve | ve |
@@ -263,6 +273,15 @@ Se anotan aquí con el motivo; una celda no recorrida no se da por buena.
   (D) con una invitación creada antes de vencer** (se probó con B suspendida en vivo: la tarjeta
   se ve y "Unirme" responde "la distribuidora no puede sumar personal ahora").
 
+- **Vehículos, stock y promociones en pantalla (3.3–3.5)**: recorridos por role-walker el
+  2026-11-15 (§5). Quedan sin recorrer: `dispatcherB` y `driverB` (cubiertos por el
+  aislamiento de §3, probado con `ownerB` en pantalla y con el intento directo); el **tope de 30
+  vehículos y de 20 promociones** (no se llenaron); las plantillas de **balón completo** con un
+  producto que lo vende, "Lleva más, paga menos" con su tope total y "Elegir fechas"
+  (se abrieron, no se publicaron); el **aviso de una promoción por terminar o terminada en vivo**
+  (no se esperó su cierre); el **modo oscuro** de estas pantallas; el **teclado del celular**
+  sobre los campos de cantidad (el recorrido no abre teclado virtual).
+
 ## 4b. Celdas que hoy no cumplen lo que dice la matriz
 
 Cada una tiene su test con `test.fail` en `tests/e2e/flows/role-walker.spec.ts`. Del alta de
@@ -272,6 +291,33 @@ distribuidora quedan dos, las dos a la espera de una decisión sobre almacenamie
 
 - **Recargar a mitad del alta** vacía lo escrito (el borrador vive solo en memoria).
 - **Recargar la central recién creada y pulsar Atrás** muestra el paso 1 del alta vacío.
+
+De la quinta pasada (vehículos, stock y promociones, 3.3–3.5; 2026-11-15), con su test con
+`knownBug` en `tests/e2e/flows/role-walker-stock.spec.ts`, `role-walker-vehicles.spec.ts` y
+`role-walker-promotions.spec.ts`:
+
+- **ALTO — conteo físico con la pantalla atrasada**: la central abre "Ajustar" (40 llenos); el
+  titular registra +10 del proveedor (50); la central cuenta 38 y guarda: queda **48**, y la
+  bitácora dice "Conteo físico · Quedaron 48". El conteo se guarda como diferencia contra lo que
+  la pantalla mostraba al abrir, no como el total contado.
+- **MEDIO — rebaja mayor que el precio**: S/ 60 menos sobre una recarga de S/ 48 muestra en
+  "Así lo verá tu cliente" **-S/ 12.00**, "Ahorras S/ 60.00", "125 %" y ofrece "Entiendo y
+  quiero publicarla"; el rechazo ("La rebaja no puede ser igual o mayor…") llega solo al pulsar
+  "Publicar promoción".
+- **MEDIO — "Atrás" con un formulario abierto** (vehículo, ajuste, promoción) sale a `/central`
+  y pierde lo escrito; en el catálogo "Atrás" cierra el formulario.
+- **MEDIO — publicar sin producto**: el error "Elige al menos un producto." queda muy arriba; en
+  el celular la página no se mueve y parece que no pasó nada.
+- **MEDIO — dos personas apagan la misma promoción a la vez**: una lee "No tienes permiso para
+  hacer esto, o la distribuidora está en solo lectura."
+- **MEDIO — "Ajustar" sale de su tarjeta a 390 px** (borde derecho).
+- **BAJO**: el vehículo vacío muestra un error a la vez (primero la capacidad, después el
+  nombre); 999999 contados dice también "quedaría por debajo de cero"; "Dañado" de más lo dice
+  dos veces; "Quedan 1 llenos"; la rebaja de 0 dice "Está fuera del rango permitido."; la
+  bitácora escribe "se enviaron vacíos" y el formulario "se llevaron vacíos"; el doble clic en
+  "Guardar vehículo" deja seleccionado "Monitor" de la barra; con la suspensión en vivo el
+  formulario de vehículo desaparece con lo escrito, y la central lee "Los vehículos los
+  registran el titular o la central".
 
 Arregladas el 2026-10-15 (sus tests quedaron como tests normales), las nueve de la cuarta
 pasada (catálogo y personal): el catálogo (`/central/catalogo`, `/reparto/catalogo`) y
@@ -316,3 +362,4 @@ reactivar, volver a revisión, eliminar la cuenta) se responde con un doble clic
 | 2026-10-15 | Arreglos de la cuarta pasada (no es una pasada nueva): las nueve de §4b, más las invitaciones vencidas plegadas y los botones de cada invitación a 390 px. Quedan con `test.fail` las dos del alta de §4b | `fase-3/catalogo` |
 | 2026-10-16 | No es una pasada: filas de §3 para vehículos (3.3) y stock de planta (3.4), solo lado de datos. Titular y central escriben los dos (decisión del usuario); el reparto lee los vehículos y no ve el stock. **Falta la pasada de `role-walker`** cuando haya pantallas | `fase-3/vehiculos-stock` |
 | 2026-11-15 | No es una pasada: filas de `/central/vehiculos`, `/central/stock`, `/central/promociones`, `/reparto/vehiculos` y `/reparto/promociones` en §1 (pantallas de 3.3–3.5). En celular la barra agrupa "Catálogo" (con Promociones) y "Planta" (Stock y Vehículos) con pestañas arriba; en escritorio cada pantalla tiene su entrada. E2E `tests/e2e/flows/plant-and-promotions.spec.ts`. **Falta la pasada de `role-walker`** | `fase-3/pantallas-stock-promos` |
+| 2026-11-15 | Quinta pasada, sobre vehículos, stock de planta y promociones (3.3–3.5) y la barra agrupada del celular, a 390 y 1440 px: titular, central y reparto de A y de distribuidoras propias de la prueba; visitante, sin términos, sin correo confirmado, cliente y dueño de B por URL directa e intento directo contra las reglas (leer stock y bitácora, listar vehículos y promociones, escribir vehículo, promoción y stock: todo lo prohibido, rechazado); suspendida, pago pendiente y prueba vencida en solo lectura sin un botón; suspensión en vivo con formularios abiertos; dos pestañas y cambio de cuenta; doble clic, vacíos, emojis, textos largos, placas repetidas o en minúsculas, cantidades raras, urgencia inventada, rebajas fuera de rango, promociones superpuestas, Atrás y recarga. Filas nuevas en §2. Un ALTO, cinco medios y varios bajos (§4b) | `fase-3/pantallas-stock-promos` |
