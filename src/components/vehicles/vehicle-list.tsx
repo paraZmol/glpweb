@@ -132,13 +132,9 @@ export function VehiclesEmpty({ title, description, action }: VehiclesEmptyProps
   );
 }
 
-export function AddVehicleButton({
-  onAdd,
-  isFirst = false,
-}: {
-  onAdd: () => void;
-  isFirst?: boolean;
-}) {
+type AddVehicleButtonProps = { onAdd: () => void; isFirst?: boolean };
+
+export function AddVehicleButton({ onAdd, isFirst = false }: AddVehicleButtonProps) {
   return (
     <Button type="button" onClick={onAdd} className="max-sm:w-full">
       <Plus aria-hidden="true" strokeWidth={ICON_STROKE} />
