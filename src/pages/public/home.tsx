@@ -1,4 +1,3 @@
-import kettlePhoto from '../../../docs/design/images/pexels-13772359-tetera-llama-cocina.jpg';
 import { BurnerRing } from '@/components/brand/burner-ring';
 import { Highlight } from '@/components/brand/highlight';
 import { ComingNext } from '@/components/finder/coming-next';
@@ -14,6 +13,7 @@ import { FINDER_ANCHOR, TwoPaths } from '@/components/landing/two-paths';
 import { HOME_ANCHORS } from '@/components/layout/public-nav';
 import { Reveal } from '@/components/motion/reveal';
 import { WhatIsHornilla } from '@/components/landing/what-is-hornilla';
+import { KETTLE_PHOTO } from '@/lib/photos';
 import { useDeliveryLocation } from '@/features/location/use-delivery-location';
 import { usePageTitle } from '@/lib/page-title';
 import { useScrollToHash } from '@/lib/use-scroll-to-hash';
@@ -29,7 +29,10 @@ function HeroPhoto() {
       <BurnerRing className="-right-11 -bottom-10 hidden size-56 lg:block" />
       <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted lg:aspect-auto lg:h-130 lg:rounded-3xl lg:shadow-float">
         <img
-          src={kettlePhoto}
+          {...KETTLE_PHOTO}
+          sizes="(min-width: 1024px) 560px, calc(100vw - 2rem)"
+          width={1600}
+          height={1067}
           alt="Tetera sobre una hornilla encendida con llama azul"
           fetchPriority="high"
           className="absolute inset-0 size-full object-cover object-[66%_50%] brightness-(--photo-brightness)"

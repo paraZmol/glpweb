@@ -1,6 +1,6 @@
 import { ShieldCheck } from 'lucide-react';
-import valvesPhoto from '../../../docs/design/images/unsplash-zENzDOsA2XA-balones-detalle-valvulas.jpg';
 import { ICON_STROKE } from '@/lib/icons';
+import { VALVES_PHOTO } from '@/lib/photos';
 
 /**
  * "Tu seguridad primero" (docs/marketing/portada.md §6). Advice only: Hornilla does not
@@ -14,7 +14,8 @@ export function SafetyFirst() {
     >
       <div className="relative aspect-video lg:aspect-auto lg:min-h-80">
         <img
-          src={valvesPhoto}
+          {...VALVES_PHOTO}
+          sizes="(min-width: 1024px) 580px, calc(100vw - 2rem)"
           alt="Balones de gas vistos desde arriba, con sus asas y válvulas"
           loading="lazy"
           className="absolute inset-0 size-full object-cover brightness-(--photo-brightness)"

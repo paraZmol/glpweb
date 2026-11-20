@@ -1,9 +1,9 @@
 import { ArrowRight } from 'lucide-react';
-import deskPhoto from '../../../docs/design/images/pexels-39219973-hombre-telefono-escritorio.jpg';
 import { BurnerRing } from '@/components/brand/burner-ring';
 import { Highlight } from '@/components/brand/highlight';
 import { ButtonLink } from '@/components/common/button';
 import { ICON_STROKE } from '@/lib/icons';
+import { DESK_PHOTO } from '@/lib/photos';
 
 export const TRIAL_NOTE = '30 días de prueba, gratis y sin tarjeta.';
 
@@ -29,7 +29,8 @@ export function OwnersHero({ registerTo }: { registerTo: string }) {
         <BurnerRing className="-right-10 -bottom-10 hidden size-56 lg:block" />
         <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-muted lg:rounded-3xl lg:shadow-float">
           <img
-            src={deskPhoto}
+            {...DESK_PHOTO}
+            sizes="(min-width: 1024px) 560px, calc(100vw - 2rem)"
             alt="Persona atendiendo el teléfono en su escritorio, junto a una laptop"
             fetchPriority="high"
             className="absolute inset-0 size-full object-cover brightness-(--photo-brightness)"
