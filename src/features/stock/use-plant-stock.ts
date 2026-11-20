@@ -2,10 +2,11 @@ import { listPlantStock, listStockMovements } from '../../data/plant-stock-repo'
 import type { StockMovement } from '../../domain/stock/movement';
 import type { PlantStock } from '../../domain/stock/plant-stock';
 import { type ReloadableResource, useAsyncResource } from '../../lib/use-async-resource';
-import { useRefreshOnReturn } from '../../lib/use-refresh-on-return';
+import { COSTLY_RETURN_REFRESH_GAP_MS, useRefreshOnReturn } from '../../lib/use-refresh-on-return';
 
 // Owner and dispatcher only (PLAN §11, 2026-10-16); the driver gets `PermissionDeniedError`.
-// Not live: read when the screen opens and each time the person comes back to it; call
+// Not live: read when the screen opens and when the person comes back to it (at most once a
+// minute: each load costs about 50 reads, `COSTLY_RETURN_REFRESH_GAP_MS`); call
 // `reload()` after a write. Pass null while the distributor is not known.
 
 /**
@@ -17,7 +18,7 @@ export function usePlantStock(distributorId: string | null): ReloadableResource<
   const stock = useAsyncResource(distributorId && `plantStock:${distributorId}`, () =>
     listPlantStock(distributorId ?? ''),
   );
-  useRefreshOnReturn(stock.reload, distributorId !== null);
+  useRefreshOnReturn(stock.reload, distributorId !== null, COSTLY_RETURN_REFRESH_GAP_MS);
   return stock;
 }
 
@@ -33,6 +34,6 @@ export function useStockMovements(
   const movements = useAsyncResource(key, () =>
     listStockMovements(distributorId ?? '', productId ? { productId } : {}),
   );
-  useRefreshOnReturn(movements.reload, distributorId !== null);
+  useRefreshOnReturn(movements.reload, distributorId !== null, COSTLY_RETURN_REFRESH_GAP_MS);
   return movements;
 }

@@ -13,6 +13,7 @@ import { usePageTitle } from '@/lib/page-title';
 import { AREA_HOME } from '@/lib/routes';
 import { useLastReady } from '@/lib/use-last-ready';
 import { useOnlineStatus } from '@/lib/use-online-status';
+import { COSTLY_RETURN_REFRESH_GAP_MS } from '@/lib/use-refresh-on-return';
 import { isSuspended, SuspendedNotice } from './read-only-notice';
 import { StockBoard, stockLinesOf } from './stock-board';
 import { useFormEntry } from './use-form-entry';
@@ -48,7 +49,7 @@ export function PlantStockPage() {
   // The adjustment is a step of the history: "back" closes it and stays on the stock.
   const entry = useFormEntry('stockAdjust', distributorId);
   const adjusting = typeof entry.value === 'string' ? entry.value : null;
-  const catalog = useCatalog(distributorId);
+  const catalog = useCatalog(distributorId, COSTLY_RETURN_REFRESH_GAP_MS);
   const stock = usePlantStock(distributorId);
   const movements = useStockMovements(distributorId, historyOf);
   const products = useLastReady(catalog, distributorId).data;
