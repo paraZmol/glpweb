@@ -2,7 +2,7 @@
 // every main screen, light and dark. Any WCAG 2.2 A/AA or best-practice violation fails the run,
 // so a later change that hides a button name or loses contrast is caught in CI.
 // Public pages and the plant need the seeded emulators; sign-in and legal pages do not.
-import AxeBuilder from '@axe-core/playwright';
+import { AxeBuilder } from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { SEED_USERS } from '../../seed/data';
 import { signInAs } from '../support/sign-in';
