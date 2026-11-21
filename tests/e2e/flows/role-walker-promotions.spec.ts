@@ -96,9 +96,13 @@ test.describe('promotions, two people', () => {
     await expect
       .poll(async () => (await readDocument(`distributors/${own.id}/promotions/o00`))?.active)
       .toBe(false);
+    // Each one is told how its own answer ended (it switched it off, or someone did it first),
+    // and the list shows it switched off; the notice of the end is already on screen by then.
     for (const { page } of [titular, central]) {
+      await expect(
+        page.getByText(/^Apagamos “|ya estaba apagada: alguien de tu equipo/),
+      ).toBeVisible();
       await expect(page.getByText('Apagada', { exact: true })).toBeVisible();
-      await page.waitForTimeout(1_000);
       expect(await page.getByText(/No tienes permiso/).count()).toBe(0);
     }
   });

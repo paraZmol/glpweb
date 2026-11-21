@@ -105,8 +105,11 @@ test.describe('plant stock', () => {
 
     await central.page.getByLabel('Llenos contados').fill('38');
     await central.page.getByRole('button', { name: 'Guardar ajuste' }).click();
-    await central.page.waitForTimeout(2_000);
-    // Either the count wins (38) or the screen stops the person to count again (50 stays).
+    // Either the count wins (38) or the screen stops the person to count again (50 stays): the
+    // stock is read once the screen has said which of the two happened.
+    await expect(
+      central.page.getByText(/Ajustamos el stock de|El stock cambió mientras contabas/),
+    ).toBeVisible();
     const full = (await readDocument(`distributors/${own.id}/plantStock/p00`))?.full;
     expect([38, 50]).toContain(full);
   });
@@ -150,7 +153,9 @@ test.describe('plant stock, one person', () => {
     await page.getByLabel('Llenos que salen').fill('50');
     await page.getByRole('button', { name: 'Guardar ajuste' }).click();
     await expect(page.getByText(/por debajo de cero/).first()).toBeVisible();
-    await page.waitForTimeout(1_000);
+    // A save that went to the server would hold "Cancelar" until it answered, and its answer
+    // would say it a second time: once the form is idle, the count is final.
+    await expect(page.getByRole('button', { name: 'Cancelar' })).toBeEnabled();
     expect(await page.getByText(/por debajo de cero/).count()).toBe(1);
   });
 
