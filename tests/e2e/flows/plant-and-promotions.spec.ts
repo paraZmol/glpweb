@@ -106,8 +106,11 @@ test('the dispatcher adjusts the plant stock with a reason; the owner reads who 
   await page.getByLabel('Llenos contados').fill('40');
   await page.getByLabel('Vacíos contados').fill('12');
   await expect(page.getByText(/\+40 llenos · \+12 vacíos/)).toBeVisible();
+  const saved = page.getByText(`Ajustamos el stock de ${TEN}.`);
   await button(page, 'Guardar ajuste').click();
-  await expect(page.getByText(`Ajustamos el stock de ${TEN}.`)).toBeVisible();
+  await expect(saved).toBeVisible();
+  // The notice goes away by itself; the next save says the same words, and must be its own.
+  await expect(saved).toBeHidden();
 
   // "Otro motivo" needs a note.
   await button(page, `Ajustar ${TEN}`).click();
@@ -117,7 +120,7 @@ test('the dispatcher adjusts the plant stock with a reason; the owner reads who 
   await expect(page.getByText('Cuenta en una nota por qué ajustas el stock.')).toBeVisible();
   await page.getByLabel('Nota').fill('Préstamo a otra planta');
   await button(page, 'Guardar ajuste').click();
-  await expect(page.getByText(`Ajustamos el stock de ${TEN}.`)).toBeVisible();
+  await expect(saved).toBeVisible();
   await expect(page.getByText('En total: 38 llenos · 12 vacíos')).toBeVisible();
 
   const stored = await readDocument(`distributors/${shop.id}/plantStock/p00`);
