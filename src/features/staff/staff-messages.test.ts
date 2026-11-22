@@ -54,17 +54,24 @@ describe('staff messages', () => {
   });
 
   it.each([
-    [new InviteNotFoundError(), 'Esta invitación es para otra cuenta o no existe.'],
+    [new InviteNotFoundError(), 'Esta invitación no es para esta cuenta.'],
     [new InviteExpiredError(), 'Esta invitación venció: dura 7 días.'],
     [new InviteUsedError(), 'Esta invitación ya se usó.'],
     [new InviteRevokedError(), 'Esta invitación fue anulada.'],
-    [new InviteForAnotherAccountError(), 'Esta invitación es para otra cuenta de Google.'],
+    [new InviteForAnotherAccountError(), 'Esta invitación no es para esta cuenta.'],
     [new AlreadyMemberError(true), 'Ya formas parte de esta distribuidora.'],
     [new AlreadyMemberError(false), 'Pide a su titular que te vuelva a activar.'],
     [new UnreadableNameError(), 'Tu nombre en Hornilla no se puede leer.'],
     [new PermissionDeniedError(), 'No pudimos usar la invitación'],
   ])('explains a refused invitation (%s)', (error, text) => {
     expect(describeJoinError(error)).toContain(text);
+  });
+
+  // PLAN §11 (2026-10-16): the person cannot be told which of the two it is.
+  it('says the same for an invitation for another account and for a missing one', () => {
+    expect(describeJoinError(new InviteForAnotherAccountError())).toBe(
+      describeJoinError(new InviteNotFoundError()),
+    );
   });
 
   it.each([

@@ -2,10 +2,11 @@ import type { ReactNode } from 'react';
 import { HornillaLogo } from '@/components/brand/hornilla-logo';
 import { Button, ButtonLink } from '@/components/common/button';
 import { InviteForAnotherAccountError, InviteNotFoundError } from '@/domain/staff/errors';
-import { useSignOut } from '@/features/account/use-sign-out';
 import { describeJoinError } from '@/features/staff/staff-messages';
-import { ROUTES, signInPathFrom, withFragment } from '@/lib/routes';
+import { ROUTES } from '@/lib/routes';
+import { useFocusOnMount } from '@/lib/use-focus-on-mount';
 import { BROKEN_LINK, joinStopCopyOf } from './join-copy';
+import { useSwitchAccount } from './join-link';
 
 const SYMBOL_PX = 56;
 
@@ -21,24 +22,36 @@ type JoinStopProps = {
  * do about it and the way out. Never a blank page and never a button that would fail.
  */
 export function JoinStop({ title, description, actions }: JoinStopProps) {
+  const heading = useFocusOnMount<HTMLHeadingElement>();
   return (
     <section className="flex flex-col items-start gap-4 rounded-xl bg-card p-6 shadow-card lg:p-8">
       <span className="text-muted-foreground">
         <HornillaLogo variant="symbol" tone="mono" size={SYMBOL_PX} />
       </span>
       <div>
-        <h1 className="text-[1.75rem] font-extrabold text-balance wrap-break-word lg:text-[2rem]">
+        <h1
+          ref={heading}
+          tabIndex={-1}
+          className="text-[1.75rem] font-extrabold text-balance wrap-break-word outline-none lg:text-[2rem]"
+        >
           {title}
         </h1>
         <p className="mt-2 max-w-prose text-muted-foreground">{description}</p>
       </div>
-      <div className="flex flex-wrap gap-3">{actions}</div>
+      <div className="flex flex-wrap items-center gap-3">{actions}</div>
     </section>
   );
 }
 
 const HOME_LINK = (
   <ButtonLink to={ROUTES.appEntry} variant="ink">
+    Ir a mi inicio
+  </ButtonLink>
+);
+
+/** Beside the way out with another account, home is the quiet choice. */
+const QUIET_HOME_LINK = (
+  <ButtonLink to={ROUTES.appEntry} variant="quiet">
     Ir a mi inicio
   </ButtonLink>
 );
@@ -63,44 +76,48 @@ type JoinRefusedProps = {
 /** Why this account cannot use the invitation, and the way on (PLAN 3.2). */
 export function JoinRefused(props: JoinRefusedProps) {
   const { refusal, distributorName, email, onEnter, linkHash } = props;
-  // Signing out here is to come back with another account: to the sign-in, then to this same
-  // invitation (its code rides in the fragment, never in `desde`).
-  const { signOut, isSigningOut } = useSignOut(withFragment(signInPathFrom(ROUTES.join), linkHash));
+  const { switchAccount, isSwitching } = useSwitchAccount(linkHash);
   const name = distributorName ?? 'esta distribuidora';
   const copy = joinStopCopyOf(refusal, name) ?? {
     title: 'No pudimos usar esta invitación.',
     description: describeJoinError(refusal),
   };
-  // A link it cannot read may be for another account too: the way back is the same.
-  const isOtherAccount =
-    refusal instanceof InviteForAnotherAccountError || refusal instanceof InviteNotFoundError;
+  // A link it cannot read may be for another account: the way on is to enter with that one.
+  if (refusal instanceof InviteForAnotherAccountError || refusal instanceof InviteNotFoundError) {
+    return (
+      <JoinStop
+        title={copy.title}
+        description={email ? `Estás con ${email}. ${copy.description}` : copy.description}
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="ink"
+              className="h-auto min-h-12 py-2.5 text-balance whitespace-normal"
+              loading={isSwitching}
+              loadingLabel="Cerrando sesión…"
+              onClick={switchAccount}
+            >
+              Ingresar con otra cuenta de Google
+            </Button>
+            {QUIET_HOME_LINK}
+          </>
+        }
+      />
+    );
+  }
   return (
     <JoinStop
       title={copy.title}
-      description={
-        isOtherAccount && email ? `Ahora estás con ${email}. ${copy.description}` : copy.description
-      }
+      description={copy.description}
       actions={
-        <>
-          {onEnter ? (
-            <Button type="button" variant="ink" onClick={onEnter}>
-              Ir a mi panel
-            </Button>
-          ) : (
-            HOME_LINK
-          )}
-          {isOtherAccount && (
-            <Button
-              type="button"
-              variant="line"
-              loading={isSigningOut}
-              loadingLabel="Cerrando sesión…"
-              onClick={signOut}
-            >
-              Cerrar sesión
-            </Button>
-          )}
-        </>
+        onEnter ? (
+          <Button type="button" variant="ink" onClick={onEnter}>
+            Ir a mi panel
+          </Button>
+        ) : (
+          HOME_LINK
+        )
       }
     />
   );

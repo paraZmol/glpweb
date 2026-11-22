@@ -68,20 +68,20 @@ export function inviteStateLabelOf(state: InviteState): string {
 }
 
 const ASK_AGAIN = 'Pide una invitación nueva a quien te la envió.';
+const NOT_FOR_THIS_ACCOUNT =
+  'Esta invitación no es para esta cuenta. Si te invitaron con otro correo, ingresa con esa cuenta. Si no, pide que te envíen la invitación otra vez.';
 
 /** Message in Spanish for what using an invitation can throw. */
 export function describeJoinError(error: unknown): string {
-  if (error instanceof InviteNotFoundError) {
-    return `Esta invitación es para otra cuenta o no existe. Revisa que el enlace esté completo o ${ASK_AGAIN.toLowerCase()}`;
+  // Tied to another address, or missing: one message for both (PLAN §11, 2026-10-16).
+  if (error instanceof InviteNotFoundError || error instanceof InviteForAnotherAccountError) {
+    return NOT_FOR_THIS_ACCOUNT;
   }
   if (error instanceof InviteExpiredError) {
     return `Esta invitación venció: dura ${INVITE_TTL_DAYS} días. ${ASK_AGAIN}`;
   }
   if (error instanceof InviteUsedError) return `Esta invitación ya se usó. ${ASK_AGAIN}`;
   if (error instanceof InviteRevokedError) return `Esta invitación fue anulada. ${ASK_AGAIN}`;
-  if (error instanceof InviteForAnotherAccountError) {
-    return 'Esta invitación es para otra cuenta de Google. Ingresa con la cuenta a la que te invitaron.';
-  }
   if (error instanceof AlreadyMemberError) {
     return error.isActive
       ? 'Ya formas parte de esta distribuidora.'

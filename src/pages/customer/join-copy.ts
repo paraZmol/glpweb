@@ -17,6 +17,16 @@ export const BROKEN_LINK = {
 
 const ASK_AGAIN = 'Pide una invitación nueva a quien te la envió.';
 
+/**
+ * An invitation this account cannot read: tied to another address, or missing. What to do in
+ * either case; the screen puts the address of the session first ("Estás con …").
+ */
+export const NOT_FOR_THIS_ACCOUNT = {
+  title: 'Esta invitación no es para esta cuenta.',
+  description:
+    'Si te invitaron con otro correo, ingresa con esa cuenta. Si no, pide que te envíen la invitación otra vez.',
+};
+
 export interface JoinStopCopy {
   title: string;
   description: string;
@@ -29,13 +39,10 @@ export interface JoinStopCopy {
  */
 export function joinStopCopyOf(refusal: Error, distributorName: string): JoinStopCopy | null {
   // An invitation tied to another address cannot even be read (PLAN §11, 2026-10-16): the
-  // screen cannot tell it from one that does not exist, and says both in one sentence.
-  if (refusal instanceof InviteNotFoundError) {
-    return {
-      title: 'Esta invitación es para otra cuenta o no existe.',
-      description:
-        'Si te la enviaron para otra cuenta de Google, cierra sesión e ingresa con esa: te traemos de vuelta a esta invitación. Si no, revisa que el enlace esté completo o pide una invitación nueva a quien te la envió.',
-    };
+  // screen cannot tell it from one that does not exist: one message serves both cases and
+  // asserts neither.
+  if (refusal instanceof InviteNotFoundError || refusal instanceof InviteForAnotherAccountError) {
+    return NOT_FOR_THIS_ACCOUNT;
   }
   if (refusal instanceof InviteExpiredError) {
     return {
@@ -48,13 +55,6 @@ export function joinStopCopyOf(refusal: Error, distributorName: string): JoinSto
   }
   if (refusal instanceof InviteRevokedError) {
     return { title: 'Esta invitación fue anulada.', description: `Ya no sirve. ${ASK_AGAIN}` };
-  }
-  if (refusal instanceof InviteForAnotherAccountError) {
-    return {
-      title: 'Esta invitación es para otra cuenta de Google.',
-      description:
-        'Cierra sesión e ingresa con la cuenta a la que te invitaron: te traemos de vuelta a esta invitación.',
-    };
   }
   if (refusal instanceof AlreadyMemberError) {
     return refusal.isActive

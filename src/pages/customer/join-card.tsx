@@ -10,6 +10,8 @@ import { DEFAULT_TIMEZONE } from '@/domain/tenancy/constants';
 import { invitedRoleOf } from '@/features/staff/invite-message';
 import { formatDateTime } from '@/lib/format-date';
 import { ROUTES } from '@/lib/routes';
+import { useFocusOnMount } from '@/lib/use-focus-on-mount';
+import { SwitchAccountLink } from './join-switch';
 
 const OFFLINE_TEXT = 'Sin conexión: para unirte necesitas internet.';
 
@@ -28,6 +30,8 @@ function WhyYourEmail({ invitedBy }: { invitedBy: string | null }) {
 
 type JoinCardProps = {
   invite: Invite;
+  /** The fragment of the link, to come back to it with another account. */
+  linkHash: string;
   /** Who is signed in: the name its staff will see, and its Google address. */
   you: { name: string; email: string | null };
   isRunning: boolean;
@@ -41,8 +45,10 @@ type JoinCardProps = {
  * "Unirme", in the colour of the distributor. Who invites and the colour are copies the
  * invitation carries (PLAN §11, 2026-10-15): an older one has neither, and the card says the rest.
  */
-export function JoinCard({ invite, you, isRunning, isOnline, error, onJoin }: JoinCardProps) {
+export function JoinCard(props: JoinCardProps) {
+  const { invite, linkHash, you, isRunning, isOnline, error, onJoin } = props;
   const name = invite.distributorName;
+  const heading = useFocusOnMount<HTMLHeadingElement>();
   const facts = [
     ...(invite.invitedByName ? [['Te invita', invite.invitedByName]] : []),
     ['Rol', `${ROLE_LABELS[invite.role]}. ${ROLE_DUTIES[invite.role]}`],
@@ -56,7 +62,11 @@ export function JoinCard({ invite, you, isRunning, isOnline, error, onJoin }: Jo
           <Monogram name={name} />
           <p className="text-[0.9375rem] font-bold text-muted-foreground">Invitación de personal</p>
         </div>
-        <h1 className="text-[2.125rem] font-extrabold text-balance wrap-anywhere lg:text-[2.5rem]">
+        <h1
+          ref={heading}
+          tabIndex={-1}
+          className="text-[2.125rem] font-extrabold text-balance wrap-anywhere outline-none lg:text-[2.5rem]"
+        >
           <Highlight>{name}</Highlight> te invita como {invitedRoleOf(invite.role)}.
         </h1>
         <dl className="flex flex-col divide-y rounded-lg bg-muted px-4">
@@ -67,6 +77,7 @@ export function JoinCard({ invite, you, isRunning, isOnline, error, onJoin }: Jo
             </div>
           ))}
         </dl>
+        <SwitchAccountLink linkHash={linkHash} className="-mt-3" />
         {invite.email && <WhyYourEmail invitedBy={invite.invitedByName} />}
         <FormStatus error={error} isOnline={isOnline} offlineText={OFFLINE_TEXT} />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

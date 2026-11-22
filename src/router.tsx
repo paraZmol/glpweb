@@ -81,11 +81,15 @@ const accountRoutes: RouteObject = {
       'customer',
       (m) => m.CustomerGate,
       (m) => m.FocusShell,
-      [
-        { path: ROUTES.newDistributor, lazy: from('customer', (m) => m.NewDistributorPage) },
-        // An invitation link (PLAN 3.2): any account with its terms accepted may open it.
-        { path: ROUTES.join, lazy: from('customer', (m) => m.JoinPage) },
-      ],
+      [{ path: ROUTES.newDistributor, lazy: from('customer', (m) => m.NewDistributorPage) }],
+    ),
+    // An invitation link (PLAN 3.2): any account with its terms accepted may open it. Its frame
+    // offers to come back with another account instead of "Salir".
+    guarded(
+      'customer',
+      (m) => m.CustomerGate,
+      (m) => m.JoinShell,
+      [{ path: ROUTES.join, lazy: from('customer', (m) => m.JoinPage) }],
     ),
     guarded(
       'driver',
