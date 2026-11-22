@@ -51,6 +51,9 @@ type ListingStatusProps = {
   onCorrected?: () => void;
 };
 
+export const NOTE_ELSEWHERE =
+  'La nota de Hornilla con el detalle la ve quien registró la distribuidora: pídele que te cuente qué hay que corregir.';
+
 /** The platform left a note: it stays on screen until the platform decides again. */
 const hasNote = (listing: ListingState) =>
   listing === 'changesRequested' || listing === 'correctionsSent';
@@ -101,7 +104,7 @@ export function ListingStatus(props: ListingStatusProps) {
       <p className="mt-2 max-w-prose text-muted-foreground">
         {isHeldByPlatform ? <SuspendedNotice /> : text}
       </p>
-      {hasNote(listing) && distributor.reviewNote && (
+      {hasNote(listing) && props.isFounder && distributor.reviewNote && (
         <figure className="mt-3 rounded-lg bg-muted p-3.5">
           <figcaption className="text-[0.8125rem] font-bold text-muted-foreground">
             Nota de Hornilla
@@ -110,6 +113,11 @@ export function ListingStatus(props: ListingStatusProps) {
             {distributor.reviewNote}
           </blockquote>
         </figure>
+      )}
+      {hasNote(listing) && !props.isFounder && (
+        // PLAN 3.2: the text of the note may speak of the RUC or the registry, which only the
+        // founder reads; everyone else learns that there is one and who has it.
+        <p className="mt-3 rounded-lg bg-muted p-3.5 font-semibold">{NOTE_ELSEWHERE}</p>
       )}
       {actions && <div className="mt-4 flex flex-col gap-3">{actions}</div>}
     </Panel>

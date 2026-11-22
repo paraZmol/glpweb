@@ -77,11 +77,12 @@ describe('public page of a distributor (PLAN 2.5)', () => {
     expect(links.some((href) => href?.startsWith('tel:') || href?.includes('wa.me'))).toBe(false);
   });
 
-  it('shows the catalogue as a designed empty state: products arrive with phase 3', () => {
+  // PLAN 3.1: the prices load after the profile; their place is held by the shape of the cards.
+  it('holds the place of the prices while they load, under its own heading', () => {
     const html = page();
 
-    expect(textOf(html)).toContain('Esta distribuidora todavía no publicó su catálogo.');
-    expect(html).toContain('aria-label="Balón de 10 kg"');
+    expect(textOf(html)).toContain('Balones y precios');
+    expect(textOf(html)).toContain('Cargando los precios');
     expect(html).not.toContain('role="radiogroup"');
   });
 
@@ -110,6 +111,32 @@ describe('public page of a distributor (PLAN 2.5)', () => {
 
     expect(textOf(html)).toContain('Reportar esta distribuidora');
     expect(tags(html, 'a').filter((tag) => tag.includes('href="/contacto"'))).toHaveLength(2);
+  });
+
+  // PLAN §11 (2026-10-15): the distributor's own virtual complaints book, when it gave the link.
+  it('links the complaints book of the distributor in another tab, when it has one', () => {
+    const url = 'https://example.com/libro-de-reclamaciones';
+    const html = page({ complaintsBookUrl: url });
+    const [link = ''] = tags(html, 'a').filter((tag) => tag.includes(`href="${url}"`));
+
+    // PLAN §11 (2026-10-16): whose book it is.
+    expect(textOf(html)).toMatch(/Libro de Reclamaciones de \S/);
+    // PLAN §11 (2026-10-16): where it leads, in sight before it is opened.
+    expect(textOf(html)).toContain('· example.com');
+    expect(link).toContain('target="_blank"');
+    expect(link).toContain('rel="noopener noreferrer"');
+  });
+
+  it('shows no complaints book link when the distributor gave none', () => {
+    expect(textOf(page())).not.toContain('Libro de Reclamaciones');
+  });
+
+  // PLAN §11 (2026-10-15): "recarga 10 kg desde" under the cover.
+  it('names the weight of the cheapest refill next to its price', () => {
+    const text = textOf(page({ priceFromCents: 4800, priceFromWeightKg: 10 }));
+
+    expect(text).toContain('S/ 48.00');
+    expect(text).toContain('recarga 10 kg desde');
   });
 
   // PLAN 2.9: nothing about the plan, the trial or the founder reaches this page.

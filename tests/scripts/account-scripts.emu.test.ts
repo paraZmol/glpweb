@@ -8,9 +8,11 @@ import { EMULATOR_HOST, EMULATOR_PROJECT_ID, emulatorPorts } from '../../scripts
 import {
   SEED_CREATED_AT,
   SEED_DISTRIBUTORS,
+  SEED_INVITE_CODE,
   SEED_PRIVACY_VERSION,
   SEED_TERMS_VERSION,
   SEED_USERS,
+  seedMovementIdOf,
 } from '../seed/data';
 import { seedEmulators } from '../seed/seed';
 
@@ -21,6 +23,18 @@ const EMULATOR_ENV = {
 };
 const NOT_A_DEMO_PROJECT = 'some-real-project';
 const AT = Timestamp.fromDate(new Date('2026-02-01T12:00:00Z'));
+/** PLAN 3.2: invitations tied to the customer's address, one waiting and one used. */
+const WAITING_FOR_CUSTOMER = `distributors/${SEED_DISTRIBUTORS.b.id}/invites/InviteForCustomer001`;
+const USED_BY_CUSTOMER = `distributors/${SEED_DISTRIBUTORS.a.id}/invites/InviteUsedByCustomer`;
+const REVIEW_OF_A = `distributors/${SEED_DISTRIBUTORS.a.id}/private/review`;
+const SEEDED_INVITE_OF_A = `distributors/${SEED_DISTRIBUTORS.a.id}/invites/${SEED_INVITE_CODE}`;
+/** PLAN 3.4: the seed counts the stock of A as its founder; one more adjustment by the dispatcher. */
+const MOVEMENTS_OF_OWNER_A = (SEED_DISTRIBUTORS.a.plantStock ?? []).map(
+  ({ productId }) =>
+    `distributors/${SEED_DISTRIBUTORS.a.id}/stockMovements/${seedMovementIdOf(SEED_DISTRIBUTORS.a.id, productId)}`,
+);
+const MOVEMENT_OF_DISPATCHER_A = `distributors/${SEED_DISTRIBUTORS.a.id}/stockMovements/MoveByDispatcherA000`;
+const MOVEMENT_OF_OWNER_B = `distributors/${SEED_DISTRIBUTORS.b.id}/stockMovements/${seedMovementIdOf(SEED_DISTRIBUTORS.b.id, 'p00')}`;
 /** The date of everything the seed writes, as the export prints a timestamp. */
 const SEEDED_AT = new Date(SEED_CREATED_AT).toISOString();
 
@@ -107,6 +121,40 @@ beforeAll(async () => {
       address,
     );
     await setDoc(doc(context.firestore(), `users/${SEED_USERS.ownerA.uid}/addresses/a0`), address);
+    const tiedToCustomer = {
+      role: 'driver',
+      email: SEED_USERS.customer.email,
+      distributorName: SEED_DISTRIBUTORS.b.name,
+      createdAt: AT,
+      updatedAt: AT,
+    };
+    await setDoc(doc(context.firestore(), WAITING_FOR_CUSTOMER), {
+      ...tiedToCustomer,
+      status: 'pending',
+      createdBy: SEED_USERS.ownerB.uid,
+    });
+    await setDoc(doc(context.firestore(), USED_BY_CUSTOMER), {
+      ...tiedToCustomer,
+      distributorName: SEED_DISTRIBUTORS.a.name,
+      status: 'accepted',
+      createdBy: SEED_USERS.ownerA.uid,
+      acceptedBy: SEED_USERS.customer.uid,
+      acceptedAt: AT,
+    });
+    await setDoc(doc(context.firestore(), REVIEW_OF_A), { note: 'Revisa el RUC.', writtenAt: AT });
+    await setDoc(doc(context.firestore(), MOVEMENT_OF_DISPATCHER_A), {
+      kind: 'adjustment',
+      productId: 'p00',
+      reason: 'damaged',
+      note: null,
+      fullDelta: -1,
+      emptyDelta: 0,
+      fullAfter: 39,
+      emptyAfter: 12,
+      authorUid: SEED_USERS.dispatcherA.uid,
+      authorName: SEED_USERS.dispatcherA.displayName,
+      createdAt: AT,
+    });
   });
 });
 
@@ -181,10 +229,45 @@ describe('export-account.mjs', () => {
           publicProfile: { name: SEED_DISTRIBUTORS.a.name },
           control: { status: 'active', ownerUid: ownerA.uid },
           privateSettings: { ownerEmail: ownerA.email },
+          // PLAN 3.2: the text of the note of the platform to the founder.
+          reviewNote: { note: 'Revisa el RUC.' },
         },
       ],
     });
     expect(result.stdout).not.toMatch(/passwordHash|passwordSalt/);
+  });
+
+  // PLAN 3.2: an invitation keeps the address it is tied to, readable by whoever has the link.
+  it('exports the invitations tied to the e-mail of the account', async () => {
+    const result = await run('export-account.mjs', forUid(SEED_USERS.customer.uid));
+
+    const { invitations } = JSON.parse(result.stdout) as { invitations: { path: string }[] };
+    expect(invitations.map((invite) => invite.path).sort()).toEqual(
+      [USED_BY_CUSTOMER, WAITING_FOR_CUSTOMER].sort(),
+    );
+  });
+
+  // PLAN 3.4: the log of the plant stock keeps the name of whoever adjusted it.
+  it('exports the stock adjustments the account made, and only those', async () => {
+    const { ownerA } = SEED_USERS;
+
+    const result = await run('export-account.mjs', forUid(ownerA.uid));
+
+    const { stockAdjustments } = JSON.parse(result.stdout) as {
+      stockAdjustments: { path: string; authorUid: string; authorName: string }[];
+    };
+    expect(MOVEMENTS_OF_OWNER_A.length).toBeGreaterThan(0);
+    expect(stockAdjustments.map((movement) => movement.path).sort()).toEqual(
+      [...MOVEMENTS_OF_OWNER_A].sort(),
+    );
+    for (const movement of stockAdjustments) {
+      expect(movement).toMatchObject({
+        authorUid: ownerA.uid,
+        authorName: ownerA.displayName,
+        kind: 'adjustment',
+        createdAt: SEEDED_AT,
+      });
+    }
   });
 
   it('exports an account that only signed in, with nothing else to show', async () => {
@@ -196,6 +279,7 @@ describe('export-account.mjs', () => {
       addresses: [],
       legalAcceptances: [],
       memberships: [],
+      stockAdjustments: [],
       foundedDistributors: [],
     });
   });
@@ -228,6 +312,12 @@ describe('delete-account.mjs', () => {
     expect(await countIn(`users/${customer.uid}/acceptances`)).toBe(0);
   });
 
+  // PLAN 3.2: a waiting invitation without its address would open to anyone with the link.
+  it('deleted the waiting invitation tied to its e-mail and emptied the used one', async () => {
+    expect(await stored(WAITING_FOR_CUSTOMER)).toBeUndefined();
+    expect(await stored(USED_BY_CUSTOMER)).toMatchObject({ status: 'accepted', email: null });
+  });
+
   it('anonymises the membership of a member of the staff and leaves the distributor working', async () => {
     const { driverB } = SEED_USERS;
     const { b } = SEED_DISTRIBUTORS;
@@ -245,6 +335,19 @@ describe('delete-account.mjs', () => {
     });
     expect(await stored(`distributors/${b.id}`)).toMatchObject({ acceptingOrders: true });
     expect(await accountExists(driverB.uid)).toBe(false);
+  });
+
+  it('in a dry run, counts the stock adjustments whose name it would replace, and keeps it', async () => {
+    const { ownerA } = SEED_USERS;
+
+    const result = await run('delete-account.mjs', forUid(ownerA.uid, '--dry-run'));
+
+    expect(result.stdout).toContain(
+      `stock adjustments it made, its name replaced: ${MOVEMENTS_OF_OWNER_A.length}`,
+    );
+    for (const path of MOVEMENTS_OF_OWNER_A) {
+      expect(await stored(path)).toMatchObject({ authorName: ownerA.displayName });
+    }
   });
 
   it('suspends what a founder founded and empties its personal data there', async () => {
@@ -279,9 +382,37 @@ describe('delete-account.mjs', () => {
       displayName: dispatcherA.displayName,
       active: true,
     });
+    // PLAN 3.2: the note may talk about the RUC. The invitation it created stays as it was,
+    // without its name; the rules no longer honour it, its author is switched off (2026-10-16).
+    expect(await stored(REVIEW_OF_A)).toBeUndefined();
+    expect(await stored(SEEDED_INVITE_OF_A)).toMatchObject({
+      status: 'pending',
+      invitedByName: 'Cuenta eliminada',
+    });
     expect(await stored(`users/${ownerA.uid}`)).toBeUndefined();
     expect(await countIn(`users/${ownerA.uid}/addresses`)).toBe(0);
     expect(await accountExists(ownerA.uid)).toBe(false);
+  });
+
+  // PLAN 3.4, privacy policy §6: the adjustment stays as the record of the stock, without the name.
+  it('replaces the name in the stock adjustments of the account and keeps the rest of them', async () => {
+    const { ownerA, dispatcherA } = SEED_USERS;
+    const stockOfA = SEED_DISTRIBUTORS.a.plantStock ?? [];
+
+    for (const [index, path] of MOVEMENTS_OF_OWNER_A.entries()) {
+      expect(await stored(path)).toMatchObject({
+        authorName: 'Cuenta eliminada',
+        authorUid: ownerA.uid,
+        kind: 'adjustment',
+        productId: stockOfA[index]?.productId,
+        fullAfter: stockOfA[index]?.full,
+        emptyAfter: stockOfA[index]?.empty,
+      });
+    }
+    expect(await stored(MOVEMENT_OF_DISPATCHER_A)).toMatchObject({
+      authorUid: dispatcherA.uid,
+      authorName: dispatcherA.displayName,
+    });
   });
 
   it('revokes the platform admin grant of an admin', async () => {
@@ -298,6 +429,13 @@ describe('delete-account.mjs', () => {
     expect(result.stdout).toContain('sign-in account: already gone');
   });
 
+  it('run again for a founder, finds no stock adjustment left with its name', async () => {
+    const result = await run('delete-account.mjs', forUid(SEED_USERS.ownerA.uid));
+
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain('stock adjustments it made, its name replaced: 0');
+  });
+
   it('leaves every other account alone', async () => {
     const { ownerB } = SEED_USERS;
 
@@ -305,6 +443,10 @@ describe('delete-account.mjs', () => {
     expect(await stored(`users/${ownerB.uid}`)).toMatchObject({ displayName: ownerB.displayName });
     expect(await stored(`distributors/${SEED_DISTRIBUTORS.b.id}/private/settings`)).toMatchObject({
       ownerEmail: ownerB.email,
+    });
+    expect(await stored(MOVEMENT_OF_OWNER_B)).toMatchObject({
+      authorUid: ownerB.uid,
+      authorName: ownerB.displayName,
     });
   });
 });

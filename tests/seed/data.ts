@@ -25,6 +25,81 @@ export interface SeedUser {
   hasProfile: boolean;
 }
 
+/**
+ * A product of the catalogue (PLAN 3.1). Brands are invented ("Marca …"); prices are integer
+ * cents in the range of a Lima refill with delivery (S/ 45–58 for 10 kg) and a full cylinder
+ * 3 to 4 times that (docs/marketing/oferta-y-promociones.md §1).
+ */
+export interface SeedProduct {
+  /** Slot, p00 … p29. */
+  id: string;
+  brand: string;
+  brandColor: string | null;
+  weightKg: number;
+  name: string;
+  refillPriceCents: number;
+  /** Null: not sold with its container. */
+  fullPriceCents: number | null;
+  active: boolean;
+  sortOrder: number;
+}
+
+const product = (
+  id: string,
+  sortOrder: number,
+  brand: string,
+  weightKg: number,
+  prices: { refill: number; full?: number },
+  options: { brandColor?: string; active?: boolean } = {},
+): SeedProduct => ({
+  id,
+  brand,
+  brandColor: options.brandColor ?? null,
+  weightKg,
+  name: `Balón ${weightKg} kg`,
+  refillPriceCents: prices.refill,
+  fullPriceCents: prices.full ?? null,
+  active: options.active ?? true,
+  sortOrder,
+});
+
+/** A vehicle (PLAN 3.3). Plates are invented and follow no real registration. */
+export interface SeedVehicle {
+  /** Slot, v00 … v29. */
+  id: string;
+  kind: 'motorcycle' | 'tricycle' | 'truck';
+  name: string;
+  plate: string | null;
+  capacityCylinders: number;
+  active: boolean;
+}
+
+/**
+ * The plant stock of one product (PLAN 3.4), as a first physical count left it: the seed writes
+ * the stock and its movement (`count`, by the founder) together, as the rules demand.
+ */
+export interface SeedPlantStock {
+  productId: string;
+  full: number;
+  empty: number;
+}
+
+/**
+ * The id of the movement that left the seeded stock of a product: the shape of an automatic id
+ * (20 letters and digits), fixed so tests can name it.
+ */
+export const seedMovementIdOf = (distributorId: string, productId: string) =>
+  `SeedMove${distributorId.slice(-1).toUpperCase()}${productId}`.padEnd(20, '0');
+
+const vehicle = (
+  id: string,
+  kind: SeedVehicle['kind'],
+  name: string,
+  plate: string | null,
+  capacityCylinders: number,
+  active = true,
+): SeedVehicle => ({ id, kind, name, plate, capacityCylinders, active });
+
 export interface SeedDistributor {
   id: string;
   name: string;
@@ -43,15 +118,51 @@ export interface SeedDistributor {
   plant: { lat: number; lng: number };
   coverageRadiusKm: number;
   brandColor: string;
+  /**
+   * Must agree with `products`: the brands on sale, the cheapest refill on sale and its weight
+   * (`summarizeCatalog`).
+   */
   brands: string[];
   priceFromCents: number | null;
+  priceFromWeightKg: number | null;
+  /** Link to its virtual complaints book (PLAN §11, 2026-10-15); invented, on example.com. */
+  complaintsBookUrl?: string;
+  products: SeedProduct[];
   /** The first owner listed is the founder. */
   members: { user: SeedUser; role: SeedRole }[];
+  /**
+   * Invitations that wait (PLAN 3.2), created by the founder when the seed runs, so they are
+   * inside their 7 days. `code` has the shape of an automatic id (20 letters and digits).
+   */
+  invites?: { code: string; role: SeedRole; email: string | null }[];
+  /** Helpers (PLAN 3.2): people who go with a truck and never sign in. `id` is a slot. */
+  helpers?: { id: string; name: string; active: boolean }[];
+  vehicles?: SeedVehicle[];
+  plantStock?: SeedPlantStock[];
+  /**
+   * Live promotions (PLAN 3.5), "S/ N menos" on the refill of one product, created by the founder
+   * when the seed runs (they start then and last `days`); the product gets its price lock.
+   */
+  promotions?: SeedPromotion[];
 }
 
+export interface SeedPromotion {
+  id: string;
+  title: string;
+  productId: string;
+  amountCents: number;
+  days: number;
+}
+
+/**
+ * The invitation of A that waits: a driver, for any Google account with the link. Tests that
+ * use it must reseed afterwards (it works once).
+ */
+export const SEED_INVITE_CODE = 'SeedInviteA000000001';
+
 /** Versions of the terms and of the privacy policy every seeded profile accepted. */
-export const SEED_TERMS_VERSION = '0.4';
-export const SEED_PRIVACY_VERSION = '0.4';
+export const SEED_TERMS_VERSION = '0.7';
+export const SEED_PRIVACY_VERSION = '0.7';
 
 const user = (key: string, displayName: string, phoneSuffix: string, emailVerified = true) => ({
   uid: `seed-${key}`,
@@ -137,11 +248,38 @@ export const SEED_DISTRIBUTORS = {
     brandColor: '#d9480f',
     brands: ['Marca Uno', 'Marca Dos'],
     priceFromCents: 3800,
+    priceFromWeightKg: 5,
+    complaintsBookUrl: 'https://example.com/libro-de-reclamaciones/gas-demo-norte',
+    products: [
+      product('p00', 0, 'Marca Uno', 10, { refill: 4800, full: 17500 }, { brandColor: '#1757d6' }),
+      product('p01', 1, 'Marca Dos', 10, { refill: 5200, full: 18500 }, { brandColor: '#2f9e44' }),
+      product('p02', 2, 'Marca Uno', 5, { refill: 3800 }, { brandColor: '#1757d6' }),
+      product('p03', 3, 'Marca Uno', 45, { refill: 19000 }, { brandColor: '#1757d6' }),
+      // Off sale: only the staff sees it.
+      product('p04', 4, 'Marca Dos', 15, { refill: 7000 }, { active: false }),
+    ],
     members: [
       { user: SEED_USERS.ownerA, role: 'owner' },
       { user: SEED_USERS.dispatcherA, role: 'dispatcher' },
       { user: SEED_USERS.driverA, role: 'driver' },
     ],
+    invites: [{ code: SEED_INVITE_CODE, role: 'driver', email: null }],
+    helpers: [
+      { id: 'h00', name: 'P. Ayudante', active: true },
+      { id: 'h01', name: 'Q. Ayudante', active: false },
+    ],
+    vehicles: [
+      vehicle('v00', 'motorcycle', 'Moto roja', 'DEM-001', 3),
+      vehicle('v01', 'truck', 'Camión 1', 'DEM-002', 120),
+      vehicle('v02', 'tricycle', 'Trimoto vieja', null, 8, false),
+    ],
+    // p02 and p04 were never moved: they read as zero.
+    plantStock: [
+      { productId: 'p00', full: 40, empty: 12 },
+      { productId: 'p01', full: 25, empty: 6 },
+      { productId: 'p03', full: 4, empty: 1 },
+    ],
+    promotions: [{ id: 'o00', title: 'S/ 10 menos', productId: 'p03', amountCents: 1000, days: 7 }],
   },
   /** Healthy, paying; the "other distributor" of every isolation test. */
   b: {
@@ -161,11 +299,18 @@ export const SEED_DISTRIBUTORS = {
     brandColor: '#0a7cff',
     brands: ['Marca Tres'],
     priceFromCents: 3650,
+    priceFromWeightKg: 5,
+    products: [
+      product('p00', 0, 'Marca Tres', 10, { refill: 4950, full: 17900 }, { brandColor: '#c92a2a' }),
+      product('p01', 1, 'Marca Tres', 5, { refill: 3650 }, { brandColor: '#c92a2a' }),
+    ],
     members: [
       { user: SEED_USERS.ownerB, role: 'owner' },
       { user: SEED_USERS.dispatcherB, role: 'dispatcher' },
       { user: SEED_USERS.driverB, role: 'driver' },
     ],
+    vehicles: [vehicle('v00', 'motorcycle', 'Moto azul', 'DEM-101', 3)],
+    plantStock: [{ productId: 'p00', full: 30, empty: 9 }],
   },
   /** Suspended by the platform: read-only, and no longer readable by visitors. */
   c: {
@@ -185,6 +330,8 @@ export const SEED_DISTRIBUTORS = {
     brandColor: '#5c6770',
     brands: [],
     priceFromCents: null,
+    priceFromWeightKg: null,
+    products: [],
     members: [{ user: SEED_USERS.ownerC, role: 'owner' }],
   },
   /**
@@ -208,6 +355,8 @@ export const SEED_DISTRIBUTORS = {
     brandColor: '#2f9e44',
     brands: [],
     priceFromCents: null,
+    priceFromWeightKg: null,
+    products: [],
     members: [{ user: SEED_USERS.ownerD, role: 'owner' }],
   },
   /**
@@ -231,6 +380,8 @@ export const SEED_DISTRIBUTORS = {
     brandColor: '#7048e8',
     brands: [],
     priceFromCents: null,
+    priceFromWeightKg: null,
+    products: [],
     members: [{ user: SEED_USERS.ownerE, role: 'owner' }],
   },
 } as const satisfies Record<string, SeedDistributor>;

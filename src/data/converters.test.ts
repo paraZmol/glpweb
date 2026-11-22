@@ -11,9 +11,13 @@ import {
   parseAcceptanceEntry,
   parseAddress,
   parseControl,
+  parseHelper,
+  parseInvite,
   parsePublicDistributor,
   parseMember,
   parsePrivateSettings,
+  parseProduct,
+  parseReviewNote,
   parseUserProfile,
 } from './converters';
 
@@ -41,6 +45,8 @@ describe('parsePublicDistributor', () => {
       maxCylindersPerOrder: 5,
       brands: ['Marca Uno'],
       priceFromCents: 3800,
+      priceFromWeightKg: 10,
+      complaintsBookUrl: 'https://example.com/libro',
       currency: 'PEN',
       updatedAt: stamp,
     });
@@ -52,6 +58,8 @@ describe('parsePublicDistributor', () => {
       schedule: { days: [1, 2], opensAt: '08:00', closesAt: '18:00' },
       brands: ['Marca Uno'],
       priceFromCents: 3800,
+      priceFromWeightKg: 10,
+      complaintsBookUrl: 'https://example.com/libro',
       acceptingOrders: true,
     });
   });
@@ -72,10 +80,23 @@ describe('parsePublicDistributor', () => {
       maxCylindersPerOrder: DEFAULT_MAX_CYLINDERS_PER_ORDER,
       brands: [],
       priceFromCents: null,
+      priceFromWeightKg: null,
+      complaintsBookUrl: null,
       currency: 'PEN',
       updatedAt: AT,
     });
   });
+
+  // PLAN §11 (2026-10-15): a link is only ever built from an address that passes the check.
+  it.each(['javascript:alert(1)', 'http://example.com/libro', 'https://example.com/a b'])(
+    'drops a stored complaints book link that is not a safe https address (%s)',
+    (complaintsBookUrl) => {
+      const data = { ...MINIMAL_DISTRIBUTOR, complaintsBookUrl };
+      expect(
+        parsePublicDistributor('dist-a', 'distributors/dist-a', data).complaintsBookUrl,
+      ).toBeNull();
+    },
+  );
 
   it.each([
     ['a missing name', { name: undefined }],
@@ -135,6 +156,7 @@ describe('parseControl', () => {
       listingApproved: false,
       approvedAt: null,
       approvedBy: null,
+      reviewNoteAt: null,
       reviewNote: null,
       correctedAt: null,
       distributorName: null,
@@ -179,11 +201,22 @@ describe('parseControl', () => {
     });
   });
 
-  it('reads the note of a listing that was sent back', () => {
-    const sentBack = { ...CONTROL, listingApproved: false, reviewNote: 'Falta el registro.' };
+  // PLAN 3.2: the control document keeps the mark; the text lives in private/review.
+  it('reads the mark of a note of a listing that was sent back', () => {
+    const sentBack = { ...CONTROL, listingApproved: false, reviewNoteAt: stamp };
 
     expect(parseControl('control', path, sentBack)).toMatchObject({
       listingApproved: false,
+      reviewNoteAt: AT,
+      reviewNote: null,
+    });
+  });
+
+  it('still reads the text a control document older than PLAN 3.2 kept', () => {
+    const older = { ...CONTROL, listingApproved: false, reviewNote: 'Falta el registro.' };
+
+    expect(parseControl('control', path, older)).toMatchObject({
+      reviewNoteAt: null,
       reviewNote: 'Falta el registro.',
     });
   });
@@ -378,5 +411,167 @@ describe('parseAcceptanceEntry', () => {
     ['a date that is not a timestamp', { ...ENTRY, acceptedAt: '2026-03-10' }],
   ])('rejects an entry with %s', (_case, broken) => {
     expect(() => parseAcceptanceEntry('terms-0.2', PATH, broken)).toThrow(CorruptDocumentError);
+  });
+});
+
+// PLAN 3.1: a product of the catalogue.
+describe('parseProduct', () => {
+  const PATH = 'distributors/dist-a/products/p00';
+  const STORED = {
+    brand: 'Marca Uno',
+    brandColor: '#1757d6',
+    weightKg: 10,
+    name: 'Balón 10 kg',
+    refillPriceCents: 5200,
+    fullPriceCents: 18500,
+    currency: 'PEN',
+    active: true,
+    sortOrder: 3,
+    createdAt: stamp,
+    updatedAt: stamp,
+  };
+
+  it('reads a full document', () => {
+    expect(parseProduct('p00', PATH, STORED)).toEqual({
+      id: 'p00',
+      brand: 'Marca Uno',
+      brandColor: '#1757d6',
+      weightKg: 10,
+      name: 'Balón 10 kg',
+      refillPriceCents: 5200,
+      fullPriceCents: 18500,
+      currency: 'PEN',
+      active: true,
+      sortOrder: 3,
+      promotedUntil: null,
+      createdAt: AT,
+      updatedAt: AT,
+    });
+  });
+
+  it('reads the price lock of PLAN 3.5', () => {
+    expect(parseProduct('p00', PATH, { ...STORED, promotedUntil: stamp }).promotedUntil).toEqual(
+      AT,
+    );
+  });
+
+  it('gives defaults to what a document may lack', () => {
+    const product = parseProduct('p00', PATH, {
+      brand: 'Marca Uno',
+      weightKg: 45,
+      refillPriceCents: 19000,
+      createdAt: stamp,
+    });
+    expect(product).toMatchObject({
+      brandColor: null,
+      name: 'Balón 45 kg',
+      fullPriceCents: null,
+      currency: 'PEN',
+      active: false,
+      sortOrder: 0,
+      updatedAt: AT,
+    });
+  });
+
+  it.each([
+    ['not whole cents', 18500.5],
+    ['not above the refill', 5200],
+    ['text', '18500'],
+  ])('reads a full price that is %s as "not sold with its container"', (_case, value) => {
+    expect(
+      parseProduct('p00', PATH, { ...STORED, fullPriceCents: value }).fullPriceCents,
+    ).toBeNull();
+  });
+
+  it.each([
+    ['a refill price that is not whole cents', { refillPriceCents: 52.5 }],
+    ['no refill price', { refillPriceCents: undefined }],
+    ['no brand', { brand: undefined }],
+    ['no weight', { weightKg: undefined }],
+  ])('refuses a document with %s', (_case, change) => {
+    expect(() => parseProduct('p00', PATH, { ...STORED, ...change })).toThrow(CorruptDocumentError);
+  });
+});
+
+// PLAN 3.2
+describe('parseReviewNote', () => {
+  it('reads the text of the note and when it was written', () => {
+    const path = 'distributors/dist-a/private/review';
+    expect(parseReviewNote('review', path, { note: 'Revisa el RUC.', writtenAt: stamp })).toEqual({
+      note: 'Revisa el RUC.',
+      writtenAt: AT,
+    });
+  });
+});
+
+describe('parseInvite', () => {
+  const path = 'distributors/dist-a/invites/Invite0000000000000A';
+  const INVITE = {
+    role: 'driver',
+    email: null,
+    distributorName: 'Gas Demo',
+    status: 'pending',
+    createdBy: 'owner-a',
+    createdAt: stamp,
+    updatedAt: stamp,
+  };
+
+  it('reads a waiting invitation, with its distributor taken from the path', () => {
+    expect(parseInvite('Invite0000000000000A', path, INVITE)).toEqual({
+      id: 'Invite0000000000000A',
+      distributorId: 'dist-a',
+      role: 'driver',
+      email: null,
+      distributorName: 'Gas Demo',
+      invitedByName: null,
+      brandColor: null,
+      status: 'pending',
+      createdBy: 'owner-a',
+      createdAt: AT,
+      updatedAt: AT,
+      acceptedBy: null,
+      acceptedAt: null,
+      revokedBy: null,
+      revokedAt: null,
+    });
+  });
+
+  // PLAN §11 (2026-10-15): who invites and in which colour, absent in older invitations.
+  it('reads the copies of who invites and of the brand colour', () => {
+    const copies = { invitedByName: 'A. Persona', brandColor: '#0a7cff' };
+    expect(parseInvite('Invite0000000000000A', path, { ...INVITE, ...copies })).toMatchObject(
+      copies,
+    );
+  });
+
+  it('refuses an invitation with a role it does not know', () => {
+    expect(() => parseInvite('x', path, { ...INVITE, role: 'admin' })).toThrow(
+      CorruptDocumentError,
+    );
+  });
+
+  it('refuses an invitation with a status it does not know', () => {
+    expect(() => parseInvite('x', path, { ...INVITE, status: 'maybe' })).toThrow(
+      CorruptDocumentError,
+    );
+  });
+});
+
+describe('parseHelper', () => {
+  const path = 'distributors/dist-a/helpers/h00';
+
+  it('reads a helper', () => {
+    const helper = { name: 'P. Ayudante', active: true, createdAt: stamp, updatedAt: stamp };
+    expect(parseHelper('h00', path, helper)).toEqual({
+      id: 'h00',
+      name: 'P. Ayudante',
+      active: true,
+      createdAt: AT,
+      updatedAt: AT,
+    });
+  });
+
+  it('never offers a helper without the flag', () => {
+    expect(parseHelper('h00', path, { name: 'P. Ayudante', createdAt: stamp }).active).toBe(false);
   });
 });

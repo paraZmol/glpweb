@@ -19,18 +19,20 @@ import {
 } from 'firebase/firestore';
 import { PENDING_LISTINGS_LIMIT, PLATFORM_LIST_PAGE_SIZE } from '../domain/tenancy/constants';
 import { StaleReviewError } from '../domain/tenancy/errors';
-import { isOpenToPublic, type PlatformListFilter } from '../domain/tenancy/listing';
+import { isOpenToPublic, noteTextFor, type PlatformListFilter } from '../domain/tenancy/listing';
 import { isSameReviewVersion, type ReviewVersion } from '../domain/tenancy/review-version';
 import type {
   DistributorControl,
   DistributorPrivateSettings,
   DistributorStatus,
   PublicDistributor,
+  ReviewNoteDocument,
 } from '../domain/tenancy/types';
 import {
   controlConverter,
   privateSettingsConverter,
   publicDistributorConverter,
+  reviewNoteConverter,
 } from './converters';
 import { guarded } from './errors';
 import { db } from './firebase';
@@ -39,13 +41,19 @@ import { collectionGroups, paths } from './paths';
 
 const controlRef = (d: string) => doc(db, paths.distributorControl(d));
 const distributorRef = (d: string) => doc(db, paths.distributor(d));
+const noteRef = (d: string) => doc(db, paths.distributorReview(d));
 
-/** The three documents of a review, typed, in the order `reviewOf` takes them. */
+/**
+ * The documents of a review, typed, in the order `reviewOf` takes them: the public profile, the
+ * control document, the private settings and the text of the note (PLAN 3.2: apart from the
+ * control document, which the whole staff reads).
+ */
 const reviewRefs = (d: string) =>
   [
     distributorRef(d).withConverter(publicDistributorConverter),
     controlRef(d).withConverter(controlConverter),
     doc(db, paths.distributorPrivateSettings(d)).withConverter(privateSettingsConverter),
+    noteRef(d).withConverter(reviewNoteConverter),
   ] as const;
 
 /**
@@ -152,6 +160,7 @@ export interface ListingReview {
   distributorId: string;
   /** What visitors will see once it is approved. */
   profile: PublicDistributor;
+  /** With the text of the note the platform sent (`reviewNote`), when there is one. */
   control: DistributorControl;
   /** The founder's contact data and what it declared about the business (RUC, record number). */
   settings: DistributorPrivateSettings;
@@ -173,10 +182,17 @@ type ReviewSnapshots = readonly [
   DocumentSnapshot<PublicDistributor>,
   DocumentSnapshot<DistributorControl>,
   DocumentSnapshot<DistributorPrivateSettings>,
+  DocumentSnapshot<ReviewNoteDocument>,
 ];
 
-/** Null when any of the three documents is missing. */
-function reviewOf(d: string, [profile, control, settings]: ReviewSnapshots): ListingReview | null {
+/** The text of the current note, or the one a control document older than PLAN 3.2 kept. */
+function withNoteText(control: DistributorControl, note: ReviewNoteDocument | undefined) {
+  return { ...control, reviewNote: noteTextFor(control, note ?? null) ?? control.reviewNote };
+}
+
+/** Null when the profile, the control document or the settings are missing. */
+function reviewOf(d: string, snapshots: ReviewSnapshots): ListingReview | null {
+  const [profile, control, settings, note] = snapshots;
   const [profileData, controlData, settingsData] = [
     profile.data(),
     control.data(),
@@ -186,32 +202,34 @@ function reviewOf(d: string, [profile, control, settings]: ReviewSnapshots): Lis
   return {
     distributorId: d,
     profile: profileData,
-    control: controlData,
+    control: withNoteText(controlData, note.data()),
     settings: settingsData,
     version: { profile: versionTextOf(profile), settings: versionTextOf(settings) },
   };
 }
 
 /**
- * Platform admin only: the public profile, the control document and the private settings of
- * one distributor, read once. Null when any of the three is missing.
- * Cost: 3 reads, plus up to 4 by the rules (2 for a profile that is not public, 1 each for the
- * other two).
+ * Platform admin only: the public profile, the control document, the private settings and the
+ * text of the note of one distributor, read once. Null when any of the first three is missing.
+ * Cost: 4 reads (one too for a note that does not exist), plus up to 6 by the rules (2 for a
+ * profile that is not public, 1 each for the control document and the settings, 2 for the note).
  */
 export function getListingReview(d: string): Promise<ListingReview | null> {
   return guarded(async () => {
-    const [profile, control, settings] = reviewRefs(d);
-    return reviewOf(d, await Promise.all([getDoc(profile), getDoc(control), getDoc(settings)]));
+    const [profile, control, settings, note] = reviewRefs(d);
+    const reads = [getDoc(profile), getDoc(control), getDoc(settings), getDoc(note)] as const;
+    return reviewOf(d, await Promise.all(reads));
   });
 }
 
 /**
- * Platform admin only: the same three documents, live, for as long as the review of that one
+ * Platform admin only: the same four documents, live, for as long as the review of that one
  * distributor is on screen (PLAN 2.11): an edit of its owner shows at once instead of staying
- * hidden behind what was loaded. `onChange` receives null when any of the three is missing.
- * Only what the server confirmed is reported, never a cached copy: the admin decides on it, and
- * `version` must be the stored one. Without a connection nothing is reported.
- * Three listeners on single documents. Cost: what `getListingReview` costs when it starts, then
+ * hidden behind what was loaded. `onChange` receives null when the profile, the control document
+ * or the settings are missing. Only what the server confirmed is reported, never a cached copy:
+ * the admin decides on it, and `version` must be the stored one. Without a connection nothing is
+ * reported.
+ * Four listeners on single documents. Cost: what `getListingReview` costs when it starts, then
  * one read per document that changes. Call the returned function when the screen closes.
  */
 export function watchListingReview(
@@ -255,8 +273,8 @@ export interface ApprovalRequest {
  * transaction: the distributor becomes visible if it may operate.
  * `now` is the device time: within seconds of the end of a trial the rules may disagree with it
  * and refuse; trying again settles it. Returns false when the distributor does not exist.
- * Cost: 3 reads + 2 writes, plus 7 lookups by the rules (4 for the control document, 3 for the
- * public one).
+ * Cost: 3 reads + 3 writes (the text of the note is deleted, also when there is none), plus 9
+ * lookups by the rules (4 for the control document, 3 for the public one, 2 for the note).
  */
 export function approveListing({ d, adminUid, seen, now }: ApprovalRequest): Promise<boolean> {
   return guarded(() =>
@@ -279,10 +297,10 @@ export function approveListing({ d, adminUid, seen, now }: ApprovalRequest): Pro
         approvedBy: adminUid,
         reviewedProfileAt: profile.get('updatedAt') ?? null,
         reviewedSettingsAt: settings.get('updatedAt') ?? null,
-        reviewNote: deleteField(),
-        correctedAt: deleteField(),
+        ...withoutNote(),
         updatedAt: serverTimestamp(),
       });
+      tx.delete(noteRef(d));
       tx.update(distributorRef(d), { acceptingOrders, updatedAt: serverTimestamp() });
       return true;
     }),
@@ -290,13 +308,27 @@ export function approveListing({ d, adminUid, seen, now }: ApprovalRequest): Pro
 }
 
 /**
+ * What leaves the control document with a note: its mark, the mark of a correction (a new
+ * decision is a new question) and the text a control document older than PLAN 3.2 kept there.
+ */
+const withoutNote = () => ({
+  reviewNoteAt: deleteField(),
+  reviewNote: deleteField(),
+  correctedAt: deleteField(),
+});
+
+/**
  * Platform admin only: sends a listing back to its owner (a refusal, or an approval that is
- * withdrawn), with an optional note the owner reads in its panel. The distributor leaves the
- * search and its public profile closes to visitors in the same batch. `note` must be trimmed
- * and within `REVIEW_NOTE_MAX_LENGTH`; an empty one removes the note. Whatever correction the
- * owner had marked is cleared with it: this is a new question (the rules demand it).
- * Cost: 2 writes, plus 5 lookups by the rules. Fails with `PermissionDeniedError` when the
- * distributor does not exist.
+ * withdrawn), with an optional note. The distributor leaves the search and its public profile
+ * closes to visitors in the same batch. `note` must be trimmed and within
+ * `REVIEW_NOTE_MAX_LENGTH`; an empty one removes the note. Whatever correction the owner had
+ * marked is cleared with it: this is a new question (the rules demand it).
+ * The note goes in two pieces stamped with the same server time (PLAN 3.2): the mark
+ * `reviewNoteAt` in the control document, which the whole staff reads (its panel says something
+ * must be corrected), and the text in `private/review`, which only the founder reads: a note may
+ * speak of the RUC or the record number.
+ * Cost: 3 writes, plus 8 lookups by the rules (7 without a note). Fails with
+ * `PermissionDeniedError` when the distributor does not exist.
  */
 export function returnListingToReview(d: string, note: string): Promise<void> {
   return guarded(() => {
@@ -307,10 +339,12 @@ export function returnListingToReview(d: string, note: string): Promise<void> {
       approvedBy: deleteField(),
       reviewedProfileAt: deleteField(),
       reviewedSettingsAt: deleteField(),
-      reviewNote: note === '' ? deleteField() : note,
-      correctedAt: deleteField(),
+      ...withoutNote(),
+      ...(note === '' ? {} : { reviewNoteAt: serverTimestamp() }),
       updatedAt: serverTimestamp(),
     });
+    if (note === '') batch.delete(noteRef(d));
+    else batch.set(noteRef(d), { note, writtenAt: serverTimestamp() });
     batch.update(distributorRef(d), { acceptingOrders: false, updatedAt: serverTimestamp() });
     return batch.commit();
   });

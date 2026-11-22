@@ -23,6 +23,8 @@ function distributor(id: string, change: Partial<PublicDistributor> = {}): Publi
     maxCylindersPerOrder: 3,
     brands: [],
     priceFromCents: null,
+    priceFromWeightKg: null,
+    complaintsBookUrl: null,
     currency: 'PEN',
     createdAt: NOW,
     updatedAt: NOW,

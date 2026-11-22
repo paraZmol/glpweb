@@ -7,7 +7,13 @@ import {
   MAX_ADDRESSES_PER_USER,
 } from './constants';
 import { normalizePeruvianMobile } from './contact';
-import { checkPhone, checkText, collectIssues, type Validated } from './field-checks';
+import {
+  checkPhone,
+  checkText,
+  checkVisibleText,
+  collectIssues,
+  type Validated,
+} from './field-checks';
 
 export interface UserProfileInput {
   displayName: string;
@@ -25,11 +31,17 @@ export function tidyName(raw: string): string {
   return raw.trim().replace(/\s+/g, ' ');
 }
 
+/**
+ * Name and phone of a profile. The name is what the staff of a distributor reads in its list
+ * (PLAN 3.2), so it must be visible text: a letter or digit and nothing invisible or that flips
+ * the writing (`checkVisibleText`, `invalid` otherwise). The rules ask the same only when the
+ * name is written: a profile stored before keeps its name until it changes it.
+ */
 export function prepareUserProfile(input: UserProfileInput): Validated<PreparedUserProfile> {
   const displayName = input.displayName.trim();
   const phone = input.phone ? normalizePeruvianMobile(input.phone) : null;
   const issues = collectIssues([
-    ['displayName', checkText(displayName, 1, DISPLAY_NAME_MAX_LENGTH)],
+    ['displayName', checkVisibleText(displayName, 1, DISPLAY_NAME_MAX_LENGTH)],
     ['phone', phone === null ? null : checkPhone(phone)],
   ]);
   return issues.length > 0 ? { ok: false, issues } : { ok: true, value: { displayName, phone } };

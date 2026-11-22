@@ -13,7 +13,8 @@ rules_version = '2';
 //
 // /users/{uid}                     private to the account; nothing is stored for an address
 //                                  nobody proved
-//   displayName: string 1..80 · phone: null | '9' + 8 digits
+//   displayName: string 1..80, visible text whenever it is written (a profile stored before that
+//     check keeps its name until it changes it) · phone: null | '9' + 8 digits
 //   ownedDistributorIds: list ≤ 3 — grows only inside a founding batch (caps distributors/account)
 //   terms: { version: an allowed terms version, acceptedAt: timestamp = request.time when it
 //     is written } — required from creation, never removed. It can only be written in a request
@@ -45,7 +46,8 @@ rules_version = '2';
 //                                  trial date, no account id. While `acceptingOrders` is false
 //                                  (not approved yet, suspended, trial over) only its staff and
 //                                  platform admins read it. {d} is a Firestore automatic id.
-//   name: string 2..60 with at least one letter or digit · slug (immutable)
+//   name: visible text 2..60 (isVisibleText: a letter or digit, nothing invisible) · slug
+//   (immutable)
 //   contactPhone, whatsapp: '9' + 8 digits · addressLine: string 0..160
 //   plant: { lat, lng } · coverageRadiusKm: number 1..50 · brandColor: '#rrggbb' lowercase
 //   acceptingOrders: bool — derived: whoever writes it must write exactly "the control document
@@ -57,8 +59,13 @@ rules_version = '2';
 //     review: that edit must leave acceptingOrders false and the control document with
 //     listingApproved false. Staff may only write the flag when its value really changes.
 //   schedule: { days: list 1..7 of 0..6 without repeats, opensAt: 'HH:MM', closesAt: 'HH:MM' }
-//   maxCylindersPerOrder: int 1..20 · brands: list ≤ 8 of string 1..30
-//   priceFromCents: null | int 1..99900 · currency: 'PEN' · createdAt (immutable), updatedAt
+//   maxCylindersPerOrder: int 1..20 · brands: list ≤ 8 of visible text 1..30
+//   priceFromCents: null | int 1..99900 · priceFromWeightKg: optional, null | int 1..100 — the
+//     weight of the product the "desde" price belongs to; the three are copies of the catalogue
+//     the rules cannot check (null at founding)
+//   complaintsBookUrl: optional, null | https link ≤ 300 to its virtual complaints book (not part
+//     of what identifies the business: no new review)
+//   currency: 'PEN' · createdAt (immutable), updatedAt
 //
 // /distributors/{d}/private/control    staff of {d} and platform admins only; read by the rules
 //   ownerUid (founder, immutable) · status: trial | active | pastDue | suspended (only a
@@ -72,8 +79,12 @@ rules_version = '2';
 //     review screen was opened cannot be approved from it (every write of those two documents
 //     moves its updatedAt to request.time). Written with the approval and removed with it;
 //     optional only in documents approved before the fields existed.
-//   reviewNote: optional string 1..300, only while listingApproved is false; platform admin only
-//   correctedAt: optional timestamp, only next to a reviewNote — "the owner answered the note".
+//   reviewNoteAt: optional timestamp, only while listingApproved is false; platform admin only —
+//     "a platform admin left a note", written = request.time together with its text in
+//     private/review. The text is not here: every member of the staff reads this document, and
+//     the note is for the founder (PLAN 3.2). A document older than that may still carry the
+//     text as `reviewNote`: it can no longer be written, only removed by a platform admin.
+//   correctedAt: optional timestamp, only next to a reviewNoteAt — "the owner answered the note".
 //     Only an owner writes it, always = request.time and only in a request that also changes
 //     the content of the public profile or of the private settings (a write that only moves
 //     updatedAt or the public flag corrects nothing). A platform admin can only remove it, and
@@ -95,12 +106,107 @@ rules_version = '2';
 //   terms: { version, acceptedAt } and authorityDeclaredAt: both = request.time at founding,
 //     immutable (the founder accepted the terms and declared it may represent the business)
 //
+// /distributors/{d}/private/review    the founder and platform admins only (PLAN 3.2)
+//   note: string 1..300 — what a platform admin asks the owner to correct
+//   writtenAt: timestamp = request.time, equal to the control's reviewNoteAt of that request
+//
 // /distributors/{d}/members/{uid}
 //   uid (= document id) · distributorId (= d) · role: owner | dispatcher | driver
-//   active: bool · displayName: string 1..80
+//   active: bool · displayName: string 1..80, visible text when the member is created or the
+//     name changes (a member stored before that check can still be switched off)
 //   distributorName: string 2..60 — copy of the public name, so the selector of distributors
 //     needs no extra read; it can only ever be written equal to the public name
+//   inviteId: optional — the code of the invitation it joined with (immutable; never on the
+//     founder's own member). There are two ways in and no other: the founding batch, or an invitation used in
+//     the same request.
 //   createdAt (immutable), updatedAt
+//
+// /distributors/{d}/invites/{code}  invitations of staff (PLAN 3.2). {code} is the secret of the
+//                                   link: 20 letters and digits, the shape of an automatic id.
+//                                   Anyone signed in with Google who knows it may `get` it
+//                                   (when tied to an address, only that account or an owner);
+//                                   only an owner lists them; nobody else can find one.
+//   role: owner | dispatcher | driver · email: null | lowercase address it is tied to (required
+//   to invite an owner; set to null when it is used; only that account and an owner read an
+//   invitation that carries one) · distributorName: the public name — written equal to it, and rewritten
+//     by an owner only to a new public name while the invitation waits
+//   invitedByName: optional — the name the member of the inviting owner carries (visible text)
+//   brandColor: optional — the brand colour of the public profile when it was created; neither
+//     copy is rewritten afterwards, and invitations older than them stay valid
+//   status: pending | accepted | revoked — pending → accepted (by whoever holds it, once, in the
+//     request that creates its member) or pending → revoked (an owner); nothing else
+//   createdBy: uid of the owner · createdAt, updatedAt — usable for 7 days after createdAt, and
+//     only while createdBy is still an active owner (the founder, for an owner invitation)
+//   acceptedBy, acceptedAt: only once accepted · revokedBy, revokedAt: only once revoked
+//
+// /distributors/{d}/helpers/{h}    people who go with a truck and never sign in (PLAN 3.2). {h} is
+//                                  a slot, h00 … h29 (caps them at 30); never deleted.
+//   name: visible text 1..60 · active: bool · createdAt (immutable), updatedAt
+//
+// /distributors/{d}/products/{p}   the catalogue (PLAN 3.1). {p} is a slot, p00 … p29: the only
+//                                  way rules can cap it (30 products). Never deleted: a product
+//                                  leaves the sale with active = false. Anyone reads the products
+//                                  on sale while the distributor takes orders; its staff reads
+//                                  them all; the owner and the dispatcher write, while it is
+//                                  writable (the dispatcher also the copy in the profile).
+//   brand: visible text 1..30 · brandColor: null | '#rrggbb' lowercase · name: visible text
+//   2..60
+//   weightKg: int 1..100 (immutable: another weight is another product)
+//   refillPriceCents: int 1..99900 — what a refill costs (the customer hands an empty cylinder)
+//   fullPriceCents: null (the cylinder is not sold with its container) | int above
+//     refillPriceCents and ≤ 99900 — gas + container ("Balón completo")
+//   currency: the distributor's (immutable) · active: bool · sortOrder: int 0..999
+//   promotedUntil: optional timestamp, at most 60 days ahead — the price lock of PLAN 3.5: until
+//     then no list price goes up and the full cylinder is not withdrawn; the lock only grows
+//     while it runs. A promotion only applies to a product whose lock reaches its end.
+//   createdAt (immutable), updatedAt (= request.time when written)
+//
+// /distributors/{d}/vehicles/{v}   the vehicles (PLAN 3.3). {v} is a slot, v00 … v29 (caps them
+//                                  at 30); never deleted: a shift (phase 5) names its vehicle by
+//                                  the slot. Its staff reads them; the owner and the dispatcher
+//                                  write, while it is writable.
+//   kind: 'motorcycle' | 'tricycle' | 'truck' · name: visible text 1..40
+//   plate: null | 3..10 of uppercase letters and digits with at most one inner hyphen
+//   capacityCylinders: int 1..999 — cylinders it carries in all. A shift keeps a copy of it, so a
+//     new capacity never rewrites a load already approved
+//   active: bool · createdAt (immutable), updatedAt (= request.time when written)
+//
+// /distributors/{d}/plantStock/{p}  the cylinders of product {p} at the plant (PLAN 3.4); same id
+//                                   as the product, created by its first movement. The owner and
+//                                   the dispatcher read and change it (not the driver), while the
+//                                   distributor is writable, and every change comes with its
+//                                   movement below, in the same request. Never deleted.
+//   full, empty: int 0..99999 · lastMovementId: the id of the movement written with this change
+//   updatedAt: = request.time
+//
+// /distributors/{d}/stockMovements/{id}   the history of the plant stock: one line per change,
+//                                         created with it, never updated or deleted. {id} is an
+//                                         automatic id. Read like the stock.
+//   kind: 'adjustment' (PLAN 5.2 and 5.5 add the movements of a shift) · productId: p00 … p29
+//   reason: 'count' | 'supplier' | 'damaged' | 'other' · note: null (not for 'other') | visible
+//   text 1..200 · fullDelta, emptyDelta: int -9999..9999, not both 0 · fullAfter, emptyAfter:
+//   what the stock holds after it · authorUid: the caller · authorName: the displayName of the
+//   caller's member · createdAt: = request.time
+// /distributors/{d}/promotions/{s} promotions (PLAN 3.5, §11 2026-10-16). {s} is a slot, o00 …
+//                                  o19 (caps those alive at 20); a slot is written anew once its
+//                                  promotion ended, was switched off or was never published.
+//                                  Never deleted. Anyone reads the published ones while the
+//                                  distributor takes orders; its staff reads them all; the owner
+//                                  and the dispatcher write, while it is writable.
+//   title: visible text 1..40 · productIds: list 1..30 of product slots, no repeats
+//   saleMode: refill | full · startsAt, endsAt: timestamps — starts now or later (≤ 30 days
+//     ahead), ends after it starts and within 30 days of the start · active: bool
+//   maxUnitsPerOrder: int 1..20 · totalUnits: null | int 1..9999 · soldUnits: int (0 when written)
+//   conditions: '' | visible text ≤ 140 without the blocked phrases of hasNoBlockedPhrase()
+//   createdBy (the owner) · createdAt, updatedAt · switchedOffBy, switchedOffAt: null until an
+//     owner switches it off (then its uid and request.time; final)
+//   type and its parameters, nothing else:
+//     fixedPrice: priceSource 'own' + priceCents int 1..99900, or 'refill' + priceCents null
+//       (full cylinder at the refill price: saleMode full, 1 per order, total cap); one product
+//     percentOff: percent int 1..30 · amountOff: amountCents int 1..99900
+//     buyXPayY: buyUnits/payUnits 2/1 or 3/2, total cap, maxUnitsPerOrder a multiple of buyUnits
+//   After it is written only the title, a later end, publishing (draft → published) and the
+//   switch-off may change.
 //
 // Billed reads added by the rules (get / exists / getAfter) are noted on each `allow`.
 // ===============================================================================================
@@ -165,6 +271,10 @@ service cloud.firestore {
       return /databases/$(database)/documents/distributors/$(d)/private/settings;
     }
 
+    function reviewPath(d) {
+      return /databases/$(database)/documents/distributors/$(d)/private/review;
+    }
+
     // Same condition as isWritable() in src/domain/tenancy/status.ts, over the control document.
     function isWritableData(control) {
       return control.status == 'active'
@@ -217,11 +327,22 @@ service cloud.firestore {
         && !value.matches('(?s)^[\\s\\x0b\\pZ\\x{feff}].*|.*[\\s\\x0b\\pZ\\x{feff}]$');
     }
 
-    // The public name of a distributor carries at least one letter or digit: punctuation, emoji
-    // or invisible characters alone are not a name (same check as checkName in
+    // Text a person reads: trimmed like isText(), with no control or format character anywhere
+    // (U+0000, U+0007, U+200B, U+202E…) and at least one letter or digit, so punctuation, emoji
+    // or invisible characters alone are not a name. One pattern, because RE2 has no look-ahead:
+    // an optional run that starts with a visible character, a letter or digit, and an optional
+    // run that ends with a visible one. Same check as isVisibleText in
+    // src/domain/tenancy/field-checks.ts. It runs for every brand of the public profile, whose
+    // update rule is close to the limit of expressions (PLAN §9): it costs no more than isText.
+    function isVisibleText(value, min, max) {
+      return value is string && value.size() >= min && value.size() <= max
+        && value.matches('^(?:[^\\pZ\\p{Cc}\\p{Cf}][^\\p{Cc}\\p{Cf}]*)?[\\pL\\pN](?:[^\\p{Cc}\\p{Cf}]*[^\\pZ\\p{Cc}\\p{Cf}])?$');
+    }
+
+    // The public name of a distributor (same check as checkName in
     // src/domain/tenancy/distributor-input.ts).
     function isBusinessName(value) {
-      return isText(value, 2, 60) && value.matches('(?s).*[\\pL\\pN].*');
+      return isVisibleText(value, 2, 60);
     }
 
     function isPhone(value) {
@@ -292,12 +413,12 @@ service cloud.firestore {
     // Acceptance of the terms (docs/legal). Same list as TERMS_VERSIONS in
     // src/domain/legal/versions.ts.
     function acceptedTermsVersions() {
-      return ['0.4'];
+      return ['0.7'];
     }
 
     // Same list as PRIVACY_VERSIONS in src/domain/legal/versions.ts.
     function acceptedPrivacyVersions() {
-      return ['0.4'];
+      return ['0.7'];
     }
 
     function isAcceptance(acceptance, versions) {
@@ -338,9 +459,25 @@ service cloud.firestore {
         && entry.data.acceptedAt == request.time;
     }
 
+    // Whole kilograms of gas in a cylinder (MIN_WEIGHT_KG, MAX_WEIGHT_KG).
+    function isWeightKg(value) {
+      return value is int && value <= 100 && value >= 1;
+    }
+
+    // The link to the virtual complaints book of a distributor: https only, a lowercase host
+    // with a dot, no port nor credentials, and only characters an address carries unescaped.
+    // No label of the host in punycode (`xn--`): it can spell a name that looks like another
+    // one (PLAN §11, 2026-10-16). Same pattern and cap as isComplaintsBookUrl in
+    // src/domain/tenancy/complaints-book.ts.
+    function isComplaintsBookUrl(value) {
+      return value is string && value.size() <= 300
+        && value.matches('https://[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)+(/[A-Za-z0-9._~%!$&()*+,;=:@/?#-]*)?')
+        && !value.matches('https://([a-z0-9-]+[.])*xn--.*');
+    }
+
     // Rules cannot loop: the list is capped at 8 and each position is checked by hand.
     function isBrandAt(brands, index) {
-      return brands.size() <= index || isText(brands[index], 1, 30);
+      return brands.size() <= index || isVisibleText(brands[index], 1, 30);
     }
 
     function isBrandList(brands) {
@@ -375,12 +512,22 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    // Two optional fields (PLAN §11, 2026-10-15): absent in profiles written before, and null
+    // means "none". Validated in one comparison each while absent: this runs in the update rule
+    // of the public profile, close to the limit of expressions (PLAN §9). The whitelist is
+    // written once: every field it names, and all 16 that are not optional (once the optional
+    // ones are taken out, 16 keys of the list remain only if none is missing).
     function isValidDistributor(data) {
-      return hasExactly(data, [
+      return data.keys().hasOnly([
           'name', 'slug', 'contactPhone', 'whatsapp', 'addressLine', 'plant',
           'coverageRadiusKm', 'brandColor', 'acceptingOrders', 'schedule',
-          'maxCylindersPerOrder', 'brands', 'priceFromCents', 'currency', 'createdAt', 'updatedAt'
+          'maxCylindersPerOrder', 'brands', 'priceFromCents', 'priceFromWeightKg',
+          'complaintsBookUrl', 'currency', 'createdAt', 'updatedAt'
         ])
+        && data.keys().removeAll(['priceFromWeightKg', 'complaintsBookUrl']).size() == 16
+        && (data.get('priceFromWeightKg', null) == null || isWeightKg(data.priceFromWeightKg))
+        && (data.get('complaintsBookUrl', null) == null
+          || isComplaintsBookUrl(data.complaintsBookUrl))
         && isBusinessName(data.name)
         && data.slug is string
         && isPhone(data.contactPhone)
@@ -408,7 +555,7 @@ service cloud.firestore {
         ])
         && data.keys().hasOnly([
           'ownerUid', 'status', 'trialEndsAt', 'listingApproved', 'approvedAt', 'approvedBy',
-          'reviewedProfileAt', 'reviewedSettingsAt', 'reviewNote', 'correctedAt',
+          'reviewedProfileAt', 'reviewedSettingsAt', 'reviewNoteAt', 'correctedAt',
           'distributorName', 'slug', 'createdAt', 'updatedAt'
         ])
         && data.ownerUid is string
@@ -424,7 +571,7 @@ service cloud.firestore {
     function isApprovedShape(data) {
       return data.approvedAt is timestamp
         && data.approvedBy is string
-        && !('reviewNote' in data)
+        && !('reviewNoteAt' in data)
         && !('correctedAt' in data);
     }
 
@@ -435,8 +582,8 @@ service cloud.firestore {
         && !('approvedBy' in data)
         && !('reviewedProfileAt' in data)
         && !('reviewedSettingsAt' in data)
-        && (!('reviewNote' in data) || isText(data.reviewNote, 1, 300))
-        && (!('correctedAt' in data) || ('reviewNote' in data && data.correctedAt is timestamp));
+        && (!('reviewNoteAt' in data) || data.reviewNoteAt is timestamp)
+        && (!('correctedAt' in data) || ('reviewNoteAt' in data && data.correctedAt is timestamp));
     }
 
     function isValidPrivateSettings(data) {
@@ -458,9 +605,56 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    // p00 … p29: the slots of the catalogue (PRODUCT_SLOT_IDS in src/domain/catalog/catalog.ts).
+    function isProductSlot(value) {
+      return value is string && value.matches('^p[0-2][0-9]$');
+    }
+
+    // Integer cents within the sanity cap of S/ 999.00 (MAX_PRICE_CENTS).
+    function isPriceCents(value) {
+      return value is int && value >= 1 && value <= 99900;
+    }
+
+    // Same checks as prepareNewProduct in src/domain/catalog/product-input.ts. The full cylinder
+    // is the gas plus its container, so it costs more than the refill.
+    function isValidProduct(data) {
+      return data.keys().hasAll([
+          'brand', 'brandColor', 'weightKg', 'name', 'refillPriceCents', 'fullPriceCents',
+          'currency', 'active', 'sortOrder', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'brand', 'brandColor', 'weightKg', 'name', 'refillPriceCents', 'fullPriceCents',
+          'currency', 'active', 'sortOrder', 'promotedUntil', 'createdAt', 'updatedAt'
+        ])
+        && (
+          !('promotedUntil' in data)
+          || (
+            data.promotedUntil is timestamp
+            && data.promotedUntil <= request.time + duration.value(60, 'd')
+          )
+        )
+        && isVisibleText(data.brand, 1, 30)
+        && (data.brandColor == null
+          || (data.brandColor is string && data.brandColor.matches('^#[0-9a-f]{6}$')))
+        && data.weightKg is int && data.weightKg >= 1 && data.weightKg <= 100
+        && isVisibleText(data.name, 2, 60)
+        && isPriceCents(data.refillPriceCents)
+        && (data.fullPriceCents == null
+          || (isPriceCents(data.fullPriceCents) && data.fullPriceCents > data.refillPriceCents))
+        && data.currency is string
+        && data.active is bool
+        && data.sortOrder is int && data.sortOrder >= 0 && data.sortOrder <= 999
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
     function isValidMember(data, d, memberUid) {
-      return hasExactly(data, [
+      return data.keys().hasAll([
           'uid', 'distributorId', 'role', 'active', 'displayName', 'distributorName',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid', 'distributorId', 'role', 'active', 'displayName', 'distributorName', 'inviteId',
           'createdAt', 'updatedAt'
         ])
         && data.uid == memberUid
@@ -473,6 +667,207 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    // The shape of a code the SDK generates (same as isInviteCode in src/domain/staff/invite.ts):
+    // the secret of the link, so never a short or chosen-looking one.
+    function isInviteCode(value) {
+      return value is string && value.matches('^[A-Za-z0-9]{20}$');
+    }
+
+    // Same pattern as EMAIL_PATTERN in src/domain/staff/invite-input.ts, in lowercase: the token
+    // of the session is compared in lowercase too.
+    function isInviteEmail(value) {
+      return value is string && value.size() <= 254
+        && value.matches('^[^@\\s]+@[^@\\s]+[.][^@\\s]+$')
+        && value == value.lower();
+    }
+
+    // An invitation as its owner creates it: waiting, with nothing about its use yet. The copies
+    // of who invites and of the brand colour are optional (PLAN §11, 2026-10-15): an invitation
+    // created before them is still valid.
+    function isNewInvite(data) {
+      return data.keys().hasAll([
+          'role', 'email', 'distributorName', 'status', 'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'role', 'email', 'distributorName', 'invitedByName', 'brandColor', 'status',
+          'createdBy', 'createdAt', 'updatedAt'
+        ])
+        && data.role in ['owner', 'dispatcher', 'driver']
+        && (data.email == null || isInviteEmail(data.email))
+        && data.status == 'pending'
+        && data.createdBy == request.auth.uid;
+    }
+
+    // Same check as prepareHelperName in src/domain/staff/helper.ts.
+    function isValidHelper(data) {
+      return hasExactly(data, ['name', 'active', 'createdAt', 'updatedAt'])
+        && isVisibleText(data.name, 1, 60)
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Same pattern as checkPlate in src/domain/vehicles/vehicle-input.ts; null for no plate.
+    function isPlate(value) {
+      return value == null
+        || (value is string && value.size() >= 3 && value.size() <= 10
+          && value.matches('^[A-Z0-9]+(-[A-Z0-9]+)?$'));
+    }
+
+    // Same checks as prepareNewVehicle in src/domain/vehicles/vehicle-input.ts.
+    function isValidVehicle(data) {
+      return hasExactly(data, [
+          'kind', 'name', 'plate', 'capacityCylinders', 'active', 'createdAt', 'updatedAt'
+        ])
+        && data.kind in ['motorcycle', 'tricycle', 'truck']
+        && isVisibleText(data.name, 1, 40)
+        && isPlate(data.plate)
+        && data.capacityCylinders is int
+        && data.capacityCylinders >= 1 && data.capacityCylinders <= 999
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Never below zero (applyStockChange in src/domain/stock/plant-stock.ts), up to the sanity cap.
+    function isStockCount(value) {
+      return value is int && value >= 0 && value <= 99999;
+    }
+
+    // The shape of an automatic id: the id of a movement of the plant stock.
+    function isAutoId(value) {
+      return value is string && value.matches('^[A-Za-z0-9]{20}$');
+    }
+
+    function isValidPlantStock(data) {
+      return hasExactly(data, ['full', 'empty', 'lastMovementId', 'updatedAt'])
+        && isStockCount(data.full)
+        && isStockCount(data.empty)
+        && isAutoId(data.lastMovementId)
+        && data.updatedAt == request.time;
+    }
+
+    function isStockDelta(value) {
+      return value is int && value >= -9999 && value <= 9999;
+    }
+
+    // Same checks as prepareAdjustment in src/domain/stock/movement.ts. What the stock holds
+    // after it is checked by the rule of the stock, which must change in the same request.
+    function isValidAdjustment(data) {
+      return hasExactly(data, [
+          'kind', 'productId', 'reason', 'note', 'fullDelta', 'emptyDelta', 'fullAfter',
+          'emptyAfter', 'authorUid', 'authorName', 'createdAt'
+        ])
+        && data.kind == 'adjustment'
+        && isProductSlot(data.productId)
+        && data.reason in ['count', 'supplier', 'damaged', 'other']
+        && (data.note == null ? data.reason != 'other' : isVisibleText(data.note, 1, 200))
+        && isStockDelta(data.fullDelta)
+        && isStockDelta(data.emptyDelta)
+        && (data.fullDelta != 0 || data.emptyDelta != 0)
+        && data.authorUid == request.auth.uid
+        && data.createdAt == request.time;
+    }
+
+    // The fields every promotion has, plus those of its kind (PLAN 3.5, §11 2026-10-16).
+    function promotionKeys(own) {
+      return [
+        'title', 'type', 'productIds', 'saleMode', 'startsAt', 'endsAt', 'active',
+        'maxUnitsPerOrder', 'totalUnits', 'soldUnits', 'conditions', 'createdBy', 'createdAt',
+        'updatedAt', 'switchedOffBy', 'switchedOffAt'
+      ].concat(own);
+    }
+
+    // Same checks as preparePromotion in src/domain/pricing/promotion-input.ts, except those
+    // that need the products (a price below the list price): priceOrder refuses those.
+    function isValidPromotion(data) {
+      return isVisibleText(data.title, 1, 40)
+        && data.productIds is list
+        && data.productIds.size() >= 1
+        && data.productIds.toSet().size() == data.productIds.size()
+        && data.productIds.hasOnly([
+          'p00', 'p01', 'p02', 'p03', 'p04', 'p05', 'p06', 'p07', 'p08', 'p09',
+          'p10', 'p11', 'p12', 'p13', 'p14', 'p15', 'p16', 'p17', 'p18', 'p19',
+          'p20', 'p21', 'p22', 'p23', 'p24', 'p25', 'p26', 'p27', 'p28', 'p29'
+        ])
+        && data.saleMode in ['refill', 'full']
+        && data.startsAt is timestamp
+        && data.endsAt is timestamp
+        && data.active is bool
+        && data.maxUnitsPerOrder is int
+        && data.maxUnitsPerOrder >= 1 && data.maxUnitsPerOrder <= 20
+        && (
+          data.totalUnits == null
+          || (data.totalUnits is int && data.totalUnits >= 1 && data.totalUnits <= 9999)
+        )
+        && data.soldUnits is int
+        && (data.conditions == '' || isConditions(data.conditions))
+        && data.createdBy is string
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && isPromotionDeal(data);
+    }
+
+    // The kind and its parameters, and nothing else.
+    function isPromotionDeal(data) {
+      return (
+          data.type == 'fixedPrice'
+          && hasExactly(data, promotionKeys(['priceSource', 'priceCents']))
+          && data.productIds.size() == 1
+          && (
+            (data.priceSource == 'own' && isPriceCents(data.priceCents))
+            || (
+              data.priceSource == 'refill'
+              && data.priceCents == null
+              && data.saleMode == 'full'
+              && data.maxUnitsPerOrder == 1
+              && data.totalUnits != null
+            )
+          )
+        )
+        || (
+          data.type == 'percentOff'
+          && hasExactly(data, promotionKeys(['percent']))
+          && data.percent is int && data.percent >= 1 && data.percent <= 30
+        )
+        || (
+          data.type == 'amountOff'
+          && hasExactly(data, promotionKeys(['amountCents']))
+          && isPriceCents(data.amountCents)
+        )
+        || (
+          data.type == 'buyXPayY'
+          && hasExactly(data, promotionKeys(['buyUnits', 'payUnits']))
+          && (
+            (data.buyUnits == 2 && data.payUnits == 1)
+            || (data.buyUnits == 3 && data.payUnits == 2)
+          )
+          && data.totalUnits != null
+          && data.maxUnitsPerOrder % data.buyUnits == 0
+        );
+    }
+
+    // Visible text up to 140 without invented urgency (marketing H5; BLOCKED_PHRASES and
+    // hasBlockedPhrase in src/domain/pricing/conditions.ts): compared in lowercase, without
+    // accents (also those written as a separate mark) and with single spaces.
+    function isConditions(value) {
+      return isVisibleText(value, 1, 140) && hasNoBlockedPhrase(value);
+    }
+
+    // The title takes the same screen. Checked on create and only when an update changes it
+    // (isNewPromotion, renamesOrExtends): the update rule is near the 1 000-expression limit.
+    function hasNoBlockedPhrase(value) {
+      return !value.lower()
+          .replace('\\p{M}', '')
+          .replace('[áàâäÁÀÂÄ]', 'a')
+          .replace('[éèêëÉÈÊË]', 'e')
+          .replace('[íìîïÍÌÎÏ]', 'i')
+          .replace('[óòôöÓÒÔÖ]', 'o')
+          .replace('[úùûüÚÙÛÜ]', 'u')
+          .replace('\\s+', ' ')
+          .matches('.*(hasta agotar|ultimas unidades|unidades limitadas|quedan pocas).*');
+    }
+
     // ================================================================================ users ====
     // The profile holds no role and no platform flag: the field whitelist rejects them.
     match /users/{uid} {
@@ -483,6 +878,7 @@ service cloud.firestore {
       // session that came in through Google with a verified e-mail (PLAN 2.1, 2.11).
       allow create: if isSelf(uid)
         && isValidUserProfile(request.resource.data)
+        && isVisibleText(request.resource.data.displayName, 1, 80)
         && request.resource.data.ownedDistributorIds.size() == 0
         // Reads added by rules: 2 (getAfter of the two history entries).
         && logsAcceptance(uid, 'terms', request.resource.data.terms)
@@ -495,6 +891,9 @@ service cloud.firestore {
         && isValidUserProfile(request.resource.data)
         && unchanged(['createdAt'])
         && request.resource.data.updatedAt == request.time
+        // The name is visible text whenever it is written (PLAN 3.2: the staff reads it); one
+        // stored before that check stays until the account changes it.
+        && (unchanged(['displayName']) || isVisibleText(request.resource.data.displayName, 1, 80))
         // A text is accepted now and leaves its line in the history, or it is not touched; the
         // validator already forbids removing an acceptance. A profile older than `privacy`
         // gains it the same way.
@@ -630,6 +1029,7 @@ service cloud.firestore {
         // The catalogue does not exist yet; these are filled from it later.
         && request.resource.data.brands.size() == 0
         && request.resource.data.priceFromCents == null
+        && request.resource.data.get('priceFromWeightKg', null) == null
         && getAfter(/databases/$(database)/documents/slugs/$(request.resource.data.slug)).data.distributorId == d
         && foundedNow(d);
 
@@ -659,14 +1059,23 @@ service cloud.firestore {
             && ((flipsTheFlag() && isStaff(d)) || isPlatformAdmin())
           )
           || (
-            onlyChanges([
-              'name', 'contactPhone', 'whatsapp', 'addressLine', 'plant', 'coverageRadiusKm',
-              'brandColor', 'schedule', 'maxCylindersPerOrder', 'brands', 'priceFromCents',
-              'acceptingOrders', 'updatedAt'
-            ])
+            // Every field the validator lists but these three (EDITABLE_PROFILE_FIELDS, the flag
+            // and updatedAt), written as what never changes: a list of 15 names costs
+            // expressions this rule does not have (PLAN §9).
+            unchanged(['slug', 'currency', 'createdAt'])
             && hasRole(d, ['owner'])
             && writable(d)
             && (changesIdentity() ? returnsToReview() : unchanged(['acceptingOrders']))
+          )
+          // The dispatcher edits the catalogue too (PLAN §11, 2026-10-15), so it keeps the copy
+          // of it up to date in the same transaction: those fields (the brands, the "desde"
+          // price and its weight) and nothing else, only when they change. Last, so the owner's
+          // edit never evaluates it (limit of expressions, PLAN §9).
+          || (
+            onlyChanges(['brands', 'priceFromCents', 'priceFromWeightKg', 'updatedAt'])
+            && !unchanged(['brands', 'priceFromCents', 'priceFromWeightKg'])
+            && hasRole(d, ['dispatcher'])
+            && writable(d)
           )
         );
 
@@ -714,7 +1123,7 @@ service cloud.firestore {
           && request.resource.data.ownerUid == request.auth.uid
           && request.resource.data.status == 'trial'
           && request.resource.data.listingApproved == false
-          && !('reviewNote' in request.resource.data)
+          && !('reviewNoteAt' in request.resource.data)
           && request.resource.data.trialEndsAt > request.time + duration.value(29, 'd')
           && request.resource.data.trialEndsAt <= request.time + duration.value(721, 'h')
           && stampedNow(request.resource.data)
@@ -752,8 +1161,8 @@ service cloud.firestore {
         // public name and link can only be written as they stand in the public profile.
         // Reads added by rules: 2 for a platform admin (exists platformAdmins, getAfter
         // distributor) and 4 when it approves (get distributor, get settings: the versions it
-        // says it reviewed), 3 for an owner (exists platformAdmins, get member, getAfter
-        // distributor); marking a correction adds the stored public profile (get distributor: 4)
+        // says it reviewed) or 3 when it leaves a note (getAfter review), 3 for an owner (exists
+        // platformAdmins, get member, getAfter distributor); marking a correction adds the stored public profile (get distributor: 4)
         // and, when the correction is not there, the private settings before and after (get and
         // getAfter settings: 6).
         allow update: if isValidControl(request.resource.data)
@@ -763,11 +1172,12 @@ service cloud.firestore {
               isPlatformAdmin()
               && onlyChanges([
                 'status', 'listingApproved', 'approvedAt', 'approvedBy', 'reviewedProfileAt',
-                'reviewedSettingsAt', 'reviewNote', 'correctedAt', 'distributorName', 'slug',
-                'updatedAt'
+                'reviewedSettingsAt', 'reviewNoteAt', 'reviewNote', 'correctedAt',
+                'distributorName', 'slug', 'updatedAt'
               ])
               && approvalIsSigned()
               && leavesCorrectionMarkAlone()
+              && writesNoteWithItsText()
             )
             || (
               onlyChanges([
@@ -787,7 +1197,20 @@ service cloud.firestore {
         // it answers changed: a new note is a new question.
         function leavesCorrectionMarkAlone() {
           return !('correctedAt' in request.resource.data)
-            || unchanged(['correctedAt', 'reviewNote']);
+            || unchanged(['correctedAt', 'reviewNoteAt']);
+        }
+
+        // A new note is stamped now and its text lands in private/review in the same request,
+        // where only the founder reads it (PLAN 3.2). `reviewNote` in the list of changes above
+        // only lets an admin remove the text a document older than that kept here: the shape
+        // refuses it as a field.
+        function writesNoteWithItsText() {
+          return unchanged(['reviewNoteAt'])
+            || !('reviewNoteAt' in request.resource.data)
+            || (
+              request.resource.data.reviewNoteAt == request.time
+              && getAfter(reviewPath(d)).data.writtenAt == request.time
+            );
         }
 
         // "Corrected now", and only together with a correction of what the platform reviews: the
@@ -879,6 +1302,31 @@ service cloud.firestore {
         }
       }
 
+      // ------------------------------------------------------------------ private/review ----
+      // The text of the note a platform admin leaves for the owner when it sends a listing back
+      // (PLAN 3.2). Apart from the control document, which the whole staff reads: the note may
+      // speak of the RUC or the record of the founder, so only the founder and platform admins
+      // read it. The control document keeps the mark (`reviewNoteAt`) for everyone else.
+      match /private/review {
+        // Reads added by rules: 1 for the founder (get control), 2 for a platform admin (get
+        // control, exists platformAdmins).
+        allow get: if signedInWithGoogle()
+          && (get(controlPath(d)).data.ownerUid == request.auth.uid || isPlatformAdmin());
+
+        // Written together with its mark, stamped with the same server time.
+        // Reads added by rules: 2 (exists platformAdmins, getAfter control).
+        allow create, update: if isPlatformAdmin()
+          && hasExactly(request.resource.data, ['note', 'writtenAt'])
+          && isText(request.resource.data.note, 1, 300)
+          && request.resource.data.writtenAt == request.time
+          && getAfter(controlPath(d)).data.get('reviewNoteAt', null) == request.time;
+
+        // Removed in the request that removes its mark (an approval, a decision without a note).
+        // Reads added by rules: 2 (exists platformAdmins, getAfter control).
+        allow delete: if isPlatformAdmin()
+          && !('reviewNoteAt' in getAfter(controlPath(d)).data);
+      }
+
       // ------------------------------------------------------------------------- members ----
       match /members/{memberUid} {
         // Reads added by rules: 0 for the own document, 1 otherwise.
@@ -887,21 +1335,32 @@ service cloud.firestore {
         // Reads added by rules: 1.
         allow list: if request.query.limit <= 100 && hasRole(d, ['owner', 'dispatcher']);
 
-        // One way in, and no other: the founder's own member, as owner, inside the founding
-        // batch. Nobody creates a member document for itself or for anyone else outside it.
-        // Invitations (phase 3) will add the second, equally explicit, way: the invited account
-        // creates its own member with exactly the role of a valid invitation.
-        // Reads added by rules: 2 (getAfter distributor, getAfter control).
+        // Two ways in, and no other. The founder's own member, as owner, inside the founding
+        // batch; or an account that uses an invitation (PLAN 3.2): it creates its own member
+        // with exactly the role of a usable invitation of this distributor and, in the same
+        // request, marks that invitation used by itself, so it works once. Nobody creates a
+        // member document for anyone else.
+        // Reads added by rules: 2 for the founder (getAfter distributor, getAfter control); 6
+        // through an invitation (getAfter distributor, get and getAfter invitation, get control,
+        // get profile, get member of the owner who invited).
         allow create: if isSelf(memberUid)
           && isValidMember(request.resource.data, d, memberUid)
+          && isVisibleText(request.resource.data.displayName, 1, 80)
           && stampedNow(request.resource.data)
-          && request.resource.data.role == 'owner'
           && request.resource.data.active == true
           && carriesPublicName()
-          && foundedNow(d);
+          && (
+            (
+              request.resource.data.role == 'owner'
+              && !('inviteId' in request.resource.data)
+              && foundedNow(d)
+            )
+            || joinsByInvitation()
+          );
 
         // An owner changes others, never itself, and never the founder: the acting owner and
-        // the founder always stay, so a distributor cannot be left without an owner.
+        // the founder always stay, so a distributor cannot be left without an owner. Only the
+        // founder makes, unmakes or switches off another owner (PLAN 3.2).
         // Reads added by rules: 2 (get member, get control).
         //
         // Second kind of update: refreshing the copy of the distributor's name. Any member may
@@ -915,8 +1374,10 @@ service cloud.firestore {
             (
               memberUid != request.auth.uid
               && onlyChanges(['role', 'active', 'displayName', 'updatedAt'])
+              && (unchanged(['displayName'])
+                || isVisibleText(request.resource.data.displayName, 1, 80))
               && hasRole(d, ['owner'])
-              && writableAndNotFounder(memberUid)
+              && managesMember(memberUid)
             )
             || (
               onlyChanges(['distributorName', 'updatedAt'])
@@ -927,9 +1388,54 @@ service cloud.firestore {
 
         // No delete: staff is deactivated (`active: false`), so history keeps its author.
 
-        function writableAndNotFounder(uid) {
+        // Same conditions as memberChangeRefusal in src/domain/staff/member-management.ts.
+        function managesMember(uid) {
           let control = get(controlPath(d)).data;
-          return isWritableData(control) && control.ownerUid != uid;
+          return isWritableData(control)
+            && control.ownerUid != uid
+            && (
+              control.ownerUid == request.auth.uid
+              || (resource.data.role != 'owner' && request.resource.data.role != 'owner')
+            );
+        }
+
+        // The account's own profile must exist (nothing is stored for an account without the
+        // accepted terms and privacy policy), and the staff sees the name it chose there.
+        function joinsByInvitation() {
+          let code = request.resource.data.inviteId;
+          let invite = /databases/$(database)/documents/distributors/$(d)/invites/$(code);
+          return isInviteCode(code)
+            && usesInvitation(get(invite).data, getAfter(invite).data)
+            && writable(d)
+            && stillVouchedFor(get(invite).data)
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.displayName
+              == request.resource.data.displayName;
+        }
+
+        // The invitation was waiting and within its seven days (INVITE_TTL_DAYS), it is for this
+        // role and, when it names an address, for this account; once the request is applied it
+        // is used, by the caller.
+        function usesInvitation(before, after) {
+          return before.status == 'pending'
+            && before.createdAt + duration.value(7, 'd') > request.time
+            && before.role == request.resource.data.role
+            && (before.email == null || before.email == request.auth.token.email.lower())
+            && after.status == 'accepted'
+            && after.acceptedBy == request.auth.uid;
+        }
+
+        // An invitation speaks for the owner who created it, so it works only while that person
+        // is still an active owner here (not switched off, not demoted, account not deleted: its
+        // member is then off or missing, which denies); one for an owner, only while its author
+        // is the founder, the only one who invites owners (PLAN §11, 2026-10-16). The app also
+        // revokes them when it switches that owner off or demotes it (stopsBeingActiveOwner in
+        // src/domain/staff/member-management.ts); this is the lock that does not trust it.
+        function stillVouchedFor(invite) {
+          return holdsRole(
+              get(/databases/$(database)/documents/distributors/$(d)/members/$(invite.createdBy)).data,
+              ['owner']
+            )
+            && (invite.role != 'owner' || invite.createdBy == get(controlPath(d)).data.ownerUid);
         }
 
         function carriesPublicName() {
@@ -937,8 +1443,383 @@ service cloud.firestore {
         }
       }
 
-      // invites, helpers, vehicles, products, plantStock, customers, orders, shifts: closed
-      // until their phase opens them.
+      // ------------------------------------------------------------------------ products ----
+      // The catalogue (PLAN 3.1), in a match of its own: the update rule of the public profile is
+      // close to the limit of expressions per evaluation (PLAN §9).
+      match /products/{productId} {
+        // Public while the distributor takes orders, and only what is on sale: a query must carry
+        // where('active', '==', true) and a limit ≤ 30. It follows the same flag that opens the
+        // public profile, so a catalogue is readable exactly when its profile is. The staff reads
+        // everything, withdrawn products included.
+        // Reads added by rules: 1 for a visitor (get distributor); for the staff 1 (get member),
+        // or 2 when it reads a product on sale of a distributor that does not take orders.
+        allow get: if isOnSale() || isStaff(d);
+        allow list: if request.query.limit <= 30 && (isOnSale() || isStaff(d));
+
+        // The owner and the dispatcher set prices and decide what is sold (PLAN §11,
+        // 2026-10-15; CATALOG_EDITOR_ROLES in src/domain/catalog/permissions.ts), and only while
+        // the distributor is writable. A taken slot makes this an update, which must keep the
+        // creation date: no product is replaced by another one.
+        // Reads added by rules: 3 (get member, get control, get distributor).
+        allow create: if isValidProduct(request.resource.data)
+          && isProductSlot(productId)
+          && stampedNow(request.resource.data)
+          && hasRole(d, ['owner', 'dispatcher'])
+          && writable(d)
+          && request.resource.data.currency == get(distributorPath(d)).data.currency;
+
+        // The weight, the currency and the creation date never change, and no list price goes up
+        // while a promotion covers the product (PLAN 3.5).
+        // Reads added by rules: 2 (get member, get control).
+        allow update: if isValidProduct(request.resource.data)
+          && unchanged(['weightKg', 'currency', 'createdAt'])
+          && request.resource.data.updatedAt == request.time
+          && keepsPromotionLock(resource.data, request.resource.data)
+          && hasRole(d, ['owner', 'dispatcher'])
+          && writable(d);
+
+        // No delete: orders (phase 4) and the plant stock (3.4) name products by their slot.
+
+        function isOnSale() {
+          return resource.data.active == true
+            && get(distributorPath(d)).data.acceptingOrders == true;
+        }
+
+        // The price lock of PLAN 3.5 (§11, 2026-10-16; breaksPromotionLock and isPriceLocked in
+        // src/domain/catalog/product.ts). While `promotedUntil` is ahead, the lock may only grow,
+        // no list price goes up and the full cylinder is not withdrawn: taking it away and
+        // putting it back dearer would be a raise in two steps. Lowering is always allowed.
+        function keepsPromotionLock(before, after) {
+          return before.get('promotedUntil', request.time) <= request.time
+            || (
+              after.get('promotedUntil', request.time) >= before.promotedUntil
+              && after.refillPriceCents <= before.refillPriceCents
+              && (
+                before.fullPriceCents == null
+                || (after.fullPriceCents != null && after.fullPriceCents <= before.fullPriceCents)
+              )
+            );
+        }
+      }
+
+      // ---------------------------------------------------------------------- promotions ----
+      // Promotions (PLAN 3.5, §11 2026-10-16), in a match of their own like the catalogue. The
+      // price a promotion gives is checked where it is used: priceOrder in src/domain/pricing and
+      // the order rules of phase 4, which read the product and the promotion. Here: who, the
+      // shape of each kind, the validity window and the only edits allowed once saved.
+      match /promotions/{promotionId} {
+        // Public while the distributor takes orders, and only the published ones: a query must
+        // carry where('active', '==', true) and a limit ≤ 20 (the app adds endsAt > now). A
+        // query cannot be compared with the clock: a scheduled or ended one can be read by a
+        // query made by hand, and the screens do not show it. The staff reads every slot.
+        // Reads added by rules: 1 for a visitor (get distributor); for the staff 1 (get member),
+        // or 2 when it reads a published one of a distributor that does not take orders.
+        allow get: if isPublished() || isStaff(d);
+        allow list: if request.query.limit <= 20 && (isPublished() || isStaff(d));
+
+        // The owner and the dispatcher (decision of the user, PLAN §11 2026-10-16;
+        // PROMOTION_EDITOR_ROLES in src/domain/pricing/permissions.ts), while writable. Reads added
+        // by rules: 2 (get member, get control).
+        allow create: if promotionId.matches('^o[0-1][0-9]$')
+          && isNewPromotion(request.resource.data)
+          && hasRole(d, ['owner', 'dispatcher'])
+          && writable(d);
+
+        // A slot whose promotion ended, was switched off or was never published takes a whole
+        // new one. Otherwise one of three edits: rename or extend (not shorten: customers saw the
+        // end) while it is open; publish one saved unpublished; switch off a published one,
+        // which records who and when and is final. Reads added by rules: 2 (get member, get
+        // control).
+        allow update: if isValidPromotion(request.resource.data)
+          && hasRole(d, ['owner', 'dispatcher'])
+          && writable(d)
+          && (
+            (isOver() && isNewPromotion(request.resource.data))
+            || (
+              request.resource.data.updatedAt == request.time
+              && resource.data.switchedOffAt == null
+              && resource.data.endsAt > request.time
+              && (renamesOrExtends() || publishes() || switchesOff())
+            )
+          );
+
+        // No delete: an order (phase 4) names the promotion it took by its slot.
+
+        function isPublished() {
+          return get(distributorPath(d)).data.acceptingOrders == true
+            && resource.data.active == true;
+        }
+
+        function isOver() {
+          return resource.data.active == false || resource.data.endsAt <= request.time;
+        }
+
+        // Written now, by the caller, with nothing sold nor switched off, within its window.
+        function isNewPromotion(data) {
+          return isValidPromotion(data)
+            && stampedNow(data)
+            && hasNoBlockedPhrase(data.title)
+            && data.createdBy == request.auth.uid
+            && data.soldUnits == 0
+            && data.switchedOffBy == null
+            && data.switchedOffAt == null
+            && data.startsAt >= request.time
+            && data.startsAt <= request.time + duration.value(30, 'd')
+            && data.endsAt > data.startsAt
+            && data.endsAt <= data.startsAt + duration.value(30, 'd');
+        }
+
+        function renamesOrExtends() {
+          return onlyChanges(['title', 'endsAt', 'updatedAt'])
+            && (
+              request.resource.data.title == resource.data.title
+              || hasNoBlockedPhrase(request.resource.data.title)
+            )
+            && request.resource.data.endsAt >= resource.data.endsAt
+            && request.resource.data.endsAt <= resource.data.startsAt + duration.value(30, 'd');
+        }
+
+        function publishes() {
+          return onlyChanges(['active', 'updatedAt'])
+            && resource.data.active == false
+            && request.resource.data.active == true;
+        }
+
+        function switchesOff() {
+          return onlyChanges(['active', 'switchedOffBy', 'switchedOffAt', 'updatedAt'])
+            && resource.data.active == true
+            && request.resource.data.active == false
+            && request.resource.data.switchedOffBy == request.auth.uid
+            && request.resource.data.switchedOffAt == request.time;
+        }
+      }
+
+      // ------------------------------------------------------------------------- invites ----
+      // Invitations of staff (PLAN 3.2). Without a server there is no e-mail to send: an owner
+      // shares a link that carries the code, and the code is the only secret. Nobody but an
+      // owner can list them, and the code has the 119 bits of an automatic id, so an invitation
+      // cannot be found or guessed; whoever has the link reads it (to see where and as what it
+      // is invited) and may use it once, within its days.
+      match /invites/{code} {
+        // The address an owner typed is data of somebody else (PLAN §11, 2026-10-16): an
+        // invitation tied to one is read only by that Google account (compared in lowercase, as
+        // when it is used) and by an owner; one without an address, by whoever has the link.
+        // Reads added by rules: 0, or 1 for an owner reading one tied to another address.
+        allow get: if signedInWithGoogle()
+          && isInviteCode(code)
+          && (
+            resource.data.email == null
+            || resource.data.email == request.auth.token.email.lower()
+            || hasRole(d, ['owner'])
+          );
+
+        // The owner's list, to share a link again or revoke it. Reads added by rules: 1.
+        allow list: if request.query.limit <= 50 && hasRole(d, ['owner']);
+
+        // Any owner invites a dispatcher or a driver; only the founder invites an owner, and
+        // only tied to the address of that Google account: an owner can do almost everything
+        // the founder can, so a forwarded link must not be enough. Only while writable.
+        // Reads added by rules: 3 (get member, get distributor, get control).
+        allow create: if isInviteCode(code)
+          && isNewInvite(request.resource.data)
+          && stampedNow(request.resource.data)
+          && hasRole(d, ['owner'])
+          && request.resource.data.distributorName == get(distributorPath(d)).data.name
+          && copiesHold(request.resource.data, get(distributorPath(d)).data)
+          && mayInvite(get(controlPath(d)).data);
+
+        // Whoever receives the link reads neither the profile nor the staff: the invitation says
+        // who invites and in which colour. Each copy, when present, is the truth: the name the
+        // member of the owner carries (the one the role was read from; visible text) and the
+        // brand colour of the public profile.
+        function copiesHold(invite, profile) {
+          return (!('brandColor' in invite) || invite.brandColor == profile.brandColor)
+            && (
+              !('invitedByName' in invite)
+              || (
+                invite.invitedByName == member(d).displayName
+                && isVisibleText(invite.invitedByName, 1, 80)
+              )
+            );
+        }
+
+        // Used: by whoever holds it, only in the request that creates its own member, whose
+        // rule checks that it is still usable and for this account; using it clears the address
+        // it was tied to, which has no purpose any more (PLAN §11, 2026-10-16). Revoked: by an owner while
+        // it waits, also when the distributor is read-only (it only takes access away). Its copy
+        // of the name follows a new public name: an owner rewrites it, only to that name, in the
+        // batch that renames the distributor (whoever joins writes it into its member, whose
+        // rule wants the public name).
+        // Reads added by rules: 1 to use it (getAfter member), 1 to revoke it (get member), 2 to
+        // refresh the name (get member, getAfter distributor).
+        allow update: if resource.data.status == 'pending'
+          && request.resource.data.updatedAt == request.time
+          && (
+            (
+              onlyChanges(['status', 'acceptedBy', 'acceptedAt', 'email', 'updatedAt'])
+              && request.resource.data.email == null
+              && request.resource.data.status == 'accepted'
+              && request.resource.data.acceptedBy == request.auth.uid
+              && request.resource.data.acceptedAt == request.time
+              && signedInWithGoogle()
+              && getAfter(/databases/$(database)/documents/distributors/$(d)/members/$(request.auth.uid)).data.inviteId == code
+            )
+            || (
+              onlyChanges(['status', 'revokedBy', 'revokedAt', 'updatedAt'])
+              && request.resource.data.status == 'revoked'
+              && request.resource.data.revokedBy == request.auth.uid
+              && request.resource.data.revokedAt == request.time
+              && hasRole(d, ['owner'])
+            )
+            || (
+              onlyChanges(['distributorName', 'updatedAt'])
+              && request.resource.data.distributorName == getAfter(distributorPath(d)).data.name
+              && hasRole(d, ['owner'])
+            )
+          );
+
+        // No delete: a used invitation says how its member joined.
+
+        function mayInvite(control) {
+          return isWritableData(control)
+            && (
+              request.resource.data.role != 'owner'
+              || (control.ownerUid == request.auth.uid && request.resource.data.email != null)
+            );
+        }
+      }
+
+      // ------------------------------------------------------------------------- helpers ----
+      // Helpers (ayudantes, PLAN 3.2): they go with a truck, never sign in and receive no orders.
+      // The staff reads them (the driver picks one when it opens a shift, phase 5); only an owner
+      // writes them, while the distributor is writable.
+      match /helpers/{helperId} {
+        // Reads added by rules: 1 (get member).
+        allow get: if isStaff(d);
+        allow list: if request.query.limit <= 30 && isStaff(d);
+
+        // Fixed slots, h00 … h29: the only way the rules can cap them. A taken slot makes this
+        // an update, which keeps the creation date. Reads added by rules: 2 (get member, get
+        // control).
+        allow create: if helperId.matches('^h[0-2][0-9]$')
+          && isValidHelper(request.resource.data)
+          && stampedNow(request.resource.data)
+          && hasRole(d, ['owner'])
+          && writable(d);
+
+        // Reads added by rules: 2 (get member, get control).
+        allow update: if isValidHelper(request.resource.data)
+          && unchanged(['createdAt'])
+          && request.resource.data.updatedAt == request.time
+          && hasRole(d, ['owner'])
+          && writable(d);
+
+        // No delete: a shift (phase 5) names its helper by the slot.
+      }
+
+      // ------------------------------------------------------------------------ vehicles ----
+      // Vehicles (PLAN 3.3). The staff reads them (the driver picks one when it opens a shift,
+      // phase 5); the owner and the dispatcher write them (PLAN §11, 2026-10-16, user decision;
+      // VEHICLE_EDITOR_ROLES in src/domain/vehicles/permissions.ts), while the distributor is
+      // writable. Nothing here writes another document: a shift keeps its own copy of the
+      // capacity, so changing it never rewrites a load already approved.
+      match /vehicles/{vehicleId} {
+        // Reads added by rules: 1 (get member).
+        allow get: if isStaff(d);
+        allow list: if request.query.limit <= 30
+          && isStaff(d);
+
+        // Fixed slots, v00 … v29: the only way the rules can cap them. A taken slot makes this
+        // an update, which keeps the creation date. Reads added by rules: 2 (get member, get
+        // control).
+        allow create: if vehicleId.matches('^v[0-2][0-9]$')
+          && isValidVehicle(request.resource.data)
+          && stampedNow(request.resource.data)
+          && hasRole(d, ['owner', 'dispatcher'])
+          && writable(d);
+
+        // Everything but the creation date may change. Reads added by rules: 2 (get member, get
+        // control).
+        allow update: if isValidVehicle(request.resource.data)
+          && unchanged(['createdAt'])
+          && request.resource.data.updatedAt == request.time
+          && hasRole(d, ['owner', 'dispatcher'])
+          && writable(d);
+
+        // No delete: a shift (phase 5) names its vehicle by the slot.
+      }
+
+      // ------------------------------------------------------------------ plant stock ----
+      // Full and empty cylinders per product at the plant (PLAN 3.4). The owner and the
+      // dispatcher read and change it; the driver does not see it (PLAN §11, 2026-10-16, user decision;
+      // src/domain/stock/permissions.ts), while the distributor is writable. Every change names,
+      // in lastMovementId, the movement created in the same request, and must move the counts by
+      // exactly what that movement says: the history cannot be skipped, and it cannot lie about
+      // the change. PLAN 5.2 and 5.5 add here a branch for the movements of a shift.
+      match /plantStock/{productId} {
+        // Reads added by rules: 1 (get member).
+        allow get: if hasRole(d, ['owner', 'dispatcher']);
+        allow list: if request.query.limit <= 30 && hasRole(d, ['owner', 'dispatcher']);
+
+        // The first movement of a product creates its stock from zero, and only for a product
+        // of the catalogue. Reads added by rules: 4 (get member, get control, exists product,
+        // getAfter movement).
+        allow create: if isValidPlantStock(request.resource.data)
+          && movesStockFrom(0, 0)
+          && hasRole(d, ['owner', 'dispatcher'])
+          && writable(d)
+          && exists(/databases/$(database)/documents/distributors/$(d)/products/$(productId));
+
+        // Reads added by rules: 3 (get member, get control, getAfter movement).
+        allow update: if isValidPlantStock(request.resource.data)
+          && movesStockFrom(resource.data.full, resource.data.empty)
+          && hasRole(d, ['owner', 'dispatcher'])
+          && writable(d);
+
+        // No delete: the stock of a product only moves.
+
+        // The movement this change names is created in this request (stamped now: movements
+        // are never updated), is about this product, and adds up.
+        function movesStockFrom(fullBefore, emptyBefore) {
+          let after = request.resource.data;
+          let movement = getAfter(
+            /databases/$(database)/documents/distributors/$(d)/stockMovements/$(after.lastMovementId)
+          ).data;
+          return movement.createdAt == request.time
+            && movement.productId == productId
+            && after.full == fullBefore + movement.fullDelta
+            && after.empty == emptyBefore + movement.emptyDelta
+            && movement.fullAfter == after.full
+            && movement.emptyAfter == after.empty;
+        }
+      }
+
+      // ------------------------------------------------------------- stock movements ----
+      // The history of the plant stock: read like the stock, created only together with the
+      // change it describes (the stock must name it), never updated or deleted.
+      match /stockMovements/{movementId} {
+        // Reads added by rules: 1 (get member).
+        allow get: if hasRole(d, ['owner', 'dispatcher']);
+        allow list: if request.query.limit <= 50 && hasRole(d, ['owner', 'dispatcher']);
+
+        // Reads added by rules: 3 (get member, get control, getAfter stock).
+        allow create: if isAutoId(movementId)
+          && isValidAdjustment(request.resource.data)
+          && signedInWithGoogle()
+          && writtenByAdjuster(member(d), request.resource.data)
+          && writable(d)
+          && getAfter(
+            /databases/$(database)/documents/distributors/$(d)/plantStock/$(request.resource.data.productId)
+          ).data.lastMovementId == movementId;
+
+        // An owner or the dispatcher, under the name the staff knows it by (read once with the
+        // role).
+        function writtenByAdjuster(held, data) {
+          return holdsRole(held, ['owner', 'dispatcher']) && data.authorName == held.displayName;
+        }
+      }
+
+      // customers, orders, shifts: closed until their phase opens them.
     }
 
     // "My memberships" (selector of distributors): a collection-group query that must filter

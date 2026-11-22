@@ -29,9 +29,9 @@ test('shows the public profile of a seeded distributor to anybody', async ({ pag
   await expect(page.getByText(`${a.name} vende y reparte el gas`)).toBeVisible();
   await expect(page.getByText(`${a.coverageRadiusKm} km`, { exact: true })).toBeVisible();
   await expect(page.getByText(/7:00 a\. m\.–8:00 p\. m\./)).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'Esta distribuidora todavía no publicó su catálogo.' }),
-  ).toBeVisible();
+  // PLAN 3.1: its products on sale, with the price of the refill (and of the full cylinder).
+  await expect(page.getByRole('heading', { name: 'Balón 45 kg' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Balón 15 kg' })).toHaveCount(0);
   await expect(page.getByText('Página en')).toBeVisible();
   await expect(page.getByText(/ve esta página: ahora no es pública/)).toHaveCount(0);
   // PLAN 2.11: anybody can report a page to the platform.
@@ -39,6 +39,12 @@ test('shows the public profile of a seeded distributor to anybody', async ({ pag
     'href',
     '/contacto',
   );
+  // PLAN §11 (2026-10-15): the weight of the "desde" price, and its own complaints book.
+  await expect(page.getByText('recarga 5 kg desde').first()).toBeVisible();
+  const book = new RegExp(`Libro de Reclamaciones de ${a.name}`);
+  await expect(page.getByRole('link', { name: book })).toHaveAttribute('href', a.complaintsBookUrl);
+  // PLAN §11 (2026-10-16): its host, in sight next to the link.
+  await expect(page.getByText('· example.com', { exact: true })).toBeVisible();
 
   // Links built from the stored numbers, with the message encoded.
   await expect(page.getByRole('link', { name: /WhatsApp/ }).first()).toHaveAttribute(

@@ -95,6 +95,8 @@ describe('prepareNewDistributor', () => {
     ['NaN radius', { coverageRadiusKm: Number.NaN }, 'coverageRadiusKm:outOfRange'],
     ['short colour', { brandColor: '#fff' }, 'brandColor:invalid'],
     ['empty owner name', { ownerName: ' ' }, 'ownerName:required'],
+    // PLAN 3.2: it is also the name of the founder's member, which the staff reads.
+    ['invisible owner name', { ownerName: '\u200b' }, 'ownerName:invalid'],
     ['bad owner phone', { ownerPhone: '800000001' }, 'ownerPhone:invalid'],
   ])('rejects %s', (_case, change, expected) => {
     expect(issuesOf({ ...VALID, ...change })).toEqual([expected]);

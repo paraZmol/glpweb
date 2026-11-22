@@ -424,7 +424,9 @@ Piezas que acompañan a todas las pantallas:
 - **Botones `sm`**: 40 px a la vista (32 dentro de la franja del aviso) y **44 px de área de
   toque**, con una zona invisible centrada sobre el botón (`before:` de 44 px de alto). No
   crecen ni en celular ni en escritorio; dos botones `sm` apilados necesitan al menos 4 px de
-  separación para que sus áreas no se pisen.
+  separación para que sus áreas no se pisen. Excepción (2026-11-21): los botones de las filas de
+  `/central/personal` (`ROW_BUTTON` en `src/pages/office/row-button.ts`) miden 44 px a la vista
+  bajo `lg:`, porque ahí se tocan con el dedo y con prisa.
 - **Pregunta de confirmación** (`ConfirmPanel`): el segundo paso de todo lo que no se puede
   deshacer o sale hacia afuera (aprobar, pedir cambios, suspender, reactivar, guardar y volver
   a revisión, eliminar la cuenta). Ocupa el lugar del botón que la abrió, en `bg-muted` de

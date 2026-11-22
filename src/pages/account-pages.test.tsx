@@ -102,7 +102,7 @@ describe('pending step of an account (PLAN 2.1, 2.7)', () => {
       'Si una distribuidora no cumple un precio o una promoción, el reclamo se le hace a ella; Hornilla no responde por esa oferta. Esto no te quita los derechos que la ley te da como consumidor.',
     );
     expect(text).toContain(
-      'Términos versión 0.4 y Política de privacidad versión 0.4, preliminares y en revisión.',
+      'Términos versión 0.7 y Política de privacidad versión 0.7, preliminares y en revisión.',
     );
   });
 
@@ -286,15 +286,18 @@ describe('home of each area: an empty state that says what is going on', () => {
     expect(tags(html, 'a').some((tag) => tag.includes('href="/distribuidora/nueva"'))).toBe(true);
   });
 
-  // PLAN 2.2: what the owner sees after founding.
-  it('lists what is left to set up, with the catalogue and the staff marked as coming soon', () => {
+  // PLAN 2.2 and 3.1: what the owner sees after founding.
+  it('lists what is left to set up: the catalogue and the staff are real tasks (PLAN 3.1, 3.2)', () => {
     const html = inArea('office', <OfficeHomePage />, OWNER);
     const text = textOf(html);
 
     expect(text).toContain('Completa tu distribuidora');
     expect(text).toContain('Carga tu catálogo');
     expect(text).toContain('Suma a tu personal');
-    expect(count(html, /Llega pronto/)).toBe(2);
+    expect(count(html, /Llega pronto/)).toBe(0);
+    expect(tags(html, 'a').some((tag) => tag.includes('href="/central/personal"'))).toBe(true);
+    expect(text).toContain('Cargar catálogo');
+    expect(tags(html, 'a').some((tag) => tag.includes('href="/central/catalogo"'))).toBe(true);
     expect(tags(html, 'a').some((tag) => tag.includes('href="/d/gas-demo-norte"'))).toBe(true);
   });
 

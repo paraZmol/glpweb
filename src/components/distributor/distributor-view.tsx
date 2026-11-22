@@ -1,8 +1,8 @@
 import { BrandTheme } from '@/components/brand/brand-theme';
-import { GasCylinder } from '@/components/brand/gas-cylinder';
 import { HornillaLogo } from '@/components/brand/hornilla-logo';
-import { EmptyState } from '@/components/common/state-views';
+import { OutsideLink } from '@/components/common/outside-link';
 import { TextLink } from '@/components/common/text-link';
+import { complaintsBookHostOf } from '@/domain/tenancy/complaints-book';
 import { DEFAULT_TIMEZONE } from '@/domain/tenancy/constants';
 import { describeOpenStatus, openStatusAt } from '@/domain/tenancy/schedule';
 import type { PublicDistributor } from '@/domain/tenancy/types';
@@ -10,32 +10,15 @@ import { ROUTES } from '@/lib/routes';
 import { ContactActions } from './contact-actions';
 import { CoverageCard, ScheduleCard } from './distributor-details';
 import { DistributorHero } from './distributor-hero';
+import { DistributorProducts } from './distributor-products';
 import { PrivatePreviewStrip } from './private-preview-strip';
 
-const EMPTY_CYLINDER_PX = 72;
 const FOOT_LOGO_PX = 20;
 
 function statusOf(distributor: PublicDistributor, now: Date) {
   if (!distributor.acceptingOrders) return { isOpen: false, text: 'Ahora no es pública' };
   const open = openStatusAt(distributor.schedule, now, DEFAULT_TIMEZONE);
   return { isOpen: open.isOpen, text: describeOpenStatus(open) };
-}
-
-/** The products of the distributor. The catalogue is phase 3: until then, a designed gap. */
-function Catalog() {
-  return (
-    <section aria-labelledby="catalogo">
-      <h2 id="catalogo" className="text-[1.75rem] font-extrabold lg:text-4xl">
-        Balones y precios
-      </h2>
-      <EmptyState
-        className="mt-4 rounded-xl bg-card p-6 shadow-card"
-        symbol={<GasCylinder weightKg={10} tone="mono" height={EMPTY_CYLINDER_PX} />}
-        title="Esta distribuidora todavía no publicó su catálogo."
-        description="Aquí van a aparecer sus balones, sus marcas y el precio de la recarga y del balón completo. Mientras tanto puedes preguntarle por teléfono o por WhatsApp."
-      />
-    </section>
-  );
 }
 
 /** Desktop: the column that will hold "Tu pedido"; today, the direct way to the business. */
@@ -65,6 +48,19 @@ function ContactBar({ distributor }: { distributor: PublicDistributor }) {
   );
 }
 
+/**
+ * Its own virtual book (PLAN §11, 2026-10-15), a site Hornilla does not review: the host stays
+ * in sight next to the link, so a visitor sees where it leads before opening it (2026-10-16).
+ */
+function ComplaintsBookLink({ url, name }: { url: string; name: string }) {
+  return (
+    <span className="inline-flex flex-wrap items-baseline justify-center gap-x-1.5">
+      <OutsideLink href={url}>Libro de Reclamaciones de {name}</OutsideLink>
+      <span className="break-all">· {complaintsBookHostOf(url)}</span>
+    </span>
+  );
+}
+
 type DistributorViewProps = {
   distributor: PublicDistributor;
   /** The moment the page is drawn, to say whether it attends right now. */
@@ -84,7 +80,7 @@ export function DistributorView({ distributor, now }: DistributorViewProps) {
       <DistributorHero distributor={distributor} status={statusOf(distributor, now)} />
       <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 pt-7 lg:grid-cols-[minmax(0,1fr)_22.75rem] lg:px-8 lg:pt-6 lg:pb-20">
         <div className="flex min-w-0 flex-col gap-8">
-          <Catalog />
+          <DistributorProducts distributorId={distributor.id} />
           <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
             <CoverageCard distributor={distributor} />
             <ScheduleCard distributor={distributor} />
@@ -93,7 +89,13 @@ export function DistributorView({ distributor, now }: DistributorViewProps) {
             <p className="flex items-center gap-2">
               Página en <HornillaLogo size={FOOT_LOGO_PX} />
             </p>
-            <TextLink to={ROUTES.contact}>Reportar esta distribuidora</TextLink>
+            <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-4">
+              {/* Its own virtual book, when it gave the link (PLAN §11, 2026-10-15). */}
+              {distributor.complaintsBookUrl && (
+                <ComplaintsBookLink url={distributor.complaintsBookUrl} name={distributor.name} />
+              )}
+              <TextLink to={ROUTES.contact}>Reportar esta distribuidora</TextLink>
+            </div>
           </div>
         </div>
         <ContactAside distributor={distributor} />

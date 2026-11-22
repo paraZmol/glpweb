@@ -12,6 +12,7 @@ import { signOutSession } from './auth-repo';
 import {
   getDistributorBySlug,
   getDistributorControl,
+  getReviewNote,
   getStaffDistributor,
   updateDistributorProfile,
   updateVerificationData,
@@ -224,9 +225,11 @@ describe('answering a note of the platform', () => {
     expect(await getDistributorControl(PENDING.id)).toMatchObject({
       listingApproved: false,
       approvedAt: null,
-      reviewNote: NOTE,
+      reviewNoteAt: expect.any(Date),
       correctedAt: expect.any(Date),
     });
+    // PLAN 3.2: the text lives apart, and its founder reads it.
+    expect((await getReviewNote(PENDING.id))?.note).toBe(NOTE);
     expect(await stateOf(PENDING.id)).toBe('correctionsSent');
     await signOutSession();
     expect(await getDistributorBySlug(PENDING.slug)).toBeNull();
@@ -237,7 +240,10 @@ describe('answering a note of the platform', () => {
 
     const [waiting] = await listPendingListings();
 
-    expect(waiting?.control).toMatchObject({ reviewNote: NOTE, correctedAt: expect.any(Date) });
+    expect(waiting?.control).toMatchObject({
+      reviewNoteAt: expect.any(Date),
+      correctedAt: expect.any(Date),
+    });
   });
 
   it('clears the mark when the admin asks again', async () => {
@@ -246,9 +252,10 @@ describe('answering a note of the platform', () => {
     await returnListingToReview(PENDING.id, 'Falta el número de registro.');
 
     expect(await getDistributorControl(PENDING.id)).toMatchObject({
-      reviewNote: 'Falta el número de registro.',
+      reviewNoteAt: expect.any(Date),
       correctedAt: null,
     });
+    expect((await getReviewNote(PENDING.id))?.note).toBe('Falta el número de registro.');
   });
 
   it('marks an edit of the public profile as the answer too, without listing it', async () => {
@@ -267,9 +274,11 @@ describe('answering a note of the platform', () => {
 
     expect(await getDistributorControl(PENDING.id)).toMatchObject({
       listingApproved: true,
+      reviewNoteAt: null,
       reviewNote: null,
       correctedAt: null,
     });
+    expect(await getReviewNote(PENDING.id)).toBeNull();
   });
 
   it('does not mark an edit of an approved listing', async () => {

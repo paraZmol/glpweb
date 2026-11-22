@@ -3,6 +3,7 @@ import { LegalPage } from './legal';
 
 export { ContactPage } from './contact';
 export { DistributorPage } from './distributor';
+export { ForDistributorsPage } from './for-distributors';
 export { NotFoundPage } from './not-found';
 export { RegisterPage, SignInPage } from './sign-in';
 

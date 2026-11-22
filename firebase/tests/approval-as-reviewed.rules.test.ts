@@ -60,7 +60,7 @@ function approve(d: string, reviewed: Record<string, unknown>, db: Db = admin())
     approvedAt: serverTimestamp(),
     approvedBy: ADMIN_UID,
     ...reviewed,
-    reviewNote: deleteField(),
+    reviewNoteAt: deleteField(),
     correctedAt: deleteField(),
     ...stamp,
   });

@@ -1,5 +1,5 @@
 import { User } from 'lucide-react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { BrandTheme } from '@/components/brand/brand-theme';
 import { HornillaLogo } from '@/components/brand/hornilla-logo';
 import { PageTransition } from '@/components/motion/page-transition';
@@ -10,7 +10,8 @@ import { AREA_HOME } from '@/lib/routes';
 import { useIsDesktop } from '@/lib/use-media-query';
 import { cn } from '@/lib/utils';
 import { BottomNav, SideNav } from './app-nav';
-import { type NavItem, navItemsFor } from './nav-items';
+import { type NavItem, navItemsFor, sectionTabsFor } from './nav-items';
+import { SectionTabs } from './section-tabs';
 import { Workplace } from './workplace';
 
 const LOGO_PX = 28;
@@ -86,7 +87,9 @@ export function AppShell({ area }: { area: AppArea }) {
   const account = useAccount();
   const isDesktop = useIsDesktop();
   const workplace = workplaceOf(area, account);
-  const items = navItemsFor(area, account);
+  const { pathname } = useLocation();
+  const items = navItemsFor(area, account, isDesktop ? 'desktop' : 'phone');
+  const tabs = isDesktop ? null : sectionTabsFor(area, pathname);
   const isSober = AMBIENT[area] === 'office';
   const name = account.profile?.displayName ?? account.session.email ?? '';
 
@@ -103,6 +106,7 @@ export function AppShell({ area }: { area: AppArea }) {
             id="contenido"
             className="mx-auto w-full max-w-7xl flex-1 px-4 pt-6 pb-[calc(var(--bottom-nav-height)+2rem)] lg:px-8 lg:pt-10"
           >
+            {tabs && <SectionTabs items={tabs} />}
             <PageTransition />
           </main>
         </div>

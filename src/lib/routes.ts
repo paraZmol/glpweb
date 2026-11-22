@@ -10,6 +10,8 @@ export const ROUTES = {
   privacy: '/privacidad',
   cookies: '/cookies',
   contact: '/contacto',
+  /** What Hornilla offers to a distributor, before signing up (PLAN 3.6). */
+  forDistributors: '/para-distribuidoras',
   /** Public page of one distributor; build a real path with `distributorPath`. */
   distributor: '/d/:slug',
   /** Sends a signed-in account to the area of its role. */
@@ -20,9 +22,27 @@ export const ROUTES = {
   account: '/cuenta',
   newDistributor: '/distribuidora/nueva',
   driverHome: '/reparto',
+  /** The catalogue, read-only, for the driver (PLAN 3.1). */
+  driverCatalog: '/reparto/catalogo',
+  /** The promotions alive and scheduled, read-only, for the driver (PLAN 3.5). */
+  driverPromotions: '/reparto/promociones',
+  /** The vehicles and their capacity, read-only, for the driver (PLAN 3.3). */
+  driverVehicles: '/reparto/vehiculos',
   officeHome: '/central',
   /** The owner edits the public profile of the distributor (PLAN 2.11). */
   officeProfile: '/central/ficha',
+  /** Products and prices: the owner edits them, the dispatcher reads them (PLAN 3.1). */
+  officeCatalog: '/central/catalogo',
+  /** Promotions: the owner and the dispatcher add, publish, extend and switch them off (PLAN 3.5). */
+  officePromotions: '/central/promociones',
+  /** Full and empty cylinders at the plant, with their history: owner and dispatcher (PLAN 3.4). */
+  officeStock: '/central/stock',
+  /** Vehicles and their capacity: the owner and the dispatcher edit them (PLAN 3.3). */
+  officeVehicles: '/central/vehiculos',
+  /** The staff, the invitations and the helpers: owners only (PLAN 3.2). */
+  officeStaff: '/central/personal',
+  /** Receives an invitation link; the invitation travels in the fragment (`#d=…&c=…`). */
+  join: '/unirme',
   platformHome: '/plataforma',
   /** One listing under review; build a real path with `platformListingPath`. */
   platformListing: '/plataforma/altas/:distributorId',
@@ -98,6 +118,16 @@ export function signInPathFrom(from: string): string {
   return `${ROUTES.signIn}?${RETURN_PARAM}=${encodeURIComponent(target)}`;
 }
 
+/**
+ * `path` with the fragment of the address it came from (`#…`). The fragment rides beside
+ * `desde`, never inside it: a query string reaches the server on a reload, a fragment never
+ * does — and the code of an invitation travels in one (PLAN 3.2).
+ */
+export function withFragment(path: string, hash: string): string {
+  if (hash === '' || hash === '#') return path;
+  return `${path}${hash.startsWith('#') ? hash : `#${hash}`}`;
+}
+
 /** Path of the "crear cuenta" screen that remembers where the visitor was going (PLAN 2.11). */
 export function registerPathFrom(from: string | null | undefined): string {
   const target = safeReturnPath(from);
@@ -133,7 +163,15 @@ export type TransitionDirection = 'forward' | 'back' | 'fade';
 /** The two screens that list distributors: the page of one of them is their detail. */
 const FINDER_SCREENS: readonly string[] = [ROUTES.home, ROUTES.customerHome];
 
+/** Destinations of the navigation bar under an area home: siblings of it, not its details. */
+const TAB_SCREENS: readonly string[] = [
+  ROUTES.officeCatalog,
+  ROUTES.officeStaff,
+  ROUTES.driverCatalog,
+];
+
 function isDetailOf(child: string, parent: string): boolean {
+  if (TAB_SCREENS.includes(child)) return false;
   if (child.startsWith(DISTRIBUTOR_PREFIX) && FINDER_SCREENS.includes(parent)) return true;
   const base = parent.endsWith('/') ? parent : `${parent}/`;
   return parent !== ROUTES.home && child.startsWith(base);

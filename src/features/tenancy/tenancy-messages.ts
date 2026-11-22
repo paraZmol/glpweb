@@ -20,8 +20,14 @@ const ISSUE_MESSAGES: Record<FieldIssue['code'], string> = {
   outOfRange: 'Está fuera del rango permitido.',
   invalid: 'Revisa este dato.',
   tooFaint: 'Ese color casi no se distingue del fondo. Prueba con un tono más intenso.',
+  notAbove: 'Debe ser mayor.',
+  notBelow: 'Debe ser menor.',
+  notMultiple: 'Revisa la cantidad.',
+  blockedPhrase: 'Esa frase no se puede usar.',
+  unavailable: 'No está disponible.',
   invalidCharacters: 'Usa solo letras minúsculas, números y guiones.',
   reserved: 'Ese enlace está reservado. Prueba con otro.',
+  founderOnly: 'Solo quien registró la distribuidora puede elegir esta opción.',
 };
 
 const FIELD_MESSAGES: Record<string, string> = {
@@ -31,6 +37,10 @@ const FIELD_MESSAGES: Record<string, string> = {
   'whatsapp:invalid': 'Escribe un celular de 9 dígitos que empiece en 9.',
   'ownerPhone:invalid': 'Escribe un celular de 9 dígitos que empiece en 9.',
   'phone:invalid': 'Escribe un celular de 9 dígitos que empiece en 9.',
+  'displayName:invalid': 'Escribe tu nombre con letras o números, sin caracteres invisibles.',
+  'ownerName:invalid': 'Escribe tu nombre con letras o números, sin caracteres invisibles.',
+  'complaintsBookUrl:invalid':
+    'Pega el enlace completo de tu Libro de Reclamaciones virtual: empieza con https://',
   'taxId:required': 'Escribe el RUC del negocio.',
   'taxId:invalid': 'Revisa el RUC: son 11 dígitos y alguno no coincide.',
   'legalName:required': 'Escribe la razón social o el nombre del titular, como figura en el RUC.',

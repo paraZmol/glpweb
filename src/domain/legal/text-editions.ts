@@ -10,7 +10,7 @@
 import { PRIVACY_VERSION, TERMS_VERSION } from './versions';
 
 /** Nobody accepts the cookie notice, but it is published with a version and a date like the others. */
-export const COOKIES_VERSION = '0.3';
+export const COOKIES_VERSION = '0.5';
 
 export const LEGAL_TEXT_IDS = ['terms', 'privacy', 'cookies'] as const;
 export type LegalTextId = (typeof LEGAL_TEXT_IDS)[number];
@@ -51,6 +51,21 @@ export const LEGAL_TEXT_EDITIONS: Record<LegalTextId, readonly LegalTextEdition[
       publishedOn: '2026-10-12',
       sha256: 'b17d8d246b339124190599a174e51799339993deb0d5b6ef7147e939e44cce9d',
     },
+    {
+      version: '0.5',
+      publishedOn: '2026-10-15',
+      sha256: '42e9c7525af7b9002a697c88de86cbc23f2174d622c41f6af9229f4debae95b1',
+    },
+    {
+      version: '0.6',
+      publishedOn: '2026-10-16',
+      sha256: '401dd31b167ce3743872a3016f12e3602b591566e33d7aef1bec65422ece44b7',
+    },
+    {
+      version: '0.7',
+      publishedOn: '2026-11-15',
+      sha256: '8be1020551d74b3b9f1041b3d119d47abd9fa0fe611832fdb4f8526d57add5aa',
+    },
   ],
   privacy: [
     {
@@ -68,6 +83,21 @@ export const LEGAL_TEXT_EDITIONS: Record<LegalTextId, readonly LegalTextEdition[
       publishedOn: '2026-10-12',
       sha256: 'bcea2e4753198871b450209a6c52d013e69d004b849f5a2881b7b7cae18b2784',
     },
+    {
+      version: '0.5',
+      publishedOn: '2026-10-15',
+      sha256: '416b004b7b67fb633814dc31f8c1e507522d3feed018dc9815686237f3ef035f',
+    },
+    {
+      version: '0.6',
+      publishedOn: '2026-10-16',
+      sha256: 'e67c269f79282c3dea099b7261f5bbcb8ab13e83f67b85148caa3bc965654fda',
+    },
+    {
+      version: '0.7',
+      publishedOn: '2026-11-15',
+      sha256: 'b01df29079f42e58b882039b02b55bea69448fac7e32b2a68f5ee09082838377',
+    },
   ],
   cookies: [
     {
@@ -79,6 +109,16 @@ export const LEGAL_TEXT_EDITIONS: Record<LegalTextId, readonly LegalTextEdition[
       version: '0.3',
       publishedOn: '2026-10-12',
       sha256: '2ed09db53cc01972265e5015aac597806f0a14b19269deb81b9783617b065c85',
+    },
+    {
+      version: '0.4',
+      publishedOn: '2026-10-14',
+      sha256: '3b1eca355cbc2fcaa4e1a801a43a0f601519a3ac9da1b1af5e288baea90f7b4b',
+    },
+    {
+      version: '0.5',
+      publishedOn: '2026-11-15',
+      sha256: 'dafe50de043ff3fd08bdd18a4d3c07f2ed07c9b81979a3a9732a51d3b3544196',
     },
   ],
 };

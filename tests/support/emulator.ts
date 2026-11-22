@@ -73,3 +73,13 @@ export async function markEmailVerifiedAsAdmin(uid: string): Promise<void> {
   });
   if (!response.ok) throw new Error(`Auth emulator accounts:update → ${response.status}`);
 }
+
+/**
+ * Gives a profile a name stored before the rules asked for visible text (PLAN §11, 2026-10-15).
+ * Rules bypassed: no client can write such a name any more.
+ */
+export async function renameProfileAsAdmin(uid: string, displayName: string): Promise<void> {
+  await firestoreAdmin('PATCH', `users/${uid}?updateMask.fieldPaths=displayName`, {
+    fields: { displayName: { stringValue: displayName } },
+  });
+}

@@ -15,6 +15,12 @@ Modificaciones: todas están recomprimidas (JPEG, lado mayor máximo 1600 px, si
 fotos se difuminaron placas y texto de marcas (marcadas "difuminado" abajo). Las versiones `-square.jpg`
 son recortes cuadrados de 1080 px de la misma foto.
 
+Versiones WebP (2026-11-20): de las cinco fotos que se ven en las páginas públicas (tetera, cocinera,
+escritorio, celular en Lima y válvulas) hay copias `-640.webp`, `-960.webp` y de ancho completo
+(`-1600.webp`, `-1280.webp` o `-1200.webp` según la foto), recomprimidas desde el JPEG con calidad 72 y sin
+metadatos. Es la misma imagen: el celular baja la que le toca (`srcset` en `src/lib/photos.ts`) en vez del JPEG
+completo. El JPEG sigue siendo el respaldo.
+
 Fecha de descarga de todas: 2026-10-10.
 
 ## Balones de gas

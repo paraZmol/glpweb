@@ -17,8 +17,8 @@ test.skip(
 
 const TERMS_BOX = /Acepto los Términos y condiciones/;
 const PRIVACY_BOX = /Leí la Política de privacidad/;
-const CURRENT_TERMS = '0.4';
-const CURRENT_PRIVACY = '0.4';
+const CURRENT_TERMS = '0.7';
+const CURRENT_PRIVACY = '0.7';
 /** Every signed-in address somebody could type to skip a pending step. */
 const WAYS_AROUND = ['/inicio', '/pedidos', '/cuenta', '/distribuidora/nueva', '/central', '/app'];
 const DISCARD = 'No quiero continuar: eliminar mi cuenta';

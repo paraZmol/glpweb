@@ -4,6 +4,18 @@ import {
   type QueryDocumentSnapshot,
   Timestamp,
 } from 'firebase/firestore';
+import { defaultProductName, type Product } from '../domain/catalog/product';
+import { SALE_MODES } from '../domain/catalog/sale-mode';
+import { PROMOTION_TYPES, type Promotion, type PromotionDeal } from '../domain/pricing/promotion';
+import type { Helper } from '../domain/staff/helper';
+import type { PlantStock } from '../domain/stock/plant-stock';
+import {
+  ADJUSTMENT_REASONS,
+  STOCK_MOVEMENT_KINDS,
+  type StockMovement,
+} from '../domain/stock/movement';
+import { type Vehicle, VEHICLE_KINDS } from '../domain/vehicles/vehicle';
+import { INVITE_STATUSES, type Invite } from '../domain/staff/invite';
 import { type GeoPoint, isValidGeoPoint } from '../domain/geo/distance';
 import {
   ACCEPTED_TEXTS,
@@ -17,6 +29,7 @@ import {
   DEFAULT_MAX_CYLINDERS_PER_ORDER,
   DEFAULT_SCHEDULE,
 } from '../domain/tenancy/constants';
+import { isComplaintsBookUrl } from '../domain/tenancy/complaints-book';
 import { CorruptDocumentError } from '../domain/tenancy/errors';
 import {
   type Address,
@@ -27,6 +40,7 @@ import {
   type Member,
   MEMBER_ROLES,
   type PublicDistributor,
+  type ReviewNoteDocument,
   type Schedule,
   type UserProfile,
 } from '../domain/tenancy/types';
@@ -42,7 +56,7 @@ export class FieldReader {
     private readonly data: DocumentData,
   ) {}
 
-  private fail(key: string, expected: string): never {
+  fail(key: string, expected: string): never {
     throw new CorruptDocumentError(this.path, `"${key}" should be ${expected}`);
   }
 
@@ -137,6 +151,9 @@ function toSchedule(value: unknown): Schedule | undefined {
 
 type Parser<T> = (id: string, path: string, data: DocumentData) => T;
 
+const complaintsBookUrlOrNull = (url: string | null): string | null =>
+  url !== null && isComplaintsBookUrl(url) ? url : null;
+
 export const parseUserProfile: Parser<UserProfile> = (id, path, data) => {
   const read = new FieldReader(path, data);
   const createdAt = read.date('createdAt');
@@ -197,6 +214,10 @@ export const parsePublicDistributor: Parser<PublicDistributor> = (id, path, data
     maxCylindersPerOrder: read.number('maxCylindersPerOrder', DEFAULT_MAX_CYLINDERS_PER_ORDER),
     brands: read.textList('brands'),
     priceFromCents: read.integerOrNull('priceFromCents'),
+    // Added on 2026-10-15 (PLAN §11): absent in profiles written before.
+    priceFromWeightKg: read.integerOrNull('priceFromWeightKg'),
+    // A link is only ever built from a validated address (tracking-pwa §4).
+    complaintsBookUrl: complaintsBookUrlOrNull(read.textOrNull('complaintsBookUrl')),
     currency: read.text('currency', DEFAULT_CURRENCY),
     createdAt,
     updatedAt: read.date('updatedAt', createdAt),
@@ -214,6 +235,9 @@ export const parseControl: Parser<DistributorControl> = (_id, path, data) => {
     listingApproved: read.flag('listingApproved', false),
     approvedAt: read.dateOrNull('approvedAt'),
     approvedBy: read.textOrNull('approvedBy'),
+    reviewNoteAt: read.dateOrNull('reviewNoteAt'),
+    // Only a control document older than PLAN 3.2 kept the text here; it lives in
+    // private/review now (`noteTextFor`).
     reviewNote: read.textOrNull('reviewNote'),
     correctedAt: read.dateOrNull('correctedAt'),
     distributorName: read.textOrNull('distributorName'),
@@ -258,6 +282,178 @@ export const parseMember: Parser<Member> = (id, path, data) => {
   };
 };
 
+export const parseReviewNote: Parser<ReviewNoteDocument> = (_id, path, data) => {
+  const read = new FieldReader(path, data);
+  return { note: read.text('note'), writtenAt: read.date('writtenAt') };
+};
+
+/** `distributorId` is the parent of the parent: the invitation does not repeat it. */
+export const parseInvite: Parser<Invite> = (id, path, data) => {
+  const read = new FieldReader(path, data);
+  const createdAt = read.date('createdAt');
+  return {
+    id,
+    distributorId: path.split('/')[1] ?? '',
+    role: read.oneOf('role', MEMBER_ROLES),
+    email: read.textOrNull('email'),
+    distributorName: read.text('distributorName', ''),
+    // Copies added on 2026-10-15 (PLAN §11): an older invitation has neither.
+    invitedByName: read.textOrNull('invitedByName'),
+    brandColor: read.textOrNull('brandColor'),
+    status: read.oneOf('status', INVITE_STATUSES),
+    createdBy: read.text('createdBy', ''),
+    createdAt,
+    updatedAt: read.date('updatedAt', createdAt),
+    acceptedBy: read.textOrNull('acceptedBy'),
+    acceptedAt: read.dateOrNull('acceptedAt'),
+    revokedBy: read.textOrNull('revokedBy'),
+    revokedAt: read.dateOrNull('revokedAt'),
+  };
+};
+
+export const parseHelper: Parser<Helper> = (id, path, data) => {
+  const read = new FieldReader(path, data);
+  const createdAt = read.date('createdAt');
+  return {
+    id,
+    name: read.text('name'),
+    // A helper without the flag is not offered: never send someone who was not added as active.
+    active: read.flag('active', false),
+    createdAt,
+    updatedAt: read.date('updatedAt', createdAt),
+  };
+};
+
+export const parseProduct: Parser<Product> = (id, path, data) => {
+  const read = new FieldReader(path, data);
+  const createdAt = read.date('createdAt');
+  const weightKg = read.number('weightKg');
+  const refillPriceCents = read.integerOrNull('refillPriceCents');
+  if (refillPriceCents === null) {
+    throw new CorruptDocumentError(path, '"refillPriceCents" should be integer cents');
+  }
+  return {
+    id,
+    brand: read.text('brand'),
+    brandColor: read.textOrNull('brandColor'),
+    weightKg,
+    name: read.text('name', defaultProductName(weightKg)),
+    refillPriceCents,
+    // Anything but integer cents above the refill reads as "not sold with its container".
+    fullPriceCents: aboveOrNull(read.integerOrNull('fullPriceCents'), refillPriceCents),
+    currency: read.text('currency', DEFAULT_CURRENCY),
+    // A product without the flag is not offered: never sell what was not put on sale.
+    active: read.flag('active', false),
+    sortOrder: read.number('sortOrder', 0),
+    // Price lock of PLAN 3.5; absent in products that never had a promotion.
+    promotedUntil: read.dateOrNull('promotedUntil'),
+    createdAt,
+    updatedAt: read.date('updatedAt', createdAt),
+  };
+};
+
+export const parseVehicle: Parser<Vehicle> = (id, path, data) => {
+  const read = new FieldReader(path, data);
+  const createdAt = read.date('createdAt');
+  return {
+    id,
+    kind: read.oneOf('kind', VEHICLE_KINDS),
+    name: read.text('name'),
+    plate: read.textOrNull('plate'),
+    capacityCylinders: wholeCount(read, 'capacityCylinders'),
+    // A vehicle without the flag is not offered: never send out one that was not added as in use.
+    active: read.flag('active', false),
+    createdAt,
+    updatedAt: read.date('updatedAt', createdAt),
+  };
+};
+
+export const parsePlantStock: Parser<PlantStock> = (id, path, data) => {
+  const read = new FieldReader(path, data);
+  return {
+    productId: id,
+    full: wholeCount(read, 'full'),
+    empty: wholeCount(read, 'empty'),
+    lastMovementId: read.textOrNull('lastMovementId'),
+    updatedAt: read.dateOrNull('updatedAt'),
+  };
+};
+
+export const parseStockMovement: Parser<StockMovement> = (id, path, data) => {
+  const read = new FieldReader(path, data);
+  return {
+    id,
+    kind: read.oneOf('kind', STOCK_MOVEMENT_KINDS),
+    productId: read.text('productId'),
+    reason: read.oneOf('reason', ADJUSTMENT_REASONS),
+    note: read.textOrNull('note'),
+    fullDelta: wholeCount(read, 'fullDelta'),
+    emptyDelta: wholeCount(read, 'emptyDelta'),
+    fullAfter: wholeCount(read, 'fullAfter'),
+    emptyAfter: wholeCount(read, 'emptyAfter'),
+    authorUid: read.text('authorUid'),
+    authorName: read.text('authorName', ''),
+    createdAt: read.date('createdAt'),
+  };
+};
+
+/** Counts of cylinders are whole numbers: anything else is a corrupt document, never rounded. */
+function wholeCount(read: FieldReader, key: string): number {
+  const value = read.integerOrNull(key);
+  return value ?? read.fail(key, 'a whole number');
+}
+
+/** The kind and its parameters; anything the rules would not have accepted is corrupt. */
+function readDeal(read: FieldReader, path: string, data: DocumentData): PromotionDeal {
+  const type = read.oneOf('type', PROMOTION_TYPES);
+  const whole = (key: string) => {
+    const value = read.integerOrNull(key);
+    if (value === null) throw new CorruptDocumentError(path, `"${key}" should be an integer`);
+    return value;
+  };
+  switch (type) {
+    case 'fixedPrice':
+      return data.priceSource === 'refill'
+        ? { type, priceSource: 'refill' }
+        : { type, priceSource: 'own', priceCents: whole('priceCents') };
+    case 'percentOff':
+      return { type, percent: whole('percent') };
+    case 'amountOff':
+      return { type, amountCents: whole('amountCents') };
+    case 'buyXPayY':
+      return { type, buyUnits: whole('buyUnits'), payUnits: whole('payUnits') };
+  }
+}
+
+export const parsePromotion: Parser<Promotion> = (id, path, data) => {
+  const read = new FieldReader(path, data);
+  const createdAt = read.date('createdAt');
+  return {
+    id,
+    title: read.text('title'),
+    deal: readDeal(read, path, data),
+    productIds: read.textList('productIds'),
+    saleMode: read.oneOf('saleMode', SALE_MODES),
+    startsAt: read.date('startsAt'),
+    endsAt: read.date('endsAt'),
+    // A promotion without the flag is not offered: never apply what was not published.
+    active: read.flag('active', false),
+    maxUnitsPerOrder: read.number('maxUnitsPerOrder'),
+    totalUnits: read.integerOrNull('totalUnits'),
+    soldUnits: read.number('soldUnits', 0),
+    conditions: read.text('conditions', ''),
+    createdBy: read.text('createdBy', ''),
+    createdAt,
+    updatedAt: read.date('updatedAt', createdAt),
+    switchedOffBy: read.textOrNull('switchedOffBy'),
+    switchedOffAt: read.dateOrNull('switchedOffAt'),
+  };
+};
+
+function aboveOrNull(value: number | null, floor: number): number | null {
+  return value !== null && value > floor ? value : null;
+}
+
 /**
  * Converters validate what is read. Writes do not go through them: each repository builds the
  * exact document the rules expect (server timestamps, whitelisted fields).
@@ -282,3 +478,11 @@ export const publicDistributorConverter = readOnlyConverter(parsePublicDistribut
 export const controlConverter = readOnlyConverter(parseControl);
 export const privateSettingsConverter = readOnlyConverter(parsePrivateSettings);
 export const memberConverter = readOnlyConverter(parseMember);
+export const productConverter = readOnlyConverter(parseProduct);
+export const reviewNoteConverter = readOnlyConverter(parseReviewNote);
+export const inviteConverter = readOnlyConverter(parseInvite);
+export const helperConverter = readOnlyConverter(parseHelper);
+export const vehicleConverter = readOnlyConverter(parseVehicle);
+export const plantStockConverter = readOnlyConverter(parsePlantStock);
+export const stockMovementConverter = readOnlyConverter(parseStockMovement);
+export const promotionConverter = readOnlyConverter(parsePromotion);

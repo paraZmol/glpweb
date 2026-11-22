@@ -12,6 +12,7 @@ import {
   serverTimestamp,
   setDoc,
   Timestamp,
+  updateDoc,
   writeBatch,
 } from 'firebase/firestore';
 import { EMULATOR_HOST, emulatorPorts } from '../../scripts/lane-ports.mjs';
@@ -287,6 +288,9 @@ export function slugDoc(distributorId: string, change: Record<string, unknown> =
   return { distributorId, createdAt: serverTimestamp(), ...change };
 }
 
+/** The name every member of the seeded world carries (`memberDoc`). */
+export const MEMBER_NAME = 'A. Persona';
+
 export function memberDoc(
   distributorId: string,
   uid: string,
@@ -298,12 +302,264 @@ export function memberDoc(
     distributorId,
     role,
     active: true,
-    displayName: 'A. Persona',
+    displayName: MEMBER_NAME,
     distributorName: DISTRIBUTOR_NAME,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     ...change,
   };
+}
+
+/** A product of the catalogue (PLAN 3.1) as the owner's client writes it: on sale, both ways. */
+export function productDoc(change: Record<string, unknown> = {}) {
+  return {
+    brand: 'Marca Uno',
+    brandColor: '#1757d6',
+    weightKg: 10,
+    name: 'Balón 10 kg',
+    refillPriceCents: 5200,
+    fullPriceCents: 18500,
+    currency: 'PEN',
+    active: true,
+    sortOrder: 0,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...change,
+  };
+}
+
+export const productPath = (d: string, slot: string) => `distributors/${d}/products/${slot}`;
+
+/**
+ * A promotion (PLAN 3.5) as the owner's client writes it: P1, "Precio especial" on the refill of
+ * p00 at S/ 48.00, starting now and ending in a week, 2 per order, published, by `owner-a`.
+ * `change` may name the parameters of another kind; pass `undefined` to drop a field.
+ */
+export function promotionDoc(change: Record<string, unknown> = {}) {
+  const data: Record<string, unknown> = {
+    title: 'Precio especial',
+    type: 'fixedPrice',
+    priceSource: 'own',
+    priceCents: 4800,
+    productIds: ['p00'],
+    saleMode: 'refill',
+    startsAt: serverTimestamp(),
+    endsAt: daysFromNow(7),
+    active: true,
+    maxUnitsPerOrder: 2,
+    totalUnits: null,
+    soldUnits: 0,
+    conditions: '',
+    createdBy: 'owner-a',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    switchedOffBy: null,
+    switchedOffAt: null,
+    ...change,
+  };
+  return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
+}
+
+export const promotionPath = (d: string, slot: string) => `distributors/${d}/promotions/${slot}`;
+
+/** The name every profile of the seeded world carries (`userDoc`). */
+export const PROFILE_NAME = 'C. Persona';
+
+/** Invitation codes with the shape of an automatic id (20 letters and digits). */
+export const INVITE_CODE = 'Invite0000000000000A';
+export const OTHER_INVITE_CODE = 'Invite0000000000000B';
+
+export const invitePath = (d: string, code: string) => `distributors/${d}/invites/${code}`;
+
+/** An invitation as an owner's client creates it (PLAN 3.2): a driver, tied to nobody. */
+export function inviteDoc(change: Record<string, unknown> = {}) {
+  return {
+    role: 'driver',
+    email: null,
+    distributorName: DISTRIBUTOR_NAME,
+    status: 'pending',
+    createdBy: 'owner-a',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...change,
+  };
+}
+
+/**
+ * A pending invitation written with the rules disabled, created `ageMs` ago (now by default)
+ * by the owner of A.
+ */
+export function seedInvite(
+  env: RulesTestEnvironment,
+  d: string,
+  code: string,
+  change: Record<string, unknown> = {},
+  ageMs = 0,
+): Promise<void> {
+  const at = Timestamp.fromMillis(Date.now() - ageMs);
+  return seedDoc(env, invitePath(d, code), inviteDoc({ createdAt: at, updatedAt: at, ...change }));
+}
+
+export interface JoinOptions {
+  d: string;
+  code: string;
+  uid: string;
+  /** Role of the member it creates; the invitation's role, `driver`, by default. */
+  role?: MemberRole;
+  /** Replaces, or adds to, the member document; `null` leaves it out of the batch. */
+  member?: Record<string, unknown> | null;
+  /** Replaces, or adds to, what the invitation receives; `null` leaves it out of the batch. */
+  invite?: Record<string, unknown> | null;
+}
+
+/**
+ * What the app sends to use an invitation (PLAN 3.2): the account creates its own member with
+ * the role of the invitation and the name of its profile, and marks the invitation used by
+ * itself, in one batch.
+ */
+export function joinWith(db: Db, options: JoinOptions): Promise<void> {
+  const { d, code, uid } = options;
+  const batch = writeBatch(db);
+  if (options.member !== null) {
+    batch.set(doc(db, `distributors/${d}/members/${uid}`), {
+      ...memberDoc(d, uid, options.role ?? 'driver', {
+        displayName: PROFILE_NAME,
+        inviteId: code,
+      }),
+      ...options.member,
+    });
+  }
+  if (options.invite !== null) {
+    batch.update(doc(db, invitePath(d, code)), {
+      status: 'accepted',
+      acceptedBy: uid,
+      acceptedAt: serverTimestamp(),
+      // Using it clears the address it was tied to (PLAN §11, 2026-10-16).
+      email: null,
+      updatedAt: serverTimestamp(),
+      ...options.invite,
+    });
+  }
+  return batch.commit();
+}
+
+/** What an owner sends to withdraw an invitation. */
+export function revokeInvite(db: Db, d: string, code: string, uid: string): Promise<void> {
+  return updateDoc(doc(db, invitePath(d, code)), {
+    status: 'revoked',
+    revokedBy: uid,
+    revokedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export const helperPath = (d: string, slot: string) => `distributors/${d}/helpers/${slot}`;
+
+/** A helper (PLAN 3.2) as the owner's client writes it. */
+export function helperDoc(change: Record<string, unknown> = {}) {
+  return {
+    name: 'P. Ayudante',
+    active: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...change,
+  };
+}
+
+export const vehiclePath = (d: string, slot: string) => `distributors/${d}/vehicles/${slot}`;
+
+/** A vehicle (PLAN 3.3) as the client of the owner or the dispatcher writes it. */
+export function vehicleDoc(change: Record<string, unknown> = {}) {
+  return {
+    kind: 'motorcycle',
+    name: 'Moto roja',
+    plate: 'ABC-123',
+    capacityCylinders: 3,
+    active: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    ...change,
+  };
+}
+
+export const plantStockPath = (d: string, productId: string) =>
+  `distributors/${d}/plantStock/${productId}`;
+export const movementPath = (d: string, id: string) => `distributors/${d}/stockMovements/${id}`;
+
+/** Movement ids with the shape of an automatic id (20 letters and digits). */
+export const MOVEMENT_ID = 'Movement00000000000A';
+export const OTHER_MOVEMENT_ID = 'Movement00000000000B';
+
+/** A stock document as the seed or an earlier movement left it. */
+export function plantStockDoc(change: Record<string, unknown> = {}) {
+  return {
+    full: 40,
+    empty: 12,
+    lastMovementId: 'Movement000000000000',
+    updatedAt: Timestamp.fromDate(new Date('2026-02-01T12:00:00Z')),
+    ...change,
+  };
+}
+
+/** What one adjustment writes: the counts it moves and the movement that tells it. */
+export interface AdjustmentWrite {
+  d?: string;
+  productId?: string;
+  movementId?: string;
+  /** What the stock held before: zero for a product never moved. */
+  before?: { full: number; empty: number };
+  fullDelta?: number;
+  emptyDelta?: number;
+  /** Fields of the movement to change or add, after the consistent ones. */
+  movement?: Record<string, unknown>;
+  /** Fields of the stock to change or add, after the consistent ones. */
+  stock?: Record<string, unknown>;
+  /** Write only the stock, only the movement, or both (default). */
+  only?: 'stock' | 'movement';
+  authorUid?: string;
+  authorName?: string;
+  /** A batch that already holds other writes of the attack. */
+  batch?: ReturnType<typeof writeBatch>;
+}
+
+/**
+ * The batch of a manual adjustment of the plant stock (PLAN 3.4) as the app writes it, with the
+ * author `owner-a` and the name every seeded member carries; each part can be bent for attacks.
+ */
+export function adjustStock(db: Db, write: AdjustmentWrite = {}): Promise<void> {
+  const d = write.d ?? WORLD.a.d;
+  const productId = write.productId ?? 'p00';
+  const movementId = write.movementId ?? MOVEMENT_ID;
+  const before = write.before ?? { full: 40, empty: 12 };
+  const fullDelta = write.fullDelta ?? 20;
+  const emptyDelta = write.emptyDelta ?? -12;
+  const after = { full: before.full + fullDelta, empty: before.empty + emptyDelta };
+  const batch = write.batch ?? writeBatch(db);
+  if (write.only !== 'movement') {
+    batch.set(doc(db, plantStockPath(d, productId)), {
+      ...after,
+      lastMovementId: movementId,
+      updatedAt: serverTimestamp(),
+      ...write.stock,
+    });
+  }
+  if (write.only !== 'stock') {
+    batch.set(doc(db, movementPath(d, movementId)), {
+      kind: 'adjustment',
+      productId,
+      reason: 'supplier',
+      note: null,
+      fullDelta,
+      emptyDelta,
+      fullAfter: after.full,
+      emptyAfter: after.empty,
+      authorUid: write.authorUid ?? 'owner-a',
+      authorName: write.authorName ?? MEMBER_NAME,
+      createdAt: serverTimestamp(),
+      ...write.movement,
+    });
+  }
+  return batch.commit();
 }
 
 export function privateDoc(ownerUid: string, change: Record<string, unknown> = {}) {
@@ -418,6 +674,40 @@ export async function reviewedMarks(
     };
   });
   return marks;
+}
+
+export const reviewPath = (d: string) => `distributors/${d}/private/review`;
+
+/**
+ * What a platform admin writes to leave a note for the owner (PLAN 3.2): the mark in the control
+ * document — which also clears the mark of a correction, as a new note is a new question — and
+ * the text in private/review, stamped with the same server time. `control` adds to, or replaces,
+ * what the control document receives.
+ */
+export function noteWrites(note: unknown, control: Record<string, unknown> = {}) {
+  return {
+    control: {
+      reviewNoteAt: serverTimestamp(),
+      correctedAt: deleteField(),
+      updatedAt: serverTimestamp(),
+      ...control,
+    },
+    review: { note, writtenAt: serverTimestamp() },
+  };
+}
+
+/** Leaves a note as `db` (a platform admin, when it is meant to pass), in one batch. */
+export function leaveNote(
+  db: Db,
+  d: string,
+  note: unknown,
+  control: Record<string, unknown> = {},
+): Promise<void> {
+  const writes = noteWrites(note, control);
+  const batch = writeBatch(db);
+  batch.update(doc(db, `distributors/${d}/private/control`), writes.control);
+  batch.set(doc(db, reviewPath(d)), writes.review);
+  return batch.commit();
 }
 
 /**

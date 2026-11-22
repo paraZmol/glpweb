@@ -103,6 +103,7 @@ describe('createDistributor', () => {
       status: 'trial',
       ownerUid: founder.uid,
       listingApproved: false,
+      reviewNoteAt: null,
       reviewNote: null,
     });
     expect(distributor && isWritable(distributor, now)).toBe(true);
@@ -337,6 +338,23 @@ describe('updateDistributorProfile', () => {
       schedule: { opensAt: '06:30', closesAt: '21:00' },
       acceptingOrders: true,
     });
+  });
+
+  // PLAN §11 (2026-10-15): the link to the virtual complaints book, without a new review.
+  it('lets the owner link its complaints book and remove it, staying listed', async () => {
+    await signInAs(SEED_USERS.ownerB);
+    const url = 'https://example.com/libro-de-reclamaciones/gas-demo-sur';
+
+    expect(await updateDistributorProfile(B.id, { complaintsBookUrl: url })).toBe(false);
+    await signOutSession();
+    expect(await getDistributorBySlug(B.slug)).toMatchObject({
+      complaintsBookUrl: url,
+      acceptingOrders: true,
+    });
+
+    await signInAs(SEED_USERS.ownerB);
+    await updateDistributorProfile(B.id, { complaintsBookUrl: null });
+    expect((await getDistributor(B.id))?.complaintsBookUrl).toBeNull();
   });
 
   // PLAN 2.11: what identifies the business does not change under an approval.

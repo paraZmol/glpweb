@@ -8,6 +8,7 @@ import { useAccount } from '@/features/account/account-context';
 import { usePageTitle } from '@/lib/page-title';
 import { FoundedWelcome } from './founded-welcome';
 import { ListingStatus } from './listing-status';
+import { OfficeShortcuts } from './office-shortcuts';
 import { PlanChip } from './plan-chip';
 import { isSuspended, SuspendedNotice } from './read-only-notice';
 import { SetupChecklist } from './setup-checklist';
@@ -84,6 +85,7 @@ export function OfficeHomePage() {
           )}
         </InlineAlert>
       )}
+      <OfficeShortcuts />
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-4">
           <ListingStatus

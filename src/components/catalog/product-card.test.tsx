@@ -53,7 +53,7 @@ describe('product card', () => {
 
     expect(checked(html)).toEqual([false, true]);
     expect(textOf(html)).toContain(
-      'Gas + envase. No entregas vacío · No incluye regulador ni manguera',
+      'Gas + envase. No entregas vacío · Regulador y manguera solo si el nombre lo dice',
     );
   });
 

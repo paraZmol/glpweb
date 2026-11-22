@@ -9,15 +9,7 @@ import {
   assertSucceeds,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import {
-  deleteField,
-  doc,
-  getDoc,
-  serverTimestamp,
-  Timestamp,
-  updateDoc,
-  writeBatch,
-} from 'firebase/firestore';
+import { doc, getDoc, serverTimestamp, Timestamp, updateDoc, writeBatch } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   ADMIN_UID,
@@ -28,8 +20,11 @@ import {
   type Db,
   distributorDoc,
   editIdentity,
+  leaveNote,
   memberDoc,
+  noteWrites,
   reviewedMarks,
+  reviewPath,
   seedDoc,
   seedWorld,
   verified,
@@ -152,11 +147,7 @@ describe('B1 — "corrections sent" needs something corrected', () => {
   const owner = () => verified(env, 'owner-pending');
 
   beforeEach(async () => {
-    await updateDoc(controlOf(admin(), PENDING), {
-      reviewNote: NOTE,
-      correctedAt: deleteField(),
-      ...stamp,
-    });
+    await leaveNote(admin(), PENDING, NOTE);
   });
 
   it.each([
@@ -238,7 +229,7 @@ describe('B1 — no correction is marked on a distributor that cannot be written
       controlDoc('owner-expired', {
         trialEndsAt: PAST,
         slug: WORLD.expired.slug,
-        reviewNote: NOTE,
+        reviewNoteAt: PAST,
         ...old,
       }),
     );
@@ -322,7 +313,9 @@ describe('B2 — the staff cannot make a review go stale', () => {
   it('still lets a platform admin write the flag as it is next to its own decision', async () => {
     const db = admin();
     const batch = writeBatch(db);
-    batch.update(controlOf(db, PENDING), { reviewNote: NOTE, ...stamp });
+    const note = noteWrites(NOTE);
+    batch.update(controlOf(db, PENDING), note.control);
+    batch.set(doc(db, reviewPath(PENDING)), note.review);
     batch.update(profileOf(db, PENDING), { acceptingOrders: false, ...stamp });
 
     await assertSucceeds(batch.commit());

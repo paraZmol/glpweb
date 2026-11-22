@@ -4,6 +4,8 @@ import { RequireAccess } from '@/components/layout/require-access';
 export { FocusShell } from '@/components/layout/focus-shell';
 export { AccountPage } from './account';
 export { CustomerHomePage } from './home';
+export { JoinPage } from './join';
+export { JoinShell } from './join-switch';
 export { NewDistributorPage } from './new-distributor';
 export { CustomerOrdersPage } from './orders';
 

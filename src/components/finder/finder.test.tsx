@@ -70,6 +70,15 @@ describe('results of the finder (PLAN 2.6)', () => {
     expect(text).toContain('Todavía no publicó su catálogo.');
   });
 
+  // PLAN §11 (2026-10-15): the "desde" price names the weight of that refill.
+  it('names the weight of the cheapest refill next to its price', () => {
+    const withWeight = { ...NEAR, distributor: { ...NEAR.distributor, priceFromWeightKg: 10 } };
+
+    expect(textOf(view({ status: 'ready', data: [withWeight] }))).toContain(
+      'Recarga 10 kg desde S/ 38.00',
+    );
+  });
+
   it('gives each card the colour of its distributor', () => {
     expect(count(view({ status: 'ready', data: [NEAR, FAR] }), /data-brand=""/)).toBe(2);
   });

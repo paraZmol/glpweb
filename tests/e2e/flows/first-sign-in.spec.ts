@@ -10,8 +10,8 @@ test.skip(
 
 const TERMS_BOX = /Acepto los Términos y condiciones/;
 const PRIVACY_BOX = /Leí la Política de privacidad/;
-const CURRENT_TERMS = '0.4';
-const CURRENT_PRIVACY = '0.4';
+const CURRENT_TERMS = '0.7';
+const CURRENT_PRIVACY = '0.7';
 const GOOGLE_NAME = 'Y. De Google';
 const CONFIRMED_NAME = 'Y. Confirmada';
 /** Follows the fake pattern 9000000xx of the seed. */
@@ -84,7 +84,7 @@ test('a new person signs in, confirms the data, accepts the terms and lands on t
 });
 
 // PLAN 2.2, 2.11 ("que el registro conserve el destino"). Defect reported by flow-tester on
-// 2026-10-10: a visitor taps "Súmala a Hornilla" and, having no account, signs in with Google.
+// 2026-10-10: a visitor taps "Registrar mi distribuidora" (was "Súmala a Hornilla") and, having no account, signs in with Google.
 // Since 2026-10-14 (PLAN §11) the band takes a visitor to /registro?desde=/distribuidora/nueva,
 // the screen that tells somebody new that the account is the Google one. The destination must
 // travel with the person through the sign-in and the terms.
@@ -92,7 +92,7 @@ test('entering from "¿Tienes una distribuidora?" ends on the sign-up of the dis
   page,
 }, testInfo) => {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Súmala a Hornilla' }).click();
+  await page.getByRole('link', { name: 'Registrar mi distribuidora' }).click();
   await expect(page).toHaveURL(/\/registro\?desde=%2Fdistribuidora%2Fnueva$/);
   await expect(heading(page)).toHaveText('Crea tu cuenta en Hornilla.');
 

@@ -4,6 +4,7 @@ import { PublicShell } from '../../components/layout/public-shell';
 import { CURRENT_TEXT_VERSIONS } from '../../domain/legal/text-editions';
 import { ContactPage } from './contact';
 import { HomePage } from './home';
+import { ForDistributorsPage } from './for-distributors';
 import { CookiesPage, PrivacyPage, TermsPage } from './index';
 import { NotFoundPage } from './not-found';
 import { RegisterPage, SignInPage } from './sign-in';
@@ -76,8 +77,10 @@ describe('home with the finder (PLAN 2.6)', () => {
     expect(text).toContain('Aquí va a ir el mapa.');
   });
 
-  it('promises only what works today and marks the rest as under construction', () => {
-    expect(text).toContain('En construcción');
+  it('promises only what works today and marks the rest as coming soon', () => {
+    expect(text).toContain('Pronto');
+    expect(text).not.toContain('En construcción');
+    expect(text).toContain('Verás venir el reparto');
     expect(text).toContain('Así va a funcionar.');
     expect(text).not.toMatch(/S\/ \d/);
   });
@@ -86,6 +89,78 @@ describe('home with the finder (PLAN 2.6)', () => {
   it('leads owners to the sign-up of their distributor, through "Crear cuenta"', () => {
     expect(text).toContain('¿Tienes una distribuidora de gas?');
     expect(linksTo(html, '/registro?desde=%2Fdistribuidora%2Fnueva')).toHaveLength(1);
+  });
+});
+
+// PLAN 3.6 (§11, 2026-10-16): the home speaks to whoever buys gas and to whoever owns a
+// distributor, and owners have their own page.
+describe('home for both audiences (PLAN 3.6)', () => {
+  const html = inPublicShell(<HomePage />, '/');
+  const text = textOf(html);
+  const footer = html.slice(html.indexOf('<footer'));
+
+  it('offers the two ways right under the hero', () => {
+    expect(text).toContain('Quiero pedir gas');
+    expect(html).toContain('href="#distribuidoras-cerca"');
+    expect(html).toContain('id="distribuidoras-cerca"');
+    expect(linksTo(html, '/para-distribuidoras').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('puts the owners band before what Hornilla is and the questions', () => {
+    const owners = text.indexOf('¿Tienes una distribuidora de gas?');
+    expect(owners).toBeGreaterThan(-1);
+    expect(owners).toBeLessThan(text.lastIndexOf('Qué es Hornilla'));
+    expect(text.lastIndexOf('Qué es Hornilla')).toBeLessThan(text.indexOf('Preguntas frecuentes'));
+  });
+
+  it('says Hornilla neither sells nor delivers gas, and gives safety advice', () => {
+    expect(text).toContain('Hornilla no vende gas ni lo reparte.');
+    expect(text).toContain('Tu seguridad primero');
+    expect(text).toContain('Nunca trasvases gas entre balones.');
+    expect(text).toContain('¿Recarga o balón completo?');
+  });
+
+  it('keeps undecided business answers out of the questions', () => {
+    expect(text).not.toMatch(/cuánto cuesta|comisión/i);
+    expect(text).not.toContain('Libro de Reclamaciones');
+  });
+
+  it('has the main menu in the header, with the home sections as anchors', () => {
+    const header = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
+    for (const href of ['/#que-es-hornilla', '/#como-funciona', '/#seguridad', '/#preguntas']) {
+      expect(linksTo(header, href)).toHaveLength(1);
+      expect(html).toContain(`id="${href.slice(2)}"`);
+    }
+    expect(linksTo(header, '/para-distribuidoras')).toHaveLength(1);
+    expect(header).toContain('aria-expanded="false"');
+  });
+
+  it('adds the disclaimer and "Para distribuidoras" to the footer', () => {
+    expect(textOf(footer)).toContain('Hornilla no vende ni reparte gas.');
+    expect(linksTo(footer, '/para-distribuidoras')).toHaveLength(1);
+  });
+});
+
+describe('/para-distribuidoras (PLAN 3.6)', () => {
+  const html = inPublicShell(<ForDistributorsPage />, '/para-distribuidoras');
+  const text = textOf(html);
+
+  it('has one h1 with the promise and leads to the sign-up', () => {
+    expect(count(html, /<h1\b/)).toBe(1);
+    expect(text).toContain('Que la gente de tu zona');
+    expect(linksTo(html, '/registro?desde=%2Fdistribuidora%2Fnueva')).toHaveLength(2);
+  });
+
+  it('offers the trial without a card and no plan price', () => {
+    expect(text).toContain('30 días de prueba, gratis y sin tarjeta.');
+    expect(text).not.toMatch(/S\/ \d/);
+    expect(text).not.toMatch(/comisión/i);
+  });
+
+  it('keeps what works today apart from what is coming', () => {
+    expect(text).toContain('Lo que ya puedes hacer');
+    expect(text).toContain('Lo que viene');
+    expect(count(text, /Pronto/g)).toBe(7);
   });
 });
 
@@ -166,9 +241,9 @@ describe('legal pages (PLAN 2.7)', () => {
   ] as const;
   // The date in the header of each document (docs/legal), as the page writes it.
   const PUBLISHED = {
-    terms: '12 de octubre de 2026',
-    privacy: '12 de octubre de 2026',
-    cookies: '12 de octubre de 2026',
+    terms: '15 de noviembre de 2026',
+    privacy: '15 de noviembre de 2026',
+    cookies: '15 de noviembre de 2026',
   } as const;
 
   it.each(PAGES)('%s shows its document under the draft banner', (path, page, title, id) => {

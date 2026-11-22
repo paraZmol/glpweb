@@ -1,5 +1,5 @@
 // Shared by the local Admin SDK scripts: delete-account.mjs, export-account.mjs,
-// purge-password-accounts.mjs,
+// purge-password-accounts.mjs, purge-invites.mjs,
 // grant-platform-admin.mjs and set-distributor-status.mjs. They are manual procedures for the
 // person responsible for the platform (docs/PLAN.md 2.10 and 2.11): they are NOT wired into npm
 // scripts, CI or the app.
@@ -108,6 +108,24 @@ export async function loadAdminSdk(project) {
 /** True when the Admin SDK says the account does not exist. */
 export function isMissingAccount(error) {
   return typeof error === 'object' && error !== null && error.code === 'auth/user-not-found';
+}
+
+/**
+ * Every document `query` matches, read in pages of `pageSize` so no single read is unbounded
+ * (each page goes on after the last document of the previous one).
+ */
+export async function allDocuments(query, pageSize = 300) {
+  const found = [];
+  let page = await query.limit(pageSize).get();
+  found.push(...page.docs);
+  while (page.size === pageSize) {
+    page = await query
+      .startAfter(page.docs[page.size - 1])
+      .limit(pageSize)
+      .get();
+    found.push(...page.docs);
+  }
+  return found;
 }
 
 /** Firestore timestamps become ISO text, so a summary or an export is plain JSON. */

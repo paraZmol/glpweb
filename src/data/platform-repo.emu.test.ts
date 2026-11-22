@@ -9,6 +9,7 @@ import {
   getDistributor,
   getDistributorBySlug,
   getDistributorControl,
+  getReviewNote,
   listVisibleDistributors,
   updateDistributorProfile,
 } from './distributors-repo';
@@ -47,6 +48,7 @@ describe('listings that wait for review', () => {
       status: 'trial',
       listingApproved: false,
       approvedAt: null,
+      reviewNoteAt: null,
       reviewNote: null,
     });
   });
@@ -89,13 +91,18 @@ describe('listings that wait for review', () => {
 
 describe('deciding on a listing', () => {
   it('sends it back with a note the owner reads, and it stays hidden', async () => {
+    const NOTE = 'El RUC no coincide con la razón social.';
     await signInAs(ADMIN);
-    await returnListingToReview(PENDING.id, 'El RUC no coincide con la razón social.');
+    await returnListingToReview(PENDING.id, NOTE);
+    expect((await getListingReview(PENDING.id))?.control.reviewNote).toBe(NOTE);
 
     await signInAs(SEED_USERS.ownerE);
-    expect((await getDistributorControl(PENDING.id))?.reviewNote).toBe(
-      'El RUC no coincide con la razón social.',
-    );
+    // PLAN 3.2: the control document says a note waits; its text lives apart.
+    expect(await getDistributorControl(PENDING.id)).toMatchObject({
+      reviewNoteAt: expect.any(Date),
+      reviewNote: null,
+    });
+    expect((await getReviewNote(PENDING.id))?.note).toBe(NOTE);
     await signOutSession();
     expect(await getDistributorBySlug(PENDING.slug)).toBeNull();
   });
@@ -109,8 +116,10 @@ describe('deciding on a listing', () => {
       listingApproved: true,
       approvedBy: admin.uid,
       approvedAt: expect.any(Date),
+      reviewNoteAt: null,
       reviewNote: null,
     });
+    expect(await getReviewNote(PENDING.id)).toBeNull();
     expect(await pendingIds()).not.toContain(PENDING.id);
     await signOutSession();
     expect(await getDistributorBySlug(PENDING.slug)).toMatchObject({
@@ -135,6 +144,7 @@ describe('deciding on a listing', () => {
       listingApproved: false,
       approvedAt: null,
       approvedBy: null,
+      reviewNoteAt: null,
       reviewNote: null,
     });
     expect(await pendingIds()).toContain(PENDING.id);

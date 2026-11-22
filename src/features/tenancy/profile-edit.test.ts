@@ -31,6 +31,7 @@ describe('profilePatchOf', () => {
     ['the colour in capitals', { brandColor: '#E11D48' }],
     ['the days in another order', { days: [6, 5, 4, 3, 2, 1] }],
     ['the address with spaces around', { addressLine: ' Av. Demo 123 ' }],
+    ['an empty complaints book link', { complaintsBookUrl: '   ' }],
   ])('does not count %s as a change', (_case, change) => {
     expect(profilePatchOf({ ...FORM, ...change }, STORED)).toEqual({});
   });
@@ -42,6 +43,8 @@ describe('profilePatchOf', () => {
     ['addressLine', { addressLine: 'Jr. Demo 456' }, true],
     ['coverageRadiusKm', { coverageRadiusKm: 8 }, false],
     ['brandColor', { brandColor: '#1f2937' }, false],
+    // PLAN §11 (2026-10-15): the complaints book never sends the listing back to review.
+    ['complaintsBookUrl', { complaintsBookUrl: 'https://example.com/libro' }, false],
   ] as const)('carries only %s when only it changed', (field, change, isIdentity) => {
     const patch = profilePatchOf({ ...FORM, ...change }, STORED);
 
@@ -154,5 +157,37 @@ describe('identityNoticeFieldOf', () => {
     expect(
       identityNoticeFieldOf({ whatsapp: '900000013', addressLine: 'Av. Demo 456' }, null),
     ).toBe('whatsapp');
+  });
+});
+
+// PLAN §11 (2026-10-15): the link to the virtual complaints book.
+describe('the complaints book in the edit of the profile', () => {
+  const WITH_BOOK = publicDistributorOf({ complaintsBookUrl: 'https://example.com/libro' });
+
+  it('starts from the stored link', () => {
+    expect(profileEditFormOf(WITH_BOOK).complaintsBookUrl).toBe('https://example.com/libro');
+  });
+
+  it('does not count the same link with the host in capitals as a change', () => {
+    const form = {
+      ...profileEditFormOf(WITH_BOOK),
+      complaintsBookUrl: 'HTTPS://Example.com/libro',
+    };
+    expect(profilePatchOf(form, WITH_BOOK)).toEqual({});
+  });
+
+  it('carries an emptied field, which removes the link', () => {
+    const form = { ...profileEditFormOf(WITH_BOOK), complaintsBookUrl: '' };
+    const patch = profilePatchOf(form, WITH_BOOK);
+
+    expect(patch).toEqual({ complaintsBookUrl: '' });
+    expect(validateProfileEdit(patch)).toEqual({});
+  });
+
+  it('explains a link that is not https', () => {
+    expect(validateProfileEdit({ complaintsBookUrl: 'http://example.com/libro' })).toEqual({
+      complaintsBookUrl:
+        'Pega el enlace completo de tu Libro de Reclamaciones virtual: empieza con https://',
+    });
   });
 });

@@ -33,12 +33,15 @@ const STATES: Record<SystemState, { icon: LucideIcon; className: string }> = {
 type StateChipProps = {
   state: SystemState;
   children: ReactNode;
+  /** A glyph closer to what the state means here (a vehicle out of service is not "no signal"). */
+  icon?: LucideIcon;
   className?: string;
 };
 
 /** Pill that names a state: tinted background, 13 px bold text and its 12 px glyph. */
-export function StateChip({ state, children, className }: StateChipProps) {
-  const { icon: Icon, className: tone } = STATES[state];
+export function StateChip({ state, children, icon, className }: StateChipProps) {
+  const { icon: stateIcon, className: tone } = STATES[state];
+  const Icon = icon ?? stateIcon;
   return (
     <span
       className={cn(

@@ -25,7 +25,8 @@ const TAKEN = 'Ese enlace ya lo usa otra distribuidora. Prueba con otro.';
 const heading = (page: Page) => page.getByRole('heading', { level: 1 });
 const nameField = (page: Page) => page.getByLabel('Nombre de la distribuidora');
 const next = (page: Page) => page.getByRole('button', { name: 'Continuar' }).click();
-const enterWizard = (page: Page) => page.getByRole('link', { name: 'Súmala a Hornilla' }).click();
+const enterWizard = (page: Page) =>
+  page.getByRole('link', { name: 'Registrar mi distribuidora' }).click();
 
 /** The account each test signs in with: the tests of one worker run one after another. */
 let founder: SeedUser;

@@ -38,11 +38,13 @@ export function StorageNotice() {
             <p className="min-w-0 flex-1 text-[0.8125rem] leading-4 lg:text-sm lg:leading-snug">
               {/* A phone gets the short one: the strip must not push the home out of its first
                   view. Both say the same as docs/legal/cookies.md; the detail is one tap away. */}
-              <span className="lg:hidden">Guardamos solo lo necesario. Sin rastreo.</span>
+              <span className="lg:hidden">
+                Guardamos solo lo necesario. Sin publicidad ni analítica.
+              </span>
               <span className="hidden lg:inline">
                 Hornilla guarda en tu dispositivo solo lo necesario para funcionar: tu sesión, una
                 copia de tus datos recientes, la distribuidora que elegiste y el último punto desde
-                el que buscaste. Sin publicidad ni rastreo.
+                el que buscaste. Sin publicidad ni analítica.
               </span>{' '}
               <Link
                 to={ROUTES.cookies}

@@ -23,6 +23,7 @@ const controlOf = (patch: Partial<DistributorControl> = {}): DistributorControl 
   listingApproved: false,
   approvedAt: null,
   approvedBy: null,
+  reviewNoteAt: null,
   reviewNote: null,
   correctedAt: null,
   distributorName: 'Gas Demo Norte',

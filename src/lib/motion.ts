@@ -28,6 +28,18 @@ export const SPRING_TAP = { type: 'spring', stiffness: 500, damping: 30 } as con
 
 export const STAGGER = { stepSeconds: 0.04, maxItems: 8 } as const;
 
+/**
+ * Sections below the first view of the public pages arrive once, when 15 % of them is on
+ * screen (`Reveal`, `Stagger inView`). Never again on the way back up.
+ */
+export const REVEAL_VIEWPORT = { once: true, amount: 0.15 } as const;
+
+/**
+ * The hero band of the home draws itself once on load, in CSS (`highlight-draw`): it waits this
+ * long after the first paint, then takes `slow`. Wait + draw stay under 500 ms.
+ */
+export const HIGHLIGHT_DRAW = { delaySeconds: 0.15 } as const;
+
 /** Loading feedback: nothing before 300 ms, and once shown it stays at least 400 ms. */
 export const LOADING_FEEDBACK = { delayMs: 300, minVisibleMs: 400 } as const;
 
@@ -158,5 +170,14 @@ export function markerPulseAnimation(isReduced: boolean) {
       ease: EASE.out,
       repeat: Number.POSITIVE_INFINITY,
     },
+  };
+}
+
+/** Public menu on the phone: drops a few pixels from under the header. */
+export function dropdownVariants(isReduced: boolean) {
+  return {
+    initial: { opacity: 0, y: isReduced ? 0 : -LIST_RISE_PX },
+    animate: { opacity: 1, y: 0, transition: enterTransition('base') },
+    exit: { opacity: 0, y: isReduced ? 0 : -LIST_RISE_PX, transition: exitTransition('base') },
   };
 }

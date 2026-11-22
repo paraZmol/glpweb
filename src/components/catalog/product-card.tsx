@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { GasBrandTheme } from '@/components/brand/brand-theme';
 import { GasCylinder } from '@/components/brand/gas-cylinder';
+import { defaultProductName } from '@/domain/catalog/product';
 import { availableSaleMode, type ProductOffer, type SaleMode } from '@/domain/catalog/sale-mode';
 import { formatMoney } from '@/domain/money/format';
 import { SALE_MODE_SUPPORT, SaleModeSelector } from './sale-mode-selector';
@@ -18,15 +19,14 @@ type ProductCardProps = {
 };
 
 /**
- * One product of a distributor (PLAN 2.5, ready for the catalogue of phase 3): the cylinder
- * drawn in the colour of its gas brand, and the choice between refill and full cylinder with
- * the price of each (docs/marketing/oferta-y-promociones.md §2.2). The page of the distributor
- * does not render it yet: there is no catalogue to feed it.
+ * One product of a distributor (PLAN 2.5 and 3.1): the cylinder drawn in the colour of its gas
+ * brand, and the choice between refill and full cylinder with the price of each
+ * (docs/marketing/oferta-y-promociones.md §2.2). Ordering arrives with phase 4.
  */
 export function ProductCard({ product, mode, onModeChange, action }: ProductCardProps) {
   const { weightKg, brandName, refillPriceCents, fullPriceCents, currency } = product;
   const shownMode = availableSaleMode(product, mode);
-  const name = `Balón ${weightKg} kg`;
+  const name = product.name ?? defaultProductName(weightKg);
 
   return (
     <GasBrandTheme color={product.brandColor} className="h-full">

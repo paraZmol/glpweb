@@ -1,13 +1,13 @@
 import { Check, Hammer } from 'lucide-react';
 import type { ReactNode } from 'react';
-import kettlePhoto from '../../../docs/design/images/pexels-13772359-tetera-llama-cocina.jpg';
 import { BurnerRing } from '@/components/brand/burner-ring';
 import { GLYPH_STROKE } from '@/lib/icons';
+import { KETTLE_PHOTO } from '@/lib/photos';
 import { useIsDesktop } from '@/lib/use-media-query';
 
 // Only what already works (PLAN 2.9); what is still being built is said as such, like the
 // "En construcción" stamp of the home.
-const PROMISES = ['Distribuidoras de tu zona', 'Sin instalar nada', 'Sin publicidad ni rastreo'];
+const PROMISES = ['Distribuidoras de tu zona', 'Sin instalar nada', 'Sin publicidad ni analítica'];
 const COMING_NEXT = 'Pronto: pedir y ver llegar tu gas';
 
 /** Desktop only: the kitchen photo with the burner ring and a floating card. The photo stays clean. */
@@ -20,7 +20,8 @@ function AuthAside() {
       <BurnerRing className="-right-12 -bottom-10 size-56" />
       <div className="relative aspect-4/5 max-h-[calc(100dvh-14rem)] w-full overflow-hidden rounded-3xl bg-muted shadow-float">
         <img
-          src={kettlePhoto}
+          {...KETTLE_PHOTO}
+          sizes="544px"
           alt="Tetera sobre una hornilla encendida con llama azul"
           className="absolute inset-0 size-full object-cover object-[64%_50%] brightness-(--photo-brightness)"
         />

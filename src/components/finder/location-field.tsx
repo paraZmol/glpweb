@@ -1,4 +1,4 @@
-import { LocateFixed, MapPin } from 'lucide-react';
+import { LoaderCircle, LocateFixed, MapPin } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Button } from '@/components/common/button';
 import { InlineAlert } from '@/components/common/inline-alert';
@@ -6,6 +6,7 @@ import { formatCoordinates } from '@/domain/geo/coordinates';
 import { GEOLOCATION_FAILURE_TEXT } from '@/features/location/location-messages';
 import type { DeliveryLocation } from '@/features/location/use-delivery-location';
 import { ICON_STROKE } from '@/lib/icons';
+import { useDelayedFlag } from '@/lib/use-delayed-flag';
 import type { LocationSource, RememberedLocation } from '@/lib/last-location';
 import { cn } from '@/lib/utils';
 import { ManualLocation } from './manual-location';
@@ -37,6 +38,9 @@ export function LocationField({ delivery, isMainAction = true, className }: Loca
   const [editing, setEditing] = useState<RememberedLocation | null>(null);
   const isChoosing = location === null || editing === location;
   const hasFailed = locateState.status === 'failed';
+  const isLocating = locateState.status === 'locating';
+  // The 300 ms rule: a fast answer never flashes "Buscando…"; a slow one says it is working.
+  const showsSearching = useDelayedFlag(isLocating);
 
   return (
     <section
@@ -80,12 +84,24 @@ export function LocationField({ delivery, isMainAction = true, className }: Loca
           <Button
             variant={isMainAction && location === null ? 'primary' : 'ink'}
             aria-describedby={whyId}
-            loading={locateState.status === 'locating'}
-            loadingLabel="Buscando tu ubicación…"
-            onClick={locate}
+            aria-busy={isLocating || undefined}
+            onClick={isLocating ? undefined : locate}
           >
-            <LocateFixed aria-hidden="true" strokeWidth={ICON_STROKE} />
-            Usar mi ubicación
+            {showsSearching ? (
+              <>
+                <LoaderCircle
+                  aria-hidden="true"
+                  strokeWidth={ICON_STROKE}
+                  className="motion-safe:animate-spin"
+                />
+                Buscando…
+              </>
+            ) : (
+              <>
+                <LocateFixed aria-hidden="true" strokeWidth={ICON_STROKE} />
+                Usar mi ubicación
+              </>
+            )}
           </Button>
           <ManualLocation onSubmit={enterManually} startsOpen={hasFailed} />
           {location && (

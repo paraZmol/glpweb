@@ -1,6 +1,6 @@
 # Política de privacidad de Hornilla
 
-> **BORRADOR v0.4 (2026-10-12) — pendiente de revisión por un profesional antes del lanzamiento**
+> **BORRADOR v0.7 (2026-11-15) — pendiente de revisión por un profesional antes del lanzamiento**
 > (Ley N.º 29733 de Protección de Datos Personales y su reglamento). Los datos entre corchetes se
 > completan cuando exista la razón social. Mientras queden corchetes en las secciones 1 y 7 no
 > debe registrarse a personas reales: sin responsable identificado y sin un correo que funcione,
@@ -27,12 +27,22 @@
 | Fecha de creación de la cuenta, fecha del último ingreso, forma de ingreso (Google) y si el correo está confirmado | Todos | Los registra el servicio de inicio de sesión para ingresar y proteger la cuenta | Nadie más |
 | Punto desde el que buscas distribuidoras: la ubicación de tu dispositivo, si tocas "Usar mi ubicación", o las coordenadas que escribas | Quien usa el buscador, con o sin cuenta | Calcular, en tu propio dispositivo, qué distribuidoras llegan hasta ahí y a qué distancia están | Nadie. No se envía a Hornilla ni se guarda en tu cuenta: queda solo en tu dispositivo, redondeado a unos cien metros, hasta que lo olvides, busques desde otro punto, cierres sesión o pasen 30 días desde que se guardó (ver Cookies y almacenamiento) |
 | Ubicación del dispositivo de quien registra una distribuidora, si toca "Usar mi ubicación" en el registro | Quien registra una distribuidora | Llenar los campos de ubicación de la planta, que puede corregir antes de crearla | Nadie mientras no cree la distribuidora. Al crearla, el punto que confirme pasa a ser la ubicación pública de la planta |
-| Ficha pública de la distribuidora: nombre, enlace, teléfono y WhatsApp del negocio, dirección, ubicación de la planta, zona de reparto, horario, color, marcas, precio desde y moneda, tope de balones por pedido, si atiende pedidos en este momento y fechas en que se registró en Hornilla y en que cambió su ficha por última vez | Distribuidoras | Que los clientes las encuentren y las contacten | **Cualquier persona, con o sin cuenta, mientras Hornilla haya aprobado la ficha y la distribuidora pueda operar.** Antes de esa aprobación, o si está suspendida, con un pago pendiente o con la prueba terminada: solo su personal y la administración de Hornilla |
+| Ficha pública de la distribuidora: nombre, enlace, teléfono y WhatsApp del negocio, dirección, ubicación de la planta, zona de reparto, horario, color, marcas, productos a la venta con sus precios, la recarga más barata con su peso ("Recarga 10 kg desde…") y moneda, enlace a su Libro de Reclamaciones virtual si lo dio, tope de balones por pedido, si atiende pedidos en este momento y fechas en que se registró en Hornilla y en que cambió su ficha por última vez | Distribuidoras | Que los clientes las encuentren y las contacten | **Cualquier persona, con o sin cuenta, mientras Hornilla haya aprobado la ficha y la distribuidora pueda operar.** Antes de esa aprobación, o si está suspendida, con un pago pendiente o con la prueba terminada: solo su personal y la administración de Hornilla |
 | Estado de la distribuidora en Hornilla (en prueba, activa, con pago pendiente o suspendida), fecha de fin de la prueba, si su ficha fue aprobada, cuándo y por qué cuenta de la administración, las fechas de la versión de la ficha y de los datos de revisión que la administración tenía delante al aprobarla, la nota que la administración deja al devolver una ficha, la fecha en que se envió una corrección en respuesta a esa nota, una copia del nombre y del enlace de la distribuidora, e identificador interno de la cuenta que la registró (un código, no su nombre ni su correo) | Distribuidoras y quien las registra | Que el sistema sepa si la distribuidora puede operar y mostrarse, y quién es titular | El personal de esa distribuidora y la administración de Hornilla. No es parte de la ficha pública |
 | RUC, razón social o nombre del titular y número de registro de Osinergmin (Registro de Hidrocarburos) | Distribuidoras y quien las registra. El RUC de una persona natural contiene el número de su documento de identidad | Que Hornilla revise los datos que la distribuidora declara antes de mostrarla. Para eso la administración puede consultarlos, a mano, en las páginas públicas de SUNAT y de Osinergmin | Solo quien registró la distribuidora y la administración de Hornilla. No son parte de la ficha pública ni los ve el resto de su personal |
 | Nombre, celular y correo de quien registra la distribuidora; plan; versión de los términos que aceptó en nombre de la distribuidora y fecha y hora en que lo hizo; fecha y hora en que declaró que puede representar al negocio y que este puede vender GLP | Quien registra una distribuidora | Contactar al negocio por el servicio y dejar constancia de sus declaraciones | Solo quien registró la distribuidora y la administración de Hornilla |
-| Nombre, rol (titular, central o reparto) y si está activo | Personal de una distribuidora | Dar a cada persona el acceso que le corresponde | Titulares y central de esa distribuidora |
+| Nombre, rol (titular, central o reparto), si está activo, el código de la invitación con la que entró y las fechas en que se sumó y en que cambió por última vez | Personal de una distribuidora. El nombre es una copia del de tu perfil cuando aceptas la invitación: si después lo cambias en "Tu cuenta", ahí no cambia (sección 7) | Dar a cada persona el acceso que le corresponde | Titulares y central de esa distribuidora |
+| Invitación a sumarse al personal: el rol, el nombre de la distribuidora y su color, el nombre del titular que invita, si espera, se usó o se anuló, sus fechas (creación, uso o anulación), los identificadores internos de la cuenta que la creó y de la que la usó o la anuló y, si el titular lo escribió, el correo de la persona invitada. El correo lo escribe el titular: Hornilla no lo recibe de la persona invitada ni lo usa para escribirle | Titulares que invitan y personas invitadas | Que quien recibe el enlace sepa quién lo invita y a qué, y que, si lleva correo, solo pueda usarla esa cuenta de Google | Titulares de esa distribuidora. Si lleva correo, además solo la cuenta de Google con ese correo; si no, **cualquier persona con cuenta que tenga el enlace** mientras la invitación exista, aunque ya se haya usado, anulado o vencido. Comparte el enlace solo con quien invitas |
+| Nombre de los ayudantes que acompañan al repartidor y si están activos. No tienen cuenta ni se guarda ningún dato de contacto suyo | Ayudantes, anotados por un titular | Que el repartidor pueda decir con quién sale en su jornada | Todo el personal de esa distribuidora |
+| Vehículos de la distribuidora: tipo (moto, trimoto, camión o camioneta), el nombre que se le pone, la placa (opcional), cuántos balones lleva, si está en uso y las fechas en que se registró y cambió. Si el vehículo es de una persona, su placa puede identificarla en los registros públicos de vehículos | Distribuidoras, anotados por sus titulares o su central | Saber con qué vehículos reparte y cuánto lleva cada uno; cuando exista la jornada, que cada repartidor elija el suyo | Todo el personal de esa distribuidora. No es público |
+| Bitácora de stock de planta: por cada ajuste, el producto, el motivo (conteo, proveedor, dañado o con fuga, otro), la nota si la hay, cuántos llenos y vacíos cambiaron y cuántos quedaron, la fecha y hora que pone el servidor, y el identificador interno y el nombre de quien lo hizo (una copia del nombre con el que figura en el personal en ese momento) | Titulares y central que ajustan el stock. La pantalla lo avisa antes de guardar: "El ajuste queda en la bitácora con tu nombre" | Dejar constancia de quién movió el stock, cuándo y por qué | Titulares y central de esa distribuidora; los repartidores no la ven. No es pública. No se cambia ni se borra desde la aplicación |
+| Promociones de la distribuidora: nombre, lo que ofrecen, productos, forma de venta, máximo por pedido, tope total y unidades vendidas, fechas, condiciones, si está publicada o apagada y cuándo, y los identificadores internos de la cuenta que la creó y de la que la apagó (códigos, no nombres ni correos) | Distribuidoras: las crean sus titulares o su central | Preparar las ofertas que la distribuidora hará a sus clientes | Todo el personal de esa distribuidora. Hornilla todavía no las muestra a los clientes, pero las publicadas de una distribuidora que puede operar ya son legibles para cualquiera que consulte la base de datos directamente, con esos identificadores internos incluidos |
 | Datos de conexión (dirección IP, tipo de navegador, fecha y hora) | Todos | Los registran los servidores que alojan la aplicación para entregarla y protegerla | Proveedores técnicos |
+
+Si un titular escribe tu correo en una invitación, Hornilla lo recibe de ese titular, no de ti.
+Solo sirve para que esa invitación la pueda usar únicamente tu cuenta de Google: Hornilla no
+envía la invitación por correo ni usa ese correo para nada más. Puedes pedir que se borre aunque
+no tengas cuenta (sección 7).
 
 Si una distribuidora es de una persona y no de una empresa, el teléfono, la dirección y la
 ubicación que publique son los suyos y quedan a la vista de todos: conviene usar los del negocio.
@@ -112,6 +122,10 @@ das al aceptar los términos y esta política y al conceder permisos (ubicación
 - **WhatsApp**: Hornilla no le envía datos. Si tocas un enlace para escribir a una distribuidora,
   o para avisarle a la tuya de que Hornilla existe, se abre WhatsApp con un mensaje ya escrito que
   tú decides enviar o no, y se aplican sus propias condiciones.
+- **Compartir una invitación**: el titular que invita la comparte con el menú de compartir de su
+  teléfono (la aplicación que elija ahí) o, si su equipo no lo tiene, abriendo WhatsApp. Hornilla
+  no envía nada: el mensaje lleva el nombre de la distribuidora, el rol y el enlace, y quien opera
+  esa aplicación puede leerlo como cualquier mensaje enviado por ella.
 
 Las fuentes de letra y las imágenes se sirven desde la propia aplicación, no desde terceros.
 
@@ -119,6 +133,11 @@ Las fuentes de letra y las imágenes se sirven desde la propia aplicación, no d
 Mientras la cuenta exista. Al eliminarla se borran o anonimizan los datos personales, salvo los
 que la ley obligue a conservar. Los pedidos pueden conservarse anonimizados para los registros de
 la distribuidora.
+
+El correo de una invitación se borra al usarla. El de una invitación que venció o fue anulada se
+borra a los 30 días de que dejó de servir. Al eliminar una cuenta, las invitaciones dirigidas a su
+correo que nunca se usaron ni se anularon se borran, y de las ya usadas o anuladas se quita el
+correo; las invitaciones que creó dejan de servir y su nombre se cambia por "Cuenta eliminada".
 
 Si la cuenta registró una distribuidora, al eliminarla se vacían también el RUC, la razón social
 y el número de registro de Osinergmin (Registro de Hidrocarburos) que declaró, junto con su
@@ -132,13 +151,23 @@ Una cuenta que ingresó y nunca aceptó los términos conserva, en el servicio d
 el correo y el nombre que entregó Google mientras exista. Hoy no se elimina sola: la elimina su
 titular, en la pantalla "Aceptar los términos", o Hornilla a pedido (sección 7).
 
+La bitácora de stock se conserva mientras exista la distribuidora, porque es la constancia de
+cómo cambió su stock. Al eliminar una cuenta, el nombre que figura en los ajustes que hizo se
+cambia por "Cuenta eliminada" y el ajuste se conserva sin él. Una promoción no se borra desde la
+aplicación; cuando termina o se apaga, su lugar puede ocuparlo una promoción nueva, que la
+reemplaza entera.
+
 El punto desde el que buscas distribuidoras no lo conserva Hornilla: solo está en tu dispositivo,
 hasta que lo olvides, busques desde otro punto, cierres sesión o pasen 30 días desde que se
 guardó.
 
 ## 7. Tus derechos
 Acceso, rectificación, cancelación y oposición.
-- Tu nombre y tu celular los corriges tú en "Tu cuenta".
+- Tu nombre y tu celular los corriges tú en "Tu cuenta". Si eres parte del personal de una
+  distribuidora, el nombre que ve su lista de personal es una copia del que tenías entonces y no
+  cambia con "Tu cuenta": pide el cambio a [correo de contacto].
+- Si alguien escribió tu correo en una invitación al personal de una distribuidora, tengas o no
+  cuenta en Hornilla, puedes pedir a [correo de contacto] que se borre de esa invitación.
 - El punto desde el que buscas lo borras tú con "Olvidar esta ubicación".
 - Si ingresaste y todavía no aceptaste los términos y esta política, puedes eliminar tu cuenta
   tú, en esa pantalla, con "No quiero continuar: eliminar mi cuenta"; después puedes volver a
@@ -158,6 +187,9 @@ Acceso, rectificación, cancelación y oposición.
   se atiende a mano a partir de tu solicitud. La página "Contacto y reclamos" mostrará ese correo
   en cuanto exista.
 - Si registraste una distribuidora, al eliminar tu cuenta hay que decidir contigo qué pasa con ella.
+- Si ajustaste el stock de una distribuidora, tu nombre queda en esos ajustes. Para pedir una
+  copia, corregirlo u oponerte, escribe a [correo de contacto]: la aplicación no permite cambiar
+  ni borrar la bitácora.
 
 También puedes reclamar ante la Autoridad Nacional de Protección de Datos Personales.
 
@@ -178,6 +210,27 @@ terminar.
 Los cambios importantes se avisan en la aplicación.
 
 ## Historial de cambios
+- 0.7 (2026-11-15): cuarta revisión de cumplimiento, pasos 3.3 a 3.5 del plan. La tabla añade los
+  vehículos (con la placa, que puede identificar a su dueño), la bitácora de stock con el nombre
+  de quien hizo cada ajuste, que solo ven titulares y central, y las promociones, que Hornilla aún
+  no muestra a los clientes pero cuyas publicadas ya son legibles para cualquiera junto con los
+  identificadores internos de quien las creó y las apagó (sección 2). Cuánto se conserva la
+  bitácora y que, al eliminar una cuenta, su nombre se cambia ahí por "Cuenta eliminada"
+  (sección 6). Cómo pedir una copia o la corrección de tu nombre en la bitácora (sección 7). La
+  0.6 deja de poder aceptarse.
+- 0.6 (2026-10-16): la tabla detalla los datos del personal (el nombre es una copia del perfil al
+  sumarse) y de las invitaciones (estado, fechas, identificadores internos), dice que el correo de
+  una invitación lo escribe el titular y que una invitación con correo solo la leen sus titulares
+  y esa cuenta (sección 2). Cómo se comparte una invitación (sección 5). El correo de una
+  invitación se borra al usarla y a los 30 días de que venza o se anule (sección 6). Cómo pedir
+  que se corrija el nombre que ve una distribuidora o que se borre tu correo de una invitación,
+  también sin cuenta (sección 7). La 0.5 deja de poder aceptarse.
+- 0.5 (2026-10-15): la tabla añade las invitaciones al personal (el correo de la persona invitada,
+  si lo lleva, y el nombre del titular que invita los puede leer cualquier persona con cuenta que
+  tenga el enlace), los nombres de los ayudantes, que ve todo el personal, y en la ficha pública
+  los productos con sus precios, el peso de la recarga más barata y el enlace al Libro de
+  Reclamaciones virtual de la distribuidora (sección 2). Se dice qué pasa con las invitaciones al
+  eliminar una cuenta (sección 6). La 0.4 deja de poder aceptarse.
 - 0.4 (2026-10-12): a Hornilla se ingresa solo con una cuenta de Google. Hornilla deja de pedir y
   de guardar contraseñas, deja de enviar correos de verificación y de recuperación, y el nombre y
   el celular ya no esperan en la pestaña del navegador: el nombre lo entrega Google y se confirma

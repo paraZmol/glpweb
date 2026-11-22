@@ -4,7 +4,11 @@ import { TextField } from '@/components/common/text-field';
 import { BrandColorField } from '@/components/founding/brand-color-field';
 import { BrandPreview } from '@/components/founding/brand-preview';
 import { RadiusStepper } from '@/components/founding/radius-stepper';
-import { ADDRESS_LINE_MAX_LENGTH, DISTRIBUTOR_NAME_MAX_LENGTH } from '@/domain/tenancy/constants';
+import {
+  ADDRESS_LINE_MAX_LENGTH,
+  COMPLAINTS_BOOK_URL_MAX_LENGTH,
+  DISTRIBUTOR_NAME_MAX_LENGTH,
+} from '@/domain/tenancy/constants';
 import {
   type IdentityInput,
   type ProfileEditErrors,
@@ -90,6 +94,18 @@ export function ProfileFields(props: ProfileFieldsProps) {
           hint="Celular de 9 dígitos. Es público."
         />
         {noticeUnder('whatsapp')}
+        <TextField
+          label="Libro de Reclamaciones virtual (opcional)"
+          name="complaintsBookUrl"
+          type="url"
+          inputMode="url"
+          autoComplete="off"
+          maxLength={COMPLAINTS_BOOK_URL_MAX_LENGTH}
+          value={form.complaintsBookUrl}
+          onChange={(event) => set('complaintsBookUrl', event.target.value)}
+          error={errors.complaintsBookUrl}
+          hint="Todo negocio debe tener Libro de Reclamaciones, físico o virtual. Si tienes uno virtual, pega su enlace completo, con https://. Tu página lo muestra; cambiarlo no la vuelve a revisión."
+        />
       </Group>
       <Group title="Dónde y cuándo atiendes" disabled={disabled}>
         <TextField

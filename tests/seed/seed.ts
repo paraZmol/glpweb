@@ -18,6 +18,7 @@ import {
   SEED_PRIVACY_VERSION,
   SEED_TERMS_VERSION,
   SEED_USERS,
+  seedMovementIdOf,
   type SeedDistributor,
   type SeedUser,
 } from './data.ts';
@@ -87,6 +88,8 @@ function publicDocument(distributor: SeedDistributor) {
     maxCylindersPerOrder: DEFAULT_MAX_CYLINDERS_PER_ORDER,
     brands: [...distributor.brands],
     priceFromCents: distributor.priceFromCents,
+    priceFromWeightKg: distributor.priceFromWeightKg,
+    ...(distributor.complaintsBookUrl ? { complaintsBookUrl: distributor.complaintsBookUrl } : {}),
     currency: 'PEN',
     ...stamps,
   };
@@ -134,6 +137,13 @@ function writeDistributor(batch: Batch, db: Db, distributor: SeedDistributor) {
   batch.set(doc(db, `distributors/${id}/private/control`), controlDocument(distributor));
   batch.set(doc(db, `distributors/${id}/private/settings`), privateDocument(distributor));
   batch.set(doc(db, `slugs/${slug}`), { distributorId: id, createdAt });
+  for (const { id: slot, ...product } of distributor.products) {
+    batch.set(doc(db, `distributors/${id}/products/${slot}`), {
+      ...product,
+      currency: 'PEN',
+      ...stamps,
+    });
+  }
   for (const { user, role } of distributor.members) {
     batch.set(doc(db, `distributors/${id}/members/${user.uid}`), {
       uid: user.uid,
@@ -143,6 +153,91 @@ function writeDistributor(batch: Batch, db: Db, distributor: SeedDistributor) {
       displayName: user.displayName,
       distributorName: distributor.name,
       ...stamps,
+    });
+  }
+}
+
+/** Invitations and helpers (PLAN 3.2). Invitations are dated now: they last 7 days. */
+function writeStaffExtras(batch: Batch, db: Db, distributor: SeedDistributor) {
+  const { id } = distributor;
+  const now = Timestamp.now();
+  for (const invite of distributor.invites ?? []) {
+    batch.set(doc(db, `distributors/${id}/invites/${invite.code}`), {
+      role: invite.role,
+      email: invite.email,
+      distributorName: distributor.name,
+      // The copies the app writes since PLAN §11 (2026-10-15): who invites and the colour.
+      invitedByName: founderOf(distributor).displayName,
+      brandColor: distributor.brandColor,
+      status: 'pending',
+      createdBy: founderOf(distributor).uid,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+  for (const { id: slot, ...helper } of distributor.helpers ?? []) {
+    batch.set(doc(db, `distributors/${id}/helpers/${slot}`), { ...helper, ...stamps });
+  }
+  writePromotions(batch, db, distributor, now);
+}
+
+/** Live promotions (PLAN 3.5) with the price lock of their product, as the repository leaves them. */
+function writePromotions(batch: Batch, db: Db, distributor: SeedDistributor, now: Timestamp) {
+  const { id } = distributor;
+  for (const promotion of distributor.promotions ?? []) {
+    const endsAt = Timestamp.fromMillis(now.toMillis() + promotion.days * 86_400_000);
+    batch.set(doc(db, `distributors/${id}/promotions/${promotion.id}`), {
+      title: promotion.title,
+      type: 'amountOff',
+      amountCents: promotion.amountCents,
+      productIds: [promotion.productId],
+      saleMode: 'refill',
+      startsAt: now,
+      endsAt,
+      active: true,
+      maxUnitsPerOrder: 2,
+      totalUnits: null,
+      soldUnits: 0,
+      conditions: '',
+      createdBy: founderOf(distributor).uid,
+      createdAt: now,
+      updatedAt: now,
+      switchedOffBy: null,
+      switchedOffAt: null,
+    });
+    batch.update(doc(db, `distributors/${id}/products/${promotion.productId}`), {
+      promotedUntil: endsAt,
+    });
+  }
+}
+
+/** Vehicles (PLAN 3.3), and the plant stock with the movement of its first count (PLAN 3.4). */
+function writeFleetAndStock(batch: Batch, db: Db, distributor: SeedDistributor) {
+  const { id } = distributor;
+  for (const { id: slot, ...vehicle } of distributor.vehicles ?? []) {
+    batch.set(doc(db, `distributors/${id}/vehicles/${slot}`), { ...vehicle, ...stamps });
+  }
+  const founder = founderOf(distributor);
+  for (const { productId, full, empty } of distributor.plantStock ?? []) {
+    const movementId = seedMovementIdOf(id, productId);
+    batch.set(doc(db, `distributors/${id}/plantStock/${productId}`), {
+      full,
+      empty,
+      lastMovementId: movementId,
+      updatedAt: createdAt,
+    });
+    batch.set(doc(db, `distributors/${id}/stockMovements/${movementId}`), {
+      kind: 'adjustment',
+      productId,
+      reason: 'count',
+      note: null,
+      fullDelta: full,
+      emptyDelta: empty,
+      fullAfter: full,
+      emptyAfter: empty,
+      authorUid: founder.uid,
+      authorName: founder.displayName,
+      createdAt,
     });
   }
 }
@@ -224,7 +319,11 @@ export async function seedEmulators(options: SeedOptions = {}): Promise<SeedSumm
     await env.withSecurityRulesDisabled(async (context) => {
       const db = context.firestore();
       const batch = writeBatch(db);
-      for (const distributor of distributors) writeDistributor(batch, db, distributor);
+      for (const distributor of distributors) {
+        writeDistributor(batch, db, distributor);
+        writeStaffExtras(batch, db, distributor);
+        writeFleetAndStock(batch, db, distributor);
+      }
       writeProfiles(batch, db, distributors);
       await batch.commit();
     });

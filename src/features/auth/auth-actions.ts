@@ -16,7 +16,7 @@ import {
   EmailNotVerifiedError,
   InvalidInputError,
 } from '../../domain/tenancy/errors';
-import type { Validated } from '../../domain/tenancy/field-checks';
+import { isVisibleText, type Validated } from '../../domain/tenancy/field-checks';
 import type { Address } from '../../domain/tenancy/types';
 import { announceTermsAccepted } from './terms-elsewhere';
 
@@ -40,7 +40,9 @@ export function suggestedProfileOf(session: Session): UserProfileInput {
 function fallbackProfile(session: Session | null): UserProfileInput {
   const suggested = session ? suggestedProfileOf(session) : { displayName: '', phone: null };
   const displayName = suggested.displayName.trim().slice(0, DISPLAY_NAME_MAX_LENGTH);
-  return { displayName: displayName || FALLBACK_DISPLAY_NAME, phone: suggested.phone };
+  // A name Google hands over that nobody could read (PLAN 3.2) is not kept either.
+  const isUsable = isVisibleText(displayName);
+  return { displayName: isUsable ? displayName : FALLBACK_DISPLAY_NAME, phone: suggested.phone };
 }
 
 /**

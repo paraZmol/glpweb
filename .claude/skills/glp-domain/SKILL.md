@@ -60,6 +60,10 @@ Estados (`ShiftStatus`): `requested → approved ⇄ paused → closed`, o `requ
 - Pausa: no recibe pedidos nuevos; termina primero el que lleva.
 - Stock del repartidor = `approved` − items de sus pedidos `delivered` en esa jornada (se calcula, no se guarda aparte).
 - Un ayudante no puede estar en dos jornadas el mismo día. Una jornada abierta por repartidor.
+- Ayudante (PLAN 3.2, `src/domain/staff/helper.ts`): solo un dato, sin cuenta ni contacto —
+  nombre y activo, en 30 casillas fijas `h00`…`h29` que nunca se borran (la jornada lo nombra
+  por su casilla). Lo crea y edita el titular; lo lee todo el personal. La jornada (fase 5) solo
+  ofrece los activos.
 
 ## 3. Cobro
 - En persona: `cash`, `yape`, `plin`. Solo se registra; no hay pasarela ni estado "pago fallido".
@@ -77,12 +81,28 @@ Estados (`ShiftStatus`): `requested → approved ⇄ paused → closed`, o `requ
   jornada → `closed`. No se puede liquidar con un pedido en `WITH_DRIVER`.
 
 ## 5. Catálogo y stock
-- Producto: marca (texto libre de la distribuidora), `weightKg`, `refillPriceCents`,
-  `fullPriceCents` opcional, `active`. La distribuidora indica `acceptsOtherBrandEmpties`.
-  Motivo de cancelación conocido: `noEmptyCylinder` ("Sin balón vacío").
-  Tope de cordura al editar precio (S/ 999) contra errores de dedo.
-- Stock de planta por producto: `full`, `empty`. Todo ajuste manual lleva motivo y autor.
-- Cambiar la capacidad de un vehículo no reescribe cargas ya aprobadas.
+- Producto (`src/domain/catalog/`, PLAN 3.1 y §11 del 2026-10-14): `brand` (texto libre de la
+  distribuidora; el tipo de válvula va en la marca, D8), `brandColor` opcional, `weightKg`
+  entero, `name` ("Balón 10 kg" por defecto), `refillPriceCents`, `fullPriceCents` o `null`,
+  `currency` (la de la distribuidora), `active`, `sortOrder`. La distribuidora indica
+  `acceptsOtherBrandEmpties`. Motivo de cancelación conocido: `noEmptyCylinder` ("Sin balón vacío").
+- Precios: céntimos enteros de 1 a 99 900 (tope de cordura S/ 999 contra errores de dedo).
+  **El balón completo cuesta más que la recarga** (`full > refill`): igual o menor es una
+  promoción, no un precio de lista. La recarga siempre se vende.
+- Hasta 30 productos, en casillas fijas `p00`…`p29`; nunca se borran (se retiran con
+  `active: false`). El peso y la moneda no cambian: otro peso es otro producto.
+- Precios y catálogo los escriben **el titular y la central** (PLAN §11, 2026-10-15;
+  `canEditCatalog`); el reparto lee. El público
+  ve solo lo `active` y solo mientras la distribuidora atiende pedidos.
+- "Recarga desde" y las marcas del buscador se derivan del catálogo (`summarizeCatalog`): la
+  recarga a la venta más barata, nunca un balón completo ni un precio que exija comprar dos.
+  Desde el 2026-10-15 lleva el peso de esa recarga (`priceFromWeightKg`; si empatan en precio,
+  la primera en el orden del catálogo): "Recarga 10 kg desde S/ 48.00" (`priceFromLabel`). La
+  distribuidora publica precios finales con impuestos y reparto en su zona incluidos
+  (términos 0.5, §4).
+- Stock de planta por producto (PLAN 3.4, `src/domain/stock/`): `full`, `empty`, nunca bajo cero (`applyStockChange`). Todo ajuste manual lleva motivo (`count`, `supplier`, `damaged`, `other` con nota) y autor, en una línea de `stockMovements` escrita en el mismo lote. Lo leen y ajustan titular y central; el reparto no lo ve. Un conteo físico se escribe como total (`adjustmentToReach`). 5.2/5.5 añadirán movimientos de jornada con el mismo cálculo.
+- Vehículos (PLAN 3.3, `src/domain/vehicles/`): tipo, nombre, placa opcional, capacidad total en balones, en casillas `v00`…`v29` sin borrar; los escriben titular y central, los lee todo el personal.
+- Cambiar la capacidad de un vehículo no reescribe cargas ya aprobadas: la jornada guarda su copia (`vehicleSnapshotOf`) y la carga se mide contra ella (`loadFitsVehicle`).
 
 ## 5b. Formas de venta y promociones
 
@@ -98,7 +118,15 @@ distribuidora no vende envases de ese producto). Consecuencias:
 - Una unidad `full` saca un lleno del stock sin devolver vacío: el parque de envases baja.
 - La pantalla nunca deja ambiguo cuál se está comprando; el repartidor ve cuántos vacíos recoger.
 
-**Promociones** (`/distributors/{d}/promotions/{id}`), creadas solo por el dueño:
+**Promociones** (`/distributors/{d}/promotions/{o00..o19}`), creadas por el titular **y la
+central** (decisión del usuario, PLAN §11 2026-10-16; `PROMOTION_EDITOR_ROLES`). Lo construido
+en 3.5 manda sobre la lista de abajo donde choquen: una sola forma de venta (`saleMode`) por
+promoción; 20 casillas reutilizables al terminar o apagarse; el precio especial es de un solo
+producto; el producto lleva `promotedUntil` (bloqueo de precio) y una promoción solo se aplica a
+un producto cuyo bloqueo alcanza su cierre; cada línea congela **un** `unitPriceCents` y las
+unidades gratis de "lleva X, paga Y" van en su propia línea a 0 (`OrderPricer`,
+`orderPricerWith` en `src/domain/pricing/price-order.ts`); el máximo por pedido es de todo el
+pedido; apagar no levanta el bloqueo de precio. Campos pensados al principio:
 - Campos: `title`, `type`, `productIds` (o todos), `saleKinds`, `startsAt`, `endsAt`, `active`,
   `maxUnitsPerOrder`, `conditions` (texto visible) y los parámetros del tipo.
 - Tipos (cerrados con `marketing-advisor`, ver `docs/marketing/oferta-y-promociones.md`):

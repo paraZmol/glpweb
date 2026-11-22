@@ -428,11 +428,15 @@ describe('members — the copy of the distributor name', () => {
 
 describe('everything not opened yet stays closed', () => {
   it.each([
-    'invites/token-1',
-    'helpers/h1',
-    'vehicles/v1',
-    'products/p1',
-    'plantStock/p1',
+    // invites and helpers: opened in PLAN 3.2 (invites.rules.test.ts, helpers.rules.test.ts).
+    'invites/Ab3dEf6hIj9lMn2pQr5t/secrets/s1',
+    'helpers/h00/history/h1',
+    // Opened in PLAN 3.3 and 3.4 (vehicles, plant-stock); what hangs below them stays closed.
+    'vehicles/v00/history/h1',
+    'plantStock/p00/history/h1',
+    'stockMovements/Movement00000000000A/notes/n1',
+    // Opened in PLAN 3.1 (catalog.rules.test.ts); what hangs below a product stays closed.
+    'products/p00/history/h1',
     'customers/c1',
     'orders/o1',
     'orders/o1/history/h1',
@@ -449,8 +453,9 @@ describe('everything not opened yet stays closed', () => {
     }
   });
 
-  it('blocks accepting an invitation by writing the invite or the member directly', async () => {
-    await seedDoc(env, `distributors/${A}/invites/token-1`, { role: 'driver' });
+  it('blocks reading an invitation stored under an id that is not a code', async () => {
+    // Without an address, like any invitation a link reads: only the shape of the id refuses it.
+    await seedDoc(env, `distributors/${A}/invites/token-1`, { role: 'driver', email: null });
     const db = verified(env, CUSTOMER_UID);
     await assertFails(getDoc(doc(db, `distributors/${A}/invites/token-1`)));
     await assertFails(setDoc(memberOf(db, A, CUSTOMER_UID), memberDoc(A, CUSTOMER_UID, 'driver')));

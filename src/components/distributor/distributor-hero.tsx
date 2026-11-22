@@ -1,8 +1,8 @@
-import kitchenPhoto from '../../../docs/design/images/pexels-16782087-cocinera-olla-cocina.jpg';
 import { BurnerRing } from '@/components/brand/burner-ring';
 import { Monogram } from '@/components/brand/monogram';
 import { StateChip } from '@/components/common/state-chip';
 import type { PublicDistributor } from '@/domain/tenancy/types';
+import { KITCHEN_PHOTO } from '@/lib/photos';
 import { useIsDesktop } from '@/lib/use-media-query';
 import { cn } from '@/lib/utils';
 import { DistributorFacts } from './distributor-facts';
@@ -28,7 +28,13 @@ function PhoneHero({ distributor, status }: HeroProps) {
   return (
     <header>
       <div className="relative h-82 overflow-hidden rounded-b-2xl bg-muted">
-        <img src={kitchenPhoto} alt={PHOTO_ALT} fetchPriority="high" className={PHOTO_CLASS} />
+        <img
+          {...KITCHEN_PHOTO}
+          sizes="100vw"
+          alt={PHOTO_ALT}
+          fetchPriority="high"
+          className={PHOTO_CLASS}
+        />
         <div
           aria-hidden="true"
           className="absolute inset-0 bg-linear-to-b from-band/0 from-15% to-band/85"
@@ -87,7 +93,13 @@ function DesktopHero({ distributor, status }: HeroProps) {
       <div className="relative">
         <BurnerRing className="-bottom-9 -left-10 size-48" />
         <div className="relative h-100 overflow-hidden rounded-3xl bg-muted shadow-float">
-          <img src={kitchenPhoto} alt={PHOTO_ALT} fetchPriority="high" className={PHOTO_CLASS} />
+          <img
+            {...KITCHEN_PHOTO}
+            sizes="520px"
+            alt={PHOTO_ALT}
+            fetchPriority="high"
+            className={PHOTO_CLASS}
+          />
         </div>
       </div>
     </header>

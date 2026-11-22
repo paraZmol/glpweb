@@ -50,6 +50,7 @@ const publicRoutes: RouteObject = {
     { path: ROUTES.privacy, lazy: from('public', (m) => m.PrivacyPage) },
     { path: ROUTES.cookies, lazy: from('public', (m) => m.CookiesPage) },
     { path: ROUTES.contact, lazy: from('public', (m) => m.ContactPage) },
+    { path: ROUTES.forDistributors, lazy: from('public', (m) => m.ForDistributorsPage) },
     { path: ROUTES.distributor, lazy: from('public', (m) => m.DistributorPage) },
     { path: '*', lazy: from('public', (m) => m.NotFoundPage) },
   ],
@@ -82,11 +83,24 @@ const accountRoutes: RouteObject = {
       (m) => m.FocusShell,
       [{ path: ROUTES.newDistributor, lazy: from('customer', (m) => m.NewDistributorPage) }],
     ),
+    // An invitation link (PLAN 3.2): any account with its terms accepted may open it. Its frame
+    // offers to come back with another account instead of "Salir".
+    guarded(
+      'customer',
+      (m) => m.CustomerGate,
+      (m) => m.JoinShell,
+      [{ path: ROUTES.join, lazy: from('customer', (m) => m.JoinPage) }],
+    ),
     guarded(
       'driver',
       (m) => m.DriverGate,
       (m) => m.DriverShell,
-      [{ path: ROUTES.driverHome, lazy: from('driver', (m) => m.DriverHomePage) }],
+      [
+        { path: ROUTES.driverHome, lazy: from('driver', (m) => m.DriverHomePage) },
+        { path: ROUTES.driverCatalog, lazy: from('driver', (m) => m.DriverCatalogPage) },
+        { path: ROUTES.driverPromotions, lazy: from('driver', (m) => m.DriverPromotionsPage) },
+        { path: ROUTES.driverVehicles, lazy: from('driver', (m) => m.DriverVehiclesPage) },
+      ],
     ),
     guarded(
       'office',
@@ -95,6 +109,11 @@ const accountRoutes: RouteObject = {
       [
         { path: ROUTES.officeHome, lazy: from('office', (m) => m.OfficeHomePage) },
         { path: ROUTES.officeProfile, lazy: from('office', (m) => m.EditProfilePage) },
+        { path: ROUTES.officeCatalog, lazy: from('office', (m) => m.CatalogPage) },
+        { path: ROUTES.officePromotions, lazy: from('office', (m) => m.PromotionsPage) },
+        { path: ROUTES.officeStock, lazy: from('office', (m) => m.PlantStockPage) },
+        { path: ROUTES.officeVehicles, lazy: from('office', (m) => m.VehiclesPage) },
+        { path: ROUTES.officeStaff, lazy: from('office', (m) => m.StaffPage) },
       ],
     ),
     guarded(

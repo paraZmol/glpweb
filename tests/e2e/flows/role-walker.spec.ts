@@ -18,11 +18,19 @@
 // the answer when the window of Google is closed, a second tab on the terms, a long name and
 // the main heading of the screen of an unconfirmed e-mail. All five fixed the same day (plain
 // tests now).
+// The group "fourth pass" comes from the pass of 2026-10-15 over the catalogue and the staff
+// (PLAN 3.1 and 3.2): screens that do not follow a change made elsewhere, the notice of a person
+// switched off, a cut title at 1440 px, "back" with the product form open, the focus after
+// "Quitar de la venta", the error of a helper name and signing out from an invitation for
+// another account. All nine fixed the same day (plain tests now): the catalogue and the staff
+// are read again when the person comes back to the screen and before a move, not followed live
+// (PLAN §11, 2026-10-15).
 import { expect, type Page } from '@playwright/test';
 import { SEED_DISTRIBUTORS } from '../../seed/data';
 import { type Actors, DESKTOP, type Device, PHONE, test } from '../support/actors';
 import {
   createTestAccount,
+  listedInFinder,
   deleteDocument,
   readDocument,
   uniqueTag,
@@ -86,6 +94,8 @@ async function foundedOffice(actors: Actors, tag: string, device: Device = DESKT
   await signInAs(owner.page, account, '/inicio');
   await foundDistributor(owner.page, { name, slug });
   const link = await readDocument(`slugs/${slug}`);
+  // The admin may approve it: it leaves the search when the test ends.
+  listedInFinder(String(link?.distributorId));
   return { account, name, slug, owner, id: String(link?.distributorId) };
 }
 
@@ -401,10 +411,16 @@ test.describe('second pass: the review and the office, live', () => {
       const question = owner.page.getByRole('group', { name: '¿Guardar y volver a revisión?' });
       await expect(question).toBeInViewport({ ratio: 1 });
       await expect(question).toBeFocused();
-      const box = await question.boundingBox();
-      expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(
-        await clearBottomOf(owner.page),
-      );
+      // The question scrolls itself into view smoothly: it is measured where the scroll leaves
+      // it, not halfway (a box read mid-scroll sat 4 px under the bar).
+      const clearBottom = await clearBottomOf(owner.page);
+      const bottomOfQuestion = async () => {
+        const box = await question.boundingBox();
+        return (box?.y ?? 0) + (box?.height ?? 0);
+      };
+      await expect
+        .poll(bottomOfQuestion, { message: 'the question ends under the bottom bar' })
+        .toBeLessThanOrEqual(clearBottom);
       // And it still answers: the listing goes back to review.
       await confirm.click();
       await expect(owner.page).toHaveURL(/\/central$/);
@@ -772,5 +788,275 @@ test.describe('third pass: signing in with Google', () => {
       page.getByText('No pudimos confirmar tu correo con Google.').first(),
     ).toBeVisible();
     await expect(heading(page)).toHaveText('No pudimos confirmar tu correo con Google.');
+  });
+});
+
+// Fourth pass (2026-10-15): the catalogue (PLAN 3.1) and the staff, invitations and helpers
+// (PLAN 3.2), walked as each role. Every rule held when called directly; what is left is how the
+// screens behave when somebody else changes something, and a few small things on the way.
+test.describe('fourth pass: catalogue and staff', () => {
+  test.skip(
+    ({ isMobile }) => isMobile,
+    'Each person of these flows opens its own device: they run once, under the desktop project',
+  );
+
+  const productHeadings = (page: Page) => page.getByRole('main').getByRole('heading', { level: 3 });
+  const named = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
+
+  /**
+   * The person comes back to a tab it had left (PLAN §11, 2026-10-15: the catalogue and the
+   * staff are read again on return, not followed live). A headless browser never hides a tab,
+   * so the return is announced by hand, as the browser does when the tab takes the focus back.
+   */
+  async function comeBack(page: Page) {
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  }
+
+  /** Adds a product through the form of the catalogue that is on screen. */
+  async function addProduct(page: Page, brand: string, refill: string, name = '') {
+    await page.getByRole('button', { name: /^Añadir (tu primer )?producto$/ }).click();
+    await page.getByLabel('Marca del gas').fill(brand);
+    if (name) await page.getByLabel('Nombre (opcional)').fill(name);
+    await page.getByLabel('Precio de la recarga (S/)').fill(refill);
+    await page.getByRole('button', { name: 'Guardar producto' }).click();
+    await expect(page.getByRole('heading', { name: new RegExp(`· ${brand}$`) })).toBeVisible();
+  }
+
+  async function openCatalog(page: Page) {
+    await page.getByRole('link', { name: 'Catálogo' }).first().click();
+    await expect(page).toHaveURL(/\/central\/catalogo$/);
+  }
+
+  /** The owner of a fresh distributor invites from its staff screen; returns the link path. */
+  async function inviteFromStaff(page: Page, role: 'Central' | 'Reparto', email = '') {
+    await page.getByRole('link', { name: 'Personal' }).first().click();
+    await expect(page).toHaveURL(/\/central\/personal$/);
+    await page.getByRole('button', { name: 'Invitar a alguien' }).click();
+    await page.getByRole('radio', { name: new RegExp(`^${role}`) }).click();
+    if (email) await page.getByLabel(/^Correo de Google/).fill(email);
+    await page.getByRole('button', { name: 'Crear invitación' }).click();
+    const link = new URL(await page.getByLabel('Enlace de la invitación').inputValue());
+    await page.getByRole('button', { name: 'Listo' }).click();
+    return `${link.pathname}${link.hash}`;
+  }
+
+  /** A new account of its own opens the link signed in and joins; it stands on its area. */
+  async function joinAs(actors: Actors, tag: string, path: string, distributorName: string) {
+    const account = await createTestAccount(tag);
+    const person = await actors.open(PHONE);
+    await signInAs(person.page, account, '/inicio');
+    await person.page.goto(path);
+    await person.page.getByRole('button', { name: `Unirme a ${distributorName}` }).click();
+    await expect(person.page).toHaveURL(/\/reparto$/);
+    return { account, person };
+  }
+
+  // MEDIO. The catalogue is read once when the screen opens: another tab, the central or the
+  // driver keep seeing the old state (a product off sale still "A la venta", an old price) until
+  // they reload. It is also what an earlier capture showed as a "dimmed" product on sale.
+  test('a catalogue open in another tab shows a product taken off sale without reloading', async ({
+    actors,
+  }, testInfo) => {
+    const { owner } = await foundedOffice(actors, uniqueTag(testInfo));
+    await openCatalog(owner.page);
+    await addProduct(owner.page, 'Marca Vista', '40');
+    const other = await owner.context.newPage();
+    await other.goto('/central/catalogo');
+    await expect(named(other, 'Quitar de la venta Balón 10 kg · Marca Vista')).toBeVisible();
+
+    await named(owner.page, 'Quitar de la venta Balón 10 kg · Marca Vista').click();
+    await expect(named(owner.page, 'Poner a la venta Balón 10 kg · Marca Vista')).toBeVisible();
+
+    await comeBack(other);
+    await expect(named(other, 'Poner a la venta Balón 10 kg · Marca Vista')).toBeVisible();
+  });
+
+  // MEDIO. Two people order the catalogue (the owner and the central may both do it since
+  // 2026-10-15): the one whose screen is behind rewrites the order from what it shows and
+  // silently undoes what the other one did a moment before.
+  test('reordering from a screen that is behind keeps what another person ordered', async ({
+    actors,
+  }, testInfo) => {
+    const { owner } = await foundedOffice(actors, uniqueTag(testInfo));
+    await openCatalog(owner.page);
+    await addProduct(owner.page, 'Marca Equis', '40');
+    await addProduct(owner.page, 'Marca Ye', '41');
+    await addProduct(owner.page, 'Marca Zeta', '42');
+    const behind = await owner.context.newPage();
+    await behind.goto('/central/catalogo');
+    await expect(productHeadings(behind)).toHaveCount(3);
+
+    // First screen: Equis goes below Ye.
+    await named(owner.page, 'Bajar Balón 10 kg · Marca Equis').click();
+    await expect(productHeadings(owner.page).first()).toHaveText('Balón 10 kg · Marca Ye');
+    // Second screen, still showing Equis first: Zeta goes up one place.
+    await named(behind, 'Subir Balón 10 kg · Marca Zeta').click();
+    await expect(productHeadings(behind).nth(1)).toHaveText('Balón 10 kg · Marca Zeta');
+
+    await owner.page.reload();
+    await expect(productHeadings(owner.page)).toHaveCount(3);
+    const order = await productHeadings(owner.page).allInnerTexts();
+    expect(order.indexOf('Balón 10 kg · Marca Ye')).toBeLessThan(
+      order.indexOf('Balón 10 kg · Marca Equis'),
+    );
+  });
+
+  // MEDIO. The staff screen and its invitations are read once: somebody who just joined does not
+  // appear, and the invitation they used still says "Esperando", until the owner reloads.
+  test('the open staff screen shows somebody who just joined', async ({ actors }, testInfo) => {
+    const tag = uniqueTag(testInfo);
+    const { owner, name } = await foundedOffice(actors, tag);
+    const path = await inviteFromStaff(owner.page, 'Reparto');
+    const { account } = await joinAs(actors, `${tag}-join`, path, name);
+
+    // The owner was in WhatsApp sending the link, and comes back to the screen.
+    await comeBack(owner.page);
+    await expect(owner.page.getByRole('heading', { name: account.displayName })).toBeVisible();
+    await expect(
+      owner.page.getByText('Ninguna invitación espera.', { exact: false }),
+    ).toBeVisible();
+  });
+
+  // MEDIO. Switched off with the panel open, the person lands on the customer home with the
+  // generic "Esa sección no está disponible para tu cuenta. Te llevamos a la tuya.": nothing
+  // says that its access to the distributor was withdrawn, so it looks like a fault of the app.
+  test('a person switched off is told that its access was withdrawn', async ({
+    actors,
+  }, testInfo) => {
+    const tag = uniqueTag(testInfo);
+    const { owner, name } = await foundedOffice(actors, tag);
+    const path = await inviteFromStaff(owner.page, 'Reparto');
+    const { account, person } = await joinAs(actors, `${tag}-off`, path, name);
+
+    await owner.page.reload();
+    await owner.page.getByRole('button', { name: `Desactivar a ${account.displayName}` }).click();
+    await owner.page.getByRole('button', { name: 'Sí, desactivar' }).click();
+
+    await expect(person.page).toHaveURL(/\/inicio$/);
+    await expect(
+      person.page.getByText(/desactiv|ya no tienes acceso|ya no entras/i).first(),
+    ).toBeVisible();
+  });
+
+  // MEDIO (driver, central). At 1440 px the catalogue list cuts the title of each product with an
+  // ellipsis; with a name of its own the brand disappears entirely, so two products of the same
+  // weight and name read the same, and nothing (tooltip, second line) shows the rest.
+  test('at 1440 px the brand of a product with a long name stays readable', async ({
+    actors,
+  }, testInfo) => {
+    const { owner } = await foundedOffice(actors, uniqueTag(testInfo));
+    await openCatalog(owner.page);
+    await addProduct(
+      owner.page,
+      'Gas Premium Nororiental Plus 1',
+      '40',
+      'Balón 10 kg válvula premium',
+    );
+
+    const title = owner.page.getByRole('heading', { name: /válvula premium/ });
+    const cut = await title.evaluate((element) => element.scrollWidth > element.clientWidth + 1);
+    expect(cut).toBe(false);
+  });
+
+  // BAJO. On a phone the product form fills the screen like a page of its own; "back" of the
+  // browser leaves the catalogue for the monitor and drops what was typed, without a question.
+  test('on a phone, back with the product form open stays on the catalogue', async ({
+    actors,
+  }, testInfo) => {
+    const { owner } = await foundedOffice(actors, uniqueTag(testInfo), PHONE);
+    await openCatalog(owner.page);
+    await owner.page.getByRole('button', { name: /^Añadir (tu primer )?producto$/ }).click();
+    await owner.page.getByLabel('Marca del gas').fill('Marca Atrás');
+
+    await owner.page.goBack();
+    await expect(owner.page).toHaveURL(/\/central\/catalogo$/);
+  });
+
+  // BAJO (accessibility). "Quitar de la venta" and "Poner a la venta" replace the button that was
+  // pressed: the focus falls to the page, and whoever uses the keyboard or a screen reader loses
+  // its place (moving up and down already keeps it).
+  test('after taking a product off sale with the keyboard, the focus stays on its row', async ({
+    actors,
+  }, testInfo) => {
+    const { owner } = await foundedOffice(actors, uniqueTag(testInfo));
+    await openCatalog(owner.page);
+    await addProduct(owner.page, 'Marca Foco', '40');
+    await named(owner.page, 'Quitar de la venta Balón 10 kg · Marca Foco').focus();
+    await owner.page.keyboard.press('Enter');
+
+    await expect(named(owner.page, 'Poner a la venta Balón 10 kg · Marca Foco')).toBeFocused();
+  });
+
+  // BAJO. A helper name that cannot be saved (empty, only invisible characters or emojis) is
+  // answered only with a passing notice; on a phone it sits over the bottom of the screen, where
+  // the field and "Añadir" are, and then it is gone. The catalogue keeps the same kind of message
+  // under its field.
+  test('a helper name that cannot be saved is explained next to its field', async ({
+    actors,
+  }, testInfo) => {
+    const { owner } = await foundedOffice(actors, uniqueTag(testInfo), PHONE);
+    await owner.page.getByRole('link', { name: 'Personal' }).first().click();
+    const field = owner.page.getByLabel('Nombre del ayudante');
+    await field.fill('​');
+    await field.press('Enter');
+    await expect(owner.page.getByText(/sin caracteres invisibles/).first()).toBeVisible();
+    // A notice that goes away is not where the person looks when it tries again.
+    await expect(owner.page.locator('[data-sonner-toast]')).toHaveCount(0, { timeout: 10_000 });
+
+    await expect(field).toHaveAttribute('aria-invalid', 'true');
+    await expect(owner.page.getByRole('main').getByText(/sin caracteres invisibles/)).toBeVisible();
+  });
+
+  // BAJO. "Esta invitación es para otra cuenta de Google" offers "Cerrar sesión"; after it the
+  // person lands on the home page and the link is lost: it has to go back to the chat and open
+  // it again to enter with the right account. Since 2026-11-21 the way on is the main button,
+  // "Ingresar con otra cuenta de Google", and the sign-in says which account to use.
+  test('signing out from an invitation for another account leads back to that invitation', async ({
+    actors,
+  }, testInfo) => {
+    const tag = uniqueTag(testInfo);
+    const { owner } = await foundedOffice(actors, tag);
+    const right = await createTestAccount(`${tag}-right`);
+    const wrong = await createTestAccount(`${tag}-wrong`);
+    const path = await inviteFromStaff(owner.page, 'Reparto', right.email);
+    const person = await actors.open(PHONE);
+    await signInAs(person.page, wrong, '/inicio');
+    await person.page.goto(path);
+    // PLAN §11 (2026-10-16): it cannot read it, and says so without telling which case it is.
+    await expect(person.page.getByText('Esta invitación no es para esta cuenta.')).toBeVisible();
+    await person.page.getByRole('button', { name: 'Ingresar con otra cuenta de Google' }).click();
+
+    await expect(person.page).toHaveURL(/\/ingresar\?desde=%2Funirme#d=/);
+    await expect(
+      person.page.getByText(
+        'Ingresa con la cuenta de Google con la que te invitaron: así vemos tu invitación.',
+      ),
+    ).toBeVisible();
+  });
+
+  // ux-reviewer (2026-11-21): the frame of /unirme said "Salir" and took the person to its
+  // account; what it needs there is to come back with another account.
+  test('"Cambiar de cuenta" from a usable invitation leads back to it', async ({
+    actors,
+  }, testInfo) => {
+    const tag = uniqueTag(testInfo);
+    const { owner } = await foundedOffice(actors, tag);
+    const someone = await createTestAccount(`${tag}-someone`);
+    const path = await inviteFromStaff(owner.page, 'Reparto', '');
+    const person = await actors.open(PHONE);
+    await signInAs(person.page, someone, '/inicio');
+    await person.page.goto(path);
+    await expect(person.page.getByText('¿No es tu cuenta?', { exact: false })).toBeVisible();
+    await expect(person.page.getByRole('link', { name: 'Salir' })).toHaveCount(0);
+    await person.page
+      .getByRole('banner')
+      .getByRole('button', { name: 'Cambiar de cuenta' })
+      .click();
+
+    // The same invitation, its code still in the fragment (never in `desde`).
+    await expect(person.page).toHaveURL(
+      (url) => url.pathname === '/ingresar' && url.hash === path.slice('/unirme'.length),
+    );
+    await expect(person.page).toHaveURL(/\?desde=%2Funirme#/);
   });
 });

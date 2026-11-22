@@ -1,8 +1,7 @@
-import { Hammer } from 'lucide-react';
-import phonePhoto from '../../../docs/design/images/pexels-4747813-mujer-celular-lima.jpg';
 import { BurnerRing } from '@/components/brand/burner-ring';
-import { Stagger } from '@/components/motion/stagger';
-import { ICON_STROKE } from '@/lib/icons';
+import { SoonStamp } from '@/components/landing/soon-stamp';
+import { StepsTimeline } from '@/components/landing/steps-timeline';
+import { PHONE_PHOTO } from '@/lib/photos';
 
 // What ordering will be like once phases 4 and 6 exist. Written in the future on purpose: the
 // app must not promise today what it cannot do yet (PLAN 2.9).
@@ -16,8 +15,8 @@ const STEPS = [
     text: 'Marcarás tu puerta en el mapa y agregarás una referencia.',
   },
   {
-    title: 'Verás venir la moto',
-    text: 'Seguirás al repartidor y pagarás al recibir, directo a la distribuidora.',
+    title: 'Verás venir el reparto',
+    text: 'Y pagarás al recibir, directo a la distribuidora.',
   },
 ];
 
@@ -32,7 +31,8 @@ export function ComingNext() {
         <BurnerRing thin tone="flame" className="-top-5 -left-5 size-32 lg:-top-8 lg:-left-8" />
         <div className="relative aspect-4/5 overflow-hidden rounded-2xl bg-muted">
           <img
-            src={phonePhoto}
+            {...PHONE_PHOTO}
+            sizes="(min-width: 1024px) 440px, min(calc(100vw - 2rem), 420px)"
             alt="Persona sonriendo mientras usa su celular en casa"
             loading="lazy"
             className="absolute inset-0 size-full object-cover object-[68%_30%] brightness-(--photo-brightness)"
@@ -40,10 +40,7 @@ export function ComingNext() {
         </div>
       </div>
       <div>
-        <p className="inline-flex items-center gap-1.5 rounded-full bg-aji px-3 py-1 text-[0.8125rem] font-bold text-aji-foreground">
-          <Hammer aria-hidden="true" className="size-4" strokeWidth={ICON_STROKE} />
-          En construcción
-        </p>
+        <SoonStamp />
         <h2 id="lo-que-viene" className="mt-4 text-[2.125rem] font-extrabold lg:text-[3.25rem]">
           Así va a funcionar.
         </h2>
@@ -51,19 +48,7 @@ export function ComingNext() {
           Hoy ya puedes ver qué distribuidoras llegan a tu puerta y llamarlas o escribirles. Pedir
           desde Hornilla es lo que sigue.
         </p>
-        <Stagger as="ol" className="mt-6 grid gap-3">
-          {STEPS.map((step, index) => (
-            <div key={step.title} className="flex items-start gap-4 rounded-xl bg-muted p-4">
-              <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-primary-soft font-heading text-xl font-extrabold text-primary-text tabular-nums">
-                {index + 1}
-              </span>
-              <div>
-                <h3 className="text-xl font-bold">{step.title}</h3>
-                <p className="mt-1 text-muted-foreground">{step.text}</p>
-              </div>
-            </div>
-          ))}
-        </Stagger>
+        <StepsTimeline steps={STEPS} layout="column" className="mt-6" />
       </div>
     </section>
   );

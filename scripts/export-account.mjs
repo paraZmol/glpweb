@@ -18,12 +18,15 @@
 // the profile, the addresses, the history of acceptances (every version of the terms and of the
 // privacy policy the account accepted, and when), every membership and, for each distributor the
 // account founded,
-// its public profile, its control document and its private settings. Orders and shifts will be
-// added when those collections exist.
+// its public profile, its control document, its private settings and the text of a note of the
+// platform (private/review), every invitation tied to the e-mail of the sign-in account
+// (PLAN 3.2), and every adjustment of the plant stock the account made, in any distributor, with
+// the name it carries (PLAN 3.4). Orders and shifts will be added when those collections exist.
 import { existsSync, realpathSync, writeFileSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
+  allDocuments,
   isMissingAccount,
   loadAdminSdk,
   readArguments,
@@ -83,17 +86,43 @@ async function signInAccount(sdk, uid) {
 
 async function foundedDistributor(db, distributorId) {
   const base = `distributors/${distributorId}`;
-  const [profile, control, settings] = await Promise.all([
+  const [profile, control, settings, review] = await Promise.all([
     db.doc(base).get(),
     db.doc(`${base}/private/control`).get(),
     db.doc(`${base}/private/settings`).get(),
+    db.doc(`${base}/private/review`).get(),
   ]);
   return {
     distributorId,
     publicProfile: profile.data() ?? null,
     control: control.data() ?? null,
     privateSettings: settings.data() ?? null,
+    // The note of the platform to the founder (PLAN 3.2), when one waits.
+    reviewNote: review.data() ?? null,
   };
+}
+
+/** Invitations tied to the address of the account (stored in lowercase), capped. */
+async function invitationsFor(db, email) {
+  if (email === null) return [];
+  const found = await db
+    .collectionGroup('invites')
+    .where('email', '==', email.toLowerCase())
+    .limit(500)
+    .get();
+  return found.docs;
+}
+
+/**
+ * Adjustments of the plant stock the account made, oldest first. Sorted here: ordering in the
+ * query would need one more index only for this procedure.
+ */
+async function stockMovementsBy(db, uid) {
+  const movements = await allDocuments(
+    db.collectionGroup('stockMovements').where('authorUid', '==', uid),
+  );
+  const timeOf = (movement) => movement.data().createdAt?.toMillis?.() ?? 0;
+  return movements.sort((left, right) => timeOf(left) - timeOf(right));
 }
 
 /** Everything stored about `uid`, as plain JSON (timestamps as ISO text). */
@@ -110,6 +139,8 @@ export async function exportAccount(sdk, uid) {
   ]);
   const owned = profile.data()?.ownedDistributorIds ?? [];
   const founded = await Promise.all(owned.map((id) => foundedDistributor(db, id)));
+  const invitations = await invitationsFor(db, account?.email ?? null);
+  const stockMovements = await stockMovementsBy(db, uid);
   return toPlainJson({
     exportedAt: new Date().toISOString(),
     uid,
@@ -119,6 +150,11 @@ export async function exportAccount(sdk, uid) {
     legalAcceptances: acceptances.docs.map((entry) => ({ id: entry.id, ...entry.data() })),
     memberships: memberships.docs.map((member) => ({ path: member.ref.path, ...member.data() })),
     isPlatformAdmin: adminGrant.exists,
+    invitations: invitations.map((invite) => ({ path: invite.ref.path, ...invite.data() })),
+    stockAdjustments: stockMovements.map((movement) => ({
+      path: movement.ref.path,
+      ...movement.data(),
+    })),
     foundedDistributors: founded.filter((entry) => entry.control?.ownerUid === uid),
   });
 }

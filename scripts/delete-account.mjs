@@ -8,6 +8,7 @@
 //
 //   node scripts/delete-account.mjs --project <project-id> --uid <uid> --dry-run
 //   node scripts/delete-account.mjs --project <project-id> --uid <uid> --yes-real-project
+//   (add --email <address> when the sign-in account is already gone: see step 5)
 //
 // Always run it with --dry-run first and read what it would do. See scripts/admin-common.mjs
 // for the safety pattern and for where the credentials come from (never from this repository).
@@ -26,18 +27,36 @@
 //      name replaced by "Cuenta eliminada" and `active: false`.
 //   4. Every distributor the account founded: suspended and unlisted (control document and
 //      public flag), and the founder's name, phone and e-mail emptied in private/settings,
-//      together with the RUC, the legal name and the record number. The public business data
-//      stays. DECIDE WITH THE PERSON FIRST what happens to the distributor
-//      (privacy policy §7): if it should keep working, do not run this script yet.
-//   5. The Firebase Auth account: deleted.
-// Steps 1 to 4 are one atomic batch. The script can be run again: it tolerates what is already
-// gone.
+//      together with the RUC, the legal name and the record number. The text of a note of the
+//      platform to the founder (private/review, PLAN 3.2) is deleted: it may talk about the RUC.
+//      The public business data stays. DECIDE WITH THE PERSON FIRST what happens to the
+//      distributor (privacy policy §7): if it should keep working, do not run this script yet.
+//   5. Invitations (PLAN 3.2): every invitation tied to the e-mail of the account — still
+//      waiting: deleted (an invitation without its e-mail would work for anyone with the link);
+//      used or revoked: the e-mail emptied. Every invitation the account created stops working:
+//      the rules honour an invitation only while its author is an active owner, and step 3
+//      switches that member off (PLAN §11, 2026-10-16). The copy of its name (`invitedByName`)
+//      still becomes "Cuenta eliminada", for whoever opens such a link. The e-mail comes
+//      from the sign-in account; once that is gone, pass it with --email.
+//   6. The log of the plant stock (PLAN 3.4): in every adjustment the account made, in any
+//      distributor, the copy of its name (`authorName`) becomes "Cuenta eliminada". The
+//      adjustment itself stays, as the record of how the stock changed (privacy policy §6), and
+//      so does `authorUid`, like the uid of a membership or the `createdBy` of an invitation: a
+//      code that no longer belongs to any account. The rules never let the app edit a movement;
+//      only this procedure does.
+//   7. The Firebase Auth account: deleted.
+// Steps 1 to 5 are one atomic batch. Step 6 follows in batches of its own, because an account
+// may have made more adjustments than one batch can hold; it runs before step 7, so if it stops
+// halfway the account is still there and running the script again finishes it. The script can
+// be run again: it tolerates what is already gone.
 //
 // What it cannot do: a session of that account that is still open keeps a valid token for up to
-// one hour and could write a new profile or address in that time. RUN THE SCRIPT AGAIN AFTER
+// one hour and could write a new profile, address or stock adjustment in that time (until step 3
+// commits, an active member may still adjust the stock). RUN THE SCRIPT AGAIN AFTER
 // ONE HOUR; it should report nothing left to delete.
 import { pathToFileURL } from 'node:url';
 import {
+  allDocuments,
   isMissingAccount,
   loadAdminSdk,
   readArguments,
@@ -47,6 +66,9 @@ import {
 } from './admin-common.mjs';
 
 export const DELETED_ACCOUNT_NAME = 'Cuenta eliminada';
+
+/** Writes per batch when renaming the author of stock adjustments (a batch takes 500). */
+const RENAME_BATCH_SIZE = 400;
 
 /** Ids of the distributors the account founded, from its profile and from its owner roles. */
 async function foundedDistributorIds(db, uid, profile, memberships) {
@@ -88,6 +110,72 @@ function suspendDistributor({ sdk, db, batch }, distributorId, existing) {
   }
 }
 
+/** The address invitations are tied to: lowercase, as the app stores it (`normalizeInviteEmail`). */
+async function emailOf(sdk, uid, typed) {
+  if (typed) {
+    if (!/^[^@\s]+@[^@\s]+$/.test(typed)) throw new Error(`--email "${typed}" is not an address.`);
+    return typed.trim().toLowerCase();
+  }
+  try {
+    const user = await sdk.getAuth().getUser(uid);
+    return user.email ? user.email.toLowerCase() : null;
+  } catch (error) {
+    if (isMissingAccount(error)) return null;
+    throw error;
+  }
+}
+
+/** Invitations tied to the address, and the ones the account created (both capped). */
+async function invitationsOf(db, uid, email) {
+  const [forEmail, created] = await Promise.all([
+    email === null
+      ? { docs: [] }
+      : db.collectionGroup('invites').where('email', '==', email).limit(500).get(),
+    db.collectionGroup('invites').where('createdBy', '==', uid).limit(500).get(),
+  ]);
+  return { forEmail: forEmail.docs, created: created.docs };
+}
+
+function clearInvitations({ batch, now }, invitations) {
+  const deleted = [];
+  const emptied = [];
+  for (const invite of invitations.forEmail) {
+    if (invite.data().status === 'pending') {
+      batch.delete(invite.ref);
+      deleted.push(invite.ref.path);
+    } else {
+      batch.update(invite.ref, { email: null, updatedAt: now });
+      emptied.push(invite.ref.path);
+    }
+  }
+  const renamed = invitations.created
+    .filter((invite) => typeof invite.data().invitedByName === 'string')
+    .filter((invite) => !deleted.includes(invite.ref.path));
+  for (const invite of renamed) {
+    batch.update(invite.ref, { invitedByName: DELETED_ACCOUNT_NAME });
+  }
+  return { deleted, emptied, renamed: renamed.map((invite) => invite.ref.path) };
+}
+
+/** Adjustments of the plant stock made by the account that still carry its name. */
+async function namedStockMovementsOf(db, uid) {
+  const movements = await allDocuments(
+    db.collectionGroup('stockMovements').where('authorUid', '==', uid),
+  );
+  return movements.filter((movement) => movement.data().authorName !== DELETED_ACCOUNT_NAME);
+}
+
+/** Replaces the author's name in each movement, in batches: the movement itself stays. */
+async function renameStockMovementAuthor(db, movements) {
+  for (let start = 0; start < movements.length; start += RENAME_BATCH_SIZE) {
+    const batch = db.batch();
+    for (const movement of movements.slice(start, start + RENAME_BATCH_SIZE)) {
+      batch.update(movement.ref, { authorName: DELETED_ACCOUNT_NAME });
+    }
+    await batch.commit();
+  }
+}
+
 async function deleteAuthAccount(sdk, uid) {
   try {
     await sdk.getAuth().deleteUser(uid);
@@ -102,8 +190,9 @@ async function deleteAuthAccount(sdk, uid) {
  * Deletes or anonymises everything of `uid`. With `dryRun` nothing is written and the summary
  * says what would be done. Returns the summary.
  */
-export async function deleteAccount(sdk, uid, { dryRun = false } = {}) {
+export async function deleteAccount(sdk, uid, { dryRun = false, email: typedEmail = null } = {}) {
   const db = sdk.getFirestore();
+  const email = await emailOf(sdk, uid, typedEmail);
   const profileRef = db.doc(`users/${uid}`);
   const [profile, addresses, acceptances, memberships, adminGrant] = await Promise.all([
     profileRef.get(),
@@ -113,23 +202,29 @@ export async function deleteAccount(sdk, uid, { dryRun = false } = {}) {
     db.doc(`platformAdmins/${uid}`).get(),
   ]);
   const founded = await foundedDistributorIds(db, uid, profile, memberships);
+  const invitations = await invitationsOf(db, uid, email);
+  const stockMovements = await namedStockMovementsOf(db, uid);
 
   const batch = db.batch();
   const now = sdk.FieldValue.serverTimestamp();
   const suspended = [];
   for (const distributorId of founded) {
     const base = `distributors/${distributorId}`;
-    const [publicProfile, settings] = await Promise.all([
+    const [publicProfile, settings, review] = await Promise.all([
       db.doc(base).get(),
       db.doc(`${base}/private/settings`).get(),
+      db.doc(`${base}/private/review`).get(),
     ]);
     const existing = { profile: publicProfile.exists, settings: settings.exists };
     suspendDistributor({ sdk, db, batch }, distributorId, existing);
+    if (review.exists) batch.delete(review.ref);
     suspended.push({
       distributorId,
+      reviewNoteDeleted: review.exists,
       otherActiveMembers: await otherActiveMembers(db, distributorId, uid),
     });
   }
+  const invites = clearInvitations({ batch, now }, invitations);
   for (const member of memberships.docs) {
     batch.update(member.ref, { displayName: DELETED_ACCOUNT_NAME, active: false, updatedAt: now });
   }
@@ -138,7 +233,10 @@ export async function deleteAccount(sdk, uid, { dryRun = false } = {}) {
   if (profile.exists) batch.delete(profileRef);
   if (adminGrant.exists) batch.delete(adminGrant.ref);
 
-  if (!dryRun) await batch.commit();
+  if (!dryRun) {
+    await batch.commit();
+    await renameStockMovementAuthor(db, stockMovements);
+  }
   return {
     uid,
     dryRun,
@@ -148,6 +246,11 @@ export async function deleteAccount(sdk, uid, { dryRun = false } = {}) {
     platformAdminRevoked: adminGrant.exists,
     membershipsAnonymised: memberships.docs.map((member) => member.ref.path),
     distributorsSuspended: suspended,
+    email,
+    invitationsDeleted: invites.deleted,
+    invitationsEmptied: invites.emptied,
+    invitationsRenamed: invites.renamed,
+    stockMovementsRenamed: stockMovements.map((movement) => movement.ref.path),
     authAccount: dryRun ? 'not touched (dry run)' : await deleteAuthAccount(sdk, uid),
   };
 }
@@ -164,16 +267,24 @@ function describe(summary, label) {
     ...summary.membershipsAnonymised.map((path) => `    - ${path}`),
     `  distributors suspended, unlisted and stripped of the founder's data: ${summary.distributorsSuspended.length}`,
     ...summary.distributorsSuspended.map(
-      ({ distributorId, otherActiveMembers: others }) =>
-        `    - ${distributorId} (${others} other active member(s) are left with a read-only distributor)`,
+      ({ distributorId, otherActiveMembers: others, reviewNoteDeleted }) =>
+        `    - ${distributorId} (${others} other active member(s) are left with a read-only distributor${reviewNoteDeleted ? '; note of the platform deleted' : ''})`,
     ),
+    summary.email === null
+      ? '  invitations tied to its e-mail: UNKNOWN — no sign-in account left; re-run with --email'
+      : `  waiting invitations tied to its e-mail, deleted: ${summary.invitationsDeleted.length}`,
+    ...summary.invitationsDeleted.map((path) => `    - ${path}`),
+    `  used or revoked invitations, e-mail emptied: ${summary.invitationsEmptied.length}`,
+    ...summary.invitationsEmptied.map((path) => `    - ${path}`),
+    `  invitations it created, its name replaced: ${summary.invitationsRenamed.length}`,
+    `  stock adjustments it made, its name replaced: ${summary.stockMovementsRenamed.length}`,
     `  sign-in account: ${summary.authAccount}`,
   ];
   if (!summary.dryRun) {
     lines.push(
       'Run this script again after one hour: a session that was still open could have written',
-      'a new profile, address or acceptance meanwhile. It should then report nothing left to',
-      'delete.',
+      'a new profile, address, acceptance or stock adjustment meanwhile. It should then report',
+      'nothing left to delete.',
     );
   }
   return `${lines.join('\n')}\n`;
@@ -181,7 +292,7 @@ function describe(summary, label) {
 
 async function main(argv) {
   const options = readArguments(argv, {
-    values: ['project', 'uid'],
+    values: ['project', 'uid', 'email'],
     flags: ['dry-run', 'yes-real-project'],
   });
   const target = resolveTarget({
@@ -191,7 +302,10 @@ async function main(argv) {
   // Never delete by an e-mail typed from memory: only a uid copied from the console passes.
   const uid = requireUid(options.uid);
   const sdk = await loadAdminSdk(options.project);
-  const summary = await deleteAccount(sdk, uid, { dryRun: options['dry-run'] });
+  const summary = await deleteAccount(sdk, uid, {
+    dryRun: options['dry-run'],
+    email: options.email,
+  });
   process.stdout.write(describe(summary, target.label));
 }
 

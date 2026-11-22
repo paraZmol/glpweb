@@ -21,6 +21,7 @@ import {
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
+  COMPLAINTS_BOOK_URL_MAX_LENGTH,
   DISTRIBUTOR_SEARCH_LIMIT,
   MAX_BRANDS,
   MAX_DISTRIBUTORS_PER_ACCOUNT,
@@ -197,7 +198,8 @@ describe('founding a distributor (PLAN 2.2)', () => {
     ['with the approval as text', { listingApproved: 'true' }],
     ['with an approval date while not approved', { approvedAt: serverTimestamp() }],
     ['with an approver while not approved', { approvedBy: ADMIN_UID }],
-    ['with a note written by itself', { reviewNote: 'Todo en orden.' }],
+    ['with a note written by itself', { reviewNoteAt: serverTimestamp() }],
+    ['with the text of a note in it', { reviewNote: 'Todo en orden.' }],
   ])('blocks founding one whose control document is %s', async (_case, change) => {
     const control = controlDoc(FOUNDER, change);
     await assertFails(foundDistributor(verified(env, FOUNDER), { ...NEW, control }));
@@ -276,6 +278,11 @@ describe('founding a distributor (PLAN 2.2)', () => {
     ],
     ['member with an extra field', { member: memberDoc(NEW.d, FOUNDER, 'owner', { admin: true }) }],
     ['member for another distributor', { member: memberDoc(WORLD.a.d, FOUNDER, 'owner') }],
+    // PLAN 3.2: only a member that joined through an invitation names one.
+    [
+      'member that names an invitation',
+      { member: memberDoc(NEW.d, FOUNDER, 'owner', { inviteId: 'Invite0000000000000A' }) },
+    ],
     [
       'member that names the distributor differently',
       { member: memberDoc(NEW.d, FOUNDER, 'owner', { distributorName: 'Otro Nombre' }) },
@@ -704,6 +711,9 @@ describe('/distributors/{d} — owner edit', () => {
     maxCylindersPerOrder: 5,
     brands: ['Marca Uno', 'Marca Dos'],
     priceFromCents: 3800,
+    priceFromWeightKg: 10,
+    // The longest link (PLAN §11, 2026-10-15): the heaviest edit of the profile must carry it.
+    complaintsBookUrl: `https://example.com/${'a'.repeat(COMPLAINTS_BOOK_URL_MAX_LENGTH - 20)}`,
   };
 
   const isIdentity = (field: string) => (IDENTITY_FIELDS as readonly string[]).includes(field);
