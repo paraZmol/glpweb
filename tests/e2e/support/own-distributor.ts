@@ -4,7 +4,7 @@
 import { createHash } from 'node:crypto';
 import type { SeedUser } from '../../seed/data';
 import { SEED_PRIVACY_VERSION, SEED_TERMS_VERSION } from '../../seed/data';
-import { createTestAccount, writeDocument } from './emulator-admin';
+import { createTestAccount, listedInFinder, writeDocument } from './emulator-admin';
 
 export type StaffRole = 'owner' | 'dispatcher' | 'driver';
 
@@ -74,7 +74,8 @@ function summaryOf(products: OwnProduct[]) {
 /**
  * Writes the distributor, approved and taking orders (or suspended), with its founder and the
  * staff asked for. Its id starts with "0": the finder reads the first 50 visible distributors
- * in id order, and a lane full of distributors other specs founded must not push it out.
+ * in id order, and the distributors other tests running at the same time founded must not push
+ * it out. It leaves the finder when its test ends (`listedInFinder`).
  */
 export async function ownDistributor(
   tag: string,
@@ -136,6 +137,7 @@ export async function ownDistributor(
     ...stamps,
   });
   await writeDocument(`slugs/${slug}`, { distributorId: id, createdAt: now });
+  if (status === 'active') listedInFinder(id);
   for (const [index, product] of products.entries()) {
     await writeDocument(`distributors/${id}/products/${product.id}`, {
       brand: product.brand,

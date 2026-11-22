@@ -10,6 +10,7 @@ import {
 } from '../support/actors';
 import {
   createTestAccount,
+  listedInFinder,
   readDocument,
   uniqueTag,
   writeDocument,
@@ -69,6 +70,8 @@ async function foundedOwner(actors: Actors, tag: string) {
   await signInAs(owner.page, account, '/inicio');
   await foundDistributor(owner.page, { name, slug });
   const link = await readDocument(`slugs/${slug}`);
+  // The admin may approve it: it leaves the search when the test ends.
+  listedInFinder(String(link?.distributorId));
   return { owner, name, slug, id: String(link?.distributorId) };
 }
 

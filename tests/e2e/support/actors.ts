@@ -1,5 +1,6 @@
 import { test as base, type BrowserContext, devices, type Page } from '@playwright/test';
 import type { SeedUser } from '../../seed/data';
+import { leaveTheFinderAsFound } from './emulator-admin';
 import { type SeedUserKey, signInAsSeedUser } from './sign-in';
 import { dismissStorageNotice } from './storage-notice';
 
@@ -42,7 +43,16 @@ export interface Actors {
  * and their contexts are closed when the test ends (a context opened by hand with
  * `browser.newContext()` would stay open for the next test of the worker).
  */
-export const test = base.extend<{ actors: Actors }>({
+export const test = base.extend<{ actors: Actors; finderAsFound: void }>({
+  // Every test leaves the search as it found it (testing-strategy §4): see `listedInFinder`.
+  finderAsFound: [
+    // oxlint-disable-next-line no-empty-pattern -- Playwright reads the fixtures it needs from it
+    async ({}, use) => {
+      await use();
+      await leaveTheFinderAsFound();
+    },
+    { auto: true },
+  ],
   actors: async ({ browser }, use) => {
     const contexts: BrowserContext[] = [];
     const open = async (device: Device): Promise<Actor> => {

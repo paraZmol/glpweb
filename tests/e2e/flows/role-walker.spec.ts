@@ -30,6 +30,7 @@ import { SEED_DISTRIBUTORS } from '../../seed/data';
 import { type Actors, DESKTOP, type Device, PHONE, test } from '../support/actors';
 import {
   createTestAccount,
+  listedInFinder,
   deleteDocument,
   readDocument,
   uniqueTag,
@@ -93,6 +94,8 @@ async function foundedOffice(actors: Actors, tag: string, device: Device = DESKT
   await signInAs(owner.page, account, '/inicio');
   await foundDistributor(owner.page, { name, slug });
   const link = await readDocument(`slugs/${slug}`);
+  // The admin may approve it: it leaves the search when the test ends.
+  listedInFinder(String(link?.distributorId));
   return { account, name, slug, owner, id: String(link?.distributorId) };
 }
 
