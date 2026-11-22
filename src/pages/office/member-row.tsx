@@ -4,6 +4,7 @@ import { StateChip } from '@/components/common/state-chip';
 import { ROLE_LABELS } from '@/components/layout/role-labels';
 import type { Member, MemberRole } from '@/domain/tenancy/types';
 import { ActiveConfirm, RoleEditor } from './member-row-edits';
+import { ROW_BUTTON, SOFT_ROW_TEXT } from './row-button';
 import { FOUNDER_SEAL } from './staff-copy';
 
 const SEAL = 'rounded-full px-2.5 py-1 text-[0.8125rem] font-bold whitespace-nowrap';
@@ -73,6 +74,7 @@ export function MemberRow(props: MemberRowProps) {
               type="button"
               variant="line"
               size="sm"
+              className={ROW_BUTTON}
               disabled={isLocked}
               onClick={() => setMode('role')}
             >
@@ -83,7 +85,7 @@ export function MemberRow(props: MemberRowProps) {
             type="button"
             variant={member.active ? 'quiet' : 'soft'}
             size="sm"
-            className="min-w-28"
+            className={`min-w-28 ${ROW_BUTTON} ${SOFT_ROW_TEXT}`}
             disabled={isLocked}
             onClick={() => setMode('active')}
           >

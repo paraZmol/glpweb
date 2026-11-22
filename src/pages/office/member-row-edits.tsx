@@ -4,6 +4,8 @@ import { ConfirmPanel } from '@/components/common/confirm-panel';
 import { ROLE_LABELS } from '@/components/layout/role-labels';
 import type { Member, MemberRole } from '@/domain/tenancy/types';
 import { RoleChoice } from './role-choice';
+import { ROW_BUTTON } from './row-button';
+import { ROLE_CHANGE_REACH } from './staff-copy';
 
 type EditProps = {
   member: Member;
@@ -35,14 +37,18 @@ export function RoleEditor({
           Un titular puede casi todo, como tú: personal, precios y la ficha.
         </p>
       )}
+      {/* What the panels do (PLAN 2.11): /central and /reparto follow the member document live,
+          and any other screen reads it again on the way into a panel. */}
+      <p className="text-sm text-muted-foreground">{ROLE_CHANGE_REACH}</p>
       <div className="flex flex-wrap justify-end gap-2">
-        <Button type="button" variant="line" size="sm" onClick={onCancel}>
+        <Button type="button" variant="line" size="sm" className={ROW_BUTTON} onClick={onCancel}>
           Cancelar
         </Button>
         <Button
           type="button"
           variant="ink"
           size="sm"
+          className={ROW_BUTTON}
           disabled={role === member.role || (isLocked && !isBusy)}
           loading={isBusy}
           loadingLabel="Guardando el rol…"
@@ -71,13 +77,14 @@ export function ActiveConfirm({
       title={member.active ? `¿Desactivar a ${name}?` : `¿Reactivar a ${name}?`}
       actions={
         <>
-          <Button type="button" variant="line" size="sm" onClick={onCancel}>
+          <Button type="button" variant="line" size="sm" className={ROW_BUTTON} onClick={onCancel}>
             Volver
           </Button>
           <Button
             type="button"
             variant="ink"
             size="sm"
+            className={ROW_BUTTON}
             disabled={isLocked && !isBusy}
             loading={isBusy}
             loadingLabel="Guardando…"

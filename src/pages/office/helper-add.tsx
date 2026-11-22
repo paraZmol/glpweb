@@ -6,6 +6,7 @@ import { TextField } from '@/components/common/text-field';
 import { HELPER_NAME_MAX_LENGTH } from '@/domain/staff/constants';
 import { ICON_STROKE } from '@/lib/icons';
 import { cn } from '@/lib/utils';
+import { SOFT_ROW_TEXT } from './row-button';
 
 /** Says why a name was refused, under its field. */
 export type OnFieldError = (message: string) => void;
@@ -55,6 +56,7 @@ export function AddHelper({ isLocked, onAdd }: AddHelperProps) {
       <Button
         type="submit"
         variant="soft"
+        className={SOFT_ROW_TEXT}
         disabled={isLocked && !isAdding}
         loading={isAdding}
         loadingLabel="Añadiendo…"

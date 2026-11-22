@@ -6,6 +6,7 @@ import { INVITE_TTL_DAYS } from '@/domain/staff/constants';
 import type { MemberRole } from '@/domain/tenancy/types';
 import { ICON_STROKE } from '@/lib/icons';
 import { InviteShare } from './invite-share';
+import { ROW_BUTTON } from './row-button';
 
 type InviteReadyProps = {
   link: string;
@@ -16,7 +17,7 @@ type InviteReadyProps = {
 };
 
 /**
- * Right after creating an invitation: the link, ready to send (PLAN 3.2). WhatsApp is the main
+ * Right after creating an invitation: the link, ready to send (PLAN 3.2). Sharing it is the main
  * action here; the link is also in sight, to select it by hand.
  */
 export function InviteReady({ link, role, email, distributorName, onDone }: InviteReadyProps) {
@@ -40,7 +41,7 @@ export function InviteReady({ link, role, email, distributorName, onDone }: Invi
         en {INVITE_TTL_DAYS} días.{' '}
         {email
           ? `Solo la puede usar ${email}.`
-          : 'La puede usar cualquier cuenta de Google que lo tenga.'}
+          : 'Sin correo: la puede usar quien tenga el enlace.'}
       </p>
       <div>
         <label htmlFor={linkId} className="mb-1.5 block text-[0.9375rem] font-semibold">
@@ -60,9 +61,16 @@ export function InviteReady({ link, role, email, distributorName, onDone }: Invi
         role={role}
         emphasis="primary"
         size="md"
+        withHint
         className="flex-col *:w-full"
       />
-      <Button type="button" variant="quiet" size="sm" className="self-center" onClick={onDone}>
+      <Button
+        type="button"
+        variant="quiet"
+        size="sm"
+        className={`self-center ${ROW_BUTTON}`}
+        onClick={onDone}
+      >
         Listo
       </Button>
     </div>

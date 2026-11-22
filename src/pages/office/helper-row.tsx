@@ -5,6 +5,7 @@ import { TextField } from '@/components/common/text-field';
 import { HELPER_NAME_MAX_LENGTH } from '@/domain/staff/constants';
 import type { Helper } from '@/domain/staff/helper';
 import type { OnFieldError } from './helper-add';
+import { ROW_BUTTON, SOFT_ROW_TEXT } from './row-button';
 
 type HelperRowProps = {
   helper: Helper;
@@ -55,6 +56,7 @@ export function HelperRow({ helper, controls }: HelperRowProps) {
             type="submit"
             variant="ink"
             size="sm"
+            className={ROW_BUTTON}
             disabled={controls.isLocked && controls.busy !== 'name'}
             loading={controls.busy === 'name'}
             loadingLabel="Guardando…"
@@ -82,6 +84,7 @@ export function HelperRow({ helper, controls }: HelperRowProps) {
             type="button"
             variant="line"
             size="sm"
+            className={ROW_BUTTON}
             disabled={controls.isLocked}
             onClick={() => edit(helper.name)}
           >
@@ -91,7 +94,7 @@ export function HelperRow({ helper, controls }: HelperRowProps) {
             type="button"
             variant={helper.active ? 'quiet' : 'soft'}
             size="sm"
-            className="min-w-28"
+            className={`min-w-28 ${ROW_BUTTON} ${SOFT_ROW_TEXT}`}
             disabled={controls.isLocked && controls.busy !== 'active'}
             loading={controls.busy === 'active'}
             loadingLabel="Guardando…"
