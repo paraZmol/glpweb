@@ -25,6 +25,7 @@ const DENIED_NOTICE = 'Esa sección no está disponible para tu cuenta. Te lleva
 const TERMS_BOX = /Acepto los Términos y condiciones/;
 const PRIVACY_BOX = /Leí la Política de privacidad/;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const NOT_FOR_THIS_ACCOUNT = 'Esta invitación no es para esta cuenta.';
 
 const button = (page: Page | Locator, name: string | RegExp, exact = false) =>
   page.getByRole('button', { name, exact });
@@ -72,15 +73,18 @@ test('the owner invites a driver by link; a new person signs in, accepts and joi
   await button(owner.page, 'Invitar a alguien').click();
   await expect(
     owner.page.getByText(
-      'Recomendado: así solo esa cuenta de Google puede usarla. Escríbelo solo si la persona sabe que la invitas.',
+      'Recomendado. Escribe el correo de Google que usa la persona: solo esa cuenta podrá unirse. Si no sabes su correo, déjalo vacío y envíale el enlace: lo podrá usar quien lo tenga. Escribe un correo solo si esa persona sabe que la invitas.',
     ),
   ).toBeVisible();
   await button(owner.page, 'Crear invitación').click();
   await expect(owner.page.getByRole('heading', { name: 'Invitación lista.' })).toBeVisible();
   const whatsapp = owner.page.getByRole('link', {
-    name: 'Compartir por WhatsApp (se abre en otra pestaña)',
+    name: 'Compartir por WhatsApp (abre WhatsApp en otra pestaña)',
     exact: true,
   });
+  await expect(
+    owner.page.getByText('Se abrirá WhatsApp: elige el chat de la persona y envía.'),
+  ).toBeVisible();
   const message = new URL((await whatsapp.getAttribute('href')) ?? '').searchParams.get('text');
   await button(owner.page, 'Copiar enlace', true).click();
   await expect(
@@ -94,6 +98,10 @@ test('the owner invites a driver by link; a new person signs in, accepts and joi
   expect(message).toContain(`${A.name} te invita a Hornilla como repartidor.`);
   expect(message).toContain(copied);
   await button(owner.page, 'Listo').click();
+  // Among the others that wait, it says when it was made (ux-reviewer, 2026-11-21).
+  await expect(
+    owner.page.getByRole('article', { name: /^Invitación de Reparto, creada hoy, / }).first(),
+  ).toContainText('Sin correo: la puede usar quien tenga el enlace');
 
   // Somebody Hornilla has never seen opens it on a phone, signed out.
   const newcomer: E2eIdentity = {
@@ -104,7 +112,9 @@ test('the owner invites a driver by link; a new person signs in, accepts and joi
   await driver.page.goto(`${link.pathname}${link.hash}`);
   await expect(driver.page).toHaveURL(/\/ingresar\?desde=%2Funirme#d=/);
   await expect(
-    driver.page.getByText('Ingresa con tu cuenta de Google para ver tu invitación.'),
+    driver.page.getByText(
+      'Ingresa con la cuenta de Google con la que te invitaron: así vemos tu invitación.',
+    ),
   ).toBeVisible();
   await signInHere(driver.page, newcomer);
   await expect(driver.page).toHaveURL(/\/aceptar-terminos$/);
@@ -114,6 +124,12 @@ test('the owner invites a driver by link; a new person signs in, accepts and joi
   await expect(driver.page).toHaveURL(/\/unirme$/);
   // PLAN §11 (2026-10-15): who invites travels with the invitation.
   await expect(driver.page.getByText(SEED_USERS.ownerA.displayName, { exact: true })).toBeVisible();
+  // The keyboard starts at the invitation, and "Saltar al contenido" does not lose it.
+  await expect(heading(driver.page)).toBeFocused();
+  await driver.page.getByRole('link', { name: 'Saltar al contenido' }).focus();
+  await driver.page.keyboard.press('Enter');
+  await expect(heading(driver.page)).toHaveText(`${A.name} te invita como repartidor.`);
+  await expect(driver.page.getByText('¿No es tu cuenta?', { exact: false })).toBeVisible();
   await button(driver.page, `Unirme a ${A.name}`).click();
   await expect(driver.page).toHaveURL(/\/reparto$/);
   await expect(driver.page.getByText(`Te uniste a ${A.name} como Reparto.`)).toBeVisible();
@@ -161,10 +177,16 @@ test('an invitation tied to an address refuses another account and lets that one
   await signInAs(wrong.page, other, '/inicio');
   await wrong.page.goto(path);
   // PLAN §11 (2026-10-16): another account cannot even read it, nor tell it from a missing one.
-  await expect(heading(wrong.page)).toHaveText('Esta invitación es para otra cuenta o no existe.');
+  await expect(heading(wrong.page)).toHaveText(NOT_FOR_THIS_ACCOUNT);
+  await expect(heading(wrong.page)).toBeFocused();
   await expect(
-    wrong.page.getByText(`Ahora estás con ${other.email}.`, { exact: false }),
+    wrong.page.getByText(
+      `Estás con ${other.email}. Si te invitaron con otro correo, ingresa con esa cuenta.`,
+      { exact: false },
+    ),
   ).toBeVisible();
+  await expect(button(wrong.page, 'Ingresar con otra cuenta de Google')).toBeVisible();
+  await expect(wrong.page.getByRole('link', { name: 'Ir a mi inicio' })).toBeVisible();
   await expect(button(wrong.page, /^Unirme/)).toHaveCount(0);
 
   const right = await actors.open(DESKTOP);
@@ -235,17 +257,13 @@ test('expired, withdrawn, used and broken invitations say so; a member is told i
   );
   // Tied to another address, it is not even readable to this account (PLAN §11, 2026-10-16).
   await visitor.page.goto(withdrawn);
-  await expect(heading(visitor.page)).toHaveText(
-    'Esta invitación es para otra cuenta o no existe.',
-  );
+  await expect(heading(visitor.page)).toHaveText(NOT_FOR_THIS_ACCOUNT);
 
   // A link cut short, and a code nobody created.
   await visitor.page.goto('/unirme#d=seed-dist-a&c=corto');
   await expect(heading(visitor.page)).toHaveText('Este enlace de invitación no está completo.');
   await visitor.page.goto(linkTo(codeOf('Nadie', tag)));
-  await expect(heading(visitor.page)).toHaveText(
-    'Esta invitación es para otra cuenta o no existe.',
-  );
+  await expect(heading(visitor.page)).toHaveText(NOT_FOR_THIS_ACCOUNT);
 
   // Somebody of the staff opens a fresh one: it is a member already.
   const fresh = await invite(owner, 'Reparto');
