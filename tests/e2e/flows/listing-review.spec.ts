@@ -9,7 +9,12 @@ import {
   test,
 } from '../support/actors';
 import { SEED_DISTRIBUTORS } from '../../seed/data';
-import { createTestAccount, readDocument, uniqueTag } from '../support/emulator-admin';
+import {
+  createTestAccount,
+  listedInFinder,
+  readDocument,
+  uniqueTag,
+} from '../support/emulator-admin';
 import { foundDistributor, FOUNDING_PLANT, FOUNDING_VERIFICATION } from '../support/founding';
 import { signInAs } from '../support/sign-in';
 
@@ -59,6 +64,8 @@ async function foundedListing(actors: Actors, tag: string): Promise<Listing> {
   await signInAs(owner.page, account, '/inicio');
   await foundDistributor(owner.page, { name, slug });
   const link = await readDocument(`slugs/${slug}`);
+  // The admin may approve it: it leaves the search when the test ends.
+  listedInFinder(String(link?.distributorId));
   const admin = await actors.openSeed('admin');
   const visitor = await actors.open(PHONE);
   // Every visit of the visitor starts without a remembered point: the search is asked for anew.

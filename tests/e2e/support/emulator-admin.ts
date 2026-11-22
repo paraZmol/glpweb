@@ -87,6 +87,42 @@ export async function writeDocument(path: string, data: Record<string, unknown>)
   await mustSucceed(response, `Firestore emulator PATCH ${path}`);
 }
 
+// ------------------------------------------------------------------------------- Finder ---
+
+/** Distributors the running test made visible in the search (approved and taking orders). */
+const listedByThisTest = new Set<string>();
+
+/**
+ * Marks a distributor of the running test as visible in the search, so it leaves the search when
+ * the test ends (`leaveTheFinderAsFound`, run by the `test` of `actors.ts`). The search reads
+ * the first 50 visible distributors in id order (PLAN 2.11, "Sin cerrar" 3): distributors that
+ * stayed visible after their test pushed the seeded ones out of it after a few runs on the same
+ * emulators, and every spec that searches started to fail.
+ */
+export function listedInFinder(distributorId: string): void {
+  listedByThisTest.add(distributorId);
+}
+
+/**
+ * Takes out of the search every distributor the test that just ended listed in it: it stops
+ * taking orders, the way the trial sweep leaves one. A distributor the test deleted stays
+ * deleted (the write needs the document to exist).
+ */
+export async function leaveTheFinderAsFound(): Promise<void> {
+  const ids = [...listedByThisTest];
+  listedByThisTest.clear();
+  await Promise.all(
+    ids.map(async (id) => {
+      const url = `${documentUrl(`distributors/${id}`)}?updateMask.fieldPaths=acceptingOrders&currentDocument.exists=true`;
+      const response = await adminRequest(url, 'PATCH', {
+        fields: encodeFields({ acceptingOrders: false }),
+      });
+      if (response.ok || response.status === NOT_FOUND) return;
+      throw new Error(`Firestore emulator PATCH distributors/${id} → ${response.status}`);
+    }),
+  );
+}
+
 /** Removes a document a test wrote for itself. Nothing happens when it is not there. */
 export async function deleteDocument(path: string): Promise<void> {
   const response = await adminRequest(documentUrl(path), 'DELETE');

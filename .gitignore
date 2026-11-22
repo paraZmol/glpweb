@@ -34,3 +34,6 @@ docs/design/propuestas/*/capturas/
 
 # Agent worktrees
 .claude/worktrees/
+
+# TypeScript incremental build info
+*.tsbuildinfo

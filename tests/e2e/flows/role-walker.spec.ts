@@ -30,6 +30,7 @@ import { SEED_DISTRIBUTORS } from '../../seed/data';
 import { type Actors, DESKTOP, type Device, PHONE, test } from '../support/actors';
 import {
   createTestAccount,
+  listedInFinder,
   deleteDocument,
   readDocument,
   uniqueTag,
@@ -93,6 +94,8 @@ async function foundedOffice(actors: Actors, tag: string, device: Device = DESKT
   await signInAs(owner.page, account, '/inicio');
   await foundDistributor(owner.page, { name, slug });
   const link = await readDocument(`slugs/${slug}`);
+  // The admin may approve it: it leaves the search when the test ends.
+  listedInFinder(String(link?.distributorId));
   return { account, name, slug, owner, id: String(link?.distributorId) };
 }
 
@@ -408,10 +411,16 @@ test.describe('second pass: the review and the office, live', () => {
       const question = owner.page.getByRole('group', { name: '¿Guardar y volver a revisión?' });
       await expect(question).toBeInViewport({ ratio: 1 });
       await expect(question).toBeFocused();
-      const box = await question.boundingBox();
-      expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(
-        await clearBottomOf(owner.page),
-      );
+      // The question scrolls itself into view smoothly: it is measured where the scroll leaves
+      // it, not halfway (a box read mid-scroll sat 4 px under the bar).
+      const clearBottom = await clearBottomOf(owner.page);
+      const bottomOfQuestion = async () => {
+        const box = await question.boundingBox();
+        return (box?.y ?? 0) + (box?.height ?? 0);
+      };
+      await expect
+        .poll(bottomOfQuestion, { message: 'the question ends under the bottom bar' })
+        .toBeLessThanOrEqual(clearBottom);
       // And it still answers: the listing goes back to review.
       await confirm.click();
       await expect(owner.page).toHaveURL(/\/central$/);
