@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { accountOf } from '../../../tests/support/account-fixtures';
 import { count, renderStatic, tags, textOf } from '../../../tests/support/render-static';
-import { FocusShell } from '../../components/layout/focus-shell';
 import {
   AlreadyMemberError,
   InviteExpiredError,
@@ -16,6 +15,7 @@ import { JoinPage } from './join';
 import { JoinCard } from './join-card';
 import { BROKEN_LINK } from './join-copy';
 import { JoinRefused } from './join-stop';
+import { JoinShell } from './join-switch';
 
 // Invented data: the repository is public.
 const CREATED = new Date('2026-10-15T15:00:00Z');
@@ -50,6 +50,7 @@ describe('the screen an invitation link opens', () => {
     const text = textOf(
       renderStatic(
         <JoinCard
+          linkHash=""
           invite={INVITE}
           you={{ name: 'Persona Demo', email: 'persona@example.com' }}
           isRunning={false}
@@ -69,6 +70,7 @@ describe('the screen an invitation link opens', () => {
   it('says who invites and wears the colour of the distributor', () => {
     const html = renderStatic(
       <JoinCard
+        linkHash=""
         invite={{ ...INVITE, invitedByName: 'A. Dueña', brandColor: '#0a7cff' }}
         you={{ name: 'Persona Demo', email: null }}
         isRunning={false}
@@ -84,6 +86,7 @@ describe('the screen an invitation link opens', () => {
   it('leaves both out for an invitation older than the copies', () => {
     const html = renderStatic(
       <JoinCard
+        linkHash=""
         invite={INVITE}
         you={{ name: 'Persona Demo', email: null }}
         isRunning={false}
@@ -100,6 +103,7 @@ describe('the screen an invitation link opens', () => {
     const text = textOf(
       renderStatic(
         <JoinCard
+          linkHash=""
           invite={INVITE}
           you={{ name: 'P', email: null }}
           isRunning={false}
@@ -113,7 +117,6 @@ describe('the screen an invitation link opens', () => {
   });
 
   it.each([
-    [new InviteNotFoundError(), 'Esta invitación es para otra cuenta o no existe.'],
     [new InviteExpiredError(), 'Esta invitación venció.'],
     [new InviteUsedError(), 'Esta invitación ya se usó.'],
     [new InviteRevokedError(), 'Esta invitación fue anulada.'],
@@ -129,12 +132,41 @@ describe('the screen an invitation link opens', () => {
     expect(text).not.toContain('Unirme');
   });
 
-  it('tells an invitation for another account which account is in, and how to change it', () => {
-    const text = refused(new InviteForAnotherAccountError());
+  // PLAN §11 (2026-10-16): tied to another address or missing, it cannot tell which.
+  it.each([new InviteForAnotherAccountError(), new InviteNotFoundError()])(
+    'tells an invitation it cannot read which account is in, and how to change it (%s)',
+    (refusal) => {
+      const text = refused(refusal);
 
-    expect(text).toContain('Esta invitación es para otra cuenta de Google.');
-    expect(text).toContain('Ahora estás con persona@example.com. Cierra sesión');
-    expect(text).toContain('Cerrar sesión');
+      expect(text).toContain('Esta invitación no es para esta cuenta.');
+      expect(text).toContain(
+        'Estás con persona@example.com. Si te invitaron con otro correo, ingresa con esa cuenta. Si no, pide que te envíen la invitación otra vez.',
+      );
+      expect(text).toContain('Ingresar con otra cuenta de Google');
+      expect(text).toContain('Ir a mi inicio');
+      expect(text).not.toContain('Unirme');
+    },
+  );
+
+  it('says the same for another account and for a missing invitation', () => {
+    expect(refused(new InviteNotFoundError())).toBe(refused(new InviteForAnotherAccountError()));
+  });
+
+  it('makes entering with another account the main way out, and home the quiet one', () => {
+    const html = renderStatic(
+      <JoinRefused
+        refusal={new InviteNotFoundError()}
+        distributorName={null}
+        email="persona@example.com"
+        linkHash=""
+      />,
+    );
+    const switchButton = tags(html, 'button').find((tag) => tag.includes('bg-foreground'));
+    const home = tags(html, 'a').find((tag) => tag.includes('href="/app"'));
+
+    expect(switchButton).toBeDefined();
+    expect(home).toContain('underline');
+    expect(home).not.toContain('bg-foreground');
   });
 
   // PLAN §11 (2026-10-16): the address of somebody else, said why it is there.
@@ -143,6 +175,7 @@ describe('the screen an invitation link opens', () => {
     const card = (invite: typeof INVITE) =>
       renderStatic(
         <JoinCard
+          linkHash=""
           invite={invite}
           you={{ name: 'P', email: 'persona@example.com' }}
           isRunning={false}
@@ -157,18 +190,58 @@ describe('the screen an invitation link opens', () => {
     expect(textOf(card({ ...INVITE, email: null }))).not.toContain('lleva tu correo');
   });
 
-  it('offers another account on an invitation it cannot read', () => {
-    expect(refused(new InviteNotFoundError())).toContain('Cerrar sesión');
+  it('offers another account under "Entras como"', () => {
+    const text = textOf(
+      renderStatic(
+        <JoinCard
+          invite={INVITE}
+          linkHash=""
+          you={{ name: 'P', email: 'persona@example.com' }}
+          isRunning={false}
+          isOnline
+          onJoin={() => {}}
+        />,
+      ),
+    );
+
+    expect(text).toMatch(/persona@example\.com\s*¿No es tu cuenta\? Cambiar de cuenta/);
+  });
+
+  it('puts the heading of the screen in focus reach, without an outline of its own', () => {
+    const html = renderStatic(
+      <JoinCard
+        invite={INVITE}
+        linkHash=""
+        you={{ name: 'P', email: null }}
+        isRunning={false}
+        isOnline
+        onJoin={() => {}}
+      />,
+    );
+
+    expect(tags(html, 'h1')[0]).toContain('tabindex="-1"');
   });
 
   it('says that a link without its fragment is not complete', () => {
     const html = renderStatic(<JoinPage />, {
       path: ROUTES.join,
-      shell: <FocusShell />,
+      shell: <JoinShell />,
       account: accountOf(),
     });
 
     expect(textOf(html)).toContain(BROKEN_LINK.title);
     expect(textOf(html)).not.toContain('Qué pasa al unirte.');
+  });
+
+  // Its frame says what its way out does: sign out and come back with another account.
+  it('offers "Cambiar de cuenta" in its frame instead of "Salir"', () => {
+    const html = renderStatic(<JoinPage />, {
+      path: ROUTES.join,
+      shell: <JoinShell />,
+      account: accountOf(),
+    });
+
+    expect(textOf(html)).toContain('Cambiar de cuenta');
+    expect(textOf(html)).not.toContain('Salir');
   });
 });

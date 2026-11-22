@@ -13,6 +13,8 @@ import { RETURN_PARAM, ROUTES, safeReturnPath, withFragment } from '@/lib/routes
 import { useOnlineStatus } from '@/lib/use-online-status';
 
 const OFFLINE_TEXT = 'Sin conexión: para ingresar necesitas internet.';
+const INVITED_NOTICE =
+  'Ingresa con la cuenta de Google con la que te invitaron: así vemos tu invitación.';
 
 function cameFromGuard(state: unknown): boolean {
   return typeof state === 'object' && state !== null && 'notice' in state
@@ -70,11 +72,11 @@ function EntryPage({ mode }: { mode: EntryMode }) {
       }
       lead={copy.lead}
     >
-      {cameFromGuard(location.state) && (
+      {/* On the way to an invitation it is said always: also after "Cambiar de cuenta" there,
+          which comes back here without the guard, the account is what matters. */}
+      {(isInvited || cameFromGuard(location.state)) && (
         <InlineAlert tone="info" className="mb-6">
-          {isInvited
-            ? 'Ingresa con tu cuenta de Google para ver tu invitación.'
-            : 'Ingresa para continuar.'}
+          {isInvited ? INVITED_NOTICE : 'Ingresa para continuar.'}
         </InlineAlert>
       )}
       <div className="flex flex-col gap-5">

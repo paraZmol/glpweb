@@ -1009,7 +1009,8 @@ test.describe('fourth pass: catalogue and staff', () => {
 
   // BAJO. "Esta invitación es para otra cuenta de Google" offers "Cerrar sesión"; after it the
   // person lands on the home page and the link is lost: it has to go back to the chat and open
-  // it again to enter with the right account.
+  // it again to enter with the right account. Since 2026-11-21 the way on is the main button,
+  // "Ingresar con otra cuenta de Google", and the sign-in says which account to use.
   test('signing out from an invitation for another account leads back to that invitation', async ({
     actors,
   }, testInfo) => {
@@ -1022,11 +1023,40 @@ test.describe('fourth pass: catalogue and staff', () => {
     await signInAs(person.page, wrong, '/inicio');
     await person.page.goto(path);
     // PLAN §11 (2026-10-16): it cannot read it, and says so without telling which case it is.
-    await expect(
-      person.page.getByText('Esta invitación es para otra cuenta o no existe.'),
-    ).toBeVisible();
-    await person.page.getByRole('button', { name: 'Cerrar sesión' }).click();
+    await expect(person.page.getByText('Esta invitación no es para esta cuenta.')).toBeVisible();
+    await person.page.getByRole('button', { name: 'Ingresar con otra cuenta de Google' }).click();
 
     await expect(person.page).toHaveURL(/\/ingresar\?desde=%2Funirme#d=/);
+    await expect(
+      person.page.getByText(
+        'Ingresa con la cuenta de Google con la que te invitaron: así vemos tu invitación.',
+      ),
+    ).toBeVisible();
+  });
+
+  // ux-reviewer (2026-11-21): the frame of /unirme said "Salir" and took the person to its
+  // account; what it needs there is to come back with another account.
+  test('"Cambiar de cuenta" from a usable invitation leads back to it', async ({
+    actors,
+  }, testInfo) => {
+    const tag = uniqueTag(testInfo);
+    const { owner } = await foundedOffice(actors, tag);
+    const someone = await createTestAccount(`${tag}-someone`);
+    const path = await inviteFromStaff(owner.page, 'Reparto', '');
+    const person = await actors.open(PHONE);
+    await signInAs(person.page, someone, '/inicio');
+    await person.page.goto(path);
+    await expect(person.page.getByText('¿No es tu cuenta?', { exact: false })).toBeVisible();
+    await expect(person.page.getByRole('link', { name: 'Salir' })).toHaveCount(0);
+    await person.page
+      .getByRole('banner')
+      .getByRole('button', { name: 'Cambiar de cuenta' })
+      .click();
+
+    // The same invitation, its code still in the fragment (never in `desde`).
+    await expect(person.page).toHaveURL(
+      (url) => url.pathname === '/ingresar' && url.hash === path.slice('/unirme'.length),
+    );
+    await expect(person.page).toHaveURL(/\?desde=%2Funirme#/);
   });
 });

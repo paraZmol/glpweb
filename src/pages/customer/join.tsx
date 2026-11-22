@@ -21,6 +21,7 @@ import { useOnlineStatus } from '@/lib/use-online-status';
 import { JoinCard } from './join-card';
 import { JoinFrame, JoinSkeleton } from './join-frame';
 import { isInvitationRefusal } from './join-copy';
+import { useKeptInviteHash } from './join-link';
 import { BrokenLink, JoinRefused } from './join-stop';
 
 /** Why the account cannot use the invitation as it stands, or null when it can. */
@@ -41,10 +42,7 @@ function refusalOf(invite: Invite | null, member: Member | undefined, joiner: Jo
 export function JoinPage() {
   usePageTitle('Invitación');
   const { hash } = useLocation();
-  // The link stays in memory once the address bar no longer shows it; another link opened in
-  // the same tab replaces it.
-  const [linkHash, setLinkHash] = useState(hash);
-  if (hash !== '' && hash !== linkHash) setLinkHash(hash);
+  const linkHash = useKeptInviteHash();
   const ref = useMemo(() => parseInviteFragment(linkHash), [linkHash]);
   useEffect(() => {
     if (hash !== '') dropAddressFragment();
@@ -130,6 +128,7 @@ export function JoinPage() {
     <JoinFrame>
       <JoinCard
         invite={found}
+        linkHash={linkHash}
         you={{ name: profile?.displayName ?? session.displayName ?? '', email: session.email }}
         isRunning={isRunning}
         isOnline={isOnline}

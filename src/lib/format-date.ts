@@ -22,3 +22,28 @@ export function formatDate(date: Date, timeZone: string): string {
     timeZone,
   }).format(date);
 }
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** "6:29 p. m.". */
+export function formatTime(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat(LOCALE, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone,
+  }).format(date);
+}
+
+/** The calendar day of `date` where the business is, as `YYYY-MM-DD`. */
+function dayKeyOf(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone }).format(date);
+}
+
+/** "hoy" or "ayer" when `date` falls on that day of the business on `now`; null before. */
+export function relativeDayOf(date: Date, now: Date, timeZone: string): 'hoy' | 'ayer' | null {
+  const day = dayKeyOf(date, timeZone);
+  if (day === dayKeyOf(now, timeZone)) return 'hoy';
+  if (day === dayKeyOf(new Date(now.getTime() - MS_PER_DAY), timeZone)) return 'ayer';
+  return null;
+}

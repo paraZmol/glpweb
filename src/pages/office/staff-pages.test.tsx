@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   accountOf,
   distributorOf,
@@ -14,12 +14,21 @@ import type { Member } from '../../domain/tenancy/types';
 import { ROUTES } from '../../lib/routes';
 import { HelperRow } from './helper-row';
 import { InviteForm } from './invite-form';
+import { InviteReady } from './invite-ready';
 import { InviteRow } from './invite-row';
 import { ListingStatus, NOTE_ELSEWHERE } from './listing-status';
 import { MemberRow, type MemberRowProps } from './member-row';
+import { RoleEditor } from './member-row-edits';
 import { SetupChecklist } from './setup-checklist';
 import { StaffPage } from './staff';
-import { EMAIL_RECOMMENDED, FOUNDER_SEAL, OWNERS_BY_FOUNDER, PLAN_READ_ONLY } from './staff-copy';
+import {
+  ANY_ACCOUNT,
+  EMAIL_RECOMMENDED,
+  FOUNDER_SEAL,
+  OWNERS_BY_FOUNDER,
+  PLAN_READ_ONLY,
+  ROLE_CHANGE_REACH,
+} from './staff-copy';
 
 // Invented data: the repository is public.
 const CREATED = new Date('2026-10-15T15:00:00Z');
@@ -185,11 +194,33 @@ describe('one invitation that waits', () => {
     const whatsapp = hrefs(html).find((href) => href?.startsWith('https://wa.me/'));
 
     expect(textOf(html)).toMatch(/Vence el 22 oct.? 2026/);
-    expect(textOf(html)).toContain('Cualquier cuenta de Google con el enlace');
+    expect(textOf(html)).toContain('Sin correo: la puede usar quien tenga el enlace');
+    expect(textOf(html)).toContain(
+      'Compartir por WhatsApp de Reparto (abre WhatsApp en otra pestaña)',
+    );
     expect(textOf(html)).toContain('Copiar enlace');
     expect(textOf(html)).toContain('Anular');
     expect(new URL(whatsapp?.replaceAll('&amp;', '&') ?? '').searchParams.get('text')).toContain(
       LINK,
+    );
+  });
+
+  // Two that wait for the same role must be told apart (ux-reviewer, 2026-11-21).
+  it('says when it was created, before until when it works', () => {
+    const today = textOf(inviteRow(new Date('2026-10-15T20:00:00Z')));
+    const yesterday = textOf(inviteRow(new Date('2026-10-16T15:00:00Z')));
+    const older = textOf(inviteRow(new Date('2026-10-19T15:00:00Z')));
+
+    expect(today).toMatch(/Creada hoy, 10:00 a\. m\.\s*Vence el 22 oct/);
+    expect(yesterday).toContain('Creada ayer, 10:00 a. m.');
+    expect(older).toMatch(/Creada el 15 oct\.? 2026, 10:00 a\. m\./);
+  });
+
+  it('names itself with its role and when it was created', () => {
+    const html = inviteRow(new Date('2026-10-15T20:00:00Z'));
+
+    expect(tags(html, 'article')[0]).toMatch(
+      /aria-label="Invitación de Reparto, creada hoy, 10:00\sa\.\sm\."/,
     );
   });
 
@@ -209,6 +240,57 @@ describe('one invitation that waits', () => {
 
     expect(text).not.toContain('Copiar enlace');
     expect(text).toContain('Anular');
+  });
+});
+
+describe('sharing an invitation', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const ready = () =>
+    renderStatic(
+      <InviteReady
+        link={LINK}
+        role="driver"
+        email={null}
+        distributorName="Gas Demo Norte"
+        onDone={() => {}}
+      />,
+    );
+
+  it('says WhatsApp opens, and what to do there, when it goes through WhatsApp', () => {
+    const text = textOf(ready());
+
+    expect(text).toContain('Compartir por WhatsApp');
+    expect(text).toContain('Se abrirá WhatsApp: elige el chat de la persona y envía.');
+    expect(text).toContain(`${ANY_ACCOUNT}.`);
+  });
+
+  it('calls it "Compartir enlace" where the device has its own share sheet', () => {
+    vi.stubGlobal('navigator', { share: () => Promise.resolve(), canShare: () => true });
+    const html = ready();
+
+    expect(textOf(html)).toContain('Compartir enlace');
+    expect(textOf(html)).not.toContain('WhatsApp');
+    expect(hrefs(html).some((href) => href?.startsWith('https://wa.me/'))).toBe(false);
+  });
+});
+
+describe('changing the role of a person', () => {
+  it('says what happens to the session it has open', () => {
+    const text = textOf(
+      renderStatic(
+        <RoleEditor
+          member={person()}
+          roles={['dispatcher', 'driver']}
+          isLocked={false}
+          isBusy={false}
+          onCancel={() => {}}
+          onSave={() => {}}
+        />,
+      ),
+    );
+
+    expect(text).toContain(ROLE_CHANGE_REACH);
   });
 });
 
