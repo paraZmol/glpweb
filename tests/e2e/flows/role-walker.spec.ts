@@ -411,10 +411,16 @@ test.describe('second pass: the review and the office, live', () => {
       const question = owner.page.getByRole('group', { name: '¿Guardar y volver a revisión?' });
       await expect(question).toBeInViewport({ ratio: 1 });
       await expect(question).toBeFocused();
-      const box = await question.boundingBox();
-      expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(
-        await clearBottomOf(owner.page),
-      );
+      // The question scrolls itself into view smoothly: it is measured where the scroll leaves
+      // it, not halfway (a box read mid-scroll sat 4 px under the bar).
+      const clearBottom = await clearBottomOf(owner.page);
+      const bottomOfQuestion = async () => {
+        const box = await question.boundingBox();
+        return (box?.y ?? 0) + (box?.height ?? 0);
+      };
+      await expect
+        .poll(bottomOfQuestion, { message: 'the question ends under the bottom bar' })
+        .toBeLessThanOrEqual(clearBottom);
       // And it still answers: the listing goes back to review.
       await confirm.click();
       await expect(owner.page).toHaveURL(/\/central$/);
