@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { SEED_DISTRIBUTORS, SEED_INVITE_CODE, SEED_USERS } from '../../seed/data';
+import { SEED_DISTRIBUTORS, SEED_USERS } from '../../seed/data';
 import { type Actor, DESKTOP, PHONE, runOncePerActorDevices, test } from '../support/actors';
 import {
   createTestAccount,
@@ -95,11 +95,10 @@ test('the owner invites a driver by link; a new person signs in, accepts and joi
   expect(message).toContain(copied);
   await button(owner.page, 'Listo').click();
 
-  // Somebody Hornilla has never seen opens it on a phone, signed out.
-  const newcomer: E2eIdentity = {
-    email: `invitada-${tag}@example.com`,
-    displayName: 'S. Invitada',
-  };
+  // Somebody Hornilla has never seen opens it on a phone, signed out. Its name is its own: the
+  // staff of seeded A keeps whoever joined it in the earlier runs of this test.
+  const name = `S. Invitada ${tag.slice(-8)}`;
+  const newcomer: E2eIdentity = { email: `invitada-${tag}@example.com`, displayName: name };
   const driver = await actors.open(PHONE);
   await driver.page.goto(`${link.pathname}${link.hash}`);
   await expect(driver.page).toHaveURL(/\/ingresar\?desde=%2Funirme#d=/);
@@ -125,16 +124,16 @@ test('the owner invites a driver by link; a new person signs in, accepts and joi
 
   // The owner sees the person in the staff, and the invitation no longer waits.
   await owner.page.reload();
-  const row = owner.page.getByRole('article').filter({ hasText: 'S. Invitada' });
+  const row = owner.page.getByRole('article').filter({ hasText: name });
   await expect(row).toContainText('Con acceso');
   expect((await readDocument(`distributors/${A.id}/invites/${link.hash.slice(-20)}`))?.status).toBe(
     'accepted',
   );
 
   // Switched off: the open session of the driver leaves its panel at once.
-  await button(row, 'Desactivar a S. Invitada').click();
+  await button(row, `Desactivar a ${name}`).click();
   await button(owner.page, 'Sí, desactivar').click();
-  await expect(owner.page.getByText(`S. Invitada ya no entra a ${A.name}.`)).toBeVisible();
+  await expect(owner.page.getByText(`${name} ya no entra a ${A.name}.`)).toBeVisible();
   await expect(row).toContainText('Sin acceso');
   await expect(driver.page).toHaveURL(/\/inicio$/);
   // It is told why: its access was withdrawn (role walker, fourth pass).
@@ -190,18 +189,33 @@ test('expired, withdrawn, used and broken invitations say so; a member is told i
   actors,
 }, testInfo) => {
   const tag = uniqueTag(testInfo);
-  // The seeded invitation: the first account uses it, the second finds it used.
+  // An open invitation of its own, as the owner leaves it (the seeded one is used only once
+  // per seed, and this test runs again on every repetition): the first account uses it, the
+  // second finds it used.
+  const once = codeOf('Once', tag);
+  const now = new Date();
+  await writeDocument(`distributors/${A.id}/invites/${once}`, {
+    role: 'driver',
+    email: null,
+    distributorName: A.name,
+    invitedByName: SEED_USERS.ownerA.displayName,
+    brandColor: A.brandColor,
+    status: 'pending',
+    createdBy: SEED_USERS.ownerA.uid,
+    createdAt: now,
+    updatedAt: now,
+  });
   const first = await createTestAccount(`${tag}-1`);
   const second = await createTestAccount(`${tag}-2`);
   const firstActor = await actors.open(PHONE);
   await signInAs(firstActor.page, first, '/inicio');
-  await firstActor.page.goto(linkTo(SEED_INVITE_CODE));
+  await firstActor.page.goto(linkTo(once));
   await button(firstActor.page, `Unirme a ${A.name}`).click();
   await expect(firstActor.page).toHaveURL(/\/reparto$/);
 
   const visitor = await actors.open(PHONE);
   await signInAs(visitor.page, second, '/inicio');
-  await visitor.page.goto(linkTo(SEED_INVITE_CODE));
+  await visitor.page.goto(linkTo(once));
   await expect(heading(visitor.page)).toHaveText('Esta invitación ya se usó.');
 
   // One past its seven days.
